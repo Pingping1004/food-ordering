@@ -1,6 +1,0 @@
-@import 'tailwindcss';
-
-@theme {
-    --color-danger-main: #FF3632;
-    --color-danger-light: #FFB2B0;
-}
