@@ -1,0 +1,170 @@
+{
+    "sourceFile": "frontend/src/app/page.tsx",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 38,
+            "patches": [
+                {
+                    "date": 1748980488744,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                },
+                {
+                    "date": 1748980498634,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,4 +1,6 @@\n+\n+\n export default function CookerHomePage() {\n   return (\n     <div>\n       <CookerHeader />\n"
+                },
+                {
+                    "date": 1748980540427,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,6 +1,6 @@\n+import CookerHeader from \"@/component/cooker/CookerHeader\";\n \n-\n export default function CookerHomePage() {\n   return (\n     <div>\n       <CookerHeader />\n"
+                },
+                {
+                    "date": 1748980550742,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,5 +1,5 @@\n-import CookerHeader from \"@/component/cooker/CookerHeader\";\n+import CookerHeader from \"@/component/cookers/Header\";\n \n export default function CookerHomePage() {\n   return (\n     <div>\n"
+                },
+                {
+                    "date": 1748980732930,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -4,9 +4,9 @@\n   return (\n     <div>\n       <CookerHeader />\n       <section className=\"grid grid-cols-2\">\n-        <button className=\"bg-danger text-white\">ออเดอร์ที่มีปัญหา</button>\n+        <button className=\"bg-danger-main text-white\">ออเดอร์ที่มีปัญหา</button>\n         <button>อัพเดทหลายออเดอร์</button>\n       </section>\n     </div>\n   );\n"
+                },
+                {
+                    "date": 1748981408326,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -4,10 +4,10 @@\n   return (\n     <div>\n       <CookerHeader />\n       <section className=\"grid grid-cols-2\">\n-        <button className=\"bg-danger-main text-white\">ออเดอร์ที่มีปัญหา</button>\n+        <button className=\"bg-danger text-white\">ออเดอร์ที่มีปัญหา</button>\n         <button>อัพเดทหลายออเดอร์</button>\n       </section>\n     </div>\n   );\n\\ No newline at end of file\n-}\n+}\n"
+                },
+                {
+                    "date": 1748981435211,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -4,10 +4,10 @@\n   return (\n     <div>\n       <CookerHeader />\n       <section className=\"grid grid-cols-2\">\n-        <button className=\"bg-danger text-white\">ออเดอร์ที่มีปัญหา</button>\n+        <button className=\"bg-dangerLight text-white\">ออเดอร์ที่มีปัญหา</button>\n         <button>อัพเดทหลายออเดอร์</button>\n       </section>\n     </div>\n   );\n\\ No newline at end of file\n-}\n+}\n"
+                },
+                {
+                    "date": 1748981442649,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -4,10 +4,10 @@\n   return (\n     <div>\n       <CookerHeader />\n       <section className=\"grid grid-cols-2\">\n-        <button className=\"bg-dangerLight text-white\">ออเดอร์ที่มีปัญหา</button>\n+        <button className=\"bg-dangerLighter text-white\">ออเดอร์ที่มีปัญหา</button>\n         <button>อัพเดทหลายออเดอร์</button>\n       </section>\n     </div>\n   );\n\\ No newline at end of file\n-}\n+}\n"
+                },
+                {
+                    "date": 1748981721580,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -4,10 +4,10 @@\n   return (\n     <div>\n       <CookerHeader />\n       <section className=\"grid grid-cols-2\">\n-        <button className=\"bg-dangerLighter text-white\">ออเดอร์ที่มีปัญหา</button>\n+        <button className=\"bg-danger text-white\">ออเดอร์ที่มีปัญหา</button>\n         <button>อัพเดทหลายออเดอร์</button>\n       </section>\n     </div>\n   );\n\\ No newline at end of file\n-}\n+}\n"
+                },
+                {
+                    "date": 1748981908086,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -4,10 +4,10 @@\n   return (\n     <div>\n       <CookerHeader />\n       <section className=\"grid grid-cols-2\">\n-        <button className=\"bg-danger text-white\">ออเดอร์ที่มีปัญหา</button>\n+        <button className=\"bg-primary text-white\">ออเดอร์ที่มีปัญหา</button>\n         <button>อัพเดทหลายออเดอร์</button>\n       </section>\n     </div>\n   );\n\\ No newline at end of file\n-}\n+}\n"
+                },
+                {
+                    "date": 1748982281468,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -4,10 +4,10 @@\n   return (\n     <div>\n       <CookerHeader />\n       <section className=\"grid grid-cols-2\">\n-        <button className=\"bg-primary text-white\">ออเดอร์ที่มีปัญหา</button>\n+        <button className=\"bg-primary-light text-white\">ออเดอร์ที่มีปัญหา</button>\n         <button>อัพเดทหลายออเดอร์</button>\n       </section>\n     </div>\n   );\n\\ No newline at end of file\n-}\n+}\n"
+                },
+                {
+                    "date": 1748982315314,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -4,10 +4,10 @@\n   return (\n     <div>\n       <CookerHeader />\n       <section className=\"grid grid-cols-2\">\n-        <button className=\"bg-primary-light text-white\">ออเดอร์ที่มีปัญหา</button>\n+        <button className=\"bg-[] text-white\">ออเดอร์ที่มีปัญหา</button>\n         <button>อัพเดทหลายออเดอร์</button>\n       </section>\n     </div>\n   );\n\\ No newline at end of file\n-}\n+}\n"
+                },
+                {
+                    "date": 1748982321431,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -4,10 +4,10 @@\n   return (\n     <div>\n       <CookerHeader />\n       <section className=\"grid grid-cols-2\">\n-        <button className=\"bg-[] text-white\">ออเดอร์ที่มีปัญหา</button>\n+        <button className=\"bg-[#FF3632] text-white\">ออเดอร์ที่มีปัญหา</button>\n         <button>อัพเดทหลายออเดอร์</button>\n       </section>\n     </div>\n   );\n\\ No newline at end of file\n-}\n+}\n"
+                },
+                {
+                    "date": 1748982395025,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -4,10 +4,10 @@\n   return (\n     <div>\n       <CookerHeader />\n       <section className=\"grid grid-cols-2\">\n-        <button className=\"bg-[#FF3632] text-white\">ออเดอร์ที่มีปัญหา</button>\n+        <button className=\"bg-danger-main text-white\">ออเดอร์ที่มีปัญหา</button>\n         <button>อัพเดทหลายออเดอร์</button>\n       </section>\n     </div>\n   );\n\\ No newline at end of file\n-}\n+}\n"
+                },
+                {
+                    "date": 1748982530512,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -4,10 +4,10 @@\n   return (\n     <div>\n       <CookerHeader />\n       <section className=\"grid grid-cols-2\">\n-        <button className=\"bg-danger-main text-white\">ออเดอร์ที่มีปัญหา</button>\n+        <button className=\"bg-red-500 text-white\">ออเดอร์ที่มีปัญหา</button>\n         <button>อัพเดทหลายออเดอร์</button>\n       </section>\n     </div>\n   );\n\\ No newline at end of file\n-}\n+}\n"
+                },
+                {
+                    "date": 1748982536899,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -4,10 +4,10 @@\n   return (\n     <div>\n       <CookerHeader />\n       <section className=\"grid grid-cols-2\">\n-        <button className=\"bg-red-500 text-white\">ออเดอร์ที่มีปัญหา</button>\n+        <button className=\"bg-danger text-white\">ออเดอร์ที่มีปัญหา</button>\n         <button>อัพเดทหลายออเดอร์</button>\n       </section>\n     </div>\n   );\n\\ No newline at end of file\n-}\n+}\n"
+                },
+                {
+                    "date": 1748982830671,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -0,0 +1,13 @@\n+import CookerHeader from \"@/component/cookers/Header\";\n+\n+export default function CookerHomePage() {\n+  return (\n+    <div>\n+      <CookerHeader />\n+      <section className=\"grid grid-cols-2\">\n+        <button className=\"bg-danger text-white\">ออเดอร์ที่มีปัญหา</button>\n+        <button>อัพเดทหลายออเดอร์</button>\n+      </section>\n+    </div>\n+  );\n+}\n"
+                },
+                {
+                    "date": 1748983110005,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -4,23 +4,10 @@\n   return (\n     <div>\n       <CookerHeader />\n       <section className=\"grid grid-cols-2\">\n-        <button className=\"bg-danger text-white\">ออเดอร์ที่มีปัญหา</button>\n+        <button className=\"bg-danger-main text-white\">ออเดอร์ที่มีปัญหา</button>\n         <button>อัพเดทหลายออเดอร์</button>\n       </section>\n     </div>\n   );\n }\n-import CookerHeader from \"@/component/cookers/Header\";\n-\n-export default function CookerHomePage() {\n-  return (\n-    <div>\n-      <CookerHeader />\n-      <section className=\"grid grid-cols-2\">\n-        <button className=\"bg-danger text-white\">ออเดอร์ที่มีปัญหา</button>\n-        <button>อัพเดทหลายออเดอร์</button>\n-      </section>\n-    </div>\n-  );\n\\ No newline at end of file\n-}\n"
+                },
+                {
+                    "date": 1748983128909,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -4,9 +4,9 @@\n   return (\n     <div>\n       <CookerHeader />\n       <section className=\"grid grid-cols-2\">\n-        <button className=\"bg-danger-main text-white\">ออเดอร์ที่มีปัญหา</button>\n+        <button className=\"bg-danger text-white\">ออเดอร์ที่มีปัญหา</button>\n         <button>อัพเดทหลายออเดอร์</button>\n       </section>\n     </div>\n   );\n"
+                },
+                {
+                    "date": 1748983241059,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -4,9 +4,9 @@\n   return (\n     <div>\n       <CookerHeader />\n       <section className=\"grid grid-cols-2\">\n-        <button className=\"bg-danger text-white\">ออเดอร์ที่มีปัญหา</button>\n+        <button className=\"bg-danger-main text-white\">ออเดอร์ที่มีปัญหา</button>\n         <button>อัพเดทหลายออเดอร์</button>\n       </section>\n     </div>\n   );\n"
+                },
+                {
+                    "date": 1748983274543,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -4,9 +4,9 @@\n   return (\n     <div>\n       <CookerHeader />\n       <section className=\"grid grid-cols-2\">\n-        <button className=\"bg-danger-main text-white\">ออเดอร์ที่มีปัญหา</button>\n+        <button className=\"bg-primary text-white\">ออเดอร์ที่มีปัญหา</button>\n         <button>อัพเดทหลายออเดอร์</button>\n       </section>\n     </div>\n   );\n"
+                },
+                {
+                    "date": 1748983524681,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -4,9 +4,9 @@\n   return (\n     <div>\n       <CookerHeader />\n       <section className=\"grid grid-cols-2\">\n-        <button className=\"bg-primary text-white\">ออเดอร์ที่มีปัญหา</button>\n+        <button className=\"bg-[primary] text-white\">ออเดอร์ที่มีปัญหา</button>\n         <button>อัพเดทหลายออเดอร์</button>\n       </section>\n     </div>\n   );\n"
+                },
+                {
+                    "date": 1748983569313,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -4,9 +4,9 @@\n   return (\n     <div>\n       <CookerHeader />\n       <section className=\"grid grid-cols-2\">\n-        <button className=\"bg-[primary] text-white\">ออเดอร์ที่มีปัญหา</button>\n+        <button className=\"bg- text-white\">ออเดอร์ที่มีปัญหา</button>\n         <button>อัพเดทหลายออเดอร์</button>\n       </section>\n     </div>\n   );\n"
+                },
+                {
+                    "date": 1748983634100,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -4,9 +4,9 @@\n   return (\n     <div>\n       <CookerHeader />\n       <section className=\"grid grid-cols-2\">\n-        <button className=\"bg- text-white\">ออเดอร์ที่มีปัญหา</button>\n+        <button className=\"bg-danger text-white\">ออเดอร์ที่มีปัญหา</button>\n         <button>อัพเดทหลายออเดอร์</button>\n       </section>\n     </div>\n   );\n"
+                },
+                {
+                    "date": 1748983644085,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -4,9 +4,9 @@\n   return (\n     <div>\n       <CookerHeader />\n       <section className=\"grid grid-cols-2\">\n-        <button className=\"bg-danger text-white\">ออเดอร์ที่มีปัญหา</button>\n+        <button className=\"bg-danger-main text-white\">ออเดอร์ที่มีปัญหา</button>\n         <button>อัพเดทหลายออเดอร์</button>\n       </section>\n     </div>\n   );\n"
+                },
+                {
+                    "date": 1748983657025,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -5,9 +5,9 @@\n     <div>\n       <CookerHeader />\n       <section className=\"grid grid-cols-2\">\n         <button className=\"bg-danger-main text-white\">ออเดอร์ที่มีปัญหา</button>\n-        <button>อัพเดทหลายออเดอร์</button>\n+        <button className=\"bg-primary \">อัพเดทหลายออเดอร์</button>\n       </section>\n     </div>\n   );\n }\n"
+                },
+                {
+                    "date": 1748983657635,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -5,9 +5,9 @@\n     <div>\n       <CookerHeader />\n       <section className=\"grid grid-cols-2\">\n         <button className=\"bg-danger-main text-white\">ออเดอร์ที่มีปัญหา</button>\n-        <button className=\"bg-primary \">อัพเดทหลายออเดอร์</button>\n+        <button className=\"bg-primary tex\">อัพเดทหลายออเดอร์</button>\n       </section>\n     </div>\n   );\n }\n"
+                },
+                {
+                    "date": 1748983700477,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -5,9 +5,9 @@\n     <div>\n       <CookerHeader />\n       <section className=\"grid grid-cols-2\">\n         <button className=\"bg-danger-main text-white\">ออเดอร์ที่มีปัญหา</button>\n-        <button className=\"bg-primary tex\">อัพเดทหลายออเดอร์</button>\n+        <button className=\"bg-primary text-primary\">อัพเดทหลายออเดอร์</button>\n       </section>\n     </div>\n   );\n }\n"
+                },
+                {
+                    "date": 1748983731487,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -5,9 +5,9 @@\n     <div>\n       <CookerHeader />\n       <section className=\"grid grid-cols-2\">\n         <button className=\"bg-danger-main text-white\">ออเดอร์ที่มีปัญหา</button>\n-        <button className=\"bg-primary text-primary\">อัพเดทหลายออเดอร์</button>\n+        <button className=\"bg-primary text-primary-main\">อัพเดทหลายออเดอร์</button>\n       </section>\n     </div>\n   );\n }\n"
+                },
+                {
+                    "date": 1748983737770,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -5,9 +5,9 @@\n     <div>\n       <CookerHeader />\n       <section className=\"grid grid-cols-2\">\n         <button className=\"bg-danger-main text-white\">ออเดอร์ที่มีปัญหา</button>\n-        <button className=\"bg-primary text-primary-main\">อัพเดทหลายออเดอร์</button>\n+        <button className=\"bg-primary-light text-primary-main\">อัพเดทหลายออเดอร์</button>\n       </section>\n     </div>\n   );\n }\n"
+                },
+                {
+                    "date": 1748983889578,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -3,9 +3,9 @@\n export default function CookerHomePage() {\n   return (\n     <div>\n       <CookerHeader />\n-      <section className=\"grid grid-cols-2\">\n+      <section className=\"grid grid-cols-2 font-poppins\">\n         <button className=\"bg-danger-main text-white\">ออเดอร์ที่มีปัญหา</button>\n         <button className=\"bg-primary-light text-primary-main\">อัพเดทหลายออเดอร์</button>\n       </section>\n     </div>\n"
+                },
+                {
+                    "date": 1748984250515,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -3,11 +3,13 @@\n export default function CookerHomePage() {\n   return (\n     <div>\n       <CookerHeader />\n-      <section className=\"grid grid-cols-2 font-poppins\">\n+      <section className=\"grid grid-cols-2 -poppins\">\n         <button className=\"bg-danger-main text-white\">ออเดอร์ที่มีปัญหา</button>\n-        <button className=\"bg-primary-light text-primary-main\">อัพเดทหลายออเดอร์</button>\n+        <button className=\"bg-primary-light text-primary-main\">\n+          อัพเดทหลายออเดอร์\n+        </button>\n       </section>\n     </div>\n   );\n }\n"
+                },
+                {
+                    "date": 1748984261149,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -3,9 +3,9 @@\n export default function CookerHomePage() {\n   return (\n     <div>\n       <CookerHeader />\n-      <section className=\"grid grid-cols-2 -poppins\">\n+      <section className=\"grid grid-cols-2 poppins-regular\">\n         <button className=\"bg-danger-main text-white\">ออเดอร์ที่มีปัญหา</button>\n         <button className=\"bg-primary-light text-primary-main\">\n           อัพเดทหลายออเดอร์\n         </button>\n"
+                },
+                {
+                    "date": 1748984281102,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -3,9 +3,9 @@\n export default function CookerHomePage() {\n   return (\n     <div>\n       <CookerHeader />\n-      <section className=\"grid grid-cols-2 poppins-regular\">\n+      <section className=\"grid grid-cols-2\">\n         <button className=\"bg-danger-main text-white\">ออเดอร์ที่มีปัญหา</button>\n         <button className=\"bg-primary-light text-primary-main\">\n           อัพเดทหลายออเดอร์\n         </button>\n"
+                },
+                {
+                    "date": 1748984288913,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -5,9 +5,9 @@\n     <div>\n       <CookerHeader />\n       <section className=\"grid grid-cols-2\">\n         <button className=\"bg-danger-main text-white\">ออเดอร์ที่มีปัญหา</button>\n-        <button className=\"bg-primary-light text-primary-main\">\n+        <button className=\"bg-primary-light text-primary-main poppins-regular\">\n           อัพเดทหลายออเดอร์\n         </button>\n       </section>\n     </div>\n"
+                },
+                {
+                    "date": 1748985174087,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -5,9 +5,9 @@\n     <div>\n       <CookerHeader />\n       <section className=\"grid grid-cols-2\">\n         <button className=\"bg-danger-main text-white\">ออเดอร์ที่มีปัญหา</button>\n-        <button className=\"bg-primary-light text-primary-main poppins-regular\">\n+        <button className=\"bg-primary-light text-primary-main noto-sans-regular\">\n           อัพเดทหลายออเดอร์\n         </button>\n       </section>\n     </div>\n"
+                },
+                {
+                    "date": 1748985213676,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -5,9 +5,9 @@\n     <div>\n       <CookerHeader />\n       <section className=\"grid grid-cols-2\">\n         <button className=\"bg-danger-main text-white\">ออเดอร์ที่มีปัญหา</button>\n-        <button className=\"bg-primary-light text-primary-main noto-sans-regular\">\n+        <button className=\"bg-primary-light text-primary-main\">\n           อัพเดทหลายออเดอร์\n         </button>\n       </section>\n     </div>\n"
+                },
+                {
+                    "date": 1748985228759,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -3,9 +3,9 @@\n export default function CookerHomePage() {\n   return (\n     <div>\n       <CookerHeader />\n-      <section className=\"grid grid-cols-2 px-\">\n+      <section className=\"grid grid-cols-2 px-6\">\n         <button className=\"bg-danger-main text-white\">ออเดอร์ที่มีปัญหา</button>\n         <button className=\"bg-primary-light text-primary-main\">\n           อัพเดทหลายออเดอร์\n         </button>\n"
+                },
+                {
+                    "date": 1748985823035,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -4,9 +4,9 @@\n     return (\n         <div>\n             <CookerHeader />\n             <section className=\"grid grid-cols-2 px-6 gap-6 noto-sans-regular\">\n-                <button className=\"bg-danger-main text-white font-\">ออเดอร์ที่มีปัญหา</button>\n+                <button className=\"bg-danger-main text-white font-x\">ออเดอร์ที่มีปัญหา</button>\n                 <button className=\"bg-primary-light text-primary-main\">อัพเดทหลายออเดอร์</button>\n             </section>\n         </div>\n     );\n"
+                }
+            ],
+            "date": 1748980488744,
+            "name": "Commit-0",
+            "content": "export default function CookerHomePage() {\n  return (\n    <div>\n      <CookerHeader />\n      <section className=\"grid grid-cols-2\">\n        <button className=\"bg-danger text-white\">ออเดอร์ที่มีปัญหา</button>\n        <button>อัพเดทหลายออเดอร์</button>\n      </section>\n    </div>\n  );\n}"
+        }
+    ]
+}

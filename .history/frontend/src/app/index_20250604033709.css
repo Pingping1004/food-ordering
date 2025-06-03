@@ -1,0 +1,9 @@
+@import 'tailwindcss';
+
+@theme {
+    danger: {
+        DEFAULT: "#dc2626",
+        light: "#fca5a5",
+        dark: "#b91c1c",
+    }
+}

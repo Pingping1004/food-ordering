@@ -1,0 +1,5 @@
+@import 'tailwindcss';
+
+@theme {
+    --color-danger-main: #FF3632; /* Temporary override */
+}

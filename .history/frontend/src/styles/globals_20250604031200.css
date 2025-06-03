@@ -1,0 +1,6 @@
+/* ...existing code... */
+.bg-danger-main {
+  background-color: #FF3632; /* Matches the color in tailwind.config.js */
+  color: white; /* Optional: Set text color */
+}
+/* ...existing code... */

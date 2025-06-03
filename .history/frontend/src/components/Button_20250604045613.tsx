@@ -1,0 +1,38 @@
+import { cva, VariantProps } from 'class-variance-authority';
+import clsx from 'clsx';
+import React from 'react';
+
+const button = cva('font-semibold', {
+    variants: {
+        variant: {
+            primary: 'bg-primary-main text-white',
+            secondary: 'bg-primary-light text-main',
+            danger: 'bg-danger-main text-white',
+            'secondary-danger': 'bg-danger-light text-danger-main',
+        },
+        size: {
+            md: 'px-5 py-2.5 rounded-2xl',
+            lg: 'px-6 py-3 rounded-2xl',
+            full: 'w-full py-3 rounded-2xl',
+            half: 'w-1/2 py-2.5 rounded-2xl',
+        },
+    },
+    defaultVariants: {
+        variant: 'primary',
+        size: 'md',
+    },
+});
+
+type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
+    VariantProps<typeof button>;
+
+export const Button = ({
+    className,
+    variant,
+    size,
+    ...props
+}: ButtonProps) => {
+    return (
+        <button className={clsx(button({ variant, size }), className)} {...props} />
+    );
+}

@@ -1,0 +1,58 @@
+{
+    "sourceFile": "frontend/src/components/Button.tsx",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 10,
+            "patches": [
+                {
+                    "date": 1748986502377,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                },
+                {
+                    "date": 1748986507534,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,1 +1,2 @@\n-import React from 'react'\n\\ No newline at end of file\n+import React from 'react';\r\n+import clsx\n\\ No newline at end of file\n"
+                },
+                {
+                    "date": 1748986513724,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,2 +1,2 @@\n import React from 'react';\r\n-import clsx\n\\ No newline at end of file\n+import clsx from 'clxs';\n\\ No newline at end of file\n"
+                },
+                {
+                    "date": 1748986535787,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,2 +1,2 @@\n import React from 'react';\r\n-import clsx from 'clxs';\n\\ No newline at end of file\n+import clsx from 'clsx';\n\\ No newline at end of file\n"
+                },
+                {
+                    "date": 1748986546825,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,2 +1,6 @@\n import React from 'react';\r\n-import clsx from 'clsx';\n\\ No newline at end of file\n+import clsx from 'clsx';\r\n+\r\n+type ButtonProps = {\r\n+    chiil\r\n+}\n\\ No newline at end of file\n"
+                },
+                {
+                    "date": 1748986560646,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,6 +1,7 @@\n import React from 'react';\r\n import clsx from 'clsx';\r\n \r\n type ButtonProps = {\r\n-    chiil\r\n+    chiidren: React.ReactNode;\r\n+    variant?:\r\n }\n\\ No newline at end of file\n"
+                },
+                {
+                    "date": 1748986567214,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -2,6 +2,6 @@\n import clsx from 'clsx';\r\n \r\n type ButtonProps = {\r\n     chiidren: React.ReactNode;\r\n-    variant?:\r\n+    variant?: 'primary' | 'secondary' | 'danger';\r\n }\n\\ No newline at end of file\n"
+                },
+                {
+                    "date": 1748986573937,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -3,5 +3,6 @@\n \r\n type ButtonProps = {\r\n     chiidren: React.ReactNode;\r\n     variant?: 'primary' | 'secondary' | 'danger';\r\n+    className?: string;\r\n }\n\\ No newline at end of file\n"
+                },
+                {
+                    "date": 1748986584215,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -4,5 +4,6 @@\n type ButtonProps = {\r\n     chiidren: React.ReactNode;\r\n     variant?: 'primary' | 'secondary' | 'danger';\r\n     className?: string;\r\n+    onClick?: () => void;\r\n }\n\\ No newline at end of file\n"
+                },
+                {
+                    "date": 1748986593867,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -7,5 +7,5 @@\n     className?: string;\r\n     onClick?: () => void;\r\n }\r\n \r\n-const \n\\ No newline at end of file\n+const Bu\n\\ No newline at end of file\n"
+                },
+                {
+                    "date": 1748986770947,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -13,6 +13,6 @@\n     variant = 'primary',\r\n     className,\r\n     onClick,\r\n }) => {\r\n-    const baseStyles = 'px-5 py-2.5 rounded-2xl noto-sans-regular text-sm';\r\n+    const baseStyles = 'px-5 py-2.5 rounded-2xl noto-sans-regular';\r\n }\n\\ No newline at end of file\n"
+                }
+            ],
+            "date": 1748986502377,
+            "name": "Commit-0",
+            "content": "import React from 'react'"
+        }
+    ]
+}

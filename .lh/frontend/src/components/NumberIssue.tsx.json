@@ -1,0 +1,34 @@
+{
+    "sourceFile": "frontend/src/components/NumberIssue.tsx",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 4,
+            "patches": [
+                {
+                    "date": 1748988716269,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                },
+                {
+                    "date": 1748988725644,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -0,0 +1,1 @@\n+import React from 'react'\n\\ No newline at end of file\n"
+                },
+                {
+                    "date": 1748988736810,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,1 +1,3 @@\n-import React from 'react'\n\\ No newline at end of file\n+import React from 'react';\r\n+\r\n+export const NumberIssued = ({number})\n\\ No newline at end of file\n"
+                },
+                {
+                    "date": 1748988745808,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,3 +1,3 @@\n import React from 'react';\r\n \r\n-export const NumberIssued = ({ number })\n\\ No newline at end of file\n+export const NumberIssued = ({ number }: { number: number})\n\\ No newline at end of file\n"
+                },
+                {
+                    "date": 1748988802618,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -0,0 +1,9 @@\n+import React from 'react';\r\n+\r\n+export const NumberIssued = ({ issuedOrder }: { issuedOrder: number }) => {\r\n+    return (\r\n+        <div>\r\n+            {issuedOrder > 0 ? {}};\r\n+        </div>\r\n+    )\r\n+}\n\\ No newline at end of file\n"
+                }
+            ],
+            "date": 1748988716269,
+            "name": "Commit-0",
+            "content": ""
+        }
+    ]
+}

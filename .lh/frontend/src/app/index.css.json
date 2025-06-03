@@ -1,0 +1,54 @@
+{
+    "sourceFile": "frontend/src/app/index.css",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 9,
+            "patches": [
+                {
+                    "date": 1748982980243,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                },
+                {
+                    "date": 1748982987158,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,1 +1,1 @@\n-@theme\n\\ No newline at end of file\n+@import \n\\ No newline at end of file\n"
+                },
+                {
+                    "date": 1748983000655,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,1 +1,1 @@\n-@import \n\\ No newline at end of file\n+@import 'tailwindcss;\n\\ No newline at end of file\n"
+                },
+                {
+                    "date": 1748983006145,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,1 +1,3 @@\n-@import 'tailwindcss;\n\\ No newline at end of file\n+@import 'tailwindcss';\r\n+\r\n+@\n\\ No newline at end of file\n"
+                },
+                {
+                    "date": 1748983018857,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,3 +1,9 @@\n @import 'tailwindcss';\r\n \r\n-@\n\\ No newline at end of file\n+@theme {\r\n+            danger: {\r\n+          DEFAULT: \"#dc2626\",\r\n+          light: \"#fca5a5\",\r\n+          dark: \"#b91c1c\",\r\n+        }\r\n+}\n\\ No newline at end of file\n"
+                },
+                {
+                    "date": 1748983026946,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,9 +1,9 @@\n @import 'tailwindcss';\r\n \r\n @theme {\r\n-            danger: {\r\n-          DEFAULT: \"#dc2626\",\r\n-          light: \"#fca5a5\",\r\n+    danger: {\r\n+        DEFAULT: \"#dc2626\",\r\n+        light: \"#fca5a5\",\r\n           dark: \"#b91c1c\",\r\n         }\r\n }\n\\ No newline at end of file\n"
+                },
+                {
+                    "date": 1748983082281,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,9 +1,5 @@\n @import 'tailwindcss';\r\n \r\n @theme {\r\n-    danger: {\r\n-        DEFAULT: \"#dc2626\",\r\n-        light: \"#fca5a5\",\r\n-          dark: \"#b91c1c\",\r\n-        }\r\n+    \r\n }\n\\ No newline at end of file\n"
+                },
+                {
+                    "date": 1748983090941,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,5 +1,5 @@\n @import 'tailwindcss';\r\n \r\n @theme {\r\n-    \r\n+    --color-danger\r\n }\n\\ No newline at end of file\n"
+                },
+                {
+                    "date": 1748983101204,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,5 +1,6 @@\n @import 'tailwindcss';\r\n \r\n @theme {\r\n-    --color-danger\r\n+    --color-danger-main: #FF3632;\r\n+    --color-danger-light: #FFB2B0; /* Temporary override */\r\n }\n\\ No newline at end of file\n"
+                },
+                {
+                    "date": 1748983123044,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,6 +1,6 @@\n @import 'tailwindcss';\r\n \r\n @theme {\r\n-    --color-danger-main: #FF3632;\r\n-    --color-danger-light: #FFB2B0; /* Temporary override */\r\n+    --color-danger: #FF3632;\r\n+    --color-danger-light: #FFB2B0;\r\n }\n\\ No newline at end of file\n"
+                }
+            ],
+            "date": 1748982980243,
+            "name": "Commit-0",
+            "content": "@theme"
+        }
+    ]
+}

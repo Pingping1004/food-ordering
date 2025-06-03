@@ -1,0 +1,58 @@
+{
+    "sourceFile": "frontend/src/components/cookers/Header.tsx",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 10,
+            "patches": [
+                {
+                    "date": 1748989542661,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                },
+                {
+                    "date": 1748989557761,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,6 +1,6 @@\n import React from \"react\";\r\n-import Butt\r\n+import { Button } from \"../Button\";\r\n \r\n export default function CookerHeader() {\r\n     return (\r\n         <>\r\n@@ -10,9 +10,9 @@\n                         <h1 className=\"font-bold\">SomChai Suchi</h1>\r\n                     </div>\r\n \r\n                     <div className=\"w-full flex justify-between items-center\">\r\n-                        <button>จัดการเมนู</button>\r\n+                        <Button>\r\n \r\n                         <div>\r\n                             <div className=\"profile-icon\">profile</div>\r\n                         </div>\r\n"
+                },
+                {
+                    "date": 1748989567516,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -10,9 +10,9 @@\n                         <h1 className=\"font-bold\">SomChai Suchi</h1>\r\n                     </div>\r\n \r\n                     <div className=\"w-full flex justify-between items-center\">\r\n-                        <Button>\r\n+                        <Button></Button>>\r\n \r\n                         <div>\r\n                             <div className=\"profile-icon\">profile</div>\r\n                         </div>\r\n"
+                },
+                {
+                    "date": 1748989577296,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -0,0 +1,24 @@\n+import React from \"react\";\r\n+import { Button } from \"../Button\";\r\n+\r\n+export default function CookerHeader() {\r\n+    return (\r\n+        <>\r\n+            <header className=\"w-full flex items-center px-6\">\r\n+                <div className=\"grid grid-cols-2 w-full\">\r\n+                    <div>\r\n+                        <h1 className=\"font-bold\">SomChai Suchi</h1>\r\n+                    </div>\r\n+\r\n+                    <div className=\"w-full flex justify-between items-center\">\r\n+                        <Button>จจัดการเมนู</Button>\r\n+\r\n+                        <div>\r\n+                            <div className=\"profile-icon\">profile</div>\r\n+                        </div>\r\n+                    </div>\r\n+                </div>\r\n+            </header>\r\n+        </>\r\n+    );\r\n+}\r\n"
+                },
+                {
+                    "date": 1748989586741,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -10,9 +10,10 @@\n                         <h1 className=\"font-bold\">SomChai Suchi</h1>\r\n                     </div>\r\n \r\n                     <div className=\"w-full flex justify-between items-center\">\r\n-                        <Button>จจัดการเมนู</Button>\r\n+                        <Button\r\n+                        >จัดการเมนู</Button>\r\n \r\n                         <div>\r\n                             <div className=\"profile-icon\">profile</div>\r\n                         </div>\r\n@@ -21,28 +22,4 @@\n             </header>\r\n         </>\r\n     );\r\n }\r\n-import React from \"react\";\r\n-import { Button } from \"../Button\";\r\n-\r\n-export default function CookerHeader() {\r\n-    return (\r\n-        <>\r\n-            <header className=\"w-full flex items-center px-6\">\r\n-                <div className=\"grid grid-cols-2 w-full\">\r\n-                    <div>\r\n-                        <h1 className=\"font-bold\">SomChai Suchi</h1>\r\n-                    </div>\r\n-\r\n-                    <div className=\"w-full flex justify-between items-center\">\r\n-                        <Button></Button>>\r\n-\r\n-                        <div>\r\n-                            <div className=\"profile-icon\">profile</div>\r\n-                        </div>\r\n-                    </div>\r\n-                </div>\r\n-            </header>\r\n-        </>\r\n-    );\r\n-}\r\n"
+                },
+                {
+                    "date": 1748989596112,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -11,8 +11,9 @@\n                     </div>\r\n \r\n                     <div className=\"w-full flex justify-between items-center\">\r\n                         <Button\r\n+                        \r\n                         >จัดการเมนู</Button>\r\n \r\n                         <div>\r\n                             <div className=\"profile-icon\">profile</div>\r\n"
+                },
+                {
+                    "date": 1748989602903,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -11,9 +11,9 @@\n                     </div>\r\n \r\n                     <div className=\"w-full flex justify-between items-center\">\r\n                         <Button\r\n-                        \r\n+                            variant\r\n                         >จัดการเมนู</Button>\r\n \r\n                         <div>\r\n                             <div className=\"profile-icon\">profile</div>\r\n"
+                },
+                {
+                    "date": 1748989608220,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -11,9 +11,9 @@\n                     </div>\r\n \r\n                     <div className=\"w-full flex justify-between items-center\">\r\n                         <Button\r\n-                            variant\r\n+                            variant=\"primary\"\r\n                         >จัดการเมนู</Button>\r\n \r\n                         <div>\r\n                             <div className=\"profile-icon\">profile</div>\r\n"
+                },
+                {
+                    "date": 1748989614149,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -12,8 +12,9 @@\n \r\n                     <div className=\"w-full flex justify-between items-center\">\r\n                         <Button\r\n                             variant=\"primary\"\r\n+                            size=\"md\"\r\n                         >จัดการเมนู</Button>\r\n \r\n                         <div>\r\n                             <div className=\"profile-icon\">profile</div>\r\n"
+                },
+                {
+                    "date": 1748989704601,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -3,9 +3,9 @@\n \r\n export default function CookerHeader() {\r\n     return (\r\n         <>\r\n-            <header className=\"w-full flex items-center px-6\">\r\n+            <header className=\"w-full flex items-center\">\r\n                 <div className=\"grid grid-cols-2 w-full\">\r\n                     <div>\r\n                         <h1 className=\"font-bold\">SomChai Suchi</h1>\r\n                     </div>\r\n"
+                },
+                {
+                    "date": 1748989861559,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -6,9 +6,9 @@\n         <>\r\n             <header className=\"w-full flex items-center\">\r\n                 <div className=\"grid grid-cols-2 w-full\">\r\n                     <div>\r\n-                        <h1 className=\"font-bold items\">SomChai Suchi</h1>\r\n+                        <h1 className=\"font-bold items-ce\">SomChai Suchi</h1>\r\n                     </div>\r\n \r\n                     <div className=\"w-full flex justify-between items-center\">\r\n                         <Button\r\n"
+                }
+            ],
+            "date": 1748989542660,
+            "name": "Commit-0",
+            "content": "import React from \"react\";\r\nimport Butt\r\n\r\nexport default function CookerHeader() {\r\n    return (\r\n        <>\r\n            <header className=\"w-full flex items-center px-6\">\r\n                <div className=\"grid grid-cols-2 w-full\">\r\n                    <div>\r\n                        <h1 className=\"font-bold\">SomChai Suchi</h1>\r\n                    </div>\r\n\r\n                    <div className=\"w-full flex justify-between items-center\">\r\n                        <button>จัดการเมนู</button>\r\n\r\n                        <div>\r\n                            <div className=\"profile-icon\">profile</div>\r\n                        </div>\r\n                    </div>\r\n                </div>\r\n            </header>\r\n        </>\r\n    );\r\n}\r\n"
+        }
+    ]
+}

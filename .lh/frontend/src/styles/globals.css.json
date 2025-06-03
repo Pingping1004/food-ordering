@@ -1,0 +1,18 @@
+{
+    "sourceFile": "frontend/src/styles/globals.css",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 0,
+            "patches": [
+                {
+                    "date": 1748983896983,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                }
+            ],
+            "date": 1748983896983,
+            "name": "Commit-0",
+            "content": "@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');\r\n\r\nbody {\r\n  font-family: 'Poppins', sans-serif;\r\n}\r\n\r\n/* ...existing code... */\r\n.bg-danger-main {\r\n  background-color: #FF3632 !important; /* Temporary override */\r\n  color: white; /* Optional: Set text color */\r\n}\r\n/* ...existing code... */"
+        }
+    ]
+}

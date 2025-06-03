@@ -1,0 +1,22 @@
+{
+    "sourceFile": "frontend/eslint.config.mjs",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 1,
+            "patches": [
+                {
+                    "date": 1748985444930,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                },
+                {
+                    "date": 1748985463652,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -12,9 +12,9 @@\n const eslintConfig = [\n   ...compat.extends(\"next/core-web-vitals\", \"next/typescript\"),\n   {\n     rules: {\n-      indent: [\"error\", 4], // Enforce 4 spaces for indentation\n+      indent: [\"error\", 4],\n     },\n   },\n ];\n \n"
+                }
+            ],
+            "date": 1748985444930,
+            "name": "Commit-0",
+            "content": "import { dirname } from \"path\";\nimport { fileURLToPath } from \"url\";\nimport { FlatCompat } from \"@eslint/eslintrc\";\n\nconst __filename = fileURLToPath(import.meta.url);\nconst __dirname = dirname(__filename);\n\nconst compat = new FlatCompat({\n  baseDirectory: __dirname,\n});\n\nconst eslintConfig = [\n  ...compat.extends(\"next/core-web-vitals\", \"next/typescript\"),\n  {\n    rules: {\n      indent: [\"error\", 4], // Enforce 4 spaces for indentation\n    },\n  },\n];\n\nexport default eslintConfig;\n"
+        }
+    ]
+}
