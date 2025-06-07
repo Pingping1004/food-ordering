@@ -33,7 +33,7 @@ export default function RootLayout({
                     crossOrigin="anonymous"
                 />
 
-                {/* // Poppins google font api connected */}
+                {/* // Noto Sans google font api connected */}
                 <link href='https://fonts.googleapis.com/css?family=Noto Sans Thai' rel='stylesheet'></link>
             </head>
             <body

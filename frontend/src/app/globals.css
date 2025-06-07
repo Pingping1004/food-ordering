@@ -18,9 +18,11 @@ body {
 
 @theme {
     --color-danger-main: #FF3632;
-    --color-danger-light: #FFB2B0;
+    --color-danger-light: #FFE1E0;
     --color-primary-main: #1263F0;
-    --color-primary-light: #A7C6FF;
+    --color-primary-light: #E0e8F6;
+    --color-success-main: #45B858;
+    --color-success-light: #E3F4E6
 }
 
 @media (prefers-color-scheme: dark) {
@@ -39,17 +41,20 @@ body {
 }
 
 .text-secondary {
-  color: #1E1E1E;
-  opacity: 0.75;
+  color: #5F5F5F;
 }
 
-.text-tertiary {
-  color: #1E1E1E;
-  opacity: 0.5;
+.text-light {
+  color: #8A8A8A;
+  opacity: 1;
 }
-.text-quaternary {
-  color: #1E1E1E;
-  opacity: 0.25;
+.text-lighter {
+  color: #B6B6B6;
+  opacity: 1;
+}
+
+.text-superLight {
+  color: #E1E1E1
 }
 
 .poppins-thin {
