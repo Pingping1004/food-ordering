@@ -45,7 +45,7 @@ export type OrderProps = React.HTMLAttributes<HTMLDivElement> &
     deliverAt: Date | string | number;
     selected: "default" | boolean;
     isPaid: boolean;
-    orderMenu: { key: string; value: string }[];
+    orderMenu: { units: number; value: string }[];
     details?: string;
   };
 
@@ -120,9 +120,9 @@ export const Order = ({
           <p>1x - ข้าวผัดสเต็กแซลม่อน</p>
         </div>
 
-        <div className="flex w-1/2 grid-cols-2 items-end justify-end gap-x-2">
+        <div className="flex w-1/2 grid-cols-2 items-end justify-end md:gap-x-6 gap-x-4">
           <div className="text-center">
-            <p className="text-xs">เวลารับออเดอร์:</p>
+            <p className="text-xs">รับออเดอร์:</p>
             <h4 className="text-base text-secondary">12:15</h4>
           </div>
 

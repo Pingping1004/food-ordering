@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import clsx from "clsx";
-import Link from "next/link";
 import { cva } from "class-variance-authority";
 
 const orderNavbarVariants = cva(
@@ -20,14 +19,16 @@ const orderNavbarVariants = cva(
   }
 );
 
+export const OrderNavBar = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => {
+  const [state, setState] = useState<"receive" | "cooking" | "ready" | "done">("receive");
+  const handleClick = (newState: "receive" | "cooking" | "ready" | "done") => {
+    setState(newState);
+    console.log("Current state:", state, "Updated state:", newState);
+  };
 
-export const OrderNavBar = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => {
-
-  const [state, setState] = useState<'receive' | 'cooking' | 'ready' | 'done'>('receive');
-
-    const handleClick = (newState: 'receive' | 'cooking' | 'ready' | 'done') => {
-        setState(newState);
-    };
   return (
     <div
       className={clsx(
@@ -37,9 +38,8 @@ export const OrderNavBar = ({ className, ...props }: React.HTMLAttributes<HTMLDi
       )}
       {...props}
     >
-      <Link
-        href="/"
-        onClick={() => handleClick('receive')}
+      <button
+        onClick={() => handleClick("receive")}
         className={
           state === "receive"
             ? "w-1/4 text-primary p-2 border-b-2 border-primary-main"
@@ -47,10 +47,9 @@ export const OrderNavBar = ({ className, ...props }: React.HTMLAttributes<HTMLDi
         }
       >
         ออเดอร์ใหม่
-      </Link>
-      <Link
-        href="/cooking-orders"
-        onClick={() => handleClick('cooking')}
+      </button>
+      <button
+        onClick={() => handleClick("cooking")}
         className={
           state === "cooking"
             ? "w-1/4 text-primary p-2 border-b-2 border-primary-main"
@@ -58,10 +57,9 @@ export const OrderNavBar = ({ className, ...props }: React.HTMLAttributes<HTMLDi
         }
       >
         กำลังปรุง
-      </Link>
-      <Link
-        href="/serving-orders"
-        onClick={() => handleClick('ready')}
+      </button>
+      <button
+        onClick={() => handleClick("ready")}
         className={
           state === "ready"
             ? "w-1/4 text-primary p-2 border-b-2 border-primary-main"
@@ -69,10 +67,9 @@ export const OrderNavBar = ({ className, ...props }: React.HTMLAttributes<HTMLDi
         }
       >
         พร้อมเสิร์ฟ
-      </Link>
-      <Link
-        href="/done-orders"
-        onClick={() => handleClick('done')}
+      </button>
+      <button
+        onClick={() => handleClick("done")}
         className={
           state === "done"
             ? "w-1/4 text-primary p-2 border-b-2 border-primary-main"
@@ -80,7 +77,7 @@ export const OrderNavBar = ({ className, ...props }: React.HTMLAttributes<HTMLDi
         }
       >
         เสร็จ
-      </Link>
+      </button>
     </div>
   );
 };

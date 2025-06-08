@@ -9,6 +9,7 @@ import { useState } from "react";
 
 export default function CookerHomePage() {
   const router = useRouter();
+  const [orderState, setOrderState] = useState<"receive" | "cooking" | "ready" | "done" >("receive");
   const [isUpdateMode, setIsUpdateMode] = useState(false); // State to toggle update mode
   const [selectedCount, setSelectedCount] = useState(0); // State to track selected orders
 
@@ -26,6 +27,9 @@ export default function CookerHomePage() {
     <div className="flex flex-col gap-y-10 py-10 px-6">
       <CookerHeader />
       <OrderNavBar onClick={() => router.push("/")} />
+      {orderState === "done" ? (
+        <h3 className="noto-sans-bold text-base">ออเดอร์ที่มีปัญหา</h3>
+      ) : ""}
       {!isUpdateMode ? (
         <section className="grid grid-cols-2 gap-4">
           <Button
@@ -57,7 +61,7 @@ export default function CookerHomePage() {
         >
           <div className="flex gap-x-2 noto-sans-bold text-sm">
             <span>({selectedCount})</span>
-            <span>อัพเดทสถานะออเดอร์</span>
+            <span>อัพเดทสถานะ</span>
           </div>
         </Button>
       )}
@@ -74,8 +78,8 @@ export default function CookerHomePage() {
           deliverAt={new Date()}
           isPaid={true}
           orderMenu={[
-            { key: "ขนาด", value: "ใหญ่" },
-            { key: "พิเศษ", value: "ไม่มี" },
+            { units: 1, value: "ข้าวผัดกุ้ง" },
+            { units: 1, value: "ข้าวผัดกุ้ง" },
           ]}
           details="ข้าวผัดกุ้งรสเด็ด"
           className="mb-4"
