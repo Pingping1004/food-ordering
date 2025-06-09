@@ -37,12 +37,14 @@ type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
     icon?: React.ReactNode;
     iconPosition?: "start" | "end";
     numberIcon?: number;
+    type: "button" | "submit" | "reset"
   };
 
 export const Button = ({
   className,
   variant,
   size = "md",
+  type = "button",
   numberIcon,
   disabled,
   iconPosition = "start",
@@ -67,6 +69,7 @@ export const Button = ({
         button({ variant, size, disabled }),
         className
       )}
+      type={type || "button"}
       {...props}
     >
       {iconPosition === "start" && icon}

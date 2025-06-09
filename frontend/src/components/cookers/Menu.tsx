@@ -30,7 +30,9 @@ type MenuProps = React.HtmlHTMLAttributes<HTMLDivElement> &
     name: string;
     menuImg?: string;
     restaurantName: string;
-    createdAt?: Date | string | number;
+    maxDaily: number;
+    cookingTime: number;
+    createdAt: Date | string | number;
     price: number;
     isAvailable: boolean;
   };
@@ -41,6 +43,8 @@ export const Menu = ({
   name,
   menuImg,
   restaurantName,
+  maxDaily,
+  cookingTime,
   createdAt = new Date(),
   price,
   isAvailable = true,
@@ -49,7 +53,7 @@ export const Menu = ({
   ...props
 }: MenuProps) => {
   const [isMenuAvailable, setIsMenuAvailable] = useState(isAvailable);
-  const menuImgSrc = menuImg ? `${menuImg}.png` : "/menu-picture.svg";
+  const menuImgSrc = menuImg ? `${menuImg}.png` : "/picture.svg";
   const handleToggle = (isAvailable: boolean): boolean => {
     const updatedAvailable = !isAvailable;
     setIsMenuAvailable(updatedAvailable);
@@ -75,25 +79,32 @@ export const Menu = ({
         <Image width={64} height={64} src={menuImgSrc} alt="Menu Image" />
         <div className="flex flex-col gap-y-2">
           <div className="flex items-center gap-x-1">
-            <h3 className="noto-sans-bold text-md text-primary">
-              ข้าวผัดสเต็กแซลม่อน
-            </h3>
-            <p className="text-sm text-light">(55 บาท)</p>
+            <h3 className="noto-sans-bold text-md text-primary">{name}</h3>
+            <p className="text-sm text-light">(price)</p>
           </div>
 
           <div>
-            <p className="text-secondary text-xs">เวลาในการปรุง: 5min</p>
-            <p className="text-secondary text-xs">จำนวนมากสุดต่อจาน: 100</p>
+            <p className="text-secondary text-xs">
+              เวลาในการปรุง: {cookingTime}
+            </p>
+            <p className="text-secondary text-xs">
+              จำนวนมากสุดต่อจาน: {maxDaily}
+            </p>
           </div>
         </div>
       </header>
 
       <footer className="flex gap-x-6 justify-between">
-        <Button size="md" className="flex w-full">
+        <Button size="md" className="flex w-full" type="button">
           แก้ไขเมนู
         </Button>
 
-        <Button variant="secondaryDanger" size="md" className="flex w-full">
+        <Button
+          variant="secondaryDanger"
+          size="md"
+          className="flex w-full"
+          type="button"
+        >
           ลบเมนู
         </Button>
         <Toggle label="เปิดขาย" onClick={() => handleToggle(isMenuAvailable)} />

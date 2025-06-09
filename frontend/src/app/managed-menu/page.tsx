@@ -20,6 +20,8 @@ export default function ManageMenuPage() {
         menuId="menu-1"
         name="ข้าวผัดกุ้ง"
         price={150}
+        maxDaily={100}
+        cookingTime={5}
         restaurantName="SomChai Suchi"
         createdAt={new Date()}
         isAvailable={true}
