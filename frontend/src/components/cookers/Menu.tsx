@@ -67,7 +67,7 @@ export const Menu = ({
   };
 
   const isBlob = menuImg?.startsWith("blob:");
-  const src = menuImg || "/picture.svg";
+  const src = menuImg ?? "/picture.svg";
 
   return (
     <div

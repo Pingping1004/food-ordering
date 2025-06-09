@@ -5,7 +5,15 @@ export const createMenuSchema = z.object({
   price: z.coerce.number().min(1, "Price must be at least 1"),
   maxDaily: z.coerce.number().min(1, "Max daily must be at least 1"),
   cookingTime: z.coerce.number().min(1, "Cooking time must be at least 1"),
-  menuImg: z.any().optional(), // can be refined further
+   menuImg: z
+    .any()
+    .refine(
+      (f) =>
+        f === undefined ||
+        (f instanceof FileList && (f.length === 0 || f.length === 1)),
+      { message: "Invalid file" }
+    )
+    .optional(),
 });
 
 export type createMenuSchemaType = z.input<typeof createMenuSchema>;

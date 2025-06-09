@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { SubmitHandler, useForm } from "react-hook-form";
+import React, { useState } from "react";
+import { SubmitHandler, useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createMenuSchema, createMenuSchemaType } from "@/schemas/menuSchema";
 import { v4 as uuidv4 } from "uuid";
@@ -20,8 +20,10 @@ export type MenuItem = Omit<createMenuSchemaType, "menuImg"> & {
 export default function AddMenuPage() {
   const [menuList, setMenuList] = useState<MenuItem[]>([]);
   const {
+    control,
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
     reset,
   } = useForm<createMenuSchemaType>({
@@ -33,8 +35,8 @@ export default function AddMenuPage() {
     data: createMenuSchemaType
   ) => {
     try {
-      const file = data.menuImg?.[0];      // <‑‑ single line
-      const previewUrl = file ? URL.createObjectURL(file) : undefined;
+      const file = data.menuImg?.[0]; // <‑‑ single line
+      const previewUrl = file ? URL.createObjectURL(file) : "/picture.svg";
 
       const newMenu: MenuItem = {
         ...data,
@@ -62,21 +64,24 @@ export default function AddMenuPage() {
         className="flex flex-col gap-y-10"
       >
         <div className="grid grid-cols-2 h-full md:justify-between justify-center items-center md:gap-x-10 gap-x-6">
-          <Input
-            type="file"
-            placeholder="รูปภาพเมนู"
-            label="รูปภาพเมนู (ไม่บังคับ)"
+          <Controller
+            control={control}
             name="menuImg"
-            multiple={false}
-            accept="image/*"
-            register={register}
-            variant={errors.menuImg ? "error" : "primary"}
-            className="w-full h-full aria-hidden"
-            error={
-              typeof errors.menuImg?.message === "string"
-                ? errors.menuImg.message
-                : undefined
-            }
+            defaultValue={undefined}
+            render={({ field }) => (
+              <Input
+                type="file"
+                placeholder="รูปภาพเมนู"
+                label="รูปภาพเมนู (ไม่บังคับ)"
+                accept="image/*"
+                multiple={false}
+                variant={errors.menuImg ? "error" : "primary"}
+                {...field}
+                onChange={(event) =>
+                  field.onChange((event.target as HTMLInputElement).files)
+                }
+              />
+            )}
           />
 
           <div>
@@ -133,7 +138,8 @@ export default function AddMenuPage() {
 
       <div>
         {menuList.map((menu) => {
-          const src = typeof menu.menuImg === "string" ? menu.menuImg : "/picture.svg";
+          const src =
+            typeof menu.menuImg === "string" ? menu.menuImg : "/picture.svg";
           return (
             <Menu
               menuImg={src}
