@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { useForm } from "react-hook-form";
+import React, { useState, useEffect } from "react";
+import { SubmitHandler, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createMenuSchema, createMenuSchemaType } from "@/schemas/menuSchema";
 import { v4 as uuidv4 } from "uuid";
@@ -10,8 +10,15 @@ import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
 import { Menu } from "@/components/cookers/Menu";
 
+export type MenuItem = Omit<createMenuSchemaType, "menuImg"> & {
+  id: string;
+  createdAt: Date;
+  isAvailable: boolean;
+  menuImg?: File | string; // single File after extraction
+};
+
 export default function AddMenuPage() {
-  const [menuList, setMenuList] = useState<createMenuSchemaType[]>([]);
+  const [menuList, setMenuList] = useState<MenuItem[]>([]);
   const {
     register,
     handleSubmit,
@@ -22,17 +29,19 @@ export default function AddMenuPage() {
     mode: "onBlur",
   });
 
-  const submitMenu = async (data: createMenuSchemaType) => {
+  const submitMenu: SubmitHandler<createMenuSchemaType> = async (
+    data: createMenuSchemaType
+  ) => {
     try {
-      const fileList = data.menuImg as FileList | undefined;
-      const pictureFile = fileList?.[0] ?? undefined;
-  
-      const newMenu: createMenuSchemaType = {
+      const file = data.menuImg?.[0];      // <‑‑ single line
+      const previewUrl = file ? URL.createObjectURL(file) : undefined;
+
+      const newMenu: MenuItem = {
         ...data,
         id: uuidv4(),
-        menuImg: pictureFile,
         createdAt: new Date(),
         isAvailable: true,
+        menuImg: previewUrl,
       };
 
       setMenuList((prevMenuList) => [...prevMenuList, newMenu]);
@@ -68,7 +77,6 @@ export default function AddMenuPage() {
                 ? errors.menuImg.message
                 : undefined
             }
-            // error={errors.menuImg?.message}
           />
 
           <div>
@@ -125,16 +133,10 @@ export default function AddMenuPage() {
 
       <div>
         {menuList.map((menu) => {
-            const imagePreview =
-              menu.menuImg && menu.menuImg.length > 0
-                ? URL.createObjectURL(menu.menuImg[0])
-                : typeof menu.menuImg === "string"
-                ? menu.menuImg
-                : "./picture.svg";
-
+          const src = typeof menu.menuImg === "string" ? menu.menuImg : "/picture.svg";
           return (
             <Menu
-              menuImg={imagePreview}
+              menuImg={src}
               key={menu.id}
               menuId={menu.id}
               name={menu.name}

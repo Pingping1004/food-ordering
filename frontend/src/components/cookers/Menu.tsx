@@ -52,8 +52,8 @@ export const Menu = ({
   variant = "default",
   ...props
 }: MenuProps) => {
+
   const [isMenuAvailable, setIsMenuAvailable] = useState(isAvailable);
-  const menuImgSrc = menuImg ? `${menuImg}.png` : "/picture.svg";
   const handleToggle = (isAvailable: boolean): boolean => {
     const updatedAvailable = !isAvailable;
     setIsMenuAvailable(updatedAvailable);
@@ -66,6 +66,9 @@ export const Menu = ({
     return updatedAvailable;
   };
 
+  const isBlob = menuImg?.startsWith("blob:");
+  const src = menuImg || "/picture.svg";
+
   return (
     <div
       className={clsx(
@@ -76,7 +79,13 @@ export const Menu = ({
       {...props}
     >
       <header className="flex items-center gap-x-6">
-        <Image width={64} height={64} src={menuImgSrc} alt="Menu Image" />
+        {isBlob ? (
+          /* blob URLs work fine in a normal <img> */
+          <img src={src} alt={name} className="h-24 w-24 object-cover" />
+        ) : (
+          /* static or remote image → still use next/image */
+          <Image src={src} alt={name} width={96} height={96} />
+        )}
         <div className="flex flex-col gap-y-2">
           <div className="flex items-center gap-x-1">
             <h3 className="noto-sans-bold text-md text-primary">{name}</h3>

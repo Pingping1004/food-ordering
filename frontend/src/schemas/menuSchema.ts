@@ -1,40 +1,14 @@
 import { z } from "zod";
 
 export const createMenuSchema = z.object({
-  id: z.string().uuid({ message: "Menu ID is required" }),
-  name: z.string().min(1, { message: "Menu name is required" }),
-    menuImg: z
-    .any()
-    .optional()
-    .refine(
-      (file) =>
-        file === undefined || file instanceof FileList || file === null,
-      {
-        message: "Invalid file input",
-      }
-    )
-    .refine(
-      (file) => !file || (file instanceof FileList && file.length <= 1),
-      {
-        message: "Only one image file is allowed",
-      }
-    ),
-  restaurantName: z.string().min(1, { message: "Restaurant name is required" }),
-  maxDaily: z.coerce
-    .number()
-    .positive({ message: "Max daily order must be a positive number" }),
-  cookingTime: z.coerce
-    .number()
-    .min(1)
-    .max(10, { message: "Max cooking time must be between 1-10 minutes" }),
-  price: z.coerce
-    .number()
-    .positive({ message: "Price must be a positive number" }),
-  createdAt: z.coerce.date(),
-  isAvailable: z.boolean(),
+  name: z.string().min(1, "Name is required"),
+  price: z.coerce.number().min(1, "Price must be at least 1"),
+  maxDaily: z.coerce.number().min(1, "Max daily must be at least 1"),
+  cookingTime: z.coerce.number().min(1, "Cooking time must be at least 1"),
+  menuImg: z.any().optional(), // can be refined further
 });
 
-export type createMenuSchemaType = z.infer<typeof createMenuSchema>;
+export type createMenuSchemaType = z.input<typeof createMenuSchema>;
 
 export const editMenuSchema = z.object({
   id: z.string().optional(),
