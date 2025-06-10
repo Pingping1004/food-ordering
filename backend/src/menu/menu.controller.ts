@@ -3,11 +3,11 @@ import { MenuService } from './menu.service';
 import { CreateMenuDto } from './dto/create-menu.dto';
 import { UpdateMenuDto } from './dto/update-menu.dto';
 
-@Controller('cooker-menu')
+@Controller('menu')
 export class MenuController {
   constructor(private readonly menuService: MenuService) {}
 
-  @Post()
+  @Post(':restaurantId')
   async createMenu(@Body() createMenuDto: CreateMenuDto) {
     return this.menuService.createMenu(createMenuDto);
   }
@@ -23,12 +23,12 @@ export class MenuController {
   }
 
   @Patch(':menuId')
-  updateMenu(@Param('menuId') menuId: string, @Body() updateMenuDto: UpdateMenuDto) {
+  async updateMenu(@Param('menuId') menuId: string, @Body() updateMenuDto: UpdateMenuDto) {
     return this.menuService.updateMenu(menuId, updateMenuDto);
   }
 
   @Delete(':menuId')
-  remove(@Param('menuId') menuId: string) {
+  async remove(@Param('menuId') menuId: string) {
     return this.menuService.removeMenu(menuId);
   }
 }

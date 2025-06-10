@@ -16,6 +16,8 @@ datasource db {
 
 model Restaurant {
   restaurantId  String @default(uuid()) @id
+  email String @unique
+  password  String
   name  String  @unique
   categories  String[]
   openTime  DateTime
@@ -26,7 +28,7 @@ model Restaurant {
   adminTel     String
   adminEmail   String
 
-  menu Menu[]
+  menus Menu[]
 }
 
 model Menu {
