@@ -20,8 +20,8 @@ model Restaurant {
   password  String
   name  String  @unique
   categories  String[]
-  openTime  DateTime
-  closeTime DateTime
+  openTime  String
+  closeTime String
   
   adminName    String
   adminSurname String

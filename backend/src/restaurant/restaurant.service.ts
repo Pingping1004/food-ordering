@@ -10,9 +10,9 @@ export class RestaurantService {
 
     async createRestaurant(createRestaurantDto: createRestaurantDto) {
         const hashedPassword = await bcrypt.hash(createRestaurantDto.password, 10);
-        return this.prisma.restaurant.create({
-            data: {
-                name: createRestaurantDto.name,
+
+        const newRestaurant = {
+            name: createRestaurantDto.name,
                 email: createRestaurantDto.email,
                 password: hashedPassword,
                 categories: createRestaurantDto.categories,
@@ -22,7 +22,9 @@ export class RestaurantService {
                 adminSurname: createRestaurantDto.adminSurname,
                 adminTel: createRestaurantDto.adminTel,
                 adminEmail: createRestaurantDto.adminEmail,
-            }
+        }
+        return this.prisma.restaurant.create({
+            data: newRestaurant,
         });
     }
 
