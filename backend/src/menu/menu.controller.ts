@@ -3,32 +3,32 @@ import { MenuService } from './menu.service';
 import { CreateMenuDto } from './dto/create-menu.dto';
 import { UpdateMenuDto } from './dto/update-menu.dto';
 
-@Controller('menu')
+@Controller('cooker-menu')
 export class MenuController {
   constructor(private readonly menuService: MenuService) {}
 
   @Post()
-  create(@Body() createMenuDto: CreateMenuDto) {
-    return this.menuService.create(createMenuDto);
+  async createMenu(@Body() createMenuDto: CreateMenuDto) {
+    return this.menuService.createMenu(createMenuDto);
   }
 
   @Get()
-  findAll() {
-    return this.menuService.findAll();
+  async findAllMenus() {
+    return this.menuService.findAllMenus();
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.menuService.findOne(+id);
+  @Get(':menuId')
+  async findMenu(@Param('menuId') menuId: string) {
+    return this.menuService.findMenu(menuId);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateMenuDto: UpdateMenuDto) {
-    return this.menuService.update(+id, updateMenuDto);
+  @Patch(':menuId')
+  updateMenu(@Param('menuId') menuId: string, @Body() updateMenuDto: UpdateMenuDto) {
+    return this.menuService.updateMenu(menuId, updateMenuDto);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.menuService.remove(+id);
+  @Delete(':menuId')
+  remove(@Param('menuId') menuId: string) {
+    return this.menuService.removeMenu(menuId);
   }
 }

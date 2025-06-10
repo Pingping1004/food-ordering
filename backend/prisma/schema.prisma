@@ -6,7 +6,7 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
+  output   = "../node_modules/.prisma/client"
 }
 
 datasource db {
@@ -15,7 +15,7 @@ datasource db {
 }
 
 model Restaurant {
-  restaurantId  Int @default(autoincrement()) @id
+  restaurantId  String @default(uuid()) @id
   name  String  @unique
   categories  String[]
   openTime  DateTime
@@ -30,7 +30,7 @@ model Restaurant {
 }
 
 model Menu {
-  menuId  Int @default(autoincrement()) @id
+  menuId  String  @default(uuid()) @id
   name  String
   menuImg String?
   price Float
