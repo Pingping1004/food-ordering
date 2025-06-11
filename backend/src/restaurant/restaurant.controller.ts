@@ -4,10 +4,11 @@ import { createRestaurantDto } from './dto/create-restaurant.dto';
 import { updateRestaurantDto } from './dto/update-restaurant.dto';
 import { Roles } from '../decorators/role.decorator';
 import { RolesGuard } from 'src/guards/roles.guard';
+import { Public } from '../decorators/public.decorator';
 
 @Controller('restaurant')
 @UseGuards(RolesGuard)
-@Roles(['user'])
+@Roles(['cooker'])
 export class RestaurantController {
     constructor(private readonly restaurantService: RestaurantService) {}
 
@@ -16,16 +17,19 @@ export class RestaurantController {
         return this.restaurantService.createRestaurant(createRestaurantDto);
     }
 
+    @Public()
     @Get()
     async findAllRestaurant() {
         return this.restaurantService.findAllRestaurant();
     }
 
+    @Public()
     @Get(':restaurantId')
     async findRestaurant(@Param('restaurantId') restaurantId: string) {
         return this.restaurantService.findRestaurant(restaurantId);
     }
 
+    @Public()
     @Patch(':restaurantId')
     async updateRestaurant(@Param('restaurantId') restaurantId: string, @Body() updateRestaurantDto: updateRestaurantDto) {
         return this.restaurantService.updateRestaurant(restaurantId, updateRestaurantDto);
