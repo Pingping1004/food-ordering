@@ -1,9 +1,14 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
 import { MenuService } from './menu.service';
 import { CreateMenuDto } from './dto/create-menu.dto';
 import { UpdateMenuDto } from './dto/update-menu.dto';
+import { HttpExceptionFilter } from 'src/common/http-exception.filter';
+import { Roles } from '../decorators/role.decorator';
+import { RolesGuard } from 'src/guards/roles.guard';
 
 @Controller('menu')
+@UseGuards(RolesGuard)
+@Roles(['cooker'])
 export class MenuController {
   constructor(private readonly menuService: MenuService) {}
 

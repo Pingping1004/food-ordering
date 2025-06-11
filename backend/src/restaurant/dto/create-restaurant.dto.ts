@@ -1,6 +1,6 @@
 import { IsNotEmpty, IsString, IsEnum, IsArray } from "class-validator";
-import { RestaurantCategory } from "../enums/restaurant-category";
-
+import { Prisma, RestaurantCategory } from "@prisma/client";
+import { Role } from "./update-restaurant.dto";
 
 export class createRestaurantDto {
     @IsNotEmpty()
@@ -12,12 +12,16 @@ export class createRestaurantDto {
     email: string;
 
     @IsNotEmpty()
+    @IsEnum(Role)
+    role: Role;
+
+    @IsNotEmpty()
     @IsString()
     password: string;
 
-    @IsNotEmpty()
-    @IsEnum(RestaurantCategory, { each: true })
     @IsArray()
+    @IsEnum(RestaurantCategory, { each: true })
+    @IsNotEmpty()
     categories: RestaurantCategory[];
 
     @IsNotEmpty()

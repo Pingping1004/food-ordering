@@ -19,7 +19,7 @@ export class MenuService {
 
     if (!existingRestaurant) {
       throw new NotFoundException(
-        `Restaurant with name "${createMenuDto.restaurantName}" not found.`,
+        `ไม่พบร้านอาหารที่ชื่อ "${createMenuDto.restaurantName}"`,
       );
     }
 

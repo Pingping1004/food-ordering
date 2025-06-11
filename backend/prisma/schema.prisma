@@ -6,7 +6,6 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../node_modules/.prisma/client"
 }
 
 datasource db {
@@ -14,12 +13,29 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  admin
+  cooker
+  user
+}
+
+enum RestaurantCategory {
+  Steal
+  Halal
+  Made_to_order
+  Esan
+  Rice
+  Appetizer
+  Noodle
+}
+
 model Restaurant {
   restaurantId  String @default(uuid()) @id
   email String @unique
+  role  Role  @default(cooker)
   password  String
   name  String  @unique
-  categories  String[]
+  categories  RestaurantCategory[]
   openTime  String
   closeTime String
   

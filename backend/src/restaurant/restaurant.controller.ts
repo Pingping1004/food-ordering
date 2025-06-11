@@ -1,9 +1,13 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
 import { RestaurantService } from './restaurant.service';
 import { createRestaurantDto } from './dto/create-restaurant.dto';
 import { updateRestaurantDto } from './dto/update-restaurant.dto';
+import { Roles } from '../decorators/role.decorator';
+import { RolesGuard } from 'src/guards/roles.guard';
 
 @Controller('restaurant')
+@UseGuards(RolesGuard)
+@Roles(['user'])
 export class RestaurantController {
     constructor(private readonly restaurantService: RestaurantService) {}
 

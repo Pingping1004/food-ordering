@@ -1,5 +1,11 @@
 import { IsString, IsOptional, IsArray, IsEnum } from 'class-validator';
-import { RestaurantCategory } from '../enums/restaurant-category';
+import { RestaurantCategory } from '@prisma/client';
+
+export enum Role {
+  admin = 'admin',
+  cooker = 'cooker',
+  user = 'user',
+}
 
 export class updateRestaurantDto {
   @IsOptional()
@@ -13,6 +19,10 @@ export class updateRestaurantDto {
   @IsOptional()
   @IsString()
   password?: string;
+
+  @IsOptional()
+  @IsEnum(Role)
+  role?: Role;
 
   @IsOptional()
   @IsEnum(RestaurantCategory, { each: true })
