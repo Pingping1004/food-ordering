@@ -108,6 +108,7 @@ export const Order = ({
         <Button
           variant={isPaid ? "secondarySuccess" : "secondaryDanger"}
           size="sm"
+          type="button"
         >
           {isPaid ? "ชำระแล้ว" : "ยังไม่ชำระ"}
         </Button>
@@ -138,12 +139,17 @@ export const Order = ({
       </section>
 
       {variant === "done" ? (
-        <Button variant="secondarySuccess" size="md" className="flex w-full">
+        <Button
+          variant="secondarySuccess"
+          size="md"
+          className="flex w-full"
+          type="button"
+        >
           ออเดอร์เสร็จสิ้น
         </Button>
       ) : (
         <div className="flex gap-x-6">
-          <Button variant="primary" size="md" className="flex w-full">
+          <Button variant="primary" size="md" className="flex w-full" type="button">
             <span className="noto-sans-regular">
               {variant === "receive" && "รับออเดอร์"}
               {variant === "cooking" && "เริ่มปรุงอาหาร"}
@@ -157,6 +163,7 @@ export const Order = ({
             }
             disabled={issued === "delay" ? true : false}
             size="md"
+            type="button"
             className="flex w-full"
           >
             <span className="noto-sans-regular">
