@@ -23,12 +23,12 @@ export class RestaurantController {
     }
 
     @Patch(':restaurantId')
-    async updateRestaurant(@Param(':restaurantId') restaurantId: string, updateRestaurantDto: updateRestaurantDto) {
+    async updateRestaurant(@Param('restaurantId') restaurantId: string, @Body() updateRestaurantDto: updateRestaurantDto) {
         return this.restaurantService.updateRestaurant(restaurantId, updateRestaurantDto);
     }
 
     @Delete(':restaurantId')
-    async deleteRestaurant(@Param(':restaurantId') restaurantId: string) {
+    async deleteRestaurant(@Param('restaurantId') restaurantId: string) {
         return this.restaurantService.removeRestaurant(restaurantId);
     }
 }
