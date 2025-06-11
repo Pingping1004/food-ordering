@@ -15,9 +15,10 @@ import { RestaurantController } from './restaurant/restaurant.controller';
 import { MenuController } from './menu/menu.controller';
 import { PrismaModule } from 'prisma/prisma.module';
 import { PrismaService } from 'prisma/prisma.service';
+import { OrderModule } from './order/order.module';
 
 @Module({
-  imports: [RestaurantModule, MenuModule, PrismaModule],
+  imports: [RestaurantModule, MenuModule, PrismaModule, OrderModule],
   controllers: [AppController, RestaurantController, MenuController],
   providers: [
     {

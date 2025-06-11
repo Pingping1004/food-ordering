@@ -1,4 +1,4 @@
-import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../decorators/role.decorator';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
@@ -23,7 +23,10 @@ export class RolesGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest();
     const user = request.user;
-    if (!user) return false;
+    
+    if (!user || !requiredRoles) {
+      throw new ForbiddenException('ผู้ใช้งานทั่วไปไม่สามารถแก้ไขข้อมูลของร้านอาหารได้');
+    }
     
     return requiredRoles.includes(user.role);
   }

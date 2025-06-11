@@ -3,7 +3,7 @@ import { RestaurantService } from './restaurant.service';
 import { createRestaurantDto } from './dto/create-restaurant.dto';
 import { updateRestaurantDto } from './dto/update-restaurant.dto';
 import { Roles } from '../decorators/role.decorator';
-import { RolesGuard } from 'src/guards/roles.guard';
+import { RolesGuard } from '../guards/roles.guard';
 import { Public } from '../decorators/public.decorator';
 
 @Controller('restaurant')

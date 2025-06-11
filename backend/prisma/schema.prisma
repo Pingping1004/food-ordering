@@ -13,6 +13,15 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum OrderStatus {
+  receive
+  cooking
+  ready
+  done
+  delay
+  rejected
+}
+
 enum Role {
   admin
   cooker
@@ -44,7 +53,7 @@ model Restaurant {
   adminTel     String
   adminEmail   String
 
-  menus Menu[]
+  menus Menu[]  @relation("RestaurantMenus")
 }
 
 model Menu {
@@ -58,5 +67,29 @@ model Menu {
   isAvailable Boolean @default(true)
 
   restaurantName  String
-  restaurant  Restaurant  @relation(fields: [restaurantName], references: [name])
+  restaurant  Restaurant  @relation("RestaurantMenus", fields: [restaurantName], references: [name])
+}
+
+model OrderMenu {
+  orderMenuId      String @default(uuid()) @id
+  units   Int
+  value   String
+
+  orderId String
+  order   Order  @relation("OrderMenus", fields: [orderId], references: [orderId])
+}
+
+// must validate that restaurantName is included in restaurantNameList
+model Order {
+  orderId String @default(uuid()) @id
+  name  String
+  price Int
+  status  OrderStatus @default(receive)
+  restaurantName  String
+  orderAt DateTime  @default(now())
+  deliverAt DateTime
+  details String?
+  isPaid  Boolean
+  
+  orderMenus OrderMenu[] @relation("OrderMenus")
 }

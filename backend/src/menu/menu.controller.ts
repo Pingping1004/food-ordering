@@ -4,7 +4,8 @@ import { CreateMenuDto } from './dto/create-menu.dto';
 import { UpdateMenuDto } from './dto/update-menu.dto';
 import { HttpExceptionFilter } from 'src/common/http-exception.filter';
 import { Roles } from '../decorators/role.decorator';
-import { RolesGuard } from 'src/guards/roles.guard';
+import { Public } from '../decorators/public.decorator';
+import { RolesGuard } from '../guards/roles.guard';
 
 @Controller('menu')
 @UseGuards(RolesGuard)
@@ -17,11 +18,13 @@ export class MenuController {
     return this.menuService.createMenu(createMenuDto);
   }
 
+  @Public()
   @Get()
   async findAllMenus() {
     return this.menuService.findAllMenus();
   }
 
+  @Public()
   @Get(':menuId')
   async findMenu(@Param('menuId') menuId: string) {
     return this.menuService.findMenu(menuId);
