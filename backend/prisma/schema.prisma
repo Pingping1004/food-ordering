@@ -59,6 +59,7 @@ model Restaurant {
 model Menu {
   menuId  String  @default(uuid()) @id
   name  String
+  role  Role  @default(cooker)
   menuImg String?
   price Float
   maxDaily  Int
@@ -83,6 +84,7 @@ model OrderMenu {
 model Order {
   orderId String @default(uuid()) @id
   name  String
+  role  Role  @default(user)
   price Int
   status  OrderStatus @default(receive)
   restaurantName  String

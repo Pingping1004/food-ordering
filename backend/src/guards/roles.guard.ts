@@ -22,12 +22,13 @@ export class RolesGuard implements CanActivate {
     if (!requiredRoles || requiredRoles.length === 0) return true;
 
     const request = context.switchToHttp().getRequest();
-    const user = request.user;
+    // const user = request.user;
+    const userRole = request.body.role;
     
-    if (!user || !requiredRoles) {
+    if (!userRole || !requiredRoles) {
       throw new ForbiddenException('ผู้ใช้งานทั่วไปไม่สามารถแก้ไขข้อมูลของร้านอาหารได้');
     }
     
-    return requiredRoles.includes(user.role);
+    return requiredRoles.includes(userRole);
   }
 }

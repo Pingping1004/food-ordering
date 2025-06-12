@@ -16,10 +16,12 @@ import { MenuController } from './menu/menu.controller';
 import { PrismaModule } from 'prisma/prisma.module';
 import { PrismaService } from 'prisma/prisma.service';
 import { OrderModule } from './order/order.module';
+import { OrderService } from './order/order.service';
+import { OrderController } from './order/order.controller';
 
 @Module({
   imports: [RestaurantModule, MenuModule, PrismaModule, OrderModule],
-  controllers: [AppController, RestaurantController, MenuController],
+  controllers: [AppController, RestaurantController, MenuController, OrderController],
   providers: [
     {
       provide: APP_FILTER,
@@ -32,7 +34,8 @@ import { OrderModule } from './order/order.module';
     AppService, 
     RestaurantService, 
     MenuService, 
-    PrismaService
+    PrismaService,
+    OrderService,
   ],
 })
 
