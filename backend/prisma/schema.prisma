@@ -29,7 +29,7 @@ enum Role {
 }
 
 enum RestaurantCategory {
-  Steal
+  Steak
   Halal
   Made_to_order
   Esan
@@ -44,6 +44,7 @@ model Restaurant {
   role  Role  @default(cooker)
   password  String
   name  String  @unique
+  location  String?
   categories  RestaurantCategory[]
   openTime  String
   closeTime String
@@ -54,6 +55,8 @@ model Restaurant {
   adminEmail   String
 
   menus Menu[]  @relation("RestaurantMenus")
+
+  orders  Order[]   @relation("restaurantToOrder")
 }
 
 model Menu {
@@ -67,8 +70,16 @@ model Menu {
   createdAt DateTime  @default(now())
   isAvailable Boolean @default(true)
 
-  restaurantName  String
-  restaurant  Restaurant  @relation("RestaurantMenus", fields: [restaurantName], references: [name])
+  restaurantId  String
+  restaurant  Restaurant  @relation("RestaurantMenus", fields: [restaurantId], references: [restaurantId])
+
+  orderMenus  OrderMenu[]  @relation("menuToOrderMenus")
+
+  @@unique([restaurantId, name])
+
+  @@index([restaurantId])
+  @@index([isAvailable])
+  @@index([cookingTime])
 }
 
 model OrderMenu {
@@ -78,6 +89,13 @@ model OrderMenu {
 
   orderId String
   order   Order  @relation("OrderMenus", fields: [orderId], references: [orderId])
+
+  menuId  String
+  menu  Menu  @relation("menuToOrderMenus", fields: [menuId], references: [menuId])
+
+  @@index([menuId])
+  @@index([value])
+  @@index([orderId])
 }
 
 // must validate that restaurantName is included in restaurantNameList
@@ -87,11 +105,27 @@ model Order {
   role  Role  @default(user)
   price Int
   status  OrderStatus @default(receive)
-  restaurantName  String
   orderAt DateTime  @default(now())
   deliverAt DateTime
   details String?
   isPaid  Boolean
+
+  restaurantId  String
+  restaurant  Restaurant  @relation("restaurantToOrder", fields: [restaurantId], references: [restaurantId])
   
   orderMenus OrderMenu[] @relation("OrderMenus")
+
+  @@index([restaurantId])
+  @@index([status])
+  @@index([isPaid])
+  @@index([orderAt])
+}
+
+model User {
+  userId  String @id  @default(uuid())
+  email   String  @unique
+  name    String
+  password    String?
+
+  @@index([name])
 }

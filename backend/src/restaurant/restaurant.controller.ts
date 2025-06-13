@@ -26,7 +26,7 @@ export class RestaurantController {
     @Public()
     @Get(':restaurantId')
     async findRestaurant(@Param('restaurantId') restaurantId: string) {
-        return this.restaurantService.findRestaurant(restaurantId);
+        return this.restaurantService.findRestaurants(restaurantId);
     }
 
     @Public()

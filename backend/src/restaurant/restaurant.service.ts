@@ -32,7 +32,7 @@ export class RestaurantService {
     return this.prisma.restaurant.findMany();
   }
 
-  async findRestaurant(restaurantId: string) {
+  async findRestaurants(restaurantId: string) {
     try {
       const restaurant = await this.prisma.restaurant.findUnique({
         where: { restaurantId },

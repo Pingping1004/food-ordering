@@ -12,29 +12,29 @@ import { Public } from '../decorators/public.decorator';
 export class OrderController {
   constructor(private readonly orderService: OrderService) {}
 
-  // @Public()
+  @Public()
   @Post()
-  async create(@Body() createOrderDto: CreateOrderDto) {
+  async createPost(@Body() createOrderDto: CreateOrderDto) {
     return this.orderService.createOrder(createOrderDto);
   }
 
   @Get()
-  findAll() {
-    return this.orderService.findAll();
+  async findAll() {
+    return this.orderService.findAllOrders();
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.orderService.findOne(+id);
+  @Get(':orderId')
+  async findOne(@Param('orderId') orderId: string) {
+    return this.orderService.findOneOrder(orderId);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateOrderDto: UpdateOrderDto) {
-    return this.orderService.update(+id, updateOrderDto);
+  @Patch(':orderId')
+  async update(@Param('orderId') orderId: string, @Body() updateOrderDto: UpdateOrderDto) {
+    return this.orderService.updateOrder(orderId, updateOrderDto);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.orderService.remove(+id);
+  @Delete(':orderId')
+  async remove(@Param('orderId') orderId: string) {
+    return this.orderService.removeOrder(orderId);
   }
 }

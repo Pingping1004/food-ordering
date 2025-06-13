@@ -4,6 +4,10 @@ import { OrderMenu, OrderStatus } from "@prisma/client";
 
 export class CreateOrderMenusDto {
     @IsNotEmpty()
+    @IsString()
+    menuId: string;
+
+    @IsNotEmpty()
     @IsNumber()
     @IsPositive()
     @Type(() => Number)
@@ -31,7 +35,7 @@ export class CreateOrderDto {
 
     @IsNotEmpty()
     @IsString()
-    restaurantName: string;
+    restaurantId: string;
 
     @IsDate()
     @IsNotEmpty()

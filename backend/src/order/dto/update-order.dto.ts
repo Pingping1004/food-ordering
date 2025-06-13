@@ -4,6 +4,23 @@ import { PartialType } from '@nestjs/mapped-types';
 import { CreateOrderDto, CreateOrderMenusDto } from './create-order.dto';
 import { OrderStatus, OrderMenu } from '@prisma/client';
 
+
+export class UpdateOrderMenusDto extends PartialType(CreateOrderMenusDto){
+    @IsOptional()
+    @IsString()
+    menuId?: string;
+    
+    @IsOptional()
+    @IsNumber()
+    @IsPositive()
+    @Type(() => Number)
+    units?: number;
+
+    @IsOptional()
+    @IsString()
+    value?: string;
+}
+
 export class UpdateOrderDto extends PartialType(CreateOrderDto) {
     @IsOptional()
     @IsString()
@@ -21,7 +38,7 @@ export class UpdateOrderDto extends PartialType(CreateOrderDto) {
 
     @IsOptional()
     @IsString()
-    restaurantName?: string;
+    restaurantId?: string;
 
     @IsDate()
     @IsOptional()
@@ -44,17 +61,4 @@ export class UpdateOrderDto extends PartialType(CreateOrderDto) {
     @ValidateNested({ each: true })
         @Type(() => UpdateOrderMenusDto)
     orderMenus?: OrderMenu[];
-}
-
-
-export class UpdateOrderMenusDto extends PartialType(CreateOrderMenusDto){
-    @IsOptional()
-    @IsNumber()
-    @IsPositive()
-    @Type(() => Number)
-    units?: number;
-
-    @IsOptional()
-    @IsString()
-    value?: string;
 }
