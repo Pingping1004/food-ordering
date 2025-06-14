@@ -10,13 +10,12 @@ export class RestaurantService {
 
   async createRestaurant(createRestaurantDto: CreateRestaurantDto, file?: Express.Multer.File) {
     try {
-
-      console.log(file);
       const hashedPassword = await bcrypt.hash(createRestaurantDto.password, 10);
       const restaurantImgUrl = file ? `uploads/restaurants/${file.filename}` : createRestaurantDto.restaurantImg;
+
       console.log(restaurantImgUrl);
       console.log(createRestaurantDto);
-      
+
       const newRestaurant = {
         name: createRestaurantDto.name,
         email: createRestaurantDto.email,
@@ -29,19 +28,18 @@ export class RestaurantService {
         adminSurname: createRestaurantDto.adminSurname,
         adminTel: createRestaurantDto.adminTel,
         adminEmail: createRestaurantDto.adminEmail,
+      }
+
+      const result = await this.prisma.restaurant.create({
+        data: newRestaurant,
+      });
+
+      console.log("Created restaurant in service : ", result);
+      return { message: 'File uploaded successfully', result, fileInfo: file };
+    } catch (error) {
+      console.error('Failed to create restaurant service: ', error);
+      throw error;
     }
-    
-    const result = await this.prisma.restaurant.create({
-      data: newRestaurant,
-    });
-
-    console.log("Created restaurant in service : ", result);
-    console.log('RestaurantImg in service: ', newRestaurant.restaurantImg);
-
-    return { message: 'File uploaded successfully', result, fileInfo: file };
-  } catch (error) {
-    console.error('Failed to create restaurant service: ', error);
-  }
   }
 
   async findAllRestaurant() {

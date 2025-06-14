@@ -8,8 +8,6 @@ import {
   ParseFilePipe,
   MaxFileSizeValidator,
   FileTypeValidator,
-  HttpStatus,
-  HttpException, // Make sure HttpException is imported
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer'; // Import diskStorage
@@ -24,9 +22,21 @@ import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
 export class RestaurantController {
   constructor(private readonly restaurantService: RestaurantService) {}
   @Post()
-  @UseInterceptors(FileInterceptor('restaurantImg'))
-  async createRestaurant(@Body() createRestaurantDto: CreateRestaurantDto, @UploadedFile() file?: Express.Multer.File) {
-    console.log(file);
+  @UseInterceptors(FileInterceptor('restaurantImg', {
+    storage: diskStorage({
+        destination: './uploads/restaurants',
+        filename: editFileName,
+    }),
+    fileFilter: imageFileFilter,
+  }))
+  async createRestaurant(
+    @Body() createRestaurantDto: CreateRestaurantDto, 
+    @UploadedFile(new ParseFilePipe({
+        fileIsRequired: false,
+      }),
+    ) file?: Express.Multer.File
+  ) {
+    console.log('Controller: DTO (createRestaurantDto):', createRestaurantDto);
     return this.restaurantService.createRestaurant(createRestaurantDto, file);
   }
   

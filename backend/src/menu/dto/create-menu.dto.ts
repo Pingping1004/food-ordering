@@ -1,5 +1,5 @@
 import { IsBoolean, IsDate, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString } from 'class-validator'
-import { Type } from 'class-transformer';
+import { Type, Expose } from 'class-transformer';
 
 export class CreateMenuDto {
     @IsString()
@@ -9,6 +9,10 @@ export class CreateMenuDto {
     @IsOptional()
     @IsString()
     menuImg?: string;
+
+    @IsOptional()
+    @IsString()
+    role?: string;
 
     @IsString()
     @IsNotEmpty()
@@ -27,15 +31,13 @@ export class CreateMenuDto {
     cookingTime: number;
 
     @IsNotEmpty()
-    @IsDate()
-    createdAt: string;
-
-    @IsNotEmpty()
-    @IsNumber()
+    @IsNumber({}, { message: 'Price must be a number' })
     @IsPositive()
     @Type(() => Number)
     price: number;
 
     @IsBoolean()
-    isAvailable: boolean;
+    @IsOptional()
+    @Type(() => Boolean)
+    isAvailable?: boolean;
 }

@@ -12,42 +12,37 @@ export class MenuService {
   ) {}
 
   async createMenu(createMenuDto: CreateMenuDto, file?: Express.Multer.File) {
-    const existingRestaurant =
-      await this.restaurantService.findRestaurant(
-        createMenuDto.restaurantId,
-      );
+    try {
+      console.log('CreateMenuDto in service: ', createMenuDto);
+      
+      const menuImgUrl = file ? `uploads/${file.originalname}` : createMenuDto.menuImg;
+      const existingRestaurant = await this.restaurantService.findRestaurant(createMenuDto.restaurantId);
 
-    if (!existingRestaurant) {
-      throw new NotFoundException(
-        `ไม่พบร้านอาหารที่ค้นหา`,
-      );
-    }
+      const newMenu = {
+        name: createMenuDto.name,
+        price: createMenuDto.price,
+        maxDaily: createMenuDto.maxDaily,
+        cookingTime: createMenuDto.cookingTime,
+        menuImg: menuImgUrl,
 
-    let menuImgUrl: string | undefined;
-    if (file) {
-      menuImgUrl = `uploads/${file.originalname}`;
-    } else if (createMenuDto.menuImg) {
-      menuImgUrl = createMenuDto.menuImg;
-    }
-
-    const newMenu = {
-      name: createMenuDto.name,
-      price: createMenuDto.price,
-      maxDaily: createMenuDto.maxDaily,
-      cookingTime: createMenuDto.cookingTime,
-      menuImg: menuImgUrl,
-
-      // Connect to the restaurant using restaurantId
-      restaurant: {
-        connect: {
-          restaurantId: existingRestaurant.restaurantId,
+        // Connect to the restaurant using restaurantId
+        restaurant: {
+          connect: {
+            restaurantId: existingRestaurant.restaurantId,
+          },
         },
-      },
-    };
+      };
 
-    return this.prisma.menu.create({
-      data: newMenu,
-    });
+      const result = await this.prisma.menu.create({
+        data: newMenu,
+      });
+
+      console.log("Created restaurant in service : ", result);
+      return { message: 'File uploaded successfully', result, fileInfo: file };
+    } catch (error) {
+      console.error('Failed to create restaurant service: ', error);
+      throw error;
+    }
   }
 
   async findAllMenus() {
@@ -55,15 +50,35 @@ export class MenuService {
   }
 
   async findMenu(menuId: string) {
-    return this.prisma.menu.findUnique({
-      where: { menuId },
-    });
+    try {
+
+      const menu = await this.prisma.menu.findUnique({
+        where: { menuId },
+      });
+      
+      if (!menu) throw new Error('ไม่พบเมนูที่ค้นหา');
+      
+      await this.restaurantService.findRestaurant(menu.restaurantId);
+      
+      return menu;
+    } catch (error) {
+            if (error.code === 'P2025') {
+        // Prisma "Record not found"
+        throw new NotFoundException(
+          `ไม่พบออเดอร์ที่มีID: ${menuId}`,
+        );
+      }
+
+      throw error;
+    }
   }
 
   async updateMenu(menuId: string, updateMenuDto: UpdateMenuDto) {
+    // Exclude restaurantId and role from updateMenuDto because they should not be updated.
+    const { restaurantId, role, ...data } = updateMenuDto;
     return this.prisma.menu.update({
       where: { menuId },
-      data: updateMenuDto,
+      data,
     });
   }
 
