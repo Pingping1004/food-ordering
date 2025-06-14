@@ -1,6 +1,6 @@
 import { Type } from "class-transformer";
 import { IsArray, IsBoolean, IsDate, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString, ValidateNested } from "class-validator";
-import { OrderMenu, OrderStatus } from "@prisma/client";
+import { IsPaid, OrderMenu, OrderStatus } from "@prisma/client";
 
 export class CreateOrderMenusDto {
     @IsNotEmpty()
@@ -51,9 +51,17 @@ export class CreateOrderDto {
     @IsString()
     details?: string;
 
+    @IsNotEmpty()
+    @IsEnum(IsPaid, { each: true })
+    isPaid: IsPaid;
+
     @IsBoolean()
     @IsNotEmpty()
-    isPaid: boolean;
+    isDelay: boolean;
+
+    @IsString()
+    @IsOptional()
+    refCode?: string;
 
     @IsArray()
     @IsNotEmpty()

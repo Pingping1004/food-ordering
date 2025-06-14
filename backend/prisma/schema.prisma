@@ -28,6 +28,13 @@ enum Role {
   user
 }
 
+enum IsPaid {
+  paid
+  unpaid
+  processing
+  rejected
+}
+
 enum RestaurantCategory {
   Steak
   Halal
@@ -42,6 +49,7 @@ model Restaurant {
   restaurantId  String @default(uuid()) @id
   email String @unique
   role  Role  @default(cooker)
+  restaurantImg String?
   password  String
   name  String  @unique
   location  String?
@@ -108,12 +116,16 @@ model Order {
   orderAt DateTime  @default(now())
   deliverAt DateTime
   details String?
-  isPaid  Boolean
+  isPaid  IsPaid  @default(unpaid)
+  isDelay Boolean @default(false)
+  refCode String?
 
   restaurantId  String
   restaurant  Restaurant  @relation("restaurantToOrder", fields: [restaurantId], references: [restaurantId])
   
   orderMenus OrderMenu[] @relation("OrderMenus")
+
+  @@unique([refCode, orderAt])
 
   @@index([restaurantId])
   @@index([status])

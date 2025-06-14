@@ -1,38 +1,54 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { createRestaurantDto } from './dto/create-restaurant.dto';
+import { CreateRestaurantDto } from './dto/create-restaurant.dto';
 import { PrismaService } from 'prisma/prisma.service';
-import { updateRestaurantDto } from './dto/update-restaurant.dto';
+import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class RestaurantService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
-  async createRestaurant(createRestaurantDto: createRestaurantDto) {
-    const hashedPassword = await bcrypt.hash(createRestaurantDto.password, 10);
+  async createRestaurant(createRestaurantDto: CreateRestaurantDto, file?: Express.Multer.File) {
+    try {
 
-    const newRestaurant = {
-      name: createRestaurantDto.name,
-      email: createRestaurantDto.email,
-      password: hashedPassword,
-      categories: createRestaurantDto.categories,
-      openTime: createRestaurantDto.openTime,
-      closeTime: createRestaurantDto.closeTime,
-      adminName: createRestaurantDto.adminName,
-      adminSurname: createRestaurantDto.adminSurname,
-      adminTel: createRestaurantDto.adminTel,
-      adminEmail: createRestaurantDto.adminEmail,
-    };
-    return this.prisma.restaurant.create({
+      console.log(file);
+      const hashedPassword = await bcrypt.hash(createRestaurantDto.password, 10);
+      const restaurantImgUrl = file ? `uploads/restaurants/${file.filename}` : createRestaurantDto.restaurantImg;
+      console.log(restaurantImgUrl);
+      console.log(createRestaurantDto);
+      
+      const newRestaurant = {
+        name: createRestaurantDto.name,
+        email: createRestaurantDto.email,
+        password: hashedPassword,
+        categories: createRestaurantDto.categories,
+        restaurantImg: restaurantImgUrl,
+        openTime: createRestaurantDto.openTime,
+        closeTime: createRestaurantDto.closeTime,
+        adminName: createRestaurantDto.adminName,
+        adminSurname: createRestaurantDto.adminSurname,
+        adminTel: createRestaurantDto.adminTel,
+        adminEmail: createRestaurantDto.adminEmail,
+    }
+    
+    const result = await this.prisma.restaurant.create({
       data: newRestaurant,
     });
+
+    console.log("Created restaurant in service : ", result);
+    console.log('RestaurantImg in service: ', newRestaurant.restaurantImg);
+
+    return { message: 'File uploaded successfully', result, fileInfo: file };
+  } catch (error) {
+    console.error('Failed to create restaurant service: ', error);
+  }
   }
 
   async findAllRestaurant() {
     return this.prisma.restaurant.findMany();
   }
 
-  async findRestaurants(restaurantId: string) {
+  async findRestaurant(restaurantId: string) {
     try {
       const restaurant = await this.prisma.restaurant.findUnique({
         where: { restaurantId },
@@ -66,7 +82,7 @@ export class RestaurantService {
 
   async updateRestaurant(
     restaurantId: string,
-    updateRestaurantDto: updateRestaurantDto,
+    updateRestaurantDto: UpdateRestaurantDto,
   ) {
     try {
       // You can add business logic here (e.g. validation)

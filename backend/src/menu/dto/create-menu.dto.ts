@@ -7,11 +7,12 @@ export class CreateMenuDto {
     name: string;
 
     @IsOptional()
+    @IsString()
     menuImg?: string;
 
     @IsString()
     @IsNotEmpty()
-    restaurantName: string;
+    restaurantId: string;
 
     @IsNotEmpty()
     @IsPositive()

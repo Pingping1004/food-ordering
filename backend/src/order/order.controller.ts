@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from '../decorators/role.decorator';
 import { Public } from '../decorators/public.decorator';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('order')
 @UseGuards(RolesGuard)
@@ -14,27 +15,28 @@ export class OrderController {
 
   @Public()
   @Post()
-  async createPost(@Body() createOrderDto: CreateOrderDto) {
+  @UseInterceptors(FileInterceptor('file'))
+  async createOrder(@Body() createOrderDto: CreateOrderDto, @UploadedFile() file?: Express.Multer.File) {
     return this.orderService.createOrder(createOrderDto);
   }
 
   @Get()
-  async findAll() {
+  async findAllOrders() {
     return this.orderService.findAllOrders();
   }
 
   @Get(':orderId')
-  async findOne(@Param('orderId') orderId: string) {
+  async findOneOrder(@Param('orderId') orderId: string) {
     return this.orderService.findOneOrder(orderId);
   }
 
   @Patch(':orderId')
-  async update(@Param('orderId') orderId: string, @Body() updateOrderDto: UpdateOrderDto) {
+  async updateOrder(@Param('orderId') orderId: string, @Body() updateOrderDto: UpdateOrderDto) {
     return this.orderService.updateOrder(orderId, updateOrderDto);
   }
 
   @Delete(':orderId')
-  async remove(@Param('orderId') orderId: string) {
+  async removeOrder(@Param('orderId') orderId: string) {
     return this.orderService.removeOrder(orderId);
   }
 }

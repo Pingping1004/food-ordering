@@ -11,16 +11,23 @@ export class MenuService {
     private restaurantService: RestaurantService,
   ) {}
 
-  async createMenu(createMenuDto: CreateMenuDto) {
+  async createMenu(createMenuDto: CreateMenuDto, file?: Express.Multer.File) {
     const existingRestaurant =
-      await this.restaurantService.findRestaurantByname(
-        createMenuDto.restaurantName,
+      await this.restaurantService.findRestaurant(
+        createMenuDto.restaurantId,
       );
 
     if (!existingRestaurant) {
       throw new NotFoundException(
-        `ไม่พบร้านอาหารที่ชื่อ "${createMenuDto.restaurantName}"`,
+        `ไม่พบร้านอาหารที่ค้นหา`,
       );
+    }
+
+    let menuImgUrl: string | undefined;
+    if (file) {
+      menuImgUrl = `uploads/${file.originalname}`;
+    } else if (createMenuDto.menuImg) {
+      menuImgUrl = createMenuDto.menuImg;
     }
 
     const newMenu = {
@@ -28,19 +35,19 @@ export class MenuService {
       price: createMenuDto.price,
       maxDaily: createMenuDto.maxDaily,
       cookingTime: createMenuDto.cookingTime,
-      menuImg: createMenuDto.menuImg,
+      menuImg: menuImgUrl,
 
-      // Connect to the restaurant using its unique name
+      // Connect to the restaurant using restaurantId
       restaurant: {
         connect: {
-          name: existingRestaurant.name,
+          restaurantId: existingRestaurant.restaurantId,
         },
       },
     };
 
     return this.prisma.menu.create({
       data: newMenu,
-    })
+    });
   }
 
   async findAllMenus() {

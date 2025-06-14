@@ -1,40 +1,52 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
-import { RestaurantService } from './restaurant.service';
-import { createRestaurantDto } from './dto/create-restaurant.dto';
-import { updateRestaurantDto } from './dto/update-restaurant.dto';
-import { Roles } from '../decorators/role.decorator';
-import { RolesGuard } from '../guards/roles.guard';
+import {
+  Controller,
+  Post, Delete, Get, Patch,
+  Body,
+  Param,
+  UseInterceptors,
+  UploadedFile,
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  FileTypeValidator,
+  HttpStatus,
+  HttpException, // Make sure HttpException is imported
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer'; // Import diskStorage
+import { imageFileFilter, editFileName } from '../utils/file-upload.utils'; // Your utility functions
 import { Public } from '../decorators/public.decorator';
 
+import { RestaurantService } from './restaurant.service';
+import { CreateRestaurantDto } from './dto/create-restaurant.dto';
+import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
+
 @Controller('restaurant')
-@UseGuards(RolesGuard)
-@Roles(['cooker'])
 export class RestaurantController {
-    constructor(private readonly restaurantService: RestaurantService) {}
-
-    @Post()
-    async createRestaurant(@Body() createRestaurantDto: createRestaurantDto) {
-        return this.restaurantService.createRestaurant(createRestaurantDto);
-    }
-
-    @Public()
-    @Get()
-    async findAllRestaurant() {
+  constructor(private readonly restaurantService: RestaurantService) {}
+  @Post()
+  @UseInterceptors(FileInterceptor('restaurantImg'))
+  async createRestaurant(@Body() createRestaurantDto: CreateRestaurantDto, @UploadedFile() file?: Express.Multer.File) {
+    console.log(file);
+    return this.restaurantService.createRestaurant(createRestaurantDto, file);
+  }
+  
+  @Public()
+  @Get()
+  async findAllRestaurant() {
         return this.restaurantService.findAllRestaurant();
     }
 
     @Public()
     @Get(':restaurantId')
     async findRestaurant(@Param('restaurantId') restaurantId: string) {
-        return this.restaurantService.findRestaurants(restaurantId);
+        return this.restaurantService.findRestaurant(restaurantId);
     }
-
-    @Public()
+    
     @Patch(':restaurantId')
-    async updateRestaurant(@Param('restaurantId') restaurantId: string, @Body() updateRestaurantDto: updateRestaurantDto) {
+    async updateRestaurant(@Param('restaurantId') restaurantId: string, @Body() updateRestaurantDto: UpdateRestaurantDto) {
         return this.restaurantService.updateRestaurant(restaurantId, updateRestaurantDto);
     }
-
+    
     @Delete(':restaurantId')
     async deleteRestaurant(@Param('restaurantId') restaurantId: string) {
         return this.restaurantService.removeRestaurant(restaurantId);

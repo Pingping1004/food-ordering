@@ -7,7 +7,7 @@ export enum Role {
   user = 'user',
 }
 
-export class updateRestaurantDto {
+export class UpdateRestaurantDto {
   @IsOptional()
   @IsString()
   name?: string;
@@ -15,6 +15,10 @@ export class updateRestaurantDto {
   @IsOptional()
   @IsString()
   email?: string;
+
+  @IsOptional()
+  @IsString()
+  restaurantImg?: string;
 
   @IsOptional()
   @IsString()

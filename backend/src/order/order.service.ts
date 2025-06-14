@@ -2,7 +2,6 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { PrismaService } from 'prisma/prisma.service';
-import * as  Tesseract from 'tesseract.js'
 
 @Injectable()
 export class OrderService {
@@ -35,22 +34,6 @@ export class OrderService {
         if (!existingMenu) throw new Error(`ไม่พบเมนูรหัส ${menu.menuId} จากร้านที่เลือก`);
       })
     )
-  }
-
-  async verifyPaymentSlip(orderId: string, file: Express.Multer.File) {
-    const imgBuffer = file.buffer;
-    const result = await Tesseract.recognize(imgBuffer, 'eng');
-
-    const text = result.data.text;
-    const expected = expectedPrefix.toUpperCase();
-    const normalizedText = text.toUpperCase();
-
-    const refMatch = text.match(/\b[A-Za-z0-9]{4}\b/g);
-    if (!refMatch) throw new Error('ไ่ม่พบรหัสการชำระเงินจากสลิปที่อัพโหลด')
-
-    if (!refMatch || !refMatch.some(code => code.toUpperCase() === expected)) {
-      throw new Error('ไม่พบรหัสการชำระเงินที่ถูกต้องในสลิป');
-    }
   }
 
   async createOrder(createOrderDto: CreateOrderDto) {
@@ -144,8 +127,8 @@ export class OrderService {
         status: updateOrderDto.status,
         deliverAt: updateOrderDto.deliverAt,
         isPaid: updateOrderDto.isPaid,
+        isDelay: updateOrderDto.isDelay,
       },
-      // data: updateOrderDto
     });
   }
 

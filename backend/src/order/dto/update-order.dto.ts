@@ -1,15 +1,15 @@
-import {  IsOptional, IsString, IsNumber, IsEnum, IsDate, IsArray, IsBoolean, IsPositive, ValidateNested } from 'class-validator'
+import { IsOptional, IsString, IsNumber, IsEnum, IsDate, IsArray, IsBoolean, IsPositive, ValidateNested } from 'class-validator'
 import { Type } from 'class-transformer';
 import { PartialType } from '@nestjs/mapped-types';
 import { CreateOrderDto, CreateOrderMenusDto } from './create-order.dto';
-import { OrderStatus, OrderMenu } from '@prisma/client';
+import { OrderStatus, OrderMenu, IsPaid } from '@prisma/client';
 
 
-export class UpdateOrderMenusDto extends PartialType(CreateOrderMenusDto){
+export class UpdateOrderMenusDto extends PartialType(CreateOrderMenusDto) {
     @IsOptional()
     @IsString()
     menuId?: string;
-    
+
     @IsOptional()
     @IsNumber()
     @IsPositive()
@@ -52,13 +52,21 @@ export class UpdateOrderDto extends PartialType(CreateOrderDto) {
     @IsString()
     details?: string;
 
+    @IsOptional()
+    @IsEnum(IsPaid, { each: true })
+    isPaid?: IsPaid;
+
     @IsBoolean()
     @IsOptional()
-    isPaid?: boolean;
+    isDelay?: boolean;
+
+    @IsString()
+    @IsOptional()
+    refCode?: string;
 
     @IsArray()
     @IsOptional()
     @ValidateNested({ each: true })
-        @Type(() => UpdateOrderMenusDto)
+    @Type(() => UpdateOrderMenusDto)
     orderMenus?: OrderMenu[];
 }
