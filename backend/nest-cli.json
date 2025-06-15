@@ -4,6 +4,7 @@
   "compilerOptions": {
     "deleteOutDir": true
   },
+  "sourceRoot": "src",
   "compiler": "swc",
   "monorepo": true,
   "projects": {

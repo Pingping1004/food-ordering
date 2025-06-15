@@ -6,9 +6,12 @@ import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from '../decorators/role.decorator';
 import { Public } from '../decorators/public.decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { CreateOrderMenusDto } from './dto/create-order.dto';
 import { diskStorage } from 'multer';
 import { imageFileFilter, editFileName } from 'src/utils/file-upload.utils';
 import * as fs from 'fs/promises'
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
 
 @Controller('order')
 @UseGuards(RolesGuard)
@@ -33,6 +36,7 @@ export class OrderController {
     const uploadedFilePath = file.path;
 
     try {
+      const orderMenuString = createOrderDto.orderMenus;
       // Only throw if the file or a direct link for menuImg is absolutely mandatory
       if (!file) throw new BadRequestException('Menu image or direct URL is required.');
 
@@ -52,7 +56,7 @@ export class OrderController {
       throw error;
     }
   }
-
+@Public()
   @Get()
   async findAllOrders() {
     return this.orderService.findAllOrders();

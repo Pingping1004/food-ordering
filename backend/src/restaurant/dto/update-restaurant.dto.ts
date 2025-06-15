@@ -1,5 +1,5 @@
 import { IsString, IsOptional, IsArray, IsEnum } from 'class-validator';
-import { RestaurantCategory } from '@prisma/client';
+import {RestaurantCategory } from '@prisma/client';
 
 export enum Role {
   admin = 'admin',

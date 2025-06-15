@@ -1,5 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { CreateOrderDto } from './dto/create-order.dto';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { CreateOrderDto, CreateOrderMenusDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { PrismaService } from 'prisma/prisma.service';
 
@@ -9,7 +9,7 @@ export class OrderService {
 
   async validateExisting(params: {
     restaurantId: string;
-    orderMenus: { menuId: string }[];
+    orderMenus: CreateOrderMenusDto[];
   }): Promise<void> {
 
     const { restaurantId, orderMenus } = params;
@@ -19,7 +19,7 @@ export class OrderService {
       where: { restaurantId },
     });
 
-    if (!restaurant) throw new Error(`ไม่พบร้านอาหารที่ระบุ`);
+    if (!restaurant) throw new BadRequestException(`ไม่พบร้านอาหารที่ระบุ`);
 
     // 2. Validate all menuIds are valid under single restaurant
     await Promise.all(
@@ -37,22 +37,34 @@ export class OrderService {
   }
 
   async createOrder(createOrderDto: CreateOrderDto, file: Express.Multer.File) {
+    console.log('Incoming createOrderDto:', JSON.stringify(createOrderDto, null, 2));
+    console.log('Incoming createOrderDto.orderMenus:', JSON.stringify(createOrderDto.orderMenus, null, 2));
+
     const deliverTime = new Date(createOrderDto.deliverAt);
     const orderSlipUrl = `uploads/order-slips/${file.filename}`
 
     // Step 1: Validate deliver time
-    if (isNaN(deliverTime.getTime())) throw new Error('รูปแบบของการตั้งเวลาจัดส่งไม่ถูกต้อง');
+    if (isNaN(deliverTime.getTime())) throw new BadRequestException('รูปแบบของการตั้งเวลาจัดส่งไม่ถูกต้อง');
 
     const currentTime = new Date();
-    if (deliverTime <= currentTime) throw new Error('สามารถรับออเดอร์ได้หลังจากเวลาที่สั่งออเดอร์เท่านั้น');
+    if (deliverTime <= currentTime) throw new BadRequestException('ช่วงเวลาในการรับออเดอร์ได้ผ่านไปแล้ว โปรดตั้งเวลาในอนาคต');
 
     // Step 2: Validate orderMenus relate to restaurant and menu 
     // and map them to orderMenus
 
+    const orderMenusArray = createOrderDto.orderMenus as unknown as CreateOrderMenusDto[];
+
     await this.validateExisting({
       restaurantId: createOrderDto.restaurantId,
-      orderMenus: createOrderDto.orderMenus,
+      orderMenus: createOrderDto.orderMenus as unknown as CreateOrderMenusDto[],
     });
+
+    const mappedOrderMenus = orderMenusArray.map(menu => ({
+      quantity: menu.quantity,
+      value: menu.value,
+      price: menu.price,
+      menuId: menu.menuId,
+    }))
 
     // Step 3: Create order object
     const newOrder = {
@@ -63,15 +75,9 @@ export class OrderService {
         orderSlip: orderSlipUrl,
         restaurantId: createOrderDto.restaurantId,
         deliverAt: new Date(createOrderDto.deliverAt),
-        orderAt: new Date(),
-        isPaid: createOrderDto.isPaid,
+        orderAt: new Date(createOrderDto.orderAt),
         orderMenus: {
-          create: createOrderDto.orderMenus.map(menu => ({
-            quantity: menu.quantity,
-            value: menu.value,
-            price: menu.price,
-            menuId: menu.menuId,
-          })),
+          create: mappedOrderMenus,
         },
       },
       include: { orderMenus: true },
@@ -99,7 +105,7 @@ export class OrderService {
 
       await this.validateExisting({
         restaurantId: order.restaurantId,
-        orderMenus: order.orderMenus.map((menu) => ({ menuId: menu.menuId })),
+        orderMenus: order.orderMenus.map((menu) => ({ menuId: menu.menuId, quantity: menu.quantity, value: menu.value, price: menu.price })),
       });
 
       return order;

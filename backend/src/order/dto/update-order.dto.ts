@@ -69,4 +69,5 @@ export class UpdateOrderDto extends PartialType(CreateOrderDto) {
     @ValidateNested({ each: true })
     @Type(() => UpdateOrderMenusDto)
     orderMenus?: OrderMenu[];
+    // orderMenus?: string;
 }

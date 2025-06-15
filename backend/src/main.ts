@@ -6,6 +6,7 @@ import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
+  console.log('----- NESTJS MAIN.TS LOADED - VERSION 3.14 -----');
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // If you're serving static files like 'uploads', keep this
@@ -16,13 +17,16 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
-      forbidNonWhitelisted: true,
+      forbidNonWhitelisted: false,
       transform: true,
       transformOptions: {
         enableImplicitConversion: true,
       },
+      validateCustomDecorators: true,
 
       exceptionFactory: (errors) => {
+        console.log('----- Raw errors received by exceptionFactory -----');
+        console.dir(errors, { depth: null, colors: true });
         // This helper function recursively formats validation errors
         const formatErrors = (validationErrors: any[]) => {
           return validationErrors.map(error => {
