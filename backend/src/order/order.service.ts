@@ -36,18 +36,15 @@ export class OrderService {
     )
   }
 
-  async createOrder(createOrderDto: CreateOrderDto) {
+  async createOrder(createOrderDto: CreateOrderDto, file: Express.Multer.File) {
     const deliverTime = new Date(createOrderDto.deliverAt);
+    const orderSlipUrl = `uploads/order-slips/${file.filename}`
 
     // Step 1: Validate deliver time
-    if (isNaN(deliverTime.getTime())) {
-      throw new Error('รูปแบบของการตั้งเวลาจัดส่งไม่ถูกต้อง');
-    }
+    if (isNaN(deliverTime.getTime())) throw new Error('รูปแบบของการตั้งเวลาจัดส่งไม่ถูกต้อง');
 
     const currentTime = new Date();
-    if (deliverTime <= currentTime) {
-      throw new Error('สามารถรับออเดอร์ได้หลังจากเวลาที่สั่งออเดอร์เท่านั้น');
-    }
+    if (deliverTime <= currentTime) throw new Error('สามารถรับออเดอร์ได้หลังจากเวลาที่สั่งออเดอร์เท่านั้น');
 
     // Step 2: Validate orderMenus relate to restaurant and menu 
     // and map them to orderMenus
@@ -58,29 +55,32 @@ export class OrderService {
     });
 
     // Step 3: Create order object
-    const newOrder = await this.prisma.order.create({
+    const newOrder = {
       data: {
         name: createOrderDto.name,
         price: createOrderDto.price,
         status: createOrderDto.status,
+        orderSlip: orderSlipUrl,
         restaurantId: createOrderDto.restaurantId,
         deliverAt: new Date(createOrderDto.deliverAt),
         orderAt: new Date(),
         isPaid: createOrderDto.isPaid,
         orderMenus: {
           create: createOrderDto.orderMenus.map(menu => ({
-            units: menu.units,
+            quantity: menu.quantity,
             value: menu.value,
+            price: menu.price,
             menuId: menu.menuId,
           })),
         },
       },
       include: { orderMenus: true },
-    });
+    };
 
+    const result = await this.prisma.order.create(newOrder);
 
     // Step 4: Return newOrder object to controller
-    return newOrder;
+    return { result, message: 'Create order successfully', fileInfo: file };
   }
 
 

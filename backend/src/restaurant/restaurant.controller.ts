@@ -59,6 +59,6 @@ export class RestaurantController {
     
     @Delete(':restaurantId')
     async deleteRestaurant(@Param('restaurantId') restaurantId: string) {
-        return this.restaurantService.removeRestaurant(restaurantId);
+        return await this.restaurantService.removeRestaurant(restaurantId);
     }
 }

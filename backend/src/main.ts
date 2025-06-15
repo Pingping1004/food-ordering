@@ -2,32 +2,57 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe, BadRequestException, HttpStatus } from '@nestjs/common';
 import { HttpExceptionFilter } from './common/http-exception.filter';
+import { join } from 'path';
+import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    forbidNonWhitelisted: true,
-    transform: true,
+  // If you're serving static files like 'uploads', keep this
+  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
+    prefix: '/uploads/',
+  });
 
-    exceptionFactory: (errors) => {
-      const messages = errors.map(error => {
-        // Collect all constraint messages
-        return Object.values(error.constraints || {}).join(', ');
-      }).filter(Boolean); // Filter out empty strings
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
 
-      console.error('ValidationPipe exceptionFactory invoked. Errors:', errors);
-      console.error('ValidationPipe exceptionFactory messages:', messages);
+      exceptionFactory: (errors) => {
+        // This helper function recursively formats validation errors
+        const formatErrors = (validationErrors: any[]) => {
+          return validationErrors.map(error => {
+            if (error.children && error.children.length > 0) {
+              // If there are nested errors (like for orderMenus), recurse into them
+              return {
+                property: error.property,
+                children: formatErrors(error.children), // Recursively call formatErrors for children
+              };
+            }
+            // For individual errors, get the constraint messages
+            return {
+              property: error.property,
+              constraints: error.constraints, // Keep the original constraints object for debugging
+              messages: error.constraints ? Object.values(error.constraints) : [], // Get just the string messages
+            };
+          });
+        };
 
-      // Throw a BadRequestException with the collected messages
-      return new BadRequestException({
-        statusCode: HttpStatus.BAD_REQUEST,
-        message: 'Validation failed',
-        errors: messages.length > 0 ? messages : ['Invalid input data'],
-      });
-    },
-  }));
+        const detailedErrors = formatErrors(errors); // Call the recursive formatter
+
+        // Return a BadRequestException with the detailed, structured errors
+        return new BadRequestException({
+          statusCode: HttpStatus.BAD_REQUEST,
+          message: 'Validation failed', // A general message for the client
+          errors: detailedErrors, // THIS IS THE KEY: The array of structured, detailed errors
+        });
+      },
+    }),
+  );
 
   app.useGlobalFilters(new HttpExceptionFilter());
 
@@ -43,6 +68,7 @@ async function bootstrap() {
   });
   app.enableCors({
     origin: 'http://localhost:3000',
+    methods: 'GET, HEAD, PUT, PATCH, POST, DELETE',
     credentials: true,
   })
   await app.listen(process.env.PORT ?? 3000);

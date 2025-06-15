@@ -79,7 +79,7 @@ model Menu {
   isAvailable Boolean @default(true)
 
   restaurantId  String
-  restaurant  Restaurant  @relation("RestaurantMenus", fields: [restaurantId], references: [restaurantId])
+  restaurant  Restaurant  @relation("RestaurantMenus", fields: [restaurantId], references: [restaurantId], onDelete: Cascade)
 
   orderMenus  OrderMenu[]  @relation("menuToOrderMenus")
 
@@ -92,11 +92,12 @@ model Menu {
 
 model OrderMenu {
   orderMenuId      String @default(uuid()) @id
-  units   Int
+  quantity   Int
   value   String
+  price Float
 
   orderId String
-  order   Order  @relation("OrderMenus", fields: [orderId], references: [orderId])
+  order   Order  @relation("OrderToMenu", fields: [orderId], references: [orderId], onDelete: Cascade)
 
   menuId  String
   menu  Menu  @relation("menuToOrderMenus", fields: [menuId], references: [menuId])
@@ -112,6 +113,7 @@ model Order {
   name  String
   role  Role  @default(user)
   price Int
+  orderSlip String  @unique
   status  OrderStatus @default(receive)
   orderAt DateTime  @default(now())
   deliverAt DateTime
@@ -121,9 +123,9 @@ model Order {
   refCode String?
 
   restaurantId  String
-  restaurant  Restaurant  @relation("restaurantToOrder", fields: [restaurantId], references: [restaurantId])
+  restaurant  Restaurant  @relation("restaurantToOrder", fields: [restaurantId], references: [restaurantId], onDelete: Cascade)
   
-  orderMenus OrderMenu[] @relation("OrderMenus")
+  orderMenus OrderMenu[] @relation("OrderToMenu")
 
   @@unique([refCode, orderAt])
 
