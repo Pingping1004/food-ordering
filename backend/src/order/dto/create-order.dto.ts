@@ -79,10 +79,6 @@ export class CreateOrderDto {
   @Type(() => Boolean)
   isDelay: boolean;
 
-  @IsString()
-  @IsOptional()
-  refCode?: string;
-
   @Transform(({ value }) => {
   try {
     const parsed = JSON.parse(value);

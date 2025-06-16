@@ -114,6 +114,7 @@ model Order {
   role  Role  @default(user)
   price Int
   orderSlip String  @unique
+  slipHash  String  @unique
   status  OrderStatus @default(receive)
   orderAt DateTime  @default(now())
   deliverAt DateTime

@@ -2,6 +2,8 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { CreateOrderDto, CreateOrderMenusDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { PrismaService } from 'prisma/prisma.service';
+import * as fs from 'fs/promises';
+import { createHash } from 'crypto';
 
 @Injectable()
 export class OrderService {
@@ -36,12 +38,32 @@ export class OrderService {
     )
   }
 
+  async hashingFile(file: Express.Multer.File):Promise<string> {
+    const buffer = await fs.readFile(file.path);
+    return createHash('sha256').update(buffer).digest('hex');
+  }
+
+  async validateDuplicateSlip(slipHash: string) {
+
+    const existingSlip = await this.prisma.order.findUnique({
+      where: { slipHash },
+    });
+
+    if (existingSlip) throw new BadRequestException('คุณได้อัปโหลดสลิปนี้ไปแล้ว');
+
+    // Internet banking payment logic...
+  }
+
   async createOrder(createOrderDto: CreateOrderDto, file: Express.Multer.File) {
     console.log('Incoming createOrderDto:', JSON.stringify(createOrderDto, null, 2));
     console.log('Incoming createOrderDto.orderMenus:', JSON.stringify(createOrderDto.orderMenus, null, 2));
 
     const deliverTime = new Date(createOrderDto.deliverAt);
     const orderSlipUrl = `uploads/order-slips/${file.filename}`
+
+    // Step 1.1: Hashing and validating unique payment slip
+    const slipHash = await this.hashingFile(file);
+    await this.validateDuplicateSlip(slipHash);
 
     // Step 1: Validate deliver time
     if (isNaN(deliverTime.getTime())) throw new BadRequestException('รูปแบบของการตั้งเวลาจัดส่งไม่ถูกต้อง');
@@ -74,6 +96,7 @@ export class OrderService {
         status: createOrderDto.status,
         orderSlip: orderSlipUrl,
         restaurantId: createOrderDto.restaurantId,
+        slipHash,
         deliverAt: new Date(createOrderDto.deliverAt),
         orderAt: new Date(createOrderDto.orderAt),
         orderMenus: {

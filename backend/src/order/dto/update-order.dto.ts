@@ -60,10 +60,6 @@ export class UpdateOrderDto extends PartialType(CreateOrderDto) {
     @IsOptional()
     isDelay?: boolean;
 
-    @IsString()
-    @IsOptional()
-    refCode?: string;
-
     @IsArray()
     @IsOptional()
     @ValidateNested({ each: true })
