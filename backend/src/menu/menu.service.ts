@@ -15,7 +15,7 @@ export class MenuService {
     try {
       console.log('CreateMenuDto in service: ', createMenuDto);
 
-      const menuImgUrl = file ? `uploads/${file.originalname}` : createMenuDto.menuImg;
+      const menuImgUrl = file ? `uploads/menus/${file.filename}` : createMenuDto.menuImg;
       const existingRestaurant = await this.restaurantService.findRestaurant(createMenuDto.restaurantId);
 
       const newMenu = {
