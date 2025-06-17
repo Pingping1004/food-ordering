@@ -62,6 +62,12 @@ export class MenuController {
   }
 
   @Public()
+  @Get(':restaurantId')
+  async getRestaurantMenus(@Param('restaurantId') restaurantId: string) {
+    return this.menuService.getRestaurantMenus(restaurantId);
+  }
+
+  @Public()
   @Get(':menuId')
   async findMenu(@Param('menuId') menuId: string) {
     return this.menuService.findMenu(menuId);

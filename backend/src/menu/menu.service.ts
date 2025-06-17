@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, InternalServerErrorException } from '@nestjs/common';
 import { CreateMenuDto } from './dto/create-menu.dto';
 import { UpdateMenuDto } from './dto/update-menu.dto';
 import { PrismaService } from 'prisma/prisma.service';
@@ -9,12 +9,12 @@ export class MenuService {
   constructor(
     private prisma: PrismaService,
     private restaurantService: RestaurantService,
-  ) {}
+  ) { }
 
   async createMenu(createMenuDto: CreateMenuDto, file?: Express.Multer.File) {
     try {
       console.log('CreateMenuDto in service: ', createMenuDto);
-      
+
       const menuImgUrl = file ? `uploads/${file.originalname}` : createMenuDto.menuImg;
       const existingRestaurant = await this.restaurantService.findRestaurant(createMenuDto.restaurantId);
 
@@ -49,20 +49,40 @@ export class MenuService {
     return this.prisma.menu.findMany();
   }
 
+  async getRestaurantMenus(restaurantId: string) {
+    try {
+
+      const menus = await this.prisma.menu.findMany({
+        where: {
+          restaurantId,
+          isAvailable: true,
+        },
+        select: {
+          name: true,
+          menuImg: true,
+          price: true,
+        }
+      });
+      return menus;
+    } catch (error) {
+      throw new InternalServerErrorException('ค้นหาเมนูขัดข้อง');
+    }
+  }
+
   async findMenu(menuId: string) {
     try {
 
       const menu = await this.prisma.menu.findUnique({
         where: { menuId },
       });
-      
+
       if (!menu) throw new Error('ไม่พบเมนูที่ค้นหา');
-      
+
       await this.restaurantService.findRestaurant(menu.restaurantId);
-      
+
       return menu;
     } catch (error) {
-            if (error.code === 'P2025') {
+      if (error.code === 'P2025') {
         // Prisma "Record not found"
         throw new NotFoundException(
           `ไม่พบออเดอร์ที่มีID: ${menuId}`,
