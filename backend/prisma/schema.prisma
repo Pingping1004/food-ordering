@@ -100,7 +100,7 @@ model OrderMenu {
   order   Order  @relation("OrderToMenu", fields: [orderId], references: [orderId], onDelete: Cascade)
 
   menuId  String
-  menu  Menu  @relation("menuToOrderMenus", fields: [menuId], references: [menuId])
+  menu  Menu  @relation("menuToOrderMenus", fields: [menuId], references: [menuId], onDelete: Cascade)
 
   @@index([menuId])
   @@index([value])

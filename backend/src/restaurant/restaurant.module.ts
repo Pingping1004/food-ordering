@@ -4,9 +4,12 @@ import { RestaurantService } from './restaurant.service';
 import { PrismaService } from 'prisma/prisma.service';
 import { MulterModule } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
+import { OrderService } from 'src/order/order.service';
+import { OrderModule } from 'src/order/order.module';
 
 @Module({
   imports: [
+    OrderModule,
     MulterModule.register({
       storage: diskStorage({
         destination: './uploads/restaurants',

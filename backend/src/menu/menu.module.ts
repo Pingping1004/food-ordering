@@ -6,9 +6,11 @@ import { RestaurantService } from '../restaurant/restaurant.service';
 import { RestaurantModule } from '../restaurant/restaurant.module';
 import { MulterModule } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
+import { OrderModule } from 'src/order/order.module';
 
 @Module({
   imports: [
+    OrderModule,
     RestaurantModule,
     MulterModule.register({
       storage: diskStorage({

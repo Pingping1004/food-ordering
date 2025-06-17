@@ -4,15 +4,15 @@ import { ValidationPipe, BadRequestException, HttpStatus } from '@nestjs/common'
 import { HttpExceptionFilter } from './common/http-exception.filter';
 import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import * as express from 'express';
 
 async function bootstrap() {
   console.log('----- NESTJS MAIN.TS LOADED - VERSION 3.14 -----');
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { cors: true });
 
-  // If you're serving static files like 'uploads', keep this
-  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
-    prefix: '/uploads/',
-  });
+  app.use('/uploads', express.static(join(__dirname, '..', 'uploads')));
+  console.log('Static uploads path:', join(__dirname, '..', 'uploads'));
+
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -75,6 +75,6 @@ async function bootstrap() {
     methods: 'GET, HEAD, PUT, PATCH, POST, DELETE',
     credentials: true,
   })
-  await app.listen(process.env.PORT ?? 3000);
+  await app.listen(process.env.PORT ?? 5000);
 }
 bootstrap();

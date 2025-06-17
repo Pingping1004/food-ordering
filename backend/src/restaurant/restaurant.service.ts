@@ -3,12 +3,18 @@ import { CreateRestaurantDto } from './dto/create-restaurant.dto';
 import { PrismaService } from 'prisma/prisma.service';
 import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
 import * as bcrypt from 'bcrypt';
+import { OrderService } from 'src/order/order.service';
 
 @Injectable()
 export class RestaurantService {
-  constructor(private prisma: PrismaService) { }
+  constructor(
+    private prisma: PrismaService,
+    private orderService: OrderService,
+  ) { }
 
-  async createRestaurant(createRestaurantDto: CreateRestaurantDto, file?: Express.Multer.File) {
+  async createRestaurant(
+    createRestaurantDto: CreateRestaurantDto,
+    file?: Express.Multer.File) {
     try {
       const hashedPassword = await bcrypt.hash(createRestaurantDto.password, 10);
       const restaurantImgUrl = file ? `uploads/restaurants/${file.filename}` : createRestaurantDto.restaurantImg;
@@ -103,8 +109,37 @@ export class RestaurantService {
   }
 
   async removeRestaurant(restaurantId: string) {
-    return this.prisma.restaurant.delete({
+    const orders = await this.prisma.order.findMany({
       where: { restaurantId },
+      select: { orderId: true, status: true },
+    });
+
+    const allOrderDone = orders.every(order => order.status === 'done');
+    if (!allOrderDone) throw new BadRequestException('ไม่สามารถลบร้านอาหารในขณะที่ยังมีออเดอร์ค้างอยู่');
+
+    const orderIds = orders.map(order => order.orderId);
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.orderMenu.deleteMany({
+        where: {
+          orderId: { in: orderIds },
+        }
+      })
+
+      await tx.order.deleteMany({
+        where: {
+          restaurantId,
+          status: 'done',
+        },
+      });
+
+      await tx.menu.deleteMany({
+        where: { restaurantId },
+      });
+
+      return tx.restaurant.delete({
+        where: { restaurantId },
+      });
     });
   }
 }

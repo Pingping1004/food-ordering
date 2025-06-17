@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+/* eslint-disable @typescript-eslint/no-floating-promises */
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateOrderDto, CreateOrderMenusDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { PrismaService } from 'prisma/prisma.service';
@@ -7,13 +12,12 @@ import { createHash } from 'crypto';
 
 @Injectable()
 export class OrderService {
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   async validateExisting(params: {
     restaurantId: string;
     orderMenus: CreateOrderMenusDto[];
   }): Promise<void> {
-
     const { restaurantId, orderMenus } = params;
 
     // 1. Validate restaurant
@@ -33,60 +37,73 @@ export class OrderService {
           },
         });
 
-        if (!existingMenu) throw new Error(`ไม่พบเมนูรหัส ${menu.menuId} จากร้านที่เลือก`);
-      })
-    )
+        // 3. Check that user order the existingMenu not the non exist one
+        if (!existingMenu)
+          throw new Error(`ไม่พบเมนูรหัส ${menu.menuId} จากร้านที่เลือก`);
+      }),
+    );
   }
 
-  async hashingFile(file: Express.Multer.File):Promise<string> {
+  async hashingFile(file: Express.Multer.File): Promise<string> {
     const buffer = await fs.readFile(file.path);
     return createHash('sha256').update(buffer).digest('hex');
   }
 
   async validateDuplicateSlip(slipHash: string) {
-
     const existingSlip = await this.prisma.order.findUnique({
       where: { slipHash },
     });
 
-    if (existingSlip) throw new BadRequestException('คุณได้อัปโหลดสลิปนี้ไปแล้ว');
+    if (existingSlip)
+      throw new BadRequestException('คุณได้อัปโหลดสลิปนี้ไปแล้ว');
 
     // Internet banking payment logic...
   }
 
   async createOrder(createOrderDto: CreateOrderDto, file: Express.Multer.File) {
-    console.log('Incoming createOrderDto:', JSON.stringify(createOrderDto, null, 2));
-    console.log('Incoming createOrderDto.orderMenus:', JSON.stringify(createOrderDto.orderMenus, null, 2));
+    console.log(
+      'Incoming createOrderDto:',
+      JSON.stringify(createOrderDto, null, 2),
+    );
+    console.log(
+      'Incoming createOrderDto.orderMenus:',
+      JSON.stringify(createOrderDto.orderMenus, null, 2),
+    );
 
     const deliverTime = new Date(createOrderDto.deliverAt);
-    const orderSlipUrl = `uploads/order-slips/${file.filename}`
+    const orderSlipUrl = `uploads/order-slips/${file.filename}`;
 
     // Step 1.1: Hashing and validating unique payment slip
     const slipHash = await this.hashingFile(file);
     await this.validateDuplicateSlip(slipHash);
 
     // Step 1: Validate deliver time
-    if (isNaN(deliverTime.getTime())) throw new BadRequestException('รูปแบบของการตั้งเวลาจัดส่งไม่ถูกต้อง');
+    if (isNaN(deliverTime.getTime()))
+      throw new BadRequestException('รูปแบบของการตั้งเวลาจัดส่งไม่ถูกต้อง');
 
     const currentTime = new Date();
-    if (deliverTime <= currentTime) throw new BadRequestException('ช่วงเวลาในการรับออเดอร์ได้ผ่านไปแล้ว โปรดตั้งเวลาในอนาคต');
+    if (deliverTime <= currentTime)
+      throw new BadRequestException(
+        'ช่วงเวลาในการรับออเดอร์ได้ผ่านไปแล้ว โปรดตั้งเวลาในอนาคต',
+      );
 
-    // Step 2: Validate orderMenus relate to restaurant and menu 
+    // Step 2: Validate orderMenus relate to restaurant and menu
     // and map them to orderMenus
 
-    const orderMenusArray = createOrderDto.orderMenus as unknown as CreateOrderMenusDto[];
+    const orderMenusArray =
+      createOrderDto.orderMenus as unknown as CreateOrderMenusDto[];
 
     await this.validateExisting({
       restaurantId: createOrderDto.restaurantId,
       orderMenus: createOrderDto.orderMenus as unknown as CreateOrderMenusDto[],
     });
 
-    const mappedOrderMenus = orderMenusArray.map(menu => ({
+    const mappedOrderMenus = orderMenusArray.map((menu) => ({
       quantity: menu.quantity,
       value: menu.value,
       price: menu.price,
       menuId: menu.menuId,
-    }))
+    }));
 
     // Step 3: Create order object
     const newOrder = {
@@ -112,7 +129,6 @@ export class OrderService {
     return { result, message: 'Create order successfully', fileInfo: file };
   }
 
-
   async findAllOrders() {
     return this.prisma.order.findMany();
   }
@@ -128,16 +144,19 @@ export class OrderService {
 
       await this.validateExisting({
         restaurantId: order.restaurantId,
-        orderMenus: order.orderMenus.map((menu) => ({ menuId: menu.menuId, quantity: menu.quantity, value: menu.value, price: menu.price })),
+        orderMenus: order.orderMenus.map((menu) => ({
+          menuId: menu.menuId,
+          quantity: menu.quantity,
+          value: menu.value,
+          price: menu.price,
+        })),
       });
 
       return order;
     } catch (error) {
       if (error.code === 'P2025') {
         // Prisma "Record not found"
-        throw new NotFoundException(
-          `ไม่พบออเดอร์ที่มีID: ${orderId}`,
-        );
+        throw new NotFoundException(`ไม่พบออเดอร์ที่มีID: ${orderId}`);
       }
 
       throw error;
@@ -148,7 +167,8 @@ export class OrderService {
     // Find order with validate restaurant and menu logic
     await this.findOneOrder(orderId);
 
-    if (!updateOrderDto.restaurantId) throw new Error('restaurantId is required');
+    if (!updateOrderDto.restaurantId)
+      throw new Error('restaurantId is required');
 
     return this.prisma.order.update({
       where: { orderId },
