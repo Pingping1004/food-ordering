@@ -1,0 +1,87 @@
+"use client";
+import React, { createContext, useContext, useState } from "react";
+
+export type CartItem = {
+    menuId: string;
+    name: string;
+    quantity: number;
+    unitPrice: number;
+    totalPrice: number;
+};
+
+type CartContextType = {
+    cart: CartItem[];
+    addToCart: (menuId: string, name: string, unitPrice: number) => void;
+    removeFromCart: (menuId: string) => void;
+};
+
+const CartContext = createContext<CartContextType | null>(null);
+
+export const CartProvider = ({ children }: { children: React.ReactNode }) => {
+    const [cart, setCart] = useState<CartItem[]>([]);
+
+    const addToCart = (menuId: string, name: string, unitPrice: number) => {
+        setCart((prev) => {
+            const existingCartItem = prev.find((item) => item.menuId === menuId);
+    
+            if (existingCartItem) {
+                return prev.map((item) => 
+                    item.menuId === menuId
+                    ? {
+                        ...item, 
+                        quantity: item.quantity + 1, 
+                        totalPrice: item.unitPrice * (item.quantity + 1)
+                        } 
+                    : item);
+            } else {
+                // Assign default price as 0, modify as needed.
+                return [
+                    ...prev,
+                     { menuId, name, unitPrice, quantity: 1, totalPrice: unitPrice }
+                ];
+            }
+        });
+
+        console.log('Update cart status: ', cart);
+    };
+
+    const removeFromCart = (menuId: string) => {
+        setCart((prev) => {
+            const existingCartItem = prev.find((item) => item.menuId === menuId);
+            if (!existingCartItem) {
+                console.error('Item does not exist to delete');
+                return prev;
+            }
+
+            if (existingCartItem.quantity > 1) {
+                return prev.map((item) => 
+                    item.menuId === menuId
+                        ? {
+                            ...item,
+                            quantity: item.quantity - 1,
+                            totalPrice: item.unitPrice * (item.quantity - 1),
+                        }
+                        : item
+                );
+            } else {
+                return prev.filter((item) => item.menuId === menuId);
+            }
+        });
+
+        console.log('Update cart status: ', cart);
+    };
+
+    return (
+        <CartContext.Provider
+            value={{ cart, addToCart, removeFromCart }}
+        >
+            {children}
+        </CartContext.Provider>
+    );
+}
+
+export const useCart = () => {
+    const context = useContext(CartContext);
+    if (!context) throw new Error('useCart must be used within a CartProvider');
+    return context;
+}

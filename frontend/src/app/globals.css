@@ -81,6 +81,10 @@ body {
   color: #E1E1E1
 }
 
+.border-color {
+  border-color: #E1E1E1;
+}
+
 .poppins-thin {
   font-family: "Poppins", sans-serif;
   font-weight: 100;

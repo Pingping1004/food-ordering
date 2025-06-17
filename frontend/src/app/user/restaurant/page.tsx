@@ -3,23 +3,12 @@
 import { Button } from "@/components/Button";
 import { RestaurantProfile } from "@/components/users/RestaurantProfile";
 import React, { useEffect, useState } from "react";
-import { RestaurantCategory } from "@/components/users/RestaurantProfile";
+import { Restaurant } from "@/context/MenuContext";
 
 import { api } from "@/lib/api";
 
-type Restaurant = {
-    [x: string]: any;
-    restaurantId: string;
-    name: string;
-    image: string;
-    restaurantImg: string;
-    categories: RestaurantCategory[];
-    openTime: string;
-    closeTime: string;
-};
 
 export default function UserHomePage() {
-    const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
     const [data, setData] = useState<Restaurant[] | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -66,8 +55,8 @@ export default function UserHomePage() {
                         key={restaurant.restaurantId}
                         name={restaurant.name}
                         categories={restaurant.categories}
-                        openTime="8:00"
-                        closeTime="17:00"
+                        openTime={restaurant.openTime}
+                        closeTime={restaurant.closeTime}
                         restaurantId={restaurant.restaurantId}
                         restaurantImg={restaurant.restaurantImg}
                         variant="isOpen"

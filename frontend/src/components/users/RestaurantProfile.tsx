@@ -2,6 +2,7 @@ import React from 'react'
 import Image from 'next/image'
 import clsx from 'clsx'
 import { cva, VariantProps } from 'class-variance-authority'
+import Link from 'next/link'
 
 export enum RestaurantCategory {
     Steak = 'Steak',
@@ -52,25 +53,27 @@ export const RestaurantProfile: React.FC<RestaurantProfileProps> = ({
     const src = restaurantImg ? `${baseURL}/${restaurantImg}` : `/picture.svg`;
 
     return (
-        <div className={clsx(
-            "flex flex-col gap-y-4",
-            restaurantProfileVariant({ variant }),
-            className
-        )}
-            {...props}
-        >
-            <Image
-                width={163}
-                height={163}
-                src={src}
-                alt='Restaurant Profile'
-                className="rounded-lg"
-            />
+        <Link href={`/user/restaurant/${restaurantId}`}>
+            <div className={clsx(
+                "flex flex-col gap-y-4",
+                restaurantProfileVariant({ variant }),
+                className
+            )}
+                {...props}
+            >
+                <Image
+                    width={163}
+                    height={163}
+                    src={src}
+                    alt='Restaurant Profile'
+                    className="rounded-lg"
+                />
 
-            <div className="flex flex-col gap-y-2">
-                <h3 className="noto-sans-bold text-sm text-primary">{name}</h3>
-                <p className="noto-sans-regular text-xs text-light">{categories.join(', ')}</p>
+                <div className="flex flex-col gap-y-2">
+                    <h3 className="noto-sans-bold text-sm text-primary">{name}</h3>
+                    <p className="noto-sans-regular text-xs text-light">{categories.join(', ')}</p>
+                </div>
             </div>
-        </div>
+        </Link>
     );
 };
