@@ -10,9 +10,9 @@ async function bootstrap() {
   console.log('----- NESTJS MAIN.TS LOADED - VERSION 3.14 -----');
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { cors: true });
 
-  app.use('/uploads', express.static(join(__dirname, '..', 'uploads')));
-  console.log('Static uploads path:', join(__dirname, '..', 'uploads'));
-
+  const uploadsDir = join(process.cwd(), 'uploads');
+  app.use('/uploads', express.static(uploadsDir));
+  console.log('Serving uploads from:', uploadsDir);
 
   app.useGlobalPipes(
     new ValidationPipe({

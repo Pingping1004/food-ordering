@@ -4,6 +4,7 @@ import { HttpExceptionFilter } from './common/http-exception.filter';
 import { CatchEverythingFilter } from './common/catch-everything.filter';
 import { RequestLoggerMiddleware } from 'logger.middleware';
 import { MulterModule } from '@nestjs/platform-express';
+import { ServeStaticModule } from '@nestjs/serve-static'
 
 // Service and controller
 import { AppController } from './app.controller';
