@@ -72,7 +72,7 @@ export default function MenuProfile({
                     className="absolute bottom-2 right-2 z-10"
                     onClick={() => {
                         console.log('Add clicked:', menuId, name, unitPrice);
-                        addToCart(menuId, name, unitPrice)
+                        addToCart(menuId, name, unitPrice, menuImg || "")
                     }}
                 >
                     <img src="/plus.svg" alt="add menu"/>

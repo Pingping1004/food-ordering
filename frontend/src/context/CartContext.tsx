@@ -3,15 +3,16 @@ import React, { createContext, useContext, useState } from "react";
 
 export type CartItem = {
     menuId: string;
-    name: string;
-    quantity: number;
+    menuName: string;
     unitPrice: number;
+    menuImg: string;
+    quantity: number;
     totalPrice: number;
 };
 
 type CartContextType = {
     cart: CartItem[];
-    addToCart: (menuId: string, name: string, unitPrice: number) => void;
+    addToCart: (menuId: string, menuName: string, unitPrice: number, menuImg: string) => void;
     removeFromCart: (menuId: string) => void;
 };
 
@@ -20,7 +21,7 @@ const CartContext = createContext<CartContextType | null>(null);
 export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     const [cart, setCart] = useState<CartItem[]>([]);
 
-    const addToCart = (menuId: string, name: string, unitPrice: number) => {
+    const addToCart = (menuId: string, menuName: string, unitPrice: number, menuImg: string) => {
         setCart((prev) => {
             const existingCartItem = prev.find((item) => item.menuId === menuId);
             let newCart;
@@ -38,11 +39,10 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
                 // Assign default price as 0, modify as needed.
                 newCart = [
                     ...prev,
-                     { menuId, name, unitPrice, quantity: 1, totalPrice: unitPrice }
+                     { menuId, menuName, unitPrice, menuImg, quantity: 1, totalPrice: unitPrice }
                 ];
             }
 
-            console.log('Update cart status: ', newCart);
             return newCart;
         });
     };
@@ -69,8 +69,6 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
                 return prev.filter((item) => item.menuId === menuId);
             }
         });
-
-        console.log('Update cart status: ', cart);
     };
 
     return (

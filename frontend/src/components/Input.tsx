@@ -32,7 +32,7 @@ export type InputProps<TFieldValues extends FieldValues = FieldValues> = Omit<
     placeholder?: string;
     register?: UseFormRegister<TFieldValues>;
     validation?: object;
-    type?: "text" | "email" | "password" | "select" | "file"; // Added "file" type
+    type?: "text" | "email" | "password" | "select" | "file" | "number"; // Added "file" type
     onChange?: (
       event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
     ) => void;

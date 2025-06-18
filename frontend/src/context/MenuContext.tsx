@@ -37,7 +37,7 @@ export interface MenuContextType {
 
 export const MenuContext = createContext<MenuContextType | null>(null);
 
-export const useMenuContext = () => {
+export const useMenu = () => {
     const context = useContext(MenuContext);
     
     if (!context) throw new Error("useMenuContext must be used within MenuProvider");
@@ -78,8 +78,6 @@ export const MenuProvider = ({ children }: { children: React.ReactNode }) => {
         if (loading) return <div>Loading...</div>;
     if (error) return <div>{error}</div>;
     if (!menus) return <div>No Data found</div>
-
-    // console.log('Fetch menus context data: ', menus);
 
     return (
         <MenuContext.Provider
