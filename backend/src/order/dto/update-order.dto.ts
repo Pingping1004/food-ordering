@@ -1,6 +1,6 @@
 import { IsOptional, IsString, IsNumber, IsEnum, IsDate, IsArray, IsBoolean, IsPositive, ValidateNested } from 'class-validator'
 import { Type } from 'class-transformer';
-import { PartialType } from '@nestjs/mapped-types';
+import { PartialType, OmitType } from '@nestjs/mapped-types';
 import { CreateOrderDto, CreateOrderMenusDto } from './create-order.dto';
 import { OrderStatus, OrderMenu, IsPaid } from '@prisma/client';
 
@@ -14,24 +14,30 @@ export class UpdateOrderMenusDto extends PartialType(CreateOrderMenusDto) {
     @IsNumber()
     @IsPositive()
     @Type(() => Number)
-    units?: number;
+    quantity?: number;
 
     @IsOptional()
     @IsString()
-    value?: string;
-}
+    menuName?: string;
 
-export class UpdateOrderDto extends PartialType(CreateOrderDto) {
-    @IsOptional()
-    @IsString()
-    name?: string;
-
-    @IsOptional()
     @IsNumber()
+    @IsOptional()
     @IsPositive()
     @Type(() => Number)
-    price?: number;
+    unitPrice?: number;
 
+    @IsNumber()
+    @IsOptional()
+    @IsPositive()
+    @Type(() => Number)
+    totalPrice?: number;
+
+    @IsOptional()
+    @IsString()
+    menuImg?: string;
+}
+
+export class UpdateOrderDto extends PartialType(OmitType(CreateOrderDto, ['orderMenus'] as const)) {
     @IsOptional()
     @IsEnum(OrderStatus, { each: true })
     status?: OrderStatus;
@@ -50,11 +56,15 @@ export class UpdateOrderDto extends PartialType(CreateOrderDto) {
 
     @IsOptional()
     @IsString()
+    orderSlip?: string;
+
+    @IsOptional()
+    @IsString()
     details?: string;
 
     @IsOptional()
-    @IsEnum(IsPaid, { each: true })
-    isPaid?: IsPaid;
+    @IsBoolean()
+    isPaid?: boolean;
 
     @IsBoolean()
     @IsOptional()
@@ -64,6 +74,5 @@ export class UpdateOrderDto extends PartialType(CreateOrderDto) {
     @IsOptional()
     @ValidateNested({ each: true })
     @Type(() => UpdateOrderMenusDto)
-    orderMenus?: OrderMenu[];
-    // orderMenus?: string;
+    orderMenus?: UpdateOrderMenusDto[];
 }

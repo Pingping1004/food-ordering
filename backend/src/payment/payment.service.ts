@@ -37,11 +37,12 @@ export class PaymentService {
 
       // Step 2: Get order from DB and check the price validity
       const order = await this.orderService.findOneOrder(orderId);
+      const orderPrice = order.orderMenus.reduce((total, menu) => total + menu.totalPrice, 0)
       const priceMatch = text.match(/(\d+\.\d{2})\s?บาท/);
 
       // Step 3: Match Price
       const slipPrice = priceMatch ? parseFloat(priceMatch[1]) : null;
-      if (!slipPrice || slipPrice !== order.price) {
+      if (!slipPrice || slipPrice !== orderPrice) {
         this.logger.warn(`Failed to extract price for order ${orderId}`);
         throw new Error('ยอดเงินในสลิปไม่ตรงกับคำสั่งซื้อ กรุณาอัพโหลดสลิปที่ถูกต้อง')
       }

@@ -9,6 +9,7 @@ import { UpdateOrderDto } from './dto/update-order.dto';
 import { PrismaService } from 'prisma/prisma.service';
 import * as fs from 'fs/promises';
 import { createHash } from 'crypto';
+import { IsPaid, OrderStatus } from '@prisma/client';
 
 @Injectable()
 export class OrderService {
@@ -93,6 +94,10 @@ export class OrderService {
     const orderMenusArray =
       createOrderDto.orderMenus as unknown as CreateOrderMenusDto[];
 
+    if (!Array.isArray(orderMenusArray) || orderMenusArray.length === 0) {
+      throw new BadRequestException('คุณต้องเลือกเมนูก่อนทำการสั่งซื้อ')
+    }
+
     await this.validateExisting({
       restaurantId: createOrderDto.restaurantId,
       orderMenus: createOrderDto.orderMenus as unknown as CreateOrderMenusDto[],
@@ -100,19 +105,19 @@ export class OrderService {
 
     const mappedOrderMenus = orderMenusArray.map((menu) => ({
       quantity: menu.quantity,
-      value: menu.value,
-      price: menu.price,
+      menuName: menu.menuName,
+      unitPrice: menu.unitPrice,
+      totalPrice: menu.quantity * menu.unitPrice,
       menuId: menu.menuId,
+      menuImg: menu.menuImg,
     }));
 
-    // Step 3: Create order object
     const newOrder = {
       data: {
-        name: createOrderDto.name,
-        price: createOrderDto.price,
-        status: createOrderDto.status,
+        status: OrderStatus.receive,
         orderSlip: orderSlipUrl,
         restaurantId: createOrderDto.restaurantId,
+        isPaid: createOrderDto.isPaid ? IsPaid.paid : IsPaid.unpaid,
         slipHash,
         deliverAt: new Date(createOrderDto.deliverAt),
         orderAt: new Date(createOrderDto.orderAt),
@@ -147,8 +152,10 @@ export class OrderService {
         orderMenus: order.orderMenus.map((menu) => ({
           menuId: menu.menuId,
           quantity: menu.quantity,
-          value: menu.value,
-          price: menu.price,
+          menuName: menu.menuName,
+          unitPrice: menu.unitPrice,
+          totalPrice: menu.totalPrice,
+          menuImg: menu.menuImg || "",
         })),
       });
 
@@ -175,7 +182,7 @@ export class OrderService {
       data: {
         status: updateOrderDto.status,
         deliverAt: updateOrderDto.deliverAt,
-        isPaid: updateOrderDto.isPaid,
+        isPaid: updateOrderDto.isPaid !== undefined ? (updateOrderDto.isPaid ? IsPaid.paid : IsPaid.unpaid) : undefined,
         isDelay: updateOrderDto.isDelay,
       },
     });

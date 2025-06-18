@@ -14,7 +14,6 @@ import {
   ValidateNested } from "class-validator";
 import { IsPaid, OrderStatus } from "@prisma/client";
 import { BadRequestException } from "@nestjs/common";
-import { ApiProperty } from '@nestjs/swagger'
 import { plainToInstance } from "class-transformer";
 
 console.log('--- CORRECT CreateOrderMenusDto file is being loaded! ---');
@@ -32,29 +31,29 @@ export class CreateOrderMenusDto {
 
   @IsNotEmpty()
   @IsString()
-  value: string;
+  menuName: string;
 
   @IsNumber()
   @IsNotEmpty()
   @IsPositive()
   @Type(() => Number)
-  price: number;
+  unitPrice: number;
+
+  @IsNumber()
+  @IsNotEmpty()
+  @IsPositive()
+  @Type(() => Number)
+  totalPrice: number;
+
+  @IsNotEmpty()
+  @IsString()
+  menuImg: string;
 }
 
 export class CreateOrderDto {
-  @IsNotEmpty()
-  @IsString()
-  name: string;
-
-  @IsNotEmpty()
-  @IsNumber()
-  @IsPositive()
-  @Type(() => Number)
-  price: number;
-
-  @IsNotEmpty()
+  @IsOptional()
   @IsEnum(OrderStatus)
-  status: OrderStatus;
+  status?: OrderStatus;
 
   @IsNotEmpty()
   @IsUUID()
@@ -72,12 +71,16 @@ export class CreateOrderDto {
 
   @IsOptional()
   @IsString()
+  orderSlip?: string;
+
+  @IsOptional()
+  @IsString()
   details?: string;
 
   @IsBoolean()
   @IsNotEmpty()
   @Type(() => Boolean)
-  isDelay: boolean;
+  isPaid: boolean;
 
   @Transform(({ value }) => {
   try {

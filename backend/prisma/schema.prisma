@@ -93,8 +93,10 @@ model Menu {
 model OrderMenu {
   orderMenuId      String @default(uuid()) @id
   quantity   Int
-  value   String
-  price Float
+  menuName   String
+  menuImg   String?
+  unitPrice Float
+  totalPrice Float
 
   orderId String
   order   Order  @relation("OrderToMenu", fields: [orderId], references: [orderId], onDelete: Cascade)
@@ -103,16 +105,13 @@ model OrderMenu {
   menu  Menu  @relation("menuToOrderMenus", fields: [menuId], references: [menuId], onDelete: Cascade)
 
   @@index([menuId])
-  @@index([value])
   @@index([orderId])
 }
 
 // must validate that restaurantName is included in restaurantNameList
 model Order {
   orderId String @default(uuid()) @id
-  name  String
   role  Role  @default(user)
-  price Int
   orderSlip String  @unique
   slipHash  String  @unique
   status  OrderStatus @default(receive)
