@@ -23,9 +23,10 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     const addToCart = (menuId: string, name: string, unitPrice: number) => {
         setCart((prev) => {
             const existingCartItem = prev.find((item) => item.menuId === menuId);
+            let newCart;
     
             if (existingCartItem) {
-                return prev.map((item) => 
+                newCart = prev.map((item) => 
                     item.menuId === menuId
                     ? {
                         ...item, 
@@ -35,14 +36,15 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
                     : item);
             } else {
                 // Assign default price as 0, modify as needed.
-                return [
+                newCart = [
                     ...prev,
                      { menuId, name, unitPrice, quantity: 1, totalPrice: unitPrice }
                 ];
             }
-        });
 
-        console.log('Update cart status: ', cart);
+            console.log('Update cart status: ', newCart);
+            return newCart;
+        });
     };
 
     const removeFromCart = (menuId: string) => {

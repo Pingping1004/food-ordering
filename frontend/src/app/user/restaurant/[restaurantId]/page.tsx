@@ -1,23 +1,27 @@
 "use client";
 
-import React from 'react'
+import React, { useEffect } from 'react'
 import { MenuProvider, useMenuContext } from '@/context/MenuContext'
 import { useCart } from '@/context/CartContext';
 import RestaurantHeader from '@/components/users/RestaurantHeader';
 import MenuProfile from '@/components/users/MenuProfile';
 import { Button } from '@/components/Button';
-import { CartItem } from '@/context/CartContext';
 import { useRouter } from 'next/navigation';
+import { api } from '@/lib/api';
 
 function MenuContext() {
   const { restaurant, menus } = useMenuContext();
-  const { cart, addToCart, removeFromCart } = useCart();
+  const { cart } = useCart();
   const router = useRouter();
   console.log('Fetched menus: ', menus);
   console.log('Cart: ', cart);
 
+  useEffect(() => {
+    console.log('Cart changed:', cart);
+  }, [cart]);
+
   const checkOrderCart = () => {
-    router.push('/user/order');
+    router.push(`/user/order/confirm`);
   }
 
   return (
@@ -34,7 +38,7 @@ function MenuContext() {
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-x-4 gap-y-6">
         {menus?.map((menu, index) => (
           <MenuProfile
-            key={index}
+            key={menu.menuId}
             menuId={menu.menuId}
             menuImg={menu.menuImg}
             name={menu.name}

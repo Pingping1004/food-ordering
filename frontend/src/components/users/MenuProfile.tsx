@@ -68,8 +68,12 @@ export default function MenuProfile({
                 />
 
                 <button 
+                    key={menuId}
                     className="absolute bottom-2 right-2 z-10"
-                    onClick={() => addToCart(menuId, name, unitPrice)}
+                    onClick={() => {
+                        console.log('Add clicked:', menuId, name, unitPrice);
+                        addToCart(menuId, name, unitPrice)
+                    }}
                 >
                     <img src="/plus.svg" alt="add menu"/>
                 </button>
