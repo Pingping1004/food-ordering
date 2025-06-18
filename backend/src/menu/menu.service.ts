@@ -58,6 +58,7 @@ export class MenuService {
           isAvailable: true,
         },
         select: {
+          menuId: true,
           name: true,
           menuImg: true,
           price: true,
