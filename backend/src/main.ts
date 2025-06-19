@@ -5,6 +5,7 @@ import { HttpExceptionFilter } from './common/http-exception.filter';
 import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import * as express from 'express';
+import { json } from 'express';
 
 async function bootstrap() {
   console.log('----- NESTJS MAIN.TS LOADED - VERSION 3.14 -----');
@@ -17,7 +18,7 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
-      forbidNonWhitelisted: false,
+      forbidNonWhitelisted: true,
       transform: true,
       transformOptions: {
         enableImplicitConversion: true,
@@ -55,6 +56,18 @@ async function bootstrap() {
           errors: detailedErrors, // THIS IS THE KEY: The array of structured, detailed errors
         });
       },
+    }),
+  );
+
+  // IMPORTANT for webhooks: Configure body parser to get raw body
+  app.use(
+    json({
+      verify: (req: any, res, buf) => {
+        if (req.originalUrl === '/payments/webhooks') {
+          req.rawBody = buf;
+        }
+      },
+      limit: '10mb',
     }),
   );
 

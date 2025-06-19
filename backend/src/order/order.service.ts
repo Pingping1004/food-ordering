@@ -3,13 +3,14 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { CreateOrderDto, CreateOrderMenusDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { PrismaService } from 'prisma/prisma.service';
 import * as fs from 'fs/promises';
 import { createHash } from 'crypto';
-import { IsPaid, OrderStatus } from '@prisma/client';
+import { IsPaid, OrderStatus, Order } from '@prisma/client';
 
 @Injectable()
 export class OrderService {
@@ -72,7 +73,7 @@ export class OrderService {
     );
 
     const deliverTime = new Date(createOrderDto.deliverAt);
-    const orderSlipUrl = `uploads/order-slips/${file.filename}`;
+    const orderSlipUrl = `uploads/paymentQR/${file.filename}`;
 
     // Step 1.1: Hashing and validating unique payment slip
     const slipHash = await this.hashingFile(file);
@@ -186,6 +187,61 @@ export class OrderService {
         isDelay: updateOrderDto.isDelay,
       },
     });
+  }
+
+  async updateOrderPaymentStatus(
+orderId: string, omiseChargeStatus: string, omiseChargeId: string, amount: number, failureMessage?: string,
+  ): Promise<Order> {
+    console.log(`Attempting to update payment status for order ${orderId} based on Omise status: ${omiseChargeStatus}`);
+
+    let newOrderStatus: OrderStatus;
+    let isOrderPaidValue: IsPaid;
+
+    switch (omiseChargeStatus) {
+      case 'successful':
+        newOrderStatus = OrderStatus.receive;
+        isOrderPaidValue = IsPaid.paid;
+        break;
+
+      case 'failied': 
+        newOrderStatus = OrderStatus.rejected;
+        isOrderPaidValue = IsPaid.unpaid;
+        break;
+
+      case 'pending':
+        newOrderStatus = OrderStatus.rejected;
+        isOrderPaidValue = IsPaid.processing;
+        break;
+
+      case 'reversed':
+        newOrderStatus = OrderStatus.rejected;
+        isOrderPaidValue = IsPaid.rejected;
+        break;
+
+      default: 
+        console.warn(`Unhandled Omise charge status for order ${orderId}: ${omiseChargeStatus}. Defaulting to PENDING.`);
+        newOrderStatus = OrderStatus.rejected;
+        isOrderPaidValue = IsPaid.unpaid;
+    }
+
+    try {
+      const updatedOrder = await this.prisma.order.update({
+        where: { orderId },
+        data: {
+          status: newOrderStatus,
+          isPaid: isOrderPaidValue,
+          omiseChargeId: omiseChargeId,
+          failureReason: failureMessage,
+        },
+      });
+
+      console.log(`Order ${orderId} payment status updated to ${newOrderStatus} (isPaid: ${isOrderPaidValue}).`);
+      return updatedOrder;
+    } catch (error) {
+      console.error(`Failed to update order ${orderId} payment status in DB: ${error.message}`, error.stack);
+      // Re-throw the error so the controller knows the DB update failed
+      throw new InternalServerErrorException(`Failed to update order payment status in database.`);
+    }
   }
 
   async removeOrder(orderId: string) {

@@ -122,6 +122,9 @@ model Order {
   isDelay Boolean @default(false)
   refCode String?
 
+  omiseChargeId String? @unique
+  failureReason String?
+
   restaurantId  String
   restaurant  Restaurant  @relation("restaurantToOrder", fields: [restaurantId], references: [restaurantId], onDelete: Cascade)
   
