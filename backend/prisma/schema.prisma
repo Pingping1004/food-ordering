@@ -13,6 +13,14 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum PaymentMethodType {
+  promptpay
+  kbank
+  krungsri
+  scb
+  bbl
+}
+
 enum OrderStatus {
   receive
   cooking

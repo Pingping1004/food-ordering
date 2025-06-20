@@ -21,42 +21,6 @@ import Omise from 'omise';
 export class OrderController {
   constructor(private readonly orderService: OrderService) { }
 
-  // @UseInterceptors(FileInterceptor('orderSlip', {
-  //   storage: diskStorage({
-  //     destination: './uploads/paymentQR',
-  //     filename: editFileName,
-  //   }),
-  //   // fileFilter: imageFileFilter,
-  // }))
-
-  // async createOrder(
-  //   @Body() createOrderDto: CreateOrderDto,
-  //   @UploadedFile() file: Express.Multer.File
-  // ) {
-  //   const uploadedFilePath = file.path;
-
-  //   try {
-  //     const orderMenuString = createOrderDto.orderMenus;
-  //     // Only throw if the file or a direct link for menuImg is absolutely mandatory
-  //     if (!file) throw new BadRequestException('Menu image or direct URL is required.');
-
-  //     const result = await this.orderService.createOrder(createOrderDto, file);
-  //     return result;
-  //   } catch (error) {
-  //     if (uploadedFilePath) {
-  //       try {
-  //         await fs.unlink(uploadedFilePath);
-  //         console.log('Controller: Successfully delete temporary uploaded file: ', uploadedFilePath);
-  //       } catch (fileDeleteError) {
-  //         console.error('Controller: Failed to delete uploaded file ', uploadedFilePath, ' : ', fileDeleteError);
-  //       }
-  //     }
-
-  //     console.error('Create menu controller failed: ', error);
-  //     throw error;
-  //   }
-  // }
-
   @Public()
   @Post('omise')
   async createOrder(@Body() createOrderDto: CreateOrderDto) {

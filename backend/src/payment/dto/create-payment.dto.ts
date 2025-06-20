@@ -1,5 +1,6 @@
+import { PaymentMethodType } from "@prisma/client";
 import { Type } from "class-transformer";
-import { IsNotEmpty, IsNumber, IsOptional, Min, IsString } from "class-validator";
+import { IsNotEmpty, IsNumber, IsOptional, Min, IsString, IsEnum } from "class-validator";
 
 export class CreatePaymentDto {
     @IsNotEmpty()
@@ -17,8 +18,8 @@ export class CreatePaymentDto {
     currency?: string;
 
     @IsNotEmpty()
-    @IsString()
-    bankType: string;
+    @IsEnum(PaymentMethodType)
+    paymentMethod: string;
 
     @IsOptional()
     @IsString()

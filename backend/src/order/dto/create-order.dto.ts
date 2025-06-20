@@ -16,7 +16,7 @@ import {
   ArrayMinSize,
   ArrayMaxSize
 } from "class-validator";
-import { IsPaid, OrderStatus } from "@prisma/client";
+import { PaymentMethodType, OrderStatus } from "@prisma/client";
 import { CreatePaymentDto } from "src/payment/dto/create-payment.dto";
 
 console.log('--- CORRECT CreateOrderMenusDto file is being loaded! ---');
@@ -82,25 +82,6 @@ export class CreateOrderDto {
   @IsBoolean()
   isDelay?: boolean;
 
-  // @IsEnum(IsPaid)
-  // @IsNotEmpty()
-  // @ValidateNested({ each: true })
-  // @IsIn(['unpaid'])
-  // isPaid: IsPaid;
-
-  // @Transform(({ value }) => {
-  //   try {
-  //     const parsed = JSON.parse(value);
-  //     if (!Array.isArray(parsed)) {
-  //       throw new Error('orderMenus must be a JSON array string.');
-  //     }
-
-  //     // Manually convert each plain object into class instance
-  //     return parsed.map(item => plainToInstance(CreateOrderMenusDto, item));
-  //   } catch (e) {
-  //     throw new BadRequestException('orderMenus must be a valid JSON array string.');
-  //   }
-  // })
   @IsArray()
   @IsNotEmpty({ message: 'Order must contain at least one menu item' })
   @ArrayMinSize(1, { message: 'Order must contain at least one menu item' })
@@ -117,8 +98,8 @@ export class CreateOrderDto {
   omiseChargeId?: string;
 
   @IsOptional()
-  @IsString()
-  paymentMethod?: string;
+  @IsEnum(PaymentMethodType)
+  paymentMethod?: PaymentMethodType;
 
   @IsOptional() // Could be null if no payment initiated or before first update
   @IsString() // Use string as Omise provides various statuses

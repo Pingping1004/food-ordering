@@ -1,8 +1,8 @@
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
-import { PrismaService } from 'prisma/prisma.service';
-import { OrderService } from '../order/order.service';
+import { PaymentMethodType } from '@prisma/client';
 import * as  crypto from 'crypto'
 import * as Omise from 'omise';
+import * as OmiseTypes from 'omise';
 import { ConfigService } from '@nestjs/config';
 import { startOfDay, endOfDay } from 'date-fns';
 import { CreatePaymentDto } from './dto/create-payment.dto';
@@ -11,7 +11,7 @@ import { CreatePaymentDto } from './dto/create-payment.dto';
 export class PaymentService {
   private readonly logger = new Logger(PaymentService.name);
   private omiseClient: Omise.IOmise;
-  
+
   constructor(
     private configService: ConfigService,
   ) {
@@ -23,32 +23,75 @@ export class PaymentService {
     });
   }
 
-  async createMobileBankingCharge(
+  // async createPromptPayCharge(
+  //   amount: number,
+  //   paymentMethodType: string,
+  //   returnUri: string,
+  //   orderId: string,
+  // ): Promise<Omise.Charges.ICharge> {
+  //   try {
+  //     const charge = await this.omiseClient.charges.create({
+  //       amount: amount * 100,
+  //       currency: 'THB',
+  //       source: {
+  //         type: paymentMethodType,
+  //         amount: amount * 100,
+  //         currency: 'THB',
+  //       },
+  //       return_uri: returnUri,
+  //       metadata: {
+  //         order_id: orderId,
+  //       },
+  //       webhook_endpoints: ["https://fefb-124-120-2-163.ngrok-free.app/webhooks/omise"],
+  //     });
+
+  //     return charge;
+  //   } catch (error) {
+  //     this.logger.error(`Failed to create mobile banking charge for order ${orderId}: ${error.message || error}`);
+  //     throw new InternalServerErrorException('Failed to process mobile banking payment.');
+  //   }
+  // }
+
+  async createPromptPayCharge(
     amount: number,
-    bankType: string,
+    paymentMethodType: PaymentMethodType,
     returnUri: string,
     orderId: string,
-  ): Promise<Omise.Charges.ICharge> {
+  ): Promise<OmiseTypes.Charges.ICharge> {
     try {
-      const charge = await this.omiseClient.charges.create({
-        amount: amount * 100,
-        currency: 'THB',
-        source: {
-          type: bankType,
-          amount: amount * 100,
+      type ChargeCreateOptions = Parameters<typeof this.omiseClient.charges.create>[0];
+      const amountInStang = amount * 100
+      const chargeOptions: ChargeCreateOptions = {
+          amount: amountInStang,
           currency: 'THB',
-        },
-        return_uri: returnUri,
-        metadata: {
-          order_id: orderId,
-        },
-        webhook_endpoints: ["https://fefb-124-120-2-163.ngrok-free.app/webhooks/omise"],
-      });
+          return_uri: returnUri,
+          metadata: {
+            order_id: orderId,
+          },
+          webhook_endpoints: ["https://fefb-124-120-2-163.ngrok-free.app/webhooks/omise"],
+      };
 
+      if (paymentMethodType === 'promptpay') {
+        chargeOptions.source = {
+          type: 'promptpay',
+        } as any;
+      } else if (paymentMethodType.startsWith('mobile_banking')) {
+        chargeOptions.source = {
+          type: paymentMethodType,
+          amount: amountInStang,
+          currency: 'THB',
+        };
+      } else {
+        console.warn('Attempted to create charge with unhandled payment method type');
+        throw new Error('Unsupported payment method type');
+      }
+
+      const charge = await this.omiseClient.charges.create(chargeOptions);
+      console.log('Payment charge object: ', charge);
       return charge;
     } catch (error) {
-      this.logger.error(`Failed to create mobile banking charge for order ${orderId}: ${error.message || error}`);
-      throw new InternalServerErrorException('Failed to process mobile banking payment.');
+      console.error('Failed to create Payment charge: ', error.message);
+      throw new InternalServerErrorException('Failed to process payment');
     }
   }
 
