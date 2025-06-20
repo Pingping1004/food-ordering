@@ -30,16 +30,14 @@ export class PaymentService {
     orderId: string,
   ): Promise<Omise.Charges.ICharge> {
     try {
-      const source = await this.omiseClient.sources.create({
-        type: bankType,
-        amount: amount,
-        currency: 'THB',
-      });
-
       const charge = await this.omiseClient.charges.create({
-        amount: amount,
+        amount: amount * 100,
         currency: 'THB',
-        source: source.id,
+        source: {
+          type: bankType,
+          amount: amount * 100,
+          currency: 'THB',
+        },
         return_uri: returnUri,
         metadata: {
           order_id: orderId,

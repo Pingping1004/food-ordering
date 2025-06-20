@@ -1,7 +1,7 @@
 import { Type, Transform } from "class-transformer";
 import {
   IsArray,
-  isEnum,
+  IsBoolean,
   IsDate,
   IsEnum,
   IsNotEmpty,
@@ -77,6 +77,10 @@ export class CreateOrderDto {
   @IsOptional()
   @IsString()
   details?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isDelay?: boolean;
 
   // @IsEnum(IsPaid)
   // @IsNotEmpty()

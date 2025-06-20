@@ -164,7 +164,7 @@ export class OrderService {
           totalAmount: calculatedTotalAmount,
           orderMenus: {
             create: createOrderDto.orderMenus.map(item => ({
-              menuId: item.menuId,
+              // menuId: item.menuId,
               quantity: item.quantity,
               menuName: item.menuName,
               unitPrice: item.unitPrice,
@@ -183,7 +183,7 @@ export class OrderService {
       let charge;
 
       try {
-        const frontendReturnUri = `http://localhost:3000/user/order/${order.orderId}`;
+        const frontendReturnUri = `http://localhost:3000/user/order/done/${order.orderId}`;
 
         charge = await this.paymentService.createMobileBankingCharge(
           calculatedTotalAmount,

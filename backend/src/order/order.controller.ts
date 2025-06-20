@@ -21,8 +21,6 @@ import Omise from 'omise';
 export class OrderController {
   constructor(private readonly orderService: OrderService) { }
 
-  @Public()
-  @Post('omise')
   // @UseInterceptors(FileInterceptor('orderSlip', {
   //   storage: diskStorage({
   //     destination: './uploads/paymentQR',
@@ -59,6 +57,8 @@ export class OrderController {
   //   }
   // }
 
+  @Public()
+  @Post('omise')
   async createOrder(@Body() createOrderDto: CreateOrderDto) {
     try {
       const result = await this.orderService.createOrderWithPayment(createOrderDto);
