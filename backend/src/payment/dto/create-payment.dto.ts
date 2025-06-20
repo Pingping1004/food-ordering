@@ -24,4 +24,8 @@ export class CreatePaymentDto {
     @IsOptional()
     @IsString()
     platformType: string;
+
+    @IsString()
+    @IsNotEmpty()
+    qrDownloadUri: string;
 }

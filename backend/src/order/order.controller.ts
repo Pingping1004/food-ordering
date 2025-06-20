@@ -26,6 +26,7 @@ export class OrderController {
   async createOrder(@Body() createOrderDto: CreateOrderDto) {
     try {
       const result = await this.orderService.createOrderWithPayment(createOrderDto);
+      console.log('Result object: ', result);
 
       return {
         message: 'Order created and payment initiated successfully',
@@ -33,6 +34,7 @@ export class OrderController {
         chargeId: result.chargeId,
         authorizeUri: result.authorizeUri,
         status: result.status,
+        qrDownloadUri: result.qrDownloadUri,
       };
     } catch (error) {
       console.error('Error in createOrder controller function: ', error.message, error.stack);

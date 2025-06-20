@@ -131,6 +131,7 @@ export class OrderService {
           chargeId: charge.id,
           authorizeUri: charge.authorize_uri,
           status: charge.status,
+          qrDownloadUri: charge.source?.scannable_code?.image?.download_uri || null,
         };
       } catch (paymentError) {
         console.error('Error initiating payment with Omise: ', paymentError.message, paymentError.stack);
