@@ -1,8 +1,7 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { MenuService } from './menu.service';
 import { MenuController } from './menu.controller';
 import { PrismaService } from '../../prisma/prisma.service';
-import { RestaurantService } from '../restaurant/restaurant.service';
 import { RestaurantModule } from '../restaurant/restaurant.module';
 import { MulterModule } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -23,7 +22,7 @@ import { OrderModule } from 'src/order/order.module';
     }),
   ],
   controllers: [MenuController],
-  providers: [MenuService, PrismaService, RestaurantService],
+  providers: [MenuService, PrismaService],
   exports: [MenuService],
 })
 export class MenuModule { }

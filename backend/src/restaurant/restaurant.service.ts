@@ -10,7 +10,7 @@ export class RestaurantService {
   constructor(
     private prisma: PrismaService,
     private orderService: OrderService,
-  ) { }
+  ) {}
 
   async createRestaurant(
     createRestaurantDto: CreateRestaurantDto,

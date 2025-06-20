@@ -19,4 +19,8 @@ export class CreatePaymentDto {
     @IsNotEmpty()
     @IsString()
     bankType: string;
+
+    @IsOptional()
+    @IsString()
+    platformType: string;
 }

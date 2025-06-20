@@ -1,20 +1,23 @@
 import { Type, Transform } from "class-transformer";
-import { 
-  IsArray, 
-  IsBoolean, 
-  IsDate, 
-  IsEnum, 
-  IsNotEmpty, 
-  IsNumber, 
-  IsOptional, 
-  IsPositive, 
-  IsString, 
-  IsUUID, 
-  Min, 
-  ValidateNested } from "class-validator";
+import {
+  IsArray,
+  isEnum,
+  IsDate,
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  IsString,
+  IsUUID,
+  Min,
+  ValidateNested,
+  IsIn,
+  ArrayMinSize,
+  ArrayMaxSize
+} from "class-validator";
 import { IsPaid, OrderStatus } from "@prisma/client";
-import { BadRequestException } from "@nestjs/common";
-import { plainToInstance } from "class-transformer";
+import { CreatePaymentDto } from "src/payment/dto/create-payment.dto";
 
 console.log('--- CORRECT CreateOrderMenusDto file is being loaded! ---');
 
@@ -39,15 +42,13 @@ export class CreateOrderMenusDto {
   @Type(() => Number)
   unitPrice: number;
 
-  @IsNumber()
-  @IsNotEmpty()
-  @IsPositive()
-  @Type(() => Number)
-  totalPrice: number;
-
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  menuImg: string;
+  menuImg?: string;
+
+  @IsOptional()
+  @IsString()
+  details?: string;
 }
 
 export class CreateOrderDto {
@@ -77,28 +78,45 @@ export class CreateOrderDto {
   @IsString()
   details?: string;
 
-  @IsBoolean()
+  // @IsEnum(IsPaid)
+  // @IsNotEmpty()
+  // @ValidateNested({ each: true })
+  // @IsIn(['unpaid'])
+  // isPaid: IsPaid;
+
+  // @Transform(({ value }) => {
+  //   try {
+  //     const parsed = JSON.parse(value);
+  //     if (!Array.isArray(parsed)) {
+  //       throw new Error('orderMenus must be a JSON array string.');
+  //     }
+
+  //     // Manually convert each plain object into class instance
+  //     return parsed.map(item => plainToInstance(CreateOrderMenusDto, item));
+  //   } catch (e) {
+  //     throw new BadRequestException('orderMenus must be a valid JSON array string.');
+  //   }
+  // })
+  @IsArray()
+  @IsNotEmpty({ message: 'Order must contain at least one menu item' })
+  @ArrayMinSize(1, { message: 'Order must contain at least one menu item' })
+  @ArrayMaxSize(10, { message: 'Order cannot contain more than 10 different items' })
+  @ValidateNested({ each: true })
+  @Type(() => CreateOrderMenusDto)
+  orderMenus: CreateOrderMenusDto[];
+
   @IsNotEmpty()
-  @Type(() => Boolean)
-  isPaid: boolean;
+  paymentDetails: CreatePaymentDto;
 
-  @Transform(({ value }) => {
-  try {
-    const parsed = JSON.parse(value);
-    if (!Array.isArray(parsed)) {
-      throw new Error('orderMenus must be a JSON array string.');
-    }
+  @IsOptional() // Could be null if no payment initiated or failed initiation
+  @IsString()
+  omiseChargeId?: string;
 
-    // Manually convert each plain object into class instance
-    return parsed.map(item => plainToInstance(CreateOrderMenusDto, item));
-  } catch (e) {
-    throw new BadRequestException('orderMenus must be a valid JSON array string.');
-  }
-})
-@IsArray()
-@IsNotEmpty({ message: 'Order must contain at least one menu item' })
-@ValidateNested({ each: true })
-@Type(() => CreateOrderMenusDto)
-orderMenus: CreateOrderMenusDto[];
+  @IsOptional()
+  @IsString()
+  paymentMethod?: string;
 
+  @IsOptional() // Could be null if no payment initiated or before first update
+  @IsString() // Use string as Omise provides various statuses
+  paymentGatewayStatus?: string;
 }

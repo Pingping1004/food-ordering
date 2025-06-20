@@ -11,10 +11,14 @@ import { PrismaService } from 'prisma/prisma.service';
 import * as fs from 'fs/promises';
 import { createHash } from 'crypto';
 import { IsPaid, OrderStatus, Order } from '@prisma/client';
+import { PaymentService } from 'src/payment/payment.service';
 
 @Injectable()
 export class OrderService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private paymentService: PaymentService,
+  ) { }
 
   async validateExisting(params: {
     restaurantId: string;
@@ -51,90 +55,205 @@ export class OrderService {
     return createHash('sha256').update(buffer).digest('hex');
   }
 
-  async validateDuplicateSlip(slipHash: string) {
-    const existingSlip = await this.prisma.order.findUnique({
-      where: { slipHash },
+  // async createOrder(createOrderDto: CreateOrderDto, file: Express.Multer.File) {
+  //   console.log(
+  //     'Incoming createOrderDto:',
+  //     JSON.stringify(createOrderDto, null, 2),
+  //   );
+  //   console.log(
+  //     'Incoming createOrderDto.orderMenus:',
+  //     JSON.stringify(createOrderDto.orderMenus, null, 2),
+  //   );
+
+  //   const deliverTime = new Date(createOrderDto.deliverAt);
+  //   const orderSlipUrl = `uploads/paymentQR/${file.filename}`;
+
+  //   // Step 1.1: Hashing and validating unique payment slip
+  //   const slipHash = await this.hashingFile(file);
+  //   await this.validateDuplicateSlip(slipHash);
+
+  //   // Step 1: Validate deliver time
+  //   if (isNaN(deliverTime.getTime()))
+  //     throw new BadRequestException('รูปแบบของการตั้งเวลาจัดส่งไม่ถูกต้อง');
+
+  //   const currentTime = new Date();
+  //   if (deliverTime <= currentTime)
+  //     throw new BadRequestException(
+  //       'ช่วงเวลาในการรับออเดอร์ได้ผ่านไปแล้ว โปรดตั้งเวลาในอนาคต',
+  //     );
+
+  //   // Step 2: Validate orderMenus relate to restaurant and menu
+  //   // and map them to orderMenus
+
+  //   const orderMenusArray =
+  //     createOrderDto.orderMenus as unknown as CreateOrderMenusDto[];
+
+  //   if (!Array.isArray(orderMenusArray) || orderMenusArray.length === 0) {
+  //     throw new BadRequestException('คุณต้องเลือกเมนูก่อนทำการสั่งซื้อ')
+  //   }
+
+  //   await this.validateExisting({
+  //     restaurantId: createOrderDto.restaurantId,
+  //     orderMenus: createOrderDto.orderMenus as unknown as CreateOrderMenusDto[],
+  //   });
+
+  //   const mappedOrderMenus = orderMenusArray.map((menu) => ({
+  //     quantity: menu.quantity,
+  //     menuName: menu.menuName,
+  //     unitPrice: menu.unitPrice,
+  //     totalPrice: menu.quantity * menu.unitPrice,
+  //     menuId: menu.menuId,
+  //     menuImg: menu.menuImg,
+  //   }));
+
+  //   const newOrder = {
+  //     data: {
+  //       status: OrderStatus.receive,
+  //       orderSlip: orderSlipUrl,
+  //       restaurantId: createOrderDto.restaurantId,
+  //       isPaid: createOrderDto.isPaid ? IsPaid.paid : IsPaid.unpaid,
+  //       slipHash,
+  //       deliverAt: new Date(createOrderDto.deliverAt),
+  //       orderAt: new Date(createOrderDto.orderAt),
+  //       orderMenus: {
+  //         create: mappedOrderMenus,
+  //       },
+  //     },
+  //     include: { orderMenus: true },
+  //   };
+
+  //   const result = await this.prisma.order.create(newOrder);
+
+  //   // Step 4: Return newOrder object to controller
+  //   return { result, message: 'Create order successfully', fileInfo: file };
+  // }
+
+  async createOrderWithPayment(createOrderDto: CreateOrderDto) {
+    let calculatedTotalAmount = 0;
+
+    for (const item of createOrderDto.orderMenus) {
+      const existingMenu = await this.prisma.menu.findUnique({
+        where: { menuId: item.menuId },
     });
 
-    if (existingSlip)
-      throw new BadRequestException('คุณได้อัปโหลดสลิปนี้ไปแล้ว');
+      if (!existingMenu) throw new NotFoundException(`Menu item with ID ${item.menuName} not found.`);
+      if (existingMenu.price !== item.unitPrice) {
+        console.warn(`Client sent mismatched unitPrice for ${item.menuId}. DB: ${existingMenu.price}, Client: ${item.unitPrice}`)
+      }
 
-    // Internet banking payment logic...
-  }
-
-  async createOrder(createOrderDto: CreateOrderDto, file: Express.Multer.File) {
-    console.log(
-      'Incoming createOrderDto:',
-      JSON.stringify(createOrderDto, null, 2),
-    );
-    console.log(
-      'Incoming createOrderDto.orderMenus:',
-      JSON.stringify(createOrderDto.orderMenus, null, 2),
-    );
-
-    const deliverTime = new Date(createOrderDto.deliverAt);
-    const orderSlipUrl = `uploads/paymentQR/${file.filename}`;
-
-    // Step 1.1: Hashing and validating unique payment slip
-    const slipHash = await this.hashingFile(file);
-    await this.validateDuplicateSlip(slipHash);
-
-    // Step 1: Validate deliver time
-    if (isNaN(deliverTime.getTime()))
-      throw new BadRequestException('รูปแบบของการตั้งเวลาจัดส่งไม่ถูกต้อง');
-
-    const currentTime = new Date();
-    if (deliverTime <= currentTime)
-      throw new BadRequestException(
-        'ช่วงเวลาในการรับออเดอร์ได้ผ่านไปแล้ว โปรดตั้งเวลาในอนาคต',
-      );
-
-    // Step 2: Validate orderMenus relate to restaurant and menu
-    // and map them to orderMenus
-
-    const orderMenusArray =
-      createOrderDto.orderMenus as unknown as CreateOrderMenusDto[];
-
-    if (!Array.isArray(orderMenusArray) || orderMenusArray.length === 0) {
-      throw new BadRequestException('คุณต้องเลือกเมนูก่อนทำการสั่งซื้อ')
+      calculatedTotalAmount += item.unitPrice * item.quantity;
     }
 
-    await this.validateExisting({
-      restaurantId: createOrderDto.restaurantId,
-      orderMenus: createOrderDto.orderMenus as unknown as CreateOrderMenusDto[],
-    });
+    const providedTotalAmount = createOrderDto.orderMenus
+      .map(item => (item as any).totalPrice || (item.unitPrice * item.quantity))
+      .reduce((sum, price) => sum + price, 0);
 
-    const mappedOrderMenus = orderMenusArray.map((menu) => ({
-      quantity: menu.quantity,
-      menuName: menu.menuName,
-      unitPrice: menu.unitPrice,
-      totalPrice: menu.quantity * menu.unitPrice,
-      menuId: menu.menuId,
-      menuImg: menu.menuImg,
-    }));
+    if (calculatedTotalAmount !== providedTotalAmount) {
+      throw new InternalServerErrorException('Calculated amount does not match provided amount.');
+    }
 
-    const newOrder = {
-      data: {
-        status: OrderStatus.receive,
-        orderSlip: orderSlipUrl,
-        restaurantId: createOrderDto.restaurantId,
-        isPaid: createOrderDto.isPaid ? IsPaid.paid : IsPaid.unpaid,
-        slipHash,
-        deliverAt: new Date(createOrderDto.deliverAt),
-        orderAt: new Date(createOrderDto.orderAt),
-        orderMenus: {
-          create: mappedOrderMenus,
+    return await this.prisma.$transaction(async (tx) => {
+      const order = await tx.order.create({
+        data: {
+          restaurantId: createOrderDto.restaurantId,
+          orderAt: createOrderDto.orderAt,
+          deliverAt: createOrderDto.deliverAt,
+          isPaid: IsPaid.unpaid,
+          paymentMethodType: createOrderDto.paymentDetails.bankType,
+          paymentGatewayStatus: 'pending',
+          totalAmount: calculatedTotalAmount,
+          orderMenus: {
+            create: createOrderDto.orderMenus.map(item => ({
+              menuId: item.menuId,
+              quantity: item.quantity,
+              menuName: item.menuName,
+              unitPrice: item.unitPrice,
+              menuImg: item.menuImg,
+              details: item.details,
+              totalPrice: item.unitPrice * item.quantity,
+              menu: { connect: { menuId: item.menuId } },
+            })),
+          },
         },
-      },
-      include: { orderMenus: true },
-    };
+        include: {
+          orderMenus: true
+        }
+      });
 
-    const result = await this.prisma.order.create(newOrder);
+      let charge;
 
-    // Step 4: Return newOrder object to controller
-    return { result, message: 'Create order successfully', fileInfo: file };
+      try {
+        const frontendReturnUri = `http://localhost:3000/user/order/${order.orderId}`;
+
+        charge = await this.paymentService.createMobileBankingCharge(
+          calculatedTotalAmount,
+          createOrderDto.paymentDetails.bankType,
+          frontendReturnUri,
+          order.orderId,
+        );
+
+        const updatedOrder = await tx.order.update({
+          where: { orderId: order.orderId },
+          data: {
+            omiseChargeId: charge.id,
+            paymentGatewayStatus: charge.status,
+          },
+        });
+
+        return {
+          orderId: updatedOrder.orderId,
+          chargeId: charge.id,
+          authorizeUri: charge.authorize_uri,
+          status: charge.status,
+        };
+      } catch (paymentError) {
+        console.error('Error initiating payment with Omise: ', paymentError.message, paymentError.stack);
+
+        await tx.order.update({
+          where: { orderId: order.orderId },
+          data: {
+            paymentGatewayStatus: 'failed_initiation',
+            omiseChargeId: null,
+
+          },
+        });
+
+        throw new InternalServerErrorException('Payment initiation failed. Please try again.');
+      }
+    });
   }
 
+  async handleWebhookUpdate(omiseChargeId: string, omiseStatus: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { omiseChargeId: omiseChargeId }
+    });
+
+    if (!order) {
+      console.warn('Order not found for Omise charge ID: ', omiseChargeId);
+      return;
+    }
+
+    let newIsPaidStatus: IsPaid;
+
+    if (omiseStatus === 'successful') {
+      newIsPaidStatus = IsPaid.paid;
+      console.log(`Order ${order.orderId} payment status updated to PAID via webhook.`);
+    } else if (omiseStatus === 'failed' || omiseStatus === 'expired') {
+      newIsPaidStatus = IsPaid.rejected;
+      console.warn(`Order ${order.orderId} payment status updated to FAILED via webhook.`);
+    } else {
+      console.log(`Order ${order.orderId}: Received Omise status "${omiseStatus}", no change to isPaid.`);
+      newIsPaidStatus = order.isPaid;
+    }
+
+    await this.prisma.order.update({
+      where: { orderId: order.orderId },
+      data: {
+        paymentGatewayStatus: omiseStatus, // Update with the status directly from Omise
+        isPaid: newIsPaidStatus, // Update your internal simplified status
+      },
+    });
+  }
   async findAllOrders() {
     return this.prisma.order.findMany();
   }
@@ -171,26 +290,26 @@ export class OrderService {
     }
   }
 
-  async updateOrder(orderId: string, updateOrderDto: UpdateOrderDto) {
-    // Find order with validate restaurant and menu logic
-    await this.findOneOrder(orderId);
+  // async updateOrder(orderId: string, updateOrderDto: UpdateOrderDto) {
+  //   // Find order with validate restaurant and menu logic
+  //   await this.findOneOrder(orderId);
 
-    if (!updateOrderDto.restaurantId)
-      throw new Error('restaurantId is required');
+  //   if (!updateOrderDto.restaurantId)
+  //     throw new Error('restaurantId is required');
 
-    return this.prisma.order.update({
-      where: { orderId },
-      data: {
-        status: updateOrderDto.status,
-        deliverAt: updateOrderDto.deliverAt,
-        isPaid: updateOrderDto.isPaid !== undefined ? (updateOrderDto.isPaid ? IsPaid.paid : IsPaid.unpaid) : undefined,
-        isDelay: updateOrderDto.isDelay,
-      },
-    });
-  }
+  //   return this.prisma.order.update({
+  //     where: { orderId },
+  //     data: {
+  //       status: updateOrderDto.status,
+  //       deliverAt: updateOrderDto.deliverAt,
+  //       isPaid: updateOrderDto.isPaid !== undefined ? (updateOrderDto.isPaid ? IsPaid.paid : IsPaid.unpaid) : undefined,
+  //       isDelay: updateOrderDto.isDelay,
+  //     },
+  //   });
+  // }
 
   async updateOrderPaymentStatus(
-orderId: string, omiseChargeStatus: string, omiseChargeId: string, amount: number, failureMessage?: string,
+    orderId: string, omiseChargeStatus: string, omiseChargeId: string, amount: number, failureMessage?: string,
   ): Promise<Order> {
     console.log(`Attempting to update payment status for order ${orderId} based on Omise status: ${omiseChargeStatus}`);
 
@@ -203,7 +322,7 @@ orderId: string, omiseChargeStatus: string, omiseChargeId: string, amount: numbe
         isOrderPaidValue = IsPaid.paid;
         break;
 
-      case 'failied': 
+      case 'failied':
         newOrderStatus = OrderStatus.rejected;
         isOrderPaidValue = IsPaid.unpaid;
         break;
@@ -218,7 +337,7 @@ orderId: string, omiseChargeStatus: string, omiseChargeId: string, amount: numbe
         isOrderPaidValue = IsPaid.rejected;
         break;
 
-      default: 
+      default:
         console.warn(`Unhandled Omise charge status for order ${orderId}: ${omiseChargeStatus}. Defaulting to PENDING.`);
         newOrderStatus = OrderStatus.rejected;
         isOrderPaidValue = IsPaid.unpaid;

@@ -1,10 +1,10 @@
-import { Module, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
+import { Module, NestModule, OnModuleInit, MiddlewareConsumer, RequestMethod, Type } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { HttpExceptionFilter } from './common/http-exception.filter';
 import { CatchEverythingFilter } from './common/catch-everything.filter';
 import { RequestLoggerMiddleware } from 'logger.middleware';
 import { MulterModule } from '@nestjs/platform-express';
-import { ServeStaticModule } from '@nestjs/serve-static'
+import configuration from './config/configuration';
 
 // Service and controller
 import { AppController } from './app.controller';
@@ -23,6 +23,7 @@ import { OrderController } from './order/order.controller';
 import { PaymentModule } from './payment/payment.module';
 import { PaymentService } from './payment/payment.service';
 import { PaymentController } from './payment/payment.controller';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
@@ -32,12 +33,19 @@ import { PaymentController } from './payment/payment.controller';
     OrderModule,
     PaymentModule,
 
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [configuration],
+      envFilePath: '.env',
+    }),
+
     MulterModule.registerAsync({
       useFactory: () => ({
         dest: './uploads',
         limits: { fileSize: 5 * 1024 * 1024 },
       }),
     }),
+
   ],
   controllers: [AppController, RestaurantController, MenuController, OrderController, PaymentController],
   providers: [

@@ -6,9 +6,9 @@ import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import * as express from 'express';
 import { json } from 'express';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
-  console.log('----- NESTJS MAIN.TS LOADED - VERSION 3.14 -----');
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { cors: true });
 
   const uploadsDir = join(process.cwd(), 'uploads');
@@ -88,6 +88,9 @@ async function bootstrap() {
     methods: 'GET, HEAD, PUT, PATCH, POST, DELETE',
     credentials: true,
   })
-  await app.listen(process.env.PORT ?? 5000);
+
+  const port = process.env.PORT || 5000;
+  console.log('NESTJS is running on port: ', port);
+  await app.listen(port);
 }
 bootstrap();

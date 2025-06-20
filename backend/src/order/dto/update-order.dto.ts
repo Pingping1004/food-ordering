@@ -1,78 +1,105 @@
-import { IsOptional, IsString, IsNumber, IsEnum, IsDate, IsArray, IsBoolean, IsPositive, ValidateNested } from 'class-validator'
-import { Type } from 'class-transformer';
-import { PartialType, OmitType } from '@nestjs/mapped-types';
-import { CreateOrderDto, CreateOrderMenusDto } from './create-order.dto';
-import { OrderStatus, OrderMenu, IsPaid } from '@prisma/client';
+import { Type, Transform } from "class-transformer";
+import {
+  IsArray,
+  IsDate,
+  IsEnum,
+  IsOptional,
+  IsNumber,
+  IsPositive,
+  IsString,
+  IsUUID,
+  Min,
+  ValidateNested,
+  IsIn
+} from "class-validator";
+import { IsPaid, OrderStatus } from "@prisma/client";
+import { BadRequestException } from "@nestjs/common";
+import { plainToInstance } from "class-transformer";
+import { CreatePaymentDto } from "src/payment/dto/create-payment.dto";
 
+console.log('--- CORRECT CreateOrderMenusDto file is being loaded! ---');
 
-export class UpdateOrderMenusDto extends PartialType(CreateOrderMenusDto) {
-    @IsOptional()
-    @IsString()
-    menuId?: string;
+export class UpdateOrderMenusDto {
+  @IsUUID('4', { message: 'menuId must be a valida UUID' })
+  @IsOptional()
+  menuI?: string;
 
-    @IsOptional()
-    @IsNumber()
-    @IsPositive()
-    @Type(() => Number)
-    quantity?: number;
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Type(() => Number)
+  quantity?: number;
 
-    @IsOptional()
-    @IsString()
-    menuName?: string;
+  @IsOptional()
+  @IsString()
+  menuName?: string;
 
-    @IsNumber()
-    @IsOptional()
-    @IsPositive()
-    @Type(() => Number)
-    unitPrice?: number;
+  @IsNumber()
+  @IsOptional()
+  @IsPositive()
+  @Type(() => Number)
+  unitPrice?: number;
 
-    @IsNumber()
-    @IsOptional()
-    @IsPositive()
-    @Type(() => Number)
-    totalPrice?: number;
+  @IsOptional()
+  @IsString()
+  menuImg?: string;
 
-    @IsOptional()
-    @IsString()
-    menuImg?: string;
+  @IsOptional()
+  @IsString()
+  details?: string;
 }
 
-export class UpdateOrderDto extends PartialType(OmitType(CreateOrderDto, ['orderMenus'] as const)) {
-    @IsOptional()
-    @IsEnum(OrderStatus, { each: true })
-    status?: OrderStatus;
+export class UpdateOrderDto {
+  @IsOptional()
+  @IsEnum(OrderStatus)
+  status?: OrderStatus;
 
-    @IsOptional()
-    @IsString()
-    restaurantId?: string;
+  @IsOptional()
+  @IsUUID()
+  restaurantId?: string;
 
-    @IsDate()
-    @IsOptional()
-    orderAt?: Date;
+  @IsDate()
+  @IsOptional()
+  @Type(() => Date)
+  orderAt?: Date;
 
-    @IsDate()
-    @IsOptional()
-    deliverAt?: Date;
+  @IsDate()
+  @IsOptional()
+  @Type(() => Date)
+  deliverAt?: Date;
 
-    @IsOptional()
-    @IsString()
-    orderSlip?: string;
+  @IsOptional()
+  @IsString()
+  orderSlip?: string;
 
-    @IsOptional()
-    @IsString()
-    details?: string;
+  @IsOptional()
+  @IsString()
+  details?: string;
 
-    @IsOptional()
-    @IsBoolean()
-    isPaid?: boolean;
+  @IsEnum(IsPaid)
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @IsIn(['unpaid'])
+  isPaid?: IsPaid;
 
-    @IsBoolean()
-    @IsOptional()
-    isDelay?: boolean;
+  @IsArray()
+  @IsOptional({ message: 'Order must contain at least one menu item' })
+  @ValidateNested({ each: true })
+  @Type(() => UpdateOrderMenusDto)
+  orderMenu?: UpdateOrderMenusDto[];
 
-    @IsArray()
-    @IsOptional()
-    @ValidateNested({ each: true })
-    @Type(() => UpdateOrderMenusDto)
-    orderMenus?: UpdateOrderMenusDto[];
+  @IsOptional()
+  paymentDetail?: CreatePaymentDto;
+
+  @IsOptional() // Could be null if no payment initiated or failed initiation
+  @IsString()
+  omiseChargeId?: string;
+
+  @IsOptional()
+  @IsString()
+  paymentMethod?: string;
+
+  @IsOptional() // Could be null if no payment initiated or before first update
+  @IsString() // Use string as Omise provides various statuses
+  paymentGatewayStatus?: string;
 }

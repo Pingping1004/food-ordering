@@ -1,13 +1,14 @@
-import { Injectable, NotFoundException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, Inject, forwardRef, NotFoundException, InternalServerErrorException } from '@nestjs/common';
 import { CreateMenuDto } from './dto/create-menu.dto';
 import { UpdateMenuDto } from './dto/update-menu.dto';
 import { PrismaService } from 'prisma/prisma.service';
-import { RestaurantService } from '../restaurant/restaurant.service';
+import { RestaurantService } from 'src/restaurant/restaurant.service';
 
 @Injectable()
 export class MenuService {
   constructor(
     private prisma: PrismaService,
+    @Inject(forwardRef(() => RestaurantService))
     private restaurantService: RestaurantService,
   ) { }
 

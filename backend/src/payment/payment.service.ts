@@ -13,8 +13,6 @@ export class PaymentService {
   private omiseClient: Omise.IOmise;
   
   constructor(
-    private prisma: PrismaService,
-    private orderService: OrderService,
     private configService: ConfigService,
   ) {
     const omiseConfig = this.configService.get('omise');
@@ -26,24 +24,27 @@ export class PaymentService {
   }
 
   async createMobileBankingCharge(
-    createPaymentDto: CreatePaymentDto,
+    amount: number,
+    bankType: string,
+    returnUri: string,
+    orderId: string,
   ): Promise<Omise.Charges.ICharge> {
-    const { amount, currency, bankType, orderId } = createPaymentDto;
     try {
       const source = await this.omiseClient.sources.create({
         type: bankType,
         amount: amount,
-        currency: currency ?? "",
+        currency: 'THB',
       });
 
       const charge = await this.omiseClient.charges.create({
         amount: amount,
-        currency: currency ?? "",
+        currency: 'THB',
         source: source.id,
-        return_uri: `${this.configService.get('frontendBaseUrl')}/payment-status?orderId=${orderId}`,
+        return_uri: returnUri,
         metadata: {
           order_id: orderId,
         },
+        webhook_endpoints: ["https://fefb-124-120-2-163.ngrok-free.app/webhooks/omise"],
       });
 
       return charge;
