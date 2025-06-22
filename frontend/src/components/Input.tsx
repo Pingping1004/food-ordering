@@ -11,7 +11,7 @@ const inputVariants = cva(
   {
     variants: {
       variant: {
-        primary: "border-[text-lighter] text-gray-900",
+        primary: "border-color text-gray-900",
         error: "border-danger-main text-danger-main",
         success: "border-success-main text-green-900",
       },

@@ -3,7 +3,7 @@
 import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { editMenuSchema, editMenuSchemaType } from "@/schemas/menuSchema";
+import { editMenuSchema, editMenuSchemaType } from "@/schemas/addMenuSchema";
 import { v4 as uuidv4 } from "uuid";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";

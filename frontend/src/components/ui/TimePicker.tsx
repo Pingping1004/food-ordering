@@ -12,9 +12,9 @@ export function TimePickerInput() {
   });
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2 border-b-2 border-color">
       <label htmlFor="time" className="text-sm noto-sans-regular text-secondary">
-        เลือกเวลารับออเดอร์ AM (ก่อนเที่ยง) / PM (หลังเที่ยง)
+        AM (ก่อนเที่ยง) / PM (หลังเที่ยง)
       </label>
       <input 
         type="time" 
@@ -22,7 +22,7 @@ export function TimePickerInput() {
         value={time}
         onChange={(event) => setTime(event.target.value)}
         step="60"
-        className=""
+        className="py-2"
       />
     </div>
   );

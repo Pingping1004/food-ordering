@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { SubmitHandler, useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { createMenuSchema, createMenuSchemaType } from "@/schemas/menuSchema";
+import { createMenuSchema, createMenuSchemaType } from "@/schemas/addMenuSchema";
 import { v4 as uuidv4 } from "uuid";
 
 import { Input } from "@/components/Input";
