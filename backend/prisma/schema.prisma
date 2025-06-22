@@ -53,6 +53,24 @@ enum RestaurantCategory {
   Noodle
 }
 
+model Payout {
+  payoutId   String  @default(uuid())  @id
+  restaurantRevenue  Int
+  platformFee   Int
+  isPaid  Boolean   @default(false)
+  startDate   DateTime
+  endDate   DateTime
+  paidAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+
+  orderId   String  @unique
+  order   Order   @relation("OrderToPayout", fields: [orderId], references: [orderId])
+
+  restaurantId  String
+  restaurant  Restaurant  @relation("RestaurantPayment", fields: [restaurantId], references: [restaurantId])
+}
+
 model Restaurant {
   restaurantId  String @default(uuid()) @id
   email String @unique
@@ -73,6 +91,8 @@ model Restaurant {
   menus Menu[]  @relation("RestaurantMenus")
 
   orders  Order[]   @relation("restaurantToOrder")
+
+  payout   Payout[]  @relation("RestaurantPayment")
 }
 
 model Menu {
@@ -136,6 +156,8 @@ model Order {
   restaurant  Restaurant  @relation("restaurantToOrder", fields: [restaurantId], references: [restaurantId], onDelete: Cascade)
   
   orderMenus OrderMenu[] @relation("OrderToMenu")
+
+  payout  Payout?   @relation("OrderToPayout")
 
   @@index([restaurantId])
   @@index([status])

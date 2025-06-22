@@ -1,7 +1,7 @@
 import { Module, NestModule, OnModuleInit, MiddlewareConsumer, RequestMethod, Type } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
-import { HttpExceptionFilter } from './common/http-exception.filter';
-import { CatchEverythingFilter } from './common/catch-everything.filter';
+import { HttpExceptionFilter } from './libs/http-exception.filter';
+import { CatchEverythingFilter } from './libs/catch-everything.filter';
 import { RequestLoggerMiddleware } from 'logger.middleware';
 import { MulterModule } from '@nestjs/platform-express';
 import configuration from './config/configuration';
@@ -24,6 +24,7 @@ import { PaymentModule } from './payment/payment.module';
 import { PaymentService } from './payment/payment.service';
 import { PaymentController } from './payment/payment.controller';
 import { ConfigModule } from '@nestjs/config';
+import { PayoutModule } from './payout/payout.module';
 
 @Module({
   imports: [
@@ -45,6 +46,8 @@ import { ConfigModule } from '@nestjs/config';
         limits: { fileSize: 5 * 1024 * 1024 },
       }),
     }),
+
+    PayoutModule,
 
   ],
   controllers: [AppController, RestaurantController, MenuController, OrderController, PaymentController],
