@@ -4,20 +4,24 @@ import {
   Injectable,
   NotFoundException,
   InternalServerErrorException,
+  forwardRef,
+  Inject,
+  ForbiddenException,
 } from '@nestjs/common';
 import { CreateOrderDto, CreateOrderMenusDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { PrismaService } from 'prisma/prisma.service';
-import * as fs from 'fs/promises';
-import { createHash } from 'crypto';
 import { IsPaid, OrderStatus, Order, PaymentMethodType } from '@prisma/client';
 import { PaymentService } from 'src/payment/payment.service';
+import { PayoutService } from 'src/payout/payout.service';
 
 @Injectable()
 export class OrderService {
   constructor(
     private prisma: PrismaService,
     private paymentService: PaymentService,
+    @Inject(forwardRef(() => PayoutService))
+    private payoutService: PayoutService,
   ) { }
 
   async validateExisting(params: {
@@ -50,30 +54,40 @@ export class OrderService {
     );
   }
 
-  async hashingFile(file: Express.Multer.File): Promise<string> {
-    const buffer = await fs.readFile(file.path);
-    return createHash('sha256').update(buffer).digest('hex');
-  }
-
-  async createOrderWithPayment(createOrderDto: CreateOrderDto) {
+  async validateOrderMenus(orderMenus: CreateOrderMenusDto[], restaurantId: string): Promise<number> {
     let calculatedTotalAmount = 0;
 
-    for (const item of createOrderDto.orderMenus) {
+    for (const item of orderMenus) {
       const existingMenu = await this.prisma.menu.findUnique({
         where: { menuId: item.menuId },
-    });
+      });
 
-      if (!existingMenu) throw new NotFoundException(`Menu item with ID ${item.menuName} not found.`);
+      if (!existingMenu) {
+        throw new NotFoundException(`Menu item with ID ${item.menuName} not found.`);
+      }
+
+      if (existingMenu.restaurantId !== restaurantId) {
+        throw new BadRequestException(`Menu item ${item.menuName} does not belong to the selected restaurant.`);
+      }
+
       if (existingMenu.price !== item.unitPrice) {
-        console.warn(`Client sent mismatched unitPrice for ${item.menuId}. DB: ${existingMenu.price}, Client: ${item.unitPrice}`)
+        throw new BadRequestException(`Mismatched price for menu ${item.menuName}. Expected ${existingMenu.price}, got ${item.unitPrice}`)
+      }
+
+      if (existingMenu.name !== item.menuName) {
+        throw new NotFoundException(`Name ${item.menuName} not found in the menu.`);
       }
 
       calculatedTotalAmount += item.unitPrice * item.quantity;
     }
+    return calculatedTotalAmount;
+  }
+
+  async createOrderWithPayment(createOrderDto: CreateOrderDto) {
+    const calculatedTotalAmount = await this.validateOrderMenus(createOrderDto.orderMenus, createOrderDto.restaurantId);
 
     const providedTotalAmount = createOrderDto.orderMenus
-      .map(item => (item as any).totalPrice || (item.unitPrice * item.quantity))
-      .reduce((sum, price) => sum + price, 0);
+      .reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
 
     if (calculatedTotalAmount !== providedTotalAmount) {
       throw new InternalServerErrorException('Calculated amount does not match provided amount.');
@@ -165,6 +179,8 @@ export class OrderService {
     if (omiseStatus === 'successful') {
       newIsPaidStatus = IsPaid.paid;
       console.log(`Order ${order.orderId} payment status updated to PAID via webhook.`);
+
+      await this.payoutService.createPayout(order.orderId);
     } else if (omiseStatus === 'failed' || omiseStatus === 'expired') {
       newIsPaidStatus = IsPaid.rejected;
       console.warn(`Order ${order.orderId} payment status updated to FAILED via webhook.`);
@@ -181,6 +197,7 @@ export class OrderService {
       },
     });
   }
+
   async findAllOrders() {
     return this.prisma.order.findMany();
   }
@@ -217,26 +234,36 @@ export class OrderService {
     }
   }
 
-  // async updateOrder(orderId: string, updateOrderDto: UpdateOrderDto) {
-  //   // Find order with validate restaurant and menu logic
-  //   await this.findOneOrder(orderId);
+  async updateOrder(orderId: string, updateOrderDto: UpdateOrderDto) {
+    const order = await this.findOneOrder(orderId);
 
-  //   if (!updateOrderDto.restaurantId)
-  //     throw new Error('restaurantId is required');
+    console.log('Order.RestaurantId: ', order.restaurantId);
+    console.log('UpdatedOrderDto.RestaurantId: ', updateOrderDto.restaurantId);
 
-  //   return this.prisma.order.update({
-  //     where: { orderId },
-  //     data: {
-  //       status: updateOrderDto.status,
-  //       deliverAt: updateOrderDto.deliverAt,
-  //       isPaid: updateOrderDto.isPaid !== undefined ? (updateOrderDto.isPaid ? IsPaid.paid : IsPaid.unpaid) : undefined,
-  //       isDelay: updateOrderDto.isDelay,
-  //     },
-  //   });
-  // }
+    if (order.restaurantId !== updateOrderDto.restaurantId) {
+      throw new ForbiddenException('You do not have permission to update this order.');
+    }
+
+    if (updateOrderDto.status && !Object.values(OrderStatus).includes(updateOrderDto.status)) {
+      throw new BadRequestException('Invalid order status');
+    }
+
+    return this.prisma.order.update({
+      where: { orderId },
+      data: {
+        status: updateOrderDto.status,
+        deliverAt: updateOrderDto.deliverAt,
+        isDelay: updateOrderDto.isDelay,
+      },
+    });
+  }
 
   async removeOrder(orderId: string) {
-    this.findOneOrder(orderId);
+    const order = await this.findOneOrder(orderId);
+
+    if (order.status !== OrderStatus.done) {
+      throw new BadRequestException('สามารถลบได้เฉพาะออเดอร์ที่มีสถ่านะเสร็จสมบูรณ์เรียบร้อยแล้วเท่านั้น')
+    }
 
     return this.prisma.order.delete({
       where: { orderId },

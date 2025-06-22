@@ -19,8 +19,6 @@ import {
 import { PaymentMethodType, OrderStatus } from "@prisma/client";
 import { CreatePaymentDto } from "src/payment/dto/create-payment.dto";
 
-console.log('--- CORRECT CreateOrderMenusDto file is being loaded! ---');
-
 export class CreateOrderMenusDto {
   @IsUUID('4', { message: 'menuId must be a valida UUID' })
   @IsNotEmpty()
@@ -72,10 +70,6 @@ export class CreateOrderDto {
 
   @IsOptional()
   @IsString()
-  orderSlip?: string;
-
-  @IsOptional()
-  @IsString()
   details?: string;
 
   @IsOptional()
@@ -91,6 +85,7 @@ export class CreateOrderDto {
   orderMenus: CreateOrderMenusDto[];
 
   @IsNotEmpty()
+  @Type(() => CreatePaymentDto)
   paymentDetails: CreatePaymentDto;
 
   @IsOptional() // Could be null if no payment initiated or failed initiation

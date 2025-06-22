@@ -17,11 +17,11 @@ export class UpdatePayoutDto extends PartialType(CreatePayoutDto) {
         
         @IsDate()
         @IsOptional()
-        startDate?: string;
+        startDate?: Date;
         
         @IsDate()
         @IsOptional()
-        endDate?: string;
+        endDate?: Date;
     
         @IsUUID()
         @IsNotEmpty()

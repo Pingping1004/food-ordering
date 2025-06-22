@@ -25,6 +25,8 @@ import { PaymentService } from './payment/payment.service';
 import { PaymentController } from './payment/payment.controller';
 import { ConfigModule } from '@nestjs/config';
 import { PayoutModule } from './payout/payout.module';
+import { PayoutController } from './payout/payout.controller';
+import { PayoutService } from './payout/payout.service';
 
 @Module({
   imports: [
@@ -50,7 +52,7 @@ import { PayoutModule } from './payout/payout.module';
     PayoutModule,
 
   ],
-  controllers: [AppController, RestaurantController, MenuController, OrderController, PaymentController],
+  controllers: [AppController, RestaurantController, MenuController, OrderController, PaymentController, PayoutController],
   providers: [
     {
       provide: APP_FILTER,
@@ -66,6 +68,7 @@ import { PayoutModule } from './payout/payout.module';
     PrismaService,
     OrderService,
     PaymentService,
+    PayoutService,
   ],
 })
 

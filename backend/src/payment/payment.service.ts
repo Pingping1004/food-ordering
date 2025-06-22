@@ -4,9 +4,7 @@ import * as  crypto from 'crypto'
 import * as Omise from 'omise';
 import * as OmiseTypes from 'omise';
 import { ConfigService } from '@nestjs/config';
-import { startOfDay, endOfDay } from 'date-fns';
-import { CreatePaymentDto } from './dto/create-payment.dto';
-
+import * as moment from 'moment';
 @Injectable()
 export class PaymentService {
   private readonly logger = new Logger(PaymentService.name);
@@ -23,35 +21,6 @@ export class PaymentService {
     });
   }
 
-  // async createPromptPayCharge(
-  //   amount: number,
-  //   paymentMethodType: string,
-  //   returnUri: string,
-  //   orderId: string,
-  // ): Promise<Omise.Charges.ICharge> {
-  //   try {
-  //     const charge = await this.omiseClient.charges.create({
-  //       amount: amount * 100,
-  //       currency: 'THB',
-  //       source: {
-  //         type: paymentMethodType,
-  //         amount: amount * 100,
-  //         currency: 'THB',
-  //       },
-  //       return_uri: returnUri,
-  //       metadata: {
-  //         order_id: orderId,
-  //       },
-  //       webhook_endpoints: ["https://fefb-124-120-2-163.ngrok-free.app/webhooks/omise"],
-  //     });
-
-  //     return charge;
-  //   } catch (error) {
-  //     this.logger.error(`Failed to create mobile banking charge for order ${orderId}: ${error.message || error}`);
-  //     throw new InternalServerErrorException('Failed to process mobile banking payment.');
-  //   }
-  // }
-
   async createPromptPayCharge(
     amount: number,
     paymentMethodType: PaymentMethodType,
@@ -60,7 +29,8 @@ export class PaymentService {
   ): Promise<OmiseTypes.Charges.ICharge> {
     try {
       type ChargeCreateOptions = Parameters<typeof this.omiseClient.charges.create>[0];
-      const amountInStang = amount * 100
+      const amountInStang = amount * 100;
+      const expirationTime = moment.utc().add(10, 'minutes').toISOString();
       const chargeOptions: ChargeCreateOptions = {
           amount: amountInStang,
           currency: 'THB',
@@ -69,6 +39,7 @@ export class PaymentService {
             order_id: orderId,
           },
           webhook_endpoints: ["https://fefb-124-120-2-163.ngrok-free.app/webhooks/omise"],
+          expires_at: expirationTime,
       };
 
       if (paymentMethodType === 'promptpay') {

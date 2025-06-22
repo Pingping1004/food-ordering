@@ -1,16 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { CreatePayoutDto } from './dto/create-payout.dto';
 import { UpdatePayoutDto } from './dto/update-payout.dto';
 import { PrismaService } from 'prisma/prisma.service';
 import { calculatePayout, calculateWeeklyInterval } from './payout-calculator';
 import { OrderService } from 'src/order/order.service';
 import { Payout } from '@prisma/client';
-import { format } from 'date-fns'
 
 @Injectable()
 export class PayoutService {
   constructor(
     private prisma: PrismaService,
+    @Inject(forwardRef(() => OrderService))
     private orderService: OrderService,
   ) { }
 

@@ -1,44 +1,40 @@
 import { Type, Transform } from "class-transformer";
 import {
   IsArray,
+  IsBoolean,
   IsDate,
   IsEnum,
-  IsOptional,
   IsNumber,
+  IsOptional,
   IsPositive,
   IsString,
   IsUUID,
   Min,
   ValidateNested,
-  IsIn
+  ArrayMinSize,
+  ArrayMaxSize
 } from "class-validator";
-import { IsPaid, OrderStatus } from "@prisma/client";
-import { BadRequestException } from "@nestjs/common";
-import { plainToInstance } from "class-transformer";
+import { PaymentMethodType, OrderStatus } from "@prisma/client";
 import { CreatePaymentDto } from "src/payment/dto/create-payment.dto";
+import { CreateOrderDto, CreateOrderMenusDto } from "./create-order.dto";
+import { PartialType } from "@nestjs/swagger";
 
-console.log('--- CORRECT CreateOrderMenusDto file is being loaded! ---');
-
-export class UpdateOrderMenusDto {
+export class UpdateOrderMenusDto extends PartialType(CreateOrderMenusDto) {
   @IsUUID('4', { message: 'menuId must be a valida UUID' })
-  @IsOptional()
-  menuI?: string;
+  menuId: string;
 
-  @IsOptional()
   @IsNumber()
   @Min(1)
   @Type(() => Number)
-  quantity?: number;
+  quantity: number;
 
-  @IsOptional()
   @IsString()
-  menuName?: string;
+  menuName: string;
 
   @IsNumber()
-  @IsOptional()
   @IsPositive()
   @Type(() => Number)
-  unitPrice?: number;
+  unitPrice: number;
 
   @IsOptional()
   @IsString()
@@ -49,7 +45,7 @@ export class UpdateOrderMenusDto {
   details?: string;
 }
 
-export class UpdateOrderDto {
+export class UpdateOrderDto extends PartialType(CreateOrderDto) {
   @IsOptional()
   @IsEnum(OrderStatus)
   status?: OrderStatus;
@@ -70,34 +66,31 @@ export class UpdateOrderDto {
 
   @IsOptional()
   @IsString()
-  orderSlip?: string;
-
-  @IsOptional()
-  @IsString()
   details?: string;
 
-  @IsEnum(IsPaid)
   @IsOptional()
-  @ValidateNested({ each: true })
-  @IsIn(['unpaid'])
-  isPaid?: IsPaid;
+  @IsBoolean()
+  isDelay?: boolean;
 
   @IsArray()
   @IsOptional({ message: 'Order must contain at least one menu item' })
+  @ArrayMinSize(1, { message: 'Order must contain at least one menu item' })
+  @ArrayMaxSize(10, { message: 'Order cannot contain more than 10 different items' })
   @ValidateNested({ each: true })
   @Type(() => UpdateOrderMenusDto)
-  orderMenu?: UpdateOrderMenusDto[];
+  orderMenus?: UpdateOrderMenusDto[];
 
   @IsOptional()
-  paymentDetail?: CreatePaymentDto;
+  @Type(() => CreatePaymentDto)
+  paymentDetails: CreatePaymentDto;
 
   @IsOptional() // Could be null if no payment initiated or failed initiation
   @IsString()
   omiseChargeId?: string;
 
   @IsOptional()
-  @IsString()
-  paymentMethod?: string;
+  @IsEnum(PaymentMethodType)
+  paymentMethod?: PaymentMethodType;
 
   @IsOptional() // Could be null if no payment initiated or before first update
   @IsString() // Use string as Omise provides various statuses

@@ -16,8 +16,8 @@ import { Response } from 'express';
 import Omise from 'omise';
 
 @Controller('order')
-@UseGuards(RolesGuard)
-@Roles(['user'])
+// @UseGuards(RolesGuard)
+// @Roles(['user'])
 export class OrderController {
   constructor(private readonly orderService: OrderService) { }
 
@@ -85,10 +85,11 @@ export class OrderController {
     return this.orderService.findOneOrder(orderId);
   }
 
-  // @Patch(':orderId')
-  // async updateOrder(@Param('orderId') orderId: string, @Body() updateOrderDto: UpdateOrderDto) {
-  //   return this.orderService.updateOrder(orderId, updateOrderDto);
-  // }
+  @Public()
+  @Patch(':orderId')
+  async updateOrder(@Param('orderId') orderId: string, @Body() updateOrderDto: UpdateOrderDto) {
+    return this.orderService.updateOrder(orderId, updateOrderDto);
+  }
 
   @Delete(':orderId')
   async removeOrder(@Param('orderId') orderId: string) {

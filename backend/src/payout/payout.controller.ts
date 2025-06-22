@@ -7,8 +7,8 @@ import { UpdatePayoutDto } from './dto/update-payout.dto';
 export class PayoutController {
   constructor(private readonly payoutService: PayoutService) {}
 
-  @Post()
-  createPayout(@Param() orderId: string) {
+  @Post(':orderId')
+  createPayout(@Param('orderId') orderId: string) {
     return this.payoutService.createPayout(orderId);
   }
 
