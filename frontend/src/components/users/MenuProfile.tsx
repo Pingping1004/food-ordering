@@ -44,30 +44,31 @@ export default function MenuProfile({
     children,
     ...props
 }: MenuProfileProps) {
-    const { addToCart } = useCart();
+    const { getQuantity, addToCart } = useCart();
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
     const src = menuImg ? `${baseUrl}/${menuImg}` : `/picture.svg`;
+    const quantity = getQuantity(menuId) > 0 ? `X ${getQuantity(menuId)}` : '';
 
     return (
         <div
             className={clsx(
-                "flex flex-col gap-y-4",
+                "flex flex-col gap-y-4 w-full",
                 menuProfileVariant({ variant }),
                 className
             )}
 
             {...props}
         >
-            <div className="relative w-fit">
+            <div className="relative w-full aspect-square">
                 <Image
                     width={163}
                     height={163}
                     src={src}
                     alt="Menu profile"
-                    className="rounded-lg object-cover w-[163px] h-[163px]"
+                    className="rounded-lg object-cover w-full h-full"
                 />
 
-                <button 
+                <button
                     key={menuId}
                     className="absolute bottom-2 right-2 z-10"
                     onClick={() => {
@@ -75,13 +76,16 @@ export default function MenuProfile({
                         addToCart(menuId, name, unitPrice, menuImg || "")
                     }}
                 >
-                    <img src="/plus.svg" alt="add menu"/>
+                    <img src="/plus.svg" alt="add menu" />
                 </button>
             </div>
 
-            <div className="flex flex-col gap-y-2">
+            <div className="flex flex-col gap-y-2 w-full">
                 <h3 className="noto-sans-bold text-sm text-primary">{name}</h3>
-                <p className="noto-sans-regular text-xs text-light">{unitPrice}</p>
+                <div className="flex justify-between items-center text-xs">
+                    <p className="text-light noto-sans-regular">{unitPrice}</p>
+                    <p className="text-primary-light noto-sans-bold">{quantity}</p>
+                </div>
             </div>
         </div>
     )

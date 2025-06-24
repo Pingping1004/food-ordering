@@ -14,6 +14,7 @@ type CartContextType = {
     cart: CartItem[];
     addToCart: (menuId: string, menuName: string, unitPrice: number, menuImg: string) => void;
     removeFromCart: (menuId: string) => void;
+    getQuantity: (menuId: string) => number;
 };
 
 const CartContext = createContext<CartContextType | null>(null);
@@ -71,9 +72,14 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         });
     };
 
+    const getQuantity = (menuId: string) => {
+        const item = cart.find(item => menuId === item.menuId);
+        return item ? item.quantity : 0;
+    }
+
     return (
         <CartContext.Provider
-            value={{ cart, addToCart, removeFromCart }}
+            value={{ cart, addToCart, removeFromCart, getQuantity }}
         >
             {children}
         </CartContext.Provider>

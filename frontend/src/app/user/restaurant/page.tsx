@@ -6,9 +6,11 @@ import React, { useEffect, useState } from "react";
 import { Restaurant } from "@/context/MenuContext";
 
 import { api } from "@/lib/api";
+import { useCart } from "@/context/CartContext";
 
 
 export default function UserHomePage() {
+    const { cart } = useCart();
     const [data, setData] = useState<Restaurant[] | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -42,7 +44,7 @@ export default function UserHomePage() {
                 <Button
                     size="md"
                     type="button"
-                    numberIcon={2}
+                    {...(cart.length > 0 && { numberIcon: cart.length })}
                 >
                     ออเดอร์ของคุณ
                 </Button>

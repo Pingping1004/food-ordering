@@ -1,43 +1,48 @@
 import { OmiseBankType, OMISE_BANK_TYPE_VALUES } from "@/common/bank-type.enum";
 import { z } from "zod";
 
-export const createOrderMenusSchema = z.object({
-    orderMenuId: z.string().uuid('Invalid menu item ID format'),
-    quantity: z.coerce.number().min(1, "Quantity must be at least 1"),
-    menuName: z.string(),
-    unitPrice: z.coerce.number().int("unit price must be an integer"),
-    details: z.string().optional(),
-    menuImg: z.string().url('Invalid menu image URL format').optional(),
-});
-
-export const MobileBankingPaymentDetailSchema = z.object({
-    amount: z.coerce.number().int().min(1),
-    bankType: z.enum(OMISE_BANK_TYPE_VALUES as [string, ...string[]], {
-        errorMap: (issue, ctx) => {
-            if (issue.code === z.ZodIssueCode.invalid_enum_value) {
-                return { message: 'Invalid bank type selected'};
-            }
-            return { message: ctx.defaultError };
-        }
-    }),
-})
-
 export const createOrderSchema = z.object({
     restaurantId: z.string().uuid('Invalid restaurant ID'),
-    orderAt: z.coerce.date(),
-    deliverAt: z.coerce.date(),
-    isPaid: z.literal("unpaid", {
-      errorMap: (issue, ctx) => {
-        if (issue.code === z.ZodIssueCode.invalid_literal) {
-          return { message: 'New orders with online payment are initially "unpaid". Payment confirmation is async.' };
-        }
-        return { message: ctx.defaultError };
+    deliverAt: z.string() // It receives a string from TimePickerInput
+    .min(1, 'กรุณาเลือกเวลารับอาหารขั้นต่ำ 5 นาทีหลังสั่ง') // Basic validation for non-empty string
+    .refine(
+      (time) => {
+        // More robust validation for HH:mm format
+        const [h, m] = time.split(':').map(Number);
+        return time.match(/^\d{2}:\d{2}$/) && h >= 0 && h <= 23 && m >= 0 && m <= 59;
+      },
+      { message: 'รูปแบบเวลารับอาหารไม่ถูกต้อง (HH:mm)' }
+    )
+    .transform((timeString, ctx) => {
+      // This transformation converts the "HH:mm" string into a Date object
+      // with the CURRENT DATE and the specified time.
+      try {
+        const [hours, minutes] = timeString.split(':').map(Number);
+        const today = new Date(); // Get today's date (e.g., June 24, 2025)
+        today.setHours(hours, minutes, 0, 0); // Set the time components, reset seconds/ms
+        return today; // The output of this transform is a Date object
+      } catch (e) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'ไม่สามารถแปลงเวลาเป็นวันที่ได้',
+          path: ['deliverAt'],
+        });
+        return z.NEVER; // Indicates a transformation failure for Zod
       }
-  }),
-    orderMenus: z.array(createOrderMenusSchema)
-        .min(1, 'Order must contain at least one menu item')
-        .max(10, 'Order cannot contain more than 10 items'),
-    paymentDetails: MobileBankingPaymentDetailSchema,
+    })
+    .refine(
+      (deliverAtDate) => {
+        const now = new Date();
+        const bufferMinutes = 5;
+        const minimumAllowedDeliverTime = new Date(now.getTime() + bufferMinutes * 60 * 1000); // 10 minutes in milliseconds
+        return deliverAtDate > minimumAllowedDeliverTime;
+      },
+      {
+        message: 'เวลารับอาหารต้องอยู่หลังจากเวลาปัจจุบันอย่างน้อย 5นาที',
+        path: ['deliverAt'],
+      }
+    ),
+    paymentMethod: z.string().optional(),
 });
 
-export type CrateOrderDto = z.infer<typeof createOrderSchema>
+export type CreateOrderSchemaType = z.infer<typeof createOrderSchema>

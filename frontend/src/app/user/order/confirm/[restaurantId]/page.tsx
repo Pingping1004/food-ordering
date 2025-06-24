@@ -4,19 +4,79 @@ import React from 'react'
 import { useCart } from '@/context/CartContext';
 import { MenuProvider, useMenu } from '@/context/MenuContext';
 import OrderList from '@/components/users/OrderList';
-import { TimePickerInput } from '@/components/ui/TimePicker';
+import TimePickerInput from '@/components/ui/TimePicker';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
+import { api } from '@/lib/api';
+import { useForm, Controller } from 'react-hook-form';
+import { createOrderSchema, CreateOrderSchemaType } from '@/schemas/addOrderSchema';
+import { zodResolver } from '@hookform/resolvers/zod';
+
+const NGROK_WEBSITE_URL = 'https://fefb-124-120-2-163.ngrok-free.app';
+
+const getCurrentTimeHHMM = (): string => {
+  const now = new Date();
+  const hours = now.getHours().toString().padStart(2, '0');
+  const minutes = now.getMinutes().toString().padStart(2, '0');
+  return `${hours}:${minutes}`;
+};
 
 function OrderConfirmContext() {
   const { restaurant } = useMenu();
-  const { cart, addToCart, removeFromCart } = useCart();
+  const { cart } = useCart();
+  const {
+    control,
+    handleSubmit,
+    formState: { errors, isSubmitting }
+  } = useForm({
+    resolver: zodResolver(createOrderSchema),
+    defaultValues: {
+      paymentMethod: 'promptpay',
+      deliverAt: getCurrentTimeHHMM(),
+      restaurantId: restaurant?.restaurantId,
+    },
+    mode: "onBlur",
+  });
 
-  console.log(restaurant);
-  console.log('Cart context: ', cart);
+  const submitOrder = async (data: CreateOrderSchemaType) => {
+    console.log('Form is submitted!');
+    try {
+      const orderPayload = {
+        restaurantId: restaurant?.restaurantId,
+        orderMenus: cart.map((item) => ({
+          menuId: item.menuId,
+          menuName: item.menuName,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          menuImg: item.menuImg,
+        })),
+        paymentMethod: data.paymentMethod,
+        deliverAt: data.deliverAt?.toISOString(),
+      };
+
+      if (!cart || cart.length === 0) {
+        console.error('Validation Error: Cart is empty.');
+        alert('ตะกร้าสินค้าว่างเปล่า กรุณาเพิ่มรายการอาหาร');
+        return; // Prevent submission
+      }
+
+      console.log('Order Payload: ', orderPayload);
+      const response = await api.post(`${NGROK_WEBSITE_URL}/order/omise`, orderPayload);
+      console.log('Created new order: ', response);
+      alert(`สั่งอาหารออเดอร์: ${response.data.orderId}`)
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  console.log('Form errors on render:', errors); // <--- Add this for immediate error visibility
+  console.log('Is submitting:', isSubmitting); // Debug submit state
 
   return (
-    <form className="flex flex-col h-screen gap-y-10 py-10 px-6">
+    <form
+      className="flex flex-col h-screen gap-y-10 py-10 px-6"
+      onSubmit={handleSubmit(submitOrder)}
+    >
       <h3
         className="flex w-full justify-center noto-sans-bold text-primary text-2xl"
       >
@@ -28,9 +88,7 @@ function OrderConfirmContext() {
           <p className="text-lg text-primary noto-sans-bold">สรุปออเดอร์</p>
           <p className="text-info text-xs  underline">คำนวณเวลาได้รับอาหาร?</p>
         </div>
-        <OrderList
-          items={cart}
-        />
+        <OrderList items={cart} />
       </div>
 
       <div className="flex w-[calc(100%+3rem)] justify-between bg-primary-main text-white p-6 -mx-6">
@@ -39,33 +97,54 @@ function OrderConfirmContext() {
       </div>
 
       <div className="flex flex-col gap-y-4">
-        <h3 className="noto-sans-bold text-base">เลือกเวลารับอาหาร</h3>
-        <TimePickerInput />
+        <div className="flex justify-between items-center">
+          <h3 className="noto-sans-bold text-base">เลือกเวลารับอาหาร</h3>
+          <p className="noto-sans-regular text-xs text-danger-main">เลือกเวลาจัดส่งอย่างน้อย 5 นาทีหลังสั่ง</p>
+        </div>
+        <Controller
+          name="deliverAt"
+          control={control}
+          render={({ field }) => (
+            <TimePickerInput
+              {...field} // This correctly passes value, onChange, name, onBlur
+            />
+          )}
+        />
+        {errors.deliverAt && (
+  <>
+    {console.log('DEBUG: errors.deliverAt object:', errors.deliverAt)}
+    {console.log('DEBUG: Message string being rendered:', errors.deliverAt.message?.toString())}
+    <p className="text-red-500 text-sm z-50">{errors.deliverAt.message}</p>
+  </>
+)}
       </div>
 
       <div className="flex flex-col gap-y-4">
         <h3 className="noto-sans-bold text-primary text-base">ชำระเงินด้วยแอพธนาคาร</h3>
-        <Input
-          type="select"
-          name="bank"
-          label="เลือกธนาคารของคุณ"
-          placeholder="เลือกธนาคารของคุณ"
-          options={[
-            { key: 'KBANK', value: 'kbank' },
-            { key: 'SCB', value: 'scb' },
-            { key: 'KRUNGSRI', value: 'krungsri' },
-            { key: 'Bangkok bank', value: 'bbl' },
-            { key: 'Krungthai bank', value: 'krungthai' },
-          ]}
+        <Controller
+          control={control}
+          name="paymentMethod"
+          render={({ field }) => (
+            <Input
+              type="select"
+              label="เลือกวิธีการชำระเงิน"
+              {...field}
+              options={[
+                { key: 'พร้อมเพย์', value: 'promptpay' },
+              ]}
+            />
+          )}
         />
+        {errors.paymentMethod && <p className="text-red-500 text-sm">{errors.paymentMethod.message}</p>}
       </div>
 
       <div className="fixed left-0 right-0 bottom-10 w-full px-6 z-50 flex">
-        <Button 
+        <Button
           className="w-full noto-sans-bold"
           type="submit"
+          disabled={isSubmitting}
         >
-          ยืนยันออเดอร์
+          ยืนยันออเดอร์พร้อมชำระเงิน
         </Button>
       </div>
     </form>

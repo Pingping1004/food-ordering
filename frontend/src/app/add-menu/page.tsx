@@ -23,7 +23,6 @@ export default function AddMenuPage() {
     control,
     register,
     handleSubmit,
-    setValue,
     formState: { errors, isSubmitting },
     reset,
   } = useForm<createMenuSchemaType>({
