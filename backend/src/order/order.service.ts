@@ -97,10 +97,10 @@ export class OrderService {
       const order = await tx.order.create({
         data: {
           restaurantId: createOrderDto.restaurantId,
-          orderAt: createOrderDto.orderAt,
+          // orderAt: createOrderDto.orderAt,
           deliverAt: createOrderDto.deliverAt,
           isPaid: IsPaid.unpaid,
-          paymentMethodType: createOrderDto.paymentDetails.paymentMethod,
+          paymentMethodType: createOrderDto.paymentMethod,
           paymentGatewayStatus: 'pending',
           totalAmount: calculatedTotalAmount,
           orderMenus: {
@@ -120,6 +120,15 @@ export class OrderService {
         }
       });
 
+      // Validate deliver time with 10 mins time buffer
+      const now = new Date();
+      const deliverAtDate = new Date(order.deliverAt);
+      const minimumAllowedDeliveTime = new Date(now.getTime() + 5 * 60 * 1000);
+
+      if (deliverAtDate < minimumAllowedDeliveTime) {
+        throw new BadRequestException('Delivery time must be at least 5 minutes from the current time.');
+      }
+
       let charge;
 
       try {
@@ -127,7 +136,7 @@ export class OrderService {
 
         charge = await this.paymentService.createPromptPayCharge(
           calculatedTotalAmount,
-          createOrderDto.paymentDetails.paymentMethod as PaymentMethodType,
+          createOrderDto.paymentMethod as PaymentMethodType,
           frontendReturnUri,
           order.orderId,
         );
@@ -199,7 +208,11 @@ export class OrderService {
   }
 
   async findAllOrders() {
-    return this.prisma.order.findMany();
+    return this.prisma.order.findMany({
+      orderBy: {
+        orderAt: 'desc',
+      },
+    });
   }
 
   async findOneOrder(orderId: string) {

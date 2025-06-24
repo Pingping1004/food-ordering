@@ -50,18 +50,9 @@ export class CreateOrderMenusDto {
 }
 
 export class CreateOrderDto {
-  @IsOptional()
-  @IsEnum(OrderStatus)
-  status?: OrderStatus;
-
   @IsNotEmpty()
   @IsUUID()
   restaurantId!: string;
-
-  @IsDate()
-  @IsNotEmpty()
-  @Type(() => Date)
-  orderAt: Date;
 
   @IsDate()
   @IsNotEmpty()
@@ -84,9 +75,9 @@ export class CreateOrderDto {
   @Type(() => CreateOrderMenusDto)
   orderMenus: CreateOrderMenusDto[];
 
-  @IsNotEmpty()
+  @IsOptional()
   @Type(() => CreatePaymentDto)
-  paymentDetails: CreatePaymentDto;
+  paymentDetails?: CreatePaymentDto;
 
   @IsOptional() // Could be null if no payment initiated or failed initiation
   @IsString()
