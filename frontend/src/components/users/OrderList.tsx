@@ -45,13 +45,15 @@ export default function OrderList({ items }: CartListProps) {
             className="flex w-[calc(100%+3rem)] border-y border-color -mx-6"
           >
             <div className="flex w-full justify-between gap-x-4 py-4 px-6">
-              <Image
-                width={74}
-                height={74}
-                src={src}
-                alt={menu.menuName}
-                className="rounded-lg object-cover w-[74px] h-[74px]"
-              />
+              <div className="relative w-[74px] h-[74px] aspect-square">
+                <Image
+                  width={74}
+                  height={74}
+                  src={src}
+                  alt={menu.menuName}
+                  className="rounded-lg object-cover w-full h-full"
+                />
+              </div>
 
               <div className="flex flex-col w-full justify-between">
                 <div className="flex justify-between">
@@ -75,7 +77,7 @@ export default function OrderList({ items }: CartListProps) {
                       type="button"
                       size="sm"
                       variant="success"
-                      onClick={() => addToCart(menu.menuId, menu.menuName, menu.unitPrice, menu.menuImg)}
+                      onClick={() => addToCart(menu.menuId, menu.menuName, menu.unitPrice, menu.menuImg, menu.restaurantId)}
                     >
                       +
                     </Button>

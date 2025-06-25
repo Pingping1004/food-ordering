@@ -14,10 +14,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 
 const NGROK_WEBSITE_URL = 'https://fefb-124-120-2-163.ngrok-free.app';
 
-const getCurrentTimeHHMM = (): string => {
-  const now = new Date();
-  const hours = now.getHours().toString().padStart(2, '0');
-  const minutes = now.getMinutes().toString().padStart(2, '0');
+
+const now = new Date();
+const bufferMinutes = 6;
+const minimumAllowedDeliverTime = new Date(now.getTime() + bufferMinutes * 60 * 1000);
+
+const getMinimumBufferTime = (): string => {
+  const hours = minimumAllowedDeliverTime.getHours().toString().padStart(2, '0');
+  const minutes = minimumAllowedDeliverTime.getMinutes().toString().padStart(2, '0');
   return `${hours}:${minutes}`;
 };
 
@@ -32,7 +36,7 @@ function OrderConfirmContext() {
     resolver: zodResolver(createOrderSchema),
     defaultValues: {
       paymentMethod: 'promptpay',
-      deliverAt: getCurrentTimeHHMM(),
+      deliverAt: getMinimumBufferTime(),
       restaurantId: restaurant?.restaurantId,
     },
     mode: "onBlur",
@@ -92,14 +96,16 @@ function OrderConfirmContext() {
       </div>
 
       <div className="flex w-[calc(100%+3rem)] justify-between bg-primary-main text-white p-6 -mx-6">
-        <h3 className="noto-sans-bold text-xl">ราคารวม</h3>
+        <h3 className="noto-sans-bold text-xl">ทั้งหมด</h3>
         <h3 className="noto-sans-bold text-xl">{cart.reduce((total, value) => { return total + value.totalPrice }, 0)}</h3>
       </div>
 
       <div className="flex flex-col gap-y-4">
         <div className="flex justify-between items-center">
           <h3 className="noto-sans-bold text-base">เลือกเวลารับอาหาร</h3>
-          <p className="noto-sans-regular text-xs text-danger-main">เลือกเวลาจัดส่งอย่างน้อย 5 นาทีหลังสั่ง</p>
+          <p className="noto-sans-regular text-sm text-danger-main">
+            ใช้เวลาจัดเตรียมขั้นต่ำ5นาที ({minimumAllowedDeliverTime.toLocaleString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.)
+          </p>
         </div>
         <Controller
           name="deliverAt"
@@ -111,16 +117,16 @@ function OrderConfirmContext() {
           )}
         />
         {errors.deliverAt && (
-  <>
-    {console.log('DEBUG: errors.deliverAt object:', errors.deliverAt)}
-    {console.log('DEBUG: Message string being rendered:', errors.deliverAt.message?.toString())}
-    <p className="text-red-500 text-sm z-50">{errors.deliverAt.message}</p>
-  </>
-)}
+          <>
+            {console.log('DEBUG: errors.deliverAt object:', errors.deliverAt)}
+            {console.log('DEBUG: Message string being rendered:', errors.deliverAt.message?.toString())}
+            <p className="text-red-500 text-sm z-50">{errors.deliverAt.message}</p>
+          </>
+        )}
       </div>
 
       <div className="flex flex-col gap-y-4">
-        <h3 className="noto-sans-bold text-primary text-base">ชำระเงินด้วยแอพธนาคาร</h3>
+        <h3 className="noto-sans-bold text-primary text-base">ชำระเงิน</h3>
         <Controller
           control={control}
           name="paymentMethod"
@@ -140,7 +146,7 @@ function OrderConfirmContext() {
 
       <div className="fixed left-0 right-0 bottom-10 w-full px-6 z-50 flex">
         <Button
-          className="w-full noto-sans-bold"
+          className="w-full noto-sans-bold py-4"
           type="submit"
           disabled={isSubmitting}
         >

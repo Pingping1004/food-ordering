@@ -75,7 +75,7 @@ export const MenuProvider = ({ children }: { children: React.ReactNode }) => {
         fetchData();
     }, [restaurantId]);
 
-        if (loading) return <div>Loading...</div>;
+    if (loading) return <div>Loading...</div>;
     if (error) return <div>{error}</div>;
     if (!menus) return <div>No Data found</div>
 

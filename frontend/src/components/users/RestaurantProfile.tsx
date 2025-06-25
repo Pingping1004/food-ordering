@@ -55,22 +55,24 @@ export const RestaurantProfile: React.FC<RestaurantProfileProps> = ({
     return (
         <Link href={`/user/restaurant/${restaurantId}`}>
             <div className={clsx(
-                "flex flex-col gap-y-4",
+                "flex flex-col gap-y-4 border-color",
                 restaurantProfileVariant({ variant }),
                 className
             )}
                 {...props}
             >
-                <Image
-                    width={163}
-                    height={163}
-                    src={src}
-                    alt='Restaurant Profile'
-                    className="rounded-lg"
-                />
+                <div className="flex relative w-[163px] h-[163px] justify-center aspect-square">
+                    <Image
+                        width={163}
+                        height={163}
+                        src={src}
+                        alt='Restaurant Profile'
+                        className="rounded-lg object-contain w-full h-full"
+                    />
+                </div>
 
                 <div className="flex flex-col gap-y-2">
-                    <h3 className="noto-sans-bold text-sm text-primary">{name}</h3>
+                    <h3 className="noto-sans-bold text-sm text-primary">{name.substring(0, 15)}</h3>
                     <p className="noto-sans-regular text-xs text-light">{categories.join(', ')}</p>
                 </div>
             </div>

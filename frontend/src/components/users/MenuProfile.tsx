@@ -3,6 +3,7 @@ import clsx from "clsx";
 import { cva, VariantProps } from "class-variance-authority";
 import Image from "next/image";
 import { useCart } from "@/context/CartContext";
+import { Button } from "../Button";
 
 const menuProfileVariant = cva("", {
     variants: {
@@ -44,22 +45,22 @@ export default function MenuProfile({
     children,
     ...props
 }: MenuProfileProps) {
-    const { getQuantity, addToCart } = useCart();
+    const { getQuantity, addToCart, removeFromCart } = useCart();
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
     const src = menuImg ? `${baseUrl}/${menuImg}` : `/picture.svg`;
-    const quantity = getQuantity(menuId) > 0 ? `X ${getQuantity(menuId)}` : '';
+    const quantity = getQuantity(menuId) > 0 ? `${getQuantity(menuId)}` : '';
 
     return (
         <div
             className={clsx(
-                "flex flex-col gap-y-4 w-full",
+                "flex flex-col gap-y-4",
                 menuProfileVariant({ variant }),
                 className
             )}
 
             {...props}
         >
-            <div className="relative w-full aspect-square">
+            <div className="relative w-[163px] h-[163px] aspect-square">
                 <Image
                     width={163}
                     height={163}
@@ -67,24 +68,32 @@ export default function MenuProfile({
                     alt="Menu profile"
                     className="rounded-lg object-cover w-full h-full"
                 />
-
-                <button
-                    key={menuId}
-                    className="absolute bottom-2 right-2 z-10"
-                    onClick={() => {
-                        console.log('Add clicked:', menuId, name, unitPrice);
-                        addToCart(menuId, name, unitPrice, menuImg || "")
-                    }}
-                >
-                    <img src="/plus.svg" alt="add menu" />
-                </button>
             </div>
 
             <div className="flex flex-col gap-y-2 w-full">
-                <h3 className="noto-sans-bold text-sm text-primary">{name}</h3>
-                <div className="flex justify-between items-center text-xs">
+                <h3 className="noto-sans-bold text-sm text-primary">{name.substring(0, 21)}</h3>
+                <div className="flex justify-between items-center text-sm">
                     <p className="text-light noto-sans-regular">{unitPrice}</p>
-                    <p className="text-primary-light noto-sans-bold">{quantity}</p>
+
+                    <div className="flex items=center gap-x-2">
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="secondarySuccess"
+                            onClick={() => removeFromCart(menuId)}
+                        >
+                            -
+                        </Button>
+                        <p className="flex text-secondary noto-sans-bold items-center">{quantity}</p>
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="success"
+                            onClick={() => addToCart(menuId, name, unitPrice, menuImg || "", restaurantId)}
+                        >
+                            +
+                        </Button>
+                    </div>
                 </div>
             </div>
         </div>

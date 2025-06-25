@@ -12,6 +12,7 @@ function MenuContext() {
   const { restaurant, menus } = useMenu();
   const { cart, getQuantity } = useCart();
   const router = useRouter();
+  console.log('Menu: ', menus)
 
   useEffect(() => {
     console.log('Cart changed:', cart);
@@ -32,7 +33,7 @@ function MenuContext() {
         closeTime={restaurant?.closeTime ?? ""}
       />
 
-      <h3 className="noto-sans-bold text-base text-primary">เมนูวันนี้</h3>
+      <h3 className="noto-sans-bold text-base text-primary">เมนูสำหรับคุณ</h3>
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-x-4 gap-y-6">
         {menus?.map((menu) => (
           <MenuProfile

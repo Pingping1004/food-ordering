@@ -7,10 +7,12 @@ import { Restaurant } from "@/context/MenuContext";
 
 import { api } from "@/lib/api";
 import { useCart } from "@/context/CartContext";
+import { useRouter } from "next/navigation";
 
 
 export default function UserHomePage() {
     const { cart } = useCart();
+    const router = useRouter();
     const [data, setData] = useState<Restaurant[] | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -40,31 +42,25 @@ export default function UserHomePage() {
     return (
         <div className="flex flex-col gap-y-10 py-10 px-6">
             <header className="flex justify-between items-center">
-                <h1 className="noto-sans-bold text-2xl">วันนี้กินอะไรดี?</h1>
-                <Button
-                    size="md"
-                    type="button"
-                    {...(cart.length > 0 && { numberIcon: cart.length })}
-                >
-                    ออเดอร์ของคุณ
-                </Button>
+                <h1 className="noto-sans-bold text-2xl">เลือกร้านอาหาร</h1>
             </header>
-            <h1>Hello World</h1>
-            {data.map((restaurant) => {
+            <div className="grid md:grid-cols-4 lg:grid-cols-6 grid-cols-2 gap-x-4">
+                {data.map((restaurant) => {
 
-                return (
-                    <RestaurantProfile
-                        key={restaurant.restaurantId}
-                        name={restaurant.name}
-                        categories={restaurant.categories}
-                        openTime={restaurant.openTime}
-                        closeTime={restaurant.closeTime}
-                        restaurantId={restaurant.restaurantId}
-                        restaurantImg={restaurant.restaurantImg}
-                        variant="isOpen"
-                    />
-                );
-            })}
+                    return (
+                        <RestaurantProfile
+                            key={restaurant.restaurantId}
+                            name={restaurant.name}
+                            categories={restaurant.categories}
+                            openTime={restaurant.openTime}
+                            closeTime={restaurant.closeTime}
+                            restaurantId={restaurant.restaurantId}
+                            restaurantImg={restaurant.restaurantImg}
+                            variant="isOpen"
+                        />
+                    );
+                })}
+            </div>
         </div>
     )
 }
