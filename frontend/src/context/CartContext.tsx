@@ -73,7 +73,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
                         : item
                 );
             } else {
-                return prev.filter((item) => item.menuId === menuId);
+                return prev.filter((item) => item.menuId !== menuId);
             }
         });
     };
