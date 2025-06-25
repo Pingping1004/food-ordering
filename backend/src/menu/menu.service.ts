@@ -63,6 +63,7 @@ export class MenuService {
           name: true,
           menuImg: true,
           price: true,
+          restaurantId: true,
         }
       });
       return menus;
