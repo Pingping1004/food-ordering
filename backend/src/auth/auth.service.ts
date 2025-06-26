@@ -1,6 +1,6 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
-import { CreateAuthDto } from './dto/create-auth.dto';
-import { UpdateAuthDto } from './dto/update-auth.dto';
+import { ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { SignupDto } from './dto/signup.dto';
+import { LoginDto } from './dto/login.dto';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from 'src/user/user.service';
@@ -35,13 +35,16 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  async login(createAuthDto: CreateAuthDto) {
-    const user = await this.validateUser(createAuthDto.email, createAuthDto.password);
-    if (!user) throw new UnauthorizedException('Invalid credentials.');
-
+  async login(loginDto: LoginDto) {
+    const user = await this.validateUser(loginDto.email, loginDto.password);
+    if (!user) throw new UnauthorizedException('Email or password is incorrect');
+    
     if (!user.userId || !user.email || !user.role) {
       throw new UnauthorizedException('User data is incomplete.');
     }
+
+    const existingUser = await this.userService.findOneUser(user.userId);
+    if (!existingUser) throw new NotFoundException('Not found account with email: ', user.email);
 
     const payload = { sub: user.userId, email: user.email, role: user.role };
     const { accessToken, refreshToken } = await this.generateToken(payload);
@@ -58,16 +61,27 @@ export class AuthService {
     };
   }
 
-  async registerUser(createAuthDto: CreateAuthDto) {
-    const existingUser = await this.userService.findOneByEmail(createAuthDto.email);
-    if (existingUser) throw new ConflictException('User with this email already exists');
-    
-    const newUser = await this.userService.createUser({ ...createAuthDto, role: Role.user });
-    return this.login({ email: newUser.email, password: createAuthDto.password });
+  async refresh(refreshToken: string) {
+    try {
+      const payload = await this.jwtService.verifyAsync(refreshToken);
+
+      const newPayload = { sub: payload.sub, email: payload.email, role: payload.role };
+      const { accessToken, refreshToken: newRefreshToken } = await this.generateToken(newPayload);
+
+      return {
+        accessToken,
+        refreshToken: newRefreshToken,
+      };
+    } catch (error) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
   }
 
-  async registerCooker(createAuthDto: CreateAuthDto) {
-    const newUser = await this.userService.createUser({ ...createAuthDto, role: Role.cooker });
-    return this.login({ email: newUser.email, password: createAuthDto.password });
+  async regsiter(signupDto: SignupDto) {
+    const existingUser = await this.userService.findOneByEmail(signupDto.email);
+    if (existingUser) throw new ConflictException('User with this email already exists');
+
+    const newUser = await this.userService.createUser({ ...signupDto, role: Role.user });
+    return this.login({ email: newUser.email, password: signupDto.password });
   }
 }

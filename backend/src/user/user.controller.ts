@@ -23,6 +23,11 @@ export class UserController {
     return this.userService.findOneUser(userId);
   }
 
+  @Patch(':userId')
+  updateUser(@Param('userId') userId: string, updateUserDto: UpdateUserDto) {
+    return this.userService.updateUser(userId, updateUserDto);
+  }
+  
   @Post('request-role')
   async createRoleRequest(@Req() req, @Body('role') requestRole: Role) {
     const userId = req.user.userId;
