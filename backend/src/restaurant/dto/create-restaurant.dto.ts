@@ -7,17 +7,9 @@ export class CreateRestaurantDto {
     @IsString()
     name: string;
 
-    @IsNotEmpty()
-    @IsString()
-    email: string;
-
     @IsOptional()
     @IsString()
     restaurantImg?: string;
-
-    @IsNotEmpty()
-    @IsString()
-    password: string;
 
     @IsArray()
     @IsEnum(RestaurantCategory, { each: true })

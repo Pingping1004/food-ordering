@@ -10,13 +10,12 @@ export class RestaurantService {
   constructor(
     private prisma: PrismaService,
     private orderService: OrderService,
-  ) {}
+  ) { }
 
   async createRestaurant(
     createRestaurantDto: CreateRestaurantDto,
     file?: Express.Multer.File) {
     try {
-      const hashedPassword = await bcrypt.hash(createRestaurantDto.password, 10);
       const restaurantImgUrl = file ? `uploads/restaurants/${file.filename}` : createRestaurantDto.restaurantImg;
 
       console.log(restaurantImgUrl);
@@ -24,8 +23,6 @@ export class RestaurantService {
 
       const newRestaurant = {
         name: createRestaurantDto.name,
-        email: createRestaurantDto.email,
-        password: hashedPassword,
         categories: createRestaurantDto.categories,
         restaurantImg: restaurantImgUrl,
         openTime: createRestaurantDto.openTime,
@@ -82,6 +79,48 @@ export class RestaurantService {
     return this.prisma.restaurant.findUnique({
       where: { name: name },
     });
+  }
+
+  private isTimeBetween(now: string, open: string, close: string): boolean {
+    const nowParts = now.split(':').map(Number);
+    const openParts = open.split(':').map(Number);
+    const closeParts = close.split(':').map(Number);
+
+    const nowMinutes = nowParts[0] * 60 + nowParts[1];
+    const openMinutes = openParts[0] * 60 + openParts[1];
+    const closeMinutes = closeParts[0] * 60 + closeParts[1];
+
+    if (openMinutes <= closeMinutes) {
+      return nowMinutes >= openMinutes && nowMinutes <= closeMinutes;
+    } else {
+      return nowMinutes >= openMinutes || nowMinutes <= closeMinutes;
+    }
+  }
+
+  async getOpenRestaurants() {
+    const allRestaurants = await this.findAllRestaurant();
+    
+    const now = new Date();
+
+    // Use getHours() and getMinutes() to build the string with padding
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const currentTimeString = `${hours}:${minutes}`; // e.g., "14:30"
+
+    const restaurantsWithStatus = allRestaurants.map(restaurant => {
+      const isOpen = this.isTimeBetween(
+        currentTimeString,
+        restaurant.openTime,
+        restaurant.closeTime
+      );
+
+      return {
+        ...restaurant,
+        isOpen,
+      };
+    });
+
+    return restaurantsWithStatus;
   }
 
   async updateRestaurant(

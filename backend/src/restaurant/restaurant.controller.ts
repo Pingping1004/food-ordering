@@ -43,7 +43,7 @@ export class RestaurantController {
   @Public()
   @Get()
   async findAllRestaurant() {
-        return this.restaurantService.findAllRestaurant();
+        return this.restaurantService.getOpenRestaurants();
     }
 
     @Public()
