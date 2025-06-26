@@ -1,22 +1,61 @@
-import { Controller, Post, Body, Req, UnauthorizedException } from '@nestjs/common';
+import { Controller, Post, Body, Req, Res, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
+import { Response } from 'express';
 
 @Controller('auth')
 export class AuthController {
     constructor(
         private readonly authService: AuthService
-    ) {}
+    ) { }
 
     @Post('/signup')
-    async signup(@Body() signupDto: SignupDto) {
-        return this.authService.regsiter(signupDto);
+    async signup(@Body() signupDto: SignupDto, @Res({ passthrough: true }) res: Response) {
+        const { user, accessToken, refreshToken } = await this.authService.regsiter(signupDto);
+
+        res.cookie('access_token', accessToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 30 * 60 * 1000,
+        });
+
+        res.cookie('refresh_token', refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+        });
+
+        return {
+            message: 'Signup successful',
+            user: user,
+        };
     }
 
     @Post('/login')
-    async login(@Body() loginDto: LoginDto) {
-        return this.authService.login(loginDto);
+    async login(@Body() loginDto: LoginDto, @Res({ passthrough: true }) res: Response) {
+        const { user, accessToken, refreshToken } = await this.authService.login(loginDto);
+
+        res.cookie('access_token', accessToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 30 * 60 * 1000,
+        });
+
+        res.cookie('refresh_token', refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+        });
+
+        return {
+            message: 'Login successful',
+            user: user,
+        };
     }
 
     @Post('/refresh')
@@ -26,7 +65,9 @@ export class AuthController {
     }
 
     @Post('/logout')
-    async logout(@Req() req) {
+    async logout(@Req() req, @Res({ passthrough: true }) res: Response) {
+        res.clearCookie('access_token');
+        res.clearCookie('refresh_token');
         return { message: `Logout successful` };
     }
 }

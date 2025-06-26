@@ -6,10 +6,12 @@ import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import * as express from 'express';
 import { json } from 'express';
-import { ConfigService } from '@nestjs/config';
+import * as cookieParser from 'cookie-parser'
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { cors: true });
+
+  app.use(cookieParser());
 
   const uploadsDir = join(process.cwd(), 'uploads');
   app.use('/uploads', express.static(uploadsDir));
