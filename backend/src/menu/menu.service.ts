@@ -64,6 +64,7 @@ export class MenuService {
           menuImg: true,
           price: true,
           restaurantId: true,
+          isAvailable: true,
         }
       });
       return menus;

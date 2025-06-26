@@ -13,6 +13,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum RoleRequestStatus {
+  pending
+  accepted
+  rejected
+}
+
 enum PaymentMethodType {
   promptpay
   kbank
@@ -53,6 +59,19 @@ enum RestaurantCategory {
   Noodle
 }
 
+model RoleRequest {
+  requestId    String    @id @default(uuid())
+
+  userId    String  @unique
+  user    User  @relation("UserToRoleRequest", fields: [userId], references: [userId])
+
+  requestRole   Role
+  status    RoleRequestStatus
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime?
+}
+
 model Payout {
   payoutId   String  @default(uuid())  @id
   restaurantRevenue  Int
@@ -74,9 +93,7 @@ model Payout {
 model Restaurant {
   restaurantId  String @default(uuid()) @id
   email String @unique
-  role  Role  @default(cooker)
   restaurantImg String?
-  password  String
   name  String  @unique
   location  String?
   categories  RestaurantCategory[]
@@ -168,8 +185,15 @@ model Order {
 model User {
   userId  String @id  @default(uuid())
   email   String  @unique
-  name    String
-  password    String?
+  name    String?
+  password    String
+  profileImg  String?
+  role    Role    @default(user)
+
+  RoleRequest   RoleRequest?  @relation("UserToRoleRequest")
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@index([name])
 }
