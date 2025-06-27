@@ -18,9 +18,6 @@ export class RestaurantService {
     try {
       const restaurantImgUrl = file ? `uploads/restaurants/${file.filename}` : createRestaurantDto.restaurantImg;
 
-      console.log(restaurantImgUrl);
-      console.log(createRestaurantDto);
-
       const newRestaurant = {
         name: createRestaurantDto.name,
         email: createRestaurantDto.email,
@@ -127,16 +124,22 @@ export class RestaurantService {
   async updateRestaurant(
     restaurantId: string,
     updateRestaurantDto: UpdateRestaurantDto,
+    file?: Express.Multer.File
   ) {
     try {
-      // You can add business logic here (e.g. validation)
+      const restaurantImgUrl = file ? `uploads/restaurants/${file.filename}` : updateRestaurantDto.restaurantImg;
+      const dataToUpdate: UpdateRestaurantDto = { ...updateRestaurantDto };
+      
+      if (file) {
+        dataToUpdate.restaurantImg = restaurantImgUrl;
+      }
 
-      const updatedRestaurant = await this.prisma.restaurant.update({
+      const result = await this.prisma.restaurant.update({
         where: { restaurantId },
-        data: updateRestaurantDto,
+        data: dataToUpdate,
       });
 
-      return updatedRestaurant;
+      return result;
     } catch (error) {
       if (error.code === 'P2025') {
         throw new NotFoundException(`ไม่สามารถแก้ไขข้อมูลได้ เนื่องจากไม่พบร้านอาหารที่มีID: ${restaurantId}`);

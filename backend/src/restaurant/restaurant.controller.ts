@@ -6,13 +6,14 @@ import {
   UseInterceptors,
   UploadedFile,
   ParseFilePipe,
-  MaxFileSizeValidator,
-  FileTypeValidator,
+  Req,
+  BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer'; // Import diskStorage
 import { imageFileFilter, editFileName } from '../utils/file-upload.utils'; // Your utility functions
 import { Public } from '../decorators/public.decorator';
+import * as fs from 'fs/promises';
 
 import { RestaurantService } from './restaurant.service';
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
@@ -20,45 +21,93 @@ import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
 
 @Controller('restaurant')
 export class RestaurantController {
-  constructor(private readonly restaurantService: RestaurantService) {}
+  constructor(private readonly restaurantService: RestaurantService) { }
   @Post()
   @UseInterceptors(FileInterceptor('restaurantImg', {
     storage: diskStorage({
-        destination: './uploads/restaurants',
-        filename: editFileName,
+      destination: './uploads/restaurants',
+      filename: editFileName,
     }),
     fileFilter: imageFileFilter,
   }))
   async createRestaurant(
-    @Body() createRestaurantDto: CreateRestaurantDto, 
+    @Body() createRestaurantDto: CreateRestaurantDto,
     @UploadedFile(new ParseFilePipe({
-        fileIsRequired: false,
-      }),
+      fileIsRequired: false,
+    }),
     ) file?: Express.Multer.File
   ) {
     console.log('Controller: DTO (createRestaurantDto):', createRestaurantDto);
     return this.restaurantService.createRestaurant(createRestaurantDto, file);
   }
-  
+
   @Public()
   @Get()
   async findAllRestaurant() {
-        return this.restaurantService.getOpenRestaurants();
-    }
+    return this.restaurantService.getOpenRestaurants();
+  }
 
-    @Public()
-    @Get(':restaurantId')
-    async findRestaurant(@Param('restaurantId') restaurantId: string) {
-        return this.restaurantService.findRestaurant(restaurantId);
+  @Public()
+  @Get(':restaurantId')
+  async findRestaurant(@Param('restaurantId') restaurantId: string) {
+    return this.restaurantService.findRestaurant(restaurantId);
+  }
+
+  @Patch(':restaurantId')
+  @UseInterceptors(
+    FileInterceptor('restaurantImg', {
+      storage: diskStorage({
+        destination: './uploads/restaurants',
+        filename: editFileName,
+      }),
+      fileFilter: imageFileFilter,
+    })
+  )
+  async updateRestaurant(
+    @Req() req: any,
+    @Param('restaurantId') restaurantId: string,
+    @Body() updateRestaurantDto: UpdateRestaurantDto,
+    @UploadedFile() file?: Express.Multer.File
+  ) {
+    // const authRestaurantId = req.user.restaurantId;
+
+    // if (!authRestaurantId) {
+    //   throw new BadRequestException('Authentication context missing restaurant ID.');
+    // }
+
+    // // Ensure the authenticated user is trying to update their own restaurant
+    // if (restaurantId !== authRestaurantId) {
+    //   throw new BadRequestException('You are not authorized to update this restaurant profile.');
+    // }
+
+    let uploadedFilePath: string | undefined;
+    try {
+      const dataToUpdate: UpdateRestaurantDto = { ...updateRestaurantDto };
+
+      if (file) {
+        dataToUpdate.restaurantImg = `uploads/restaurants/${file.filename}`;
+        uploadedFilePath = file.path;
+      }
+      return this.restaurantService.updateRestaurant(restaurantId, updateRestaurantDto);
+    } catch (error) {
+      console.error(`Failed to update restaurant ${restaurantId} in controller:`, error);
+
+      // --- 4. Clean up Uploaded File on Error ---
+      if (uploadedFilePath) {
+        try {
+          await fs.unlink(uploadedFilePath);
+          console.log(`Controller: Successfully deleted temporary uploaded file: ${uploadedFilePath}`);
+        } catch (fileDeleteError) {
+          console.error(`Controller: Failed to delete uploaded file ${uploadedFilePath}:`, fileDeleteError);
+        }
+      }
+      // Re-throw the error so NestJS's global exception filters can handle it
+      throw error;
     }
-    
-    @Patch(':restaurantId')
-    async updateRestaurant(@Param('restaurantId') restaurantId: string, @Body() updateRestaurantDto: UpdateRestaurantDto) {
-        return this.restaurantService.updateRestaurant(restaurantId, updateRestaurantDto);
-    }
-    
-    @Delete(':restaurantId')
-    async deleteRestaurant(@Param('restaurantId') restaurantId: string) {
-        return await this.restaurantService.removeRestaurant(restaurantId);
-    }
+  }
+
+  @Delete(':restaurantId')
+  async deleteRestaurant(@Param('restaurantId') restaurantId: string) {
+    return await this.restaurantService.removeRestaurant(restaurantId);
+  }
 }
