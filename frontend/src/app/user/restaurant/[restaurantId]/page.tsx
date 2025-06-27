@@ -46,6 +46,7 @@ function MenuContext() {
             cookingTime={menu.cookingTime}
             isAvailable={menu.isAvailable}
             restaurantId={menu.restaurantId}
+            variant={menu.isAvailable ? "on" : "off"}
 
           />
         ))}

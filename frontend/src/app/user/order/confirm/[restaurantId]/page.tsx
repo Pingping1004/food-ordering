@@ -64,6 +64,12 @@ function OrderConfirmContext() {
         return; // Prevent submission
       }
 
+      if (minimumAllowedDeliverTime > new Date(orderPayload.deliverAt)) {
+        console.error('Deliver time must be after current time at least 5 mins');
+        alert('เวลารับอาหารต้องอยู่หลังจากเวลาปัจจุบันอย่างน้อย 5นาที');
+        return;
+      }
+
       console.log('Order Payload: ', orderPayload);
       const response = await api.post(`${NGROK_WEBSITE_URL}/order/omise`, orderPayload);
       console.log('Created new order: ', response);
@@ -104,7 +110,7 @@ function OrderConfirmContext() {
         <div className="flex justify-between items-center">
           <h3 className="noto-sans-bold text-base">เลือกเวลารับอาหาร</h3>
           <p className="noto-sans-regular text-sm text-danger-main">
-            ใช้เวลาจัดเตรียมขั้นต่ำ5นาที ({minimumAllowedDeliverTime.toLocaleString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.)
+            ใช้เวลาจัดเตรียมขั้นต่ำ5นาที
           </p>
         </div>
         <Controller

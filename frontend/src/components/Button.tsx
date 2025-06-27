@@ -32,7 +32,7 @@ const button = cva("noto-sans-regular justify-center text-sm", {
     },
 });
 
-type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
+export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
   VariantProps<typeof button> & {
     icon?: React.ReactNode;
     iconPosition?: "start" | "end";

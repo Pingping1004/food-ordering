@@ -18,7 +18,7 @@ const restaurantProfileVariant = cva("", {
     variants: {
         variant: {
             isOpen: '',
-            isClose: 'opacity-50 cursor-not-allowed',
+            isClose: 'opacity-50 cursor-not-allowed pointer-events-none',
         },
     },
     defaultVariants: {
@@ -34,17 +34,19 @@ export type RestaurantProfileProps = React.HTMLAttributes<HTMLDivElement> &
         categories: RestaurantCategory[];
         openTime: Date | string;
         closeTime: Date | string;
+        isOpen: boolean;
     }
 
 export const RestaurantProfile: React.FC<RestaurantProfileProps> = ({
     restaurantId,
-    variant = "isOpen",
+    variant,
     name,
     restaurantImg,
     categories,
     children,
     openTime,
     closeTime,
+    isOpen,
     className,
     ...props
 
@@ -52,30 +54,38 @@ export const RestaurantProfile: React.FC<RestaurantProfileProps> = ({
     const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
     const src = restaurantImg ? `${baseURL}/${restaurantImg}` : `/picture.svg`;
 
-    return (
-        <Link href={`/user/restaurant/${restaurantId}`}>
-            <div className={clsx(
-                "flex flex-col gap-y-4 border-color",
-                restaurantProfileVariant({ variant }),
-                className
-            )}
-                {...props}
-            >
-                <div className="flex relative w-[163px] h-[163px] justify-center aspect-square">
-                    <Image
-                        width={163}
-                        height={163}
-                        src={src}
-                        alt='Restaurant Profile'
-                        className="rounded-lg object-contain w-full h-full"
-                    />
-                </div>
-
-                <div className="flex flex-col gap-y-2">
-                    <h3 className="noto-sans-bold text-sm text-primary">{name.substring(0, 15)}</h3>
-                    <p className="noto-sans-regular text-xs text-light">{categories.join(', ')}</p>
-                </div>
+    const content = (
+        <div className={clsx(
+            "flex flex-col gap-y-4 border-color",
+            restaurantProfileVariant({ variant }),
+            className
+        )}
+            {...props}
+        >
+            <div className="flex relative w-[163px] h-[163px] justify-center aspect-square">
+                <Image
+                    width={163}
+                    height={163}
+                    src={src}
+                    alt='Restaurant Profile'
+                    className="rounded-lg object-contain w-full h-full"
+                />
             </div>
-        </Link>
+
+            <div className="flex flex-col gap-y-2">
+                <h3 className="noto-sans-bold text-sm text-primary">{name.substring(0, 15)}</h3>
+                <p className="noto-sans-regular text-xs text-light">{categories.join(', ')}</p>
+            </div>
+        </div>
     );
+
+    if (isOpen) {
+        return (
+            <Link href={`user/restaurant/${restaurantId}`}>
+                {content}
+            </Link>
+        );
+    } else {
+        return content;
+    }
 };

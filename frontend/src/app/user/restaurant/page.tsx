@@ -8,6 +8,7 @@ import { Restaurant } from "@/context/MenuContext";
 import { api } from "@/lib/api";
 import { useCart } from "@/context/CartContext";
 import { useRouter } from "next/navigation";
+import UserHeader from "@/components/users/Header";
 
 
 export default function UserHomePage() {
@@ -41,9 +42,7 @@ export default function UserHomePage() {
 
     return (
         <div className="flex flex-col gap-y-10 py-10 px-6">
-            <header className="flex justify-between items-center">
-                <h1 className="noto-sans-bold text-2xl">เลือกร้านอาหาร</h1>
-            </header>
+            <UserHeader />
             <div className="grid md:grid-cols-4 lg:grid-cols-6 grid-cols-2 gap-x-4">
                 {data.map((restaurant) => {
 
@@ -56,7 +55,8 @@ export default function UserHomePage() {
                             closeTime={restaurant.closeTime}
                             restaurantId={restaurant.restaurantId}
                             restaurantImg={restaurant.restaurantImg}
-                            variant="isOpen"
+                            isOpen={restaurant.isOpen}
+                            variant={restaurant.isOpen ? "isOpen" : "isClose"}
                         />
                     );
                 })}

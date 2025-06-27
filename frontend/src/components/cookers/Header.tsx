@@ -6,7 +6,17 @@ import { useRouter } from "next/navigation";
 import { Button } from "../Button";
 import Profile from "../Profile";
 
-export default function CookerHeader() {
+export interface Restaurant {
+  name: string;
+  email: string;
+  location?: string;
+  openTime: string;
+  closeTime: string;
+}
+
+export default function CookerHeader({
+  name,
+}: Restaurant) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -14,12 +24,13 @@ export default function CookerHeader() {
     <>
       <header className="w-full flex items-center">
         <div className="flex items-center w-full">
-          <h1 className="w-2/5 noto-sans-bold md:text-2xl text-xl inline-block">สมชายซูชิ</h1>
+          <h1 className="w-2/5 noto-sans-bold md:text-2xl text-xl inline-block">{name}</h1>
 
           <div className="w-full flex justify-end items-center gap-x-6">
             {/* Conditional rendering based on the current URL */}
             {pathname === "/" && (
               <Button
+                type="button"
                 variant="primary"
                 size="md"
                 onClick={() => router.push("/managed-menu")}
@@ -29,6 +40,7 @@ export default function CookerHeader() {
             )}
             {pathname !== "/" && (
               <Button
+                type="button"
                 variant="secondary"
                 size="md"
                 onClick={() => router.push("/")}

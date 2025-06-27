@@ -2,7 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, Req, BadRequestExcep
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { Role } from '@prisma/client';
+import { Role, User } from '@prisma/client';
 
 @Controller('user')
 export class UserController {
@@ -21,6 +21,13 @@ export class UserController {
   @Get(':userId')
   findOne(@Param('userId') userId: string) {
     return this.userService.findOneUser(userId);
+  }
+
+  @Get('profile')
+  async getProfile(@Req() req): Promise<Omit<User, 'password'>> {
+    const userId = req.user.userId;
+    const user = await this.userService.findOneUser(userId);
+    return user;
   }
 
   @Patch(':userId')

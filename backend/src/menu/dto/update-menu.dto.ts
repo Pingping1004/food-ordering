@@ -16,10 +16,6 @@ export class UpdateMenuDto extends PartialType(CreateMenuDto) {
         @IsString()
         role?: string;
 
-        @IsString()
-        @IsOptional()
-        restaurantName?: string;
-
         @IsOptional()
         @IsNumber()
         @IsPositive()
@@ -37,7 +33,7 @@ export class UpdateMenuDto extends PartialType(CreateMenuDto) {
         createdAt?: string;
 
         @IsOptional()
-        @IsNumber()
+        @IsNumber({ maxDecimalPlaces: 2 })
         @IsPositive()
         @Type(() => Number)
         price?: number;
