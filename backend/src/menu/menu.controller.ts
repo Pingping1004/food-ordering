@@ -153,7 +153,7 @@ export class MenuController {
     return this.menuService.findMenu(menuId);
   }
 
-  @Patch(':menuId')
+  @Patch('single/:menuId')
   @UseInterceptors(
     FileInterceptor('menuImg', {
       storage: diskStorage({
@@ -168,30 +168,33 @@ export class MenuController {
     @Req() req: any,
     @Param('menuId') menuId: string,
     @Body() updateMenuDto: UpdateMenuDto,
-    file?: Express.Multer.File
+    @UploadedFile() file?: Express.Multer.File
   ) {
-    const restaurantId = req.user.restaurantId;
-    console.log(req);
+    // const restaurantId = req.user.restaurantId;
+    const restaurantId = req.body.restaurantId;
     if (!restaurantId) throw new NotFoundException('RestaurantId not found in update mneu controller');
 
     let uploadedFilePath: string | undefined;
     try {
       if (!menuId) throw new BadRequestException('Menu ID is required in URL params');
+
       const menuData: UpdateMenuDto = { ...updateMenuDto };
 
       if (file) {
         menuData.menuImg = `uploads/menus/${file.filename}`;
         uploadedFilePath = file.path;
+      } else if (updateMenuDto.menuImg === undefined) {
+        menuData.menuImg = updateMenuDto.menuImg;
       }
+
       const result = await this.menuService.updateMenu(
         restaurantId,
         [menuId],
         [menuData],
-        file ? [file] : undefined
       );
 
       console.log('Single menu update successful in controller: ', result);
-      return result.results[0];
+      return result;
     } catch (error) {
       console.error('Single menu update failed in controller: ', error);
       if (uploadedFilePath) {
@@ -220,10 +223,10 @@ export class MenuController {
     @Req() req: any,
     @Query('menuIds') menuIds: string[],
     @Body('updateMenuDto') updateMenuDto: string,
-    files?: Express.Multer.File[]
+    @UploadedFiles() files?: Express.Multer.File[]
   ) {
-    const restaurantId = req.user.restaurantId;
-    console.log(req);
+    // const restaurantId = req.user.restaurantId;
+    const restaurantId = req.body.restaurantId;
     if (!restaurantId) throw new NotFoundException('RestaurantId not found in bulk update menu controller');
 
     let parsedUpdateMenuDtos: UpdateMenuDto[];
@@ -251,7 +254,7 @@ export class MenuController {
         restaurantId,
         menuIds,
         parsedUpdateMenuDtos,
-        files,
+        // files,
       );
 
       console.log('Bulk menu update successfully in controller: ', result);

@@ -88,7 +88,7 @@ export class RestaurantController {
         dataToUpdate.restaurantImg = `uploads/restaurants/${file.filename}`;
         uploadedFilePath = file.path;
       }
-      return this.restaurantService.updateRestaurant(restaurantId, updateRestaurantDto);
+      return this.restaurantService.updateRestaurant(restaurantId, dataToUpdate);
     } catch (error) {
       console.error(`Failed to update restaurant ${restaurantId} in controller:`, error);
 

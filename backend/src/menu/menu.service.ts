@@ -121,11 +121,11 @@ export class MenuService {
     return this.prisma.menu.findMany();
   }
 
-  private calculateDisplayPrice(menu: Partial<Menu>): { sellPriceDisplay: number; platformFeeDisplay: number} {
+  private calculateDisplayPrice(menu: Partial<Menu>): { sellPriceDisplay: number; platformFeeDisplay: number } {
     if (!menu.price) throw new NotFoundException('Cannot find menu price, cannot calculate display price');
     const markup = new Decimal(Number(process.env.SELL_PRICE_MARKUP_RATE));
     const rate = new Decimal(Number(process.env.PLATFORM_COMMISSION_RATE));
-    
+
     const priceInSatang = new Decimal(menu.price);
     const sellingPriceInSatang = priceInSatang.times(new Decimal(1).plus(markup));
     const platformFeeInSatang = sellingPriceInSatang.times(rate);
@@ -220,7 +220,7 @@ export class MenuService {
     }
   }
 
-  async updateMenu(restaurantId: string, menuIds: string[], updateMenuDto: UpdateMenuDto[], files?: Express.Multer.File[]) {
+  async updateMenu(restaurantId: string, menuIds: string[], updateMenuDto: UpdateMenuDto[]) {
     try {
       // Find existing restaurant
       await this.restaurantService.findRestaurant(restaurantId);
@@ -230,14 +230,8 @@ export class MenuService {
 
       const updateMenuLists = updateMenuDto.map(async (dto, index) => {
         const menuId = menuIds[index];
-        const file = files && files[index];
-        let menuImgUrl: string | undefined;
-
-        if (file) {
-          menuImgUrl = `uploads/menus/${file.filename}`;
-        } else if (dto.menuImg !== undefined) {
-          menuImgUrl = dto.menuImg;
-        }
+        // const file = files && files[index];
+        const menuImgUrl = dto.menuImg;
 
         const updateLists: Partial<Menu> = {};
         if (dto.name !== undefined) updateLists.name = dto.name;
@@ -258,12 +252,15 @@ export class MenuService {
         return updateMenus;
       });
 
+      if (Object.keys(updateMenuLists).length === 0) {
+        throw new BadRequestException('ไม่พบข้อมูลให้อัพเดต');
+      }
+
       const results = await Promise.all(updateMenuLists);
-      console.log(`Bulk menus update successful for restaurant ${restaurantId}. Updated menus: `, results.map(m => m.name)); // Log menu names for brevity
+      console.log(`Bulk menus update successful for restaurant ${restaurantId}. Updated menus: `, results.map(m => m.name));
       return {
         message: `Menus updated successfully for restaurant ${restaurantId}`,
-        results: results,
-        fileInfos: files, // Optionally return information about processed files
+        results: results
       };
     } catch (error: any) {
       console.error(`Failed to update menus for ${restaurantId}: `, error);

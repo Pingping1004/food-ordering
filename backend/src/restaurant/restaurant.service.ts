@@ -128,10 +128,16 @@ export class RestaurantService {
   ) {
     try {
       const restaurantImgUrl = file ? `uploads/restaurants/${file.filename}` : updateRestaurantDto.restaurantImg;
-      const dataToUpdate: UpdateRestaurantDto = { ...updateRestaurantDto };
+      const dataToUpdate: Partial<UpdateRestaurantDto> = { ...updateRestaurantDto };
       
       if (file) {
         dataToUpdate.restaurantImg = restaurantImgUrl;
+      } else if (file === undefined) {
+        dataToUpdate.restaurantImg = updateRestaurantDto.restaurantImg;
+      }
+
+      if (Object.keys(dataToUpdate).length === 0) {
+        throw new BadRequestException('ไม่พบข้อมูลให้อัปเดต.');
       }
 
       const result = await this.prisma.restaurant.update({
