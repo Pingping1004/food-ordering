@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestj
 import { PayoutService } from './payout.service';
 import { CreatePayoutDto } from './dto/create-payout.dto';
 import { UpdatePayoutDto } from './dto/update-payout.dto';
+import { calculatePayout } from './payout-calculator';
 
 @Controller('payout')
 export class PayoutController {
@@ -18,6 +19,23 @@ export class PayoutController {
     @Query('restaurantId') restaurantId: string,
   ) {
     return this.payoutService.findWeeklyPayout(date, restaurantId);
+  }
+
+  @Get(':payoutId')
+  findPayout(payoutId?: string) {
+    return this.payoutService.findPayout(payoutId);
+  }
+
+  @Get()
+  calculatePayout(
+    @Query('amount') amount: number,
+  ) {
+    return calculatePayout(amount);
+  }
+
+  @Get()
+  findAllPayout(payoutId?: string) {
+    return this.payoutService.findAllPayout();
   }
 
   @Patch(':id')

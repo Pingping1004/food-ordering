@@ -16,7 +16,9 @@ export class PayoutService {
 
   async createPayout(orderId: string) {
     const order = await this.orderService.findOneOrder(orderId);
-    const { restaurantEarning, platformFee } = calculatePayout(order.totalAmount);
+    const markupRate = Number(process.env.SELL_PRICE_MARKUP_RATE);
+    const sellingPrice = order.totalAmount * (1 + markupRate);
+    const { restaurantEarning, platformFee } = calculatePayout(sellingPrice);
 
     const now = new Date();
     const { startDate, endDate } = calculateWeeklyInterval(now);
@@ -59,6 +61,24 @@ export class PayoutService {
     return payouts;
   }
 
+  async findPayout(payoutId?: string) {
+    const payout = await this.prisma.payout.findUnique({
+      where: { payoutId },
+    });
+
+    return payout;
+  }
+
+  async findAllPayout() {
+    const payout = await this.prisma.payout.findMany({
+      orderBy: {
+        createdAt: 'desc',
+      }
+    });
+
+    return payout;
+  }
+
   async findAllPayoutFromRestaurant(restaurantId: string): Promise<Payout[]> {
     const payouts = await this.prisma.payout.findMany({
       where: {
@@ -72,7 +92,7 @@ export class PayoutService {
     return payouts;
   }
 
-  async getAllRevenue() {
+  private async getAllRevenue() {
     const payouts = await this.prisma.payout.findMany();
     const allRevenue = payouts.reduce((total, store) => total + store.platformFee, 0);
     console.log('This is all platform revenue: ', allRevenue);

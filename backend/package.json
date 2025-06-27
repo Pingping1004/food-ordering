@@ -41,6 +41,7 @@
     "cookieparser": "^0.1.0",
     "crypto": "^1.0.1",
     "date-fns": "^4.1.0",
+    "decimal.js": "^10.5.0",
     "moment": "^2.30.1",
     "multer": "^2.0.1",
     "omise": "^1.0.0",

@@ -23,6 +23,7 @@ export class RestaurantService {
 
       const newRestaurant = {
         name: createRestaurantDto.name,
+        email: createRestaurantDto.email,
         categories: createRestaurantDto.categories,
         restaurantImg: restaurantImgUrl,
         openTime: createRestaurantDto.openTime,

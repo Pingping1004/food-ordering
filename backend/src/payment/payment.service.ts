@@ -30,15 +30,17 @@ export class PaymentService {
     try {
       type ChargeCreateOptions = Parameters<typeof this.omiseClient.charges.create>[0];
       const amountInStang = amount * 100;
+      const markupPrice = Number(process.env.SELL_PRICE_MARKUP_RATE);
+
       const expirationTime = moment.utc().add(10, 'minutes').toISOString();
       const chargeOptions: ChargeCreateOptions = {
-          amount: amountInStang,
+          amount: Math.floor(amountInStang * (1 + markupPrice)),
           currency: 'THB',
           return_uri: returnUri,
           metadata: {
             order_id: orderId,
           },
-          webhook_endpoints: ["https://fefb-124-120-2-163.ngrok-free.app/webhooks/omise"],
+          webhook_endpoints: ["https://f752-124-122-126-231.ngrok-free.app/webhooks/omise"],
           expires_at: expirationTime,
       };
 
@@ -58,7 +60,6 @@ export class PaymentService {
       }
 
       const charge = await this.omiseClient.charges.create(chargeOptions);
-      console.log('Payment charge object: ', charge);
       return charge;
     } catch (error) {
       console.error('Failed to create Payment charge: ', error.message);

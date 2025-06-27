@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, Req, UseGuards, UploadedFile, UploadedFiles, BadRequestException, UseInterceptors, NotFoundException, Query } from '@nestjs/common';
-import { MenuService } from './menu.service';
+import { MenuService, MenusWithDisplayPrices } from './menu.service';
 import { CreateMenuDto } from './dto/create-menu.dto';
 import { UpdateMenuDto } from './dto/update-menu.dto';
 import * as fs from 'fs/promises';
@@ -142,8 +142,9 @@ export class MenuController {
 
   @Public()
   @Get(':restaurantId')
-  async getRestaurantMenus(@Param('restaurantId') restaurantId: string) {
-    return this.menuService.getRestaurantMenus(restaurantId);
+  async getRestaurantMenus(@Param('restaurantId') restaurantId: string): Promise<MenusWithDisplayPrices[]> {
+    const menuList = this.menuService.getRestaurantMenusDisplay(restaurantId);
+    return menuList;
   }
 
   @Public()

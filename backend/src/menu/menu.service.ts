@@ -4,6 +4,18 @@ import { UpdateMenuDto } from './dto/update-menu.dto';
 import { PrismaService } from 'prisma/prisma.service';
 import { RestaurantService } from 'src/restaurant/restaurant.service';
 import { Menu } from '@prisma/client';
+import Decimal from 'decimal.js';
+
+export interface MenusWithDisplayPrices {
+  menuId: string;
+  name: string;
+  menuImg?: string;
+  price: number;
+  restaurantId: string;
+  isAvailable: boolean;
+  sellPriceDisplay: number;
+  platformFeeDisplay: number;
+}
 
 @Injectable()
 export class MenuService {
@@ -109,9 +121,23 @@ export class MenuService {
     return this.prisma.menu.findMany();
   }
 
-  async getRestaurantMenus(restaurantId: string) {
-    try {
+  private calculateDisplayPrice(menu: Partial<Menu>): { sellPriceDisplay: number; platformFeeDisplay: number} {
+    if (!menu.price) throw new NotFoundException('Cannot find menu price, cannot calculate display price');
+    const markup = new Decimal(Number(process.env.SELL_PRICE_MARKUP_RATE));
+    const rate = new Decimal(Number(process.env.PLATFORM_COMMISSION_RATE));
+    
+    const priceInSatang = new Decimal(menu.price);
+    const sellingPriceInSatang = priceInSatang.times(new Decimal(1).plus(markup));
+    const platformFeeInSatang = sellingPriceInSatang.times(rate);
 
+    return {
+      sellPriceDisplay: sellingPriceInSatang.toNumber(),
+      platformFeeDisplay: platformFeeInSatang.toNumber(),
+    }
+  }
+
+  async getRestaurantMenusDisplay(restaurantId: string): Promise<MenusWithDisplayPrices[]> {
+    try {
       const menus = await this.prisma.menu.findMany({
         where: {
           restaurantId,
@@ -126,7 +152,18 @@ export class MenuService {
           isAvailable: true,
         }
       });
-      return menus;
+
+      const menusWithCalculatedPrices: MenusWithDisplayPrices[] = menus.map(menu => {
+        const displayPrices = this.calculateDisplayPrice(menu);
+        return {
+          ...menu,
+          menuImg: menu.menuImg ?? undefined,
+          sellPriceDisplay: displayPrices.sellPriceDisplay,
+          platformFeeDisplay: displayPrices.platformFeeDisplay,
+        };
+      });
+
+      return menusWithCalculatedPrices;
     } catch (error) {
       throw new InternalServerErrorException('ค้นหาเมนูขัดข้อง');
     }

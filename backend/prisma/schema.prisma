@@ -116,7 +116,7 @@ model Menu {
   menuId  String  @default(uuid()) @id
   name  String
   menuImg String?
-  price Float
+  price   Int
   maxDaily  Int
   cookingTime Int
   createdAt DateTime  @default(now())
