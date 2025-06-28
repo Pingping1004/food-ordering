@@ -68,7 +68,7 @@ export default function SignupPage() {
                       size="full"
                       type="submit"
                     >
-                    Create Account
+                    Login to Account
                   </Button>
                 </div>
                 <p className="text-sm leading-relaxed text-gray-900">

@@ -32,9 +32,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setUser(response.data.user);
             console.log('Login successful');
         } catch (error) {
-            const errorResponse = await api.post('/auth/login', { email, password });
             console.error('Login failed: ', error);
-            alert(errorResponse);
             throw new Error('Invalid credentials');
         }
     }
