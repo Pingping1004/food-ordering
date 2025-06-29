@@ -51,7 +51,7 @@ export const RestaurantProfile: React.FC<RestaurantProfileProps> = ({
     ...props
 
 }: RestaurantProfileProps) => {
-    const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+    const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
     const src = restaurantImg ? `${baseURL}/${restaurantImg}` : `/picture.svg`;
 
     const content = (

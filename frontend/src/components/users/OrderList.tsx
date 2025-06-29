@@ -36,7 +36,7 @@ export default function OrderList({ items }: CartListProps) {
   return (
     <div>
       {items.map((menu, index) => {
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
         const src = menu.menuImg ? `${baseUrl}/${menu.menuImg}` : '/picture.svg';
 
         return (

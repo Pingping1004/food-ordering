@@ -26,7 +26,6 @@ export default function SignupPage() {
 
   const submitForm = async (signupData: signupSchemaType, event?: React.BaseSyntheticEvent) => {
     event?.preventDefault();
-    console.log("Signup form data:", signupData); // Debugging: log form data
 
     setIsLoading(true);
     setErrorMessage(null);

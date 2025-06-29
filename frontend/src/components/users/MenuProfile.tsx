@@ -46,7 +46,7 @@ export default function MenuProfile({
     ...props
 }: MenuProfileProps) {
     const { getQuantity, addToCart, removeFromCart } = useCart();
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
     const src = menuImg ? `${baseUrl}/${menuImg}` : `/picture.svg`;
     const quantity = getQuantity(menuId) > 0 ? `${getQuantity(menuId)}` : '';
 
