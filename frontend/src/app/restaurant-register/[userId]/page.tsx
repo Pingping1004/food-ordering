@@ -48,12 +48,6 @@ export default function RestaurantRegisterPage() {
     mode: 'onBlur',
   });
 
-  // useEffect(() => {
-  //   if (user?.userId) {
-  //     setValue('userId', user.userId);
-  //   }
-  // }, [user, setValue]);
-
   useEffect(() => {
     console.log('OpenDate: ', openDate);
   }, [openDate])
@@ -86,7 +80,7 @@ export default function RestaurantRegisterPage() {
       console.log('Restaurant data: ', formData);
       const response = await api.post('/restaurant', formData);
       console.log('Response data: ', response.data);
-      const restaurantName = response.data.restaurant.name;
+      const restaurantName = response.data.result.name;
       alert(`ลงทะเบียนร้าน ${restaurantName} สำเร็จ`);
     } catch (error) {
       console.error(`error`, error);
