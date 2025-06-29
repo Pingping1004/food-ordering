@@ -22,7 +22,6 @@ export class UserController {
   @Get('profile')
   @UseGuards(JwtAuthGuard)
   async getProfile(@Req() req): Promise<Omit<User, 'password'>> {
-    console.log('GET /user/profile route was successfully hit!');
     const userId = req.user.userId;
     const user = await this.userService.findOneUser(userId);
     return user;

@@ -22,8 +22,12 @@ export class RolesGuard implements CanActivate {
     if (!requiredRoles || requiredRoles.length === 0) return true;
 
     const request = context.switchToHttp().getRequest();
-    // const user = request.user;
-    const userRole = request.body.role;
+    const user = request.user;
+    console.log('Request user: ', user);
+    
+    const userRole = user.role;
+
+    // const userRole = request.body.role;
     
     if (!userRole || !requiredRoles) {
       throw new ForbiddenException('ผู้ใช้งานทั่วไปไม่สามารถแก้ไขข้อมูลของร้านอาหารได้');

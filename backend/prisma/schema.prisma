@@ -13,6 +13,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum DateWeek {
+  mon
+  tue
+  wed
+  thu
+  fri
+  sat
+  sun
+}
+
 enum RoleRequestStatus {
   pending
   accepted
@@ -57,6 +67,7 @@ enum RestaurantCategory {
   Rice
   Appetizer
   Noodle
+  Dessert
 }
 
 model RoleRequest {
@@ -97,8 +108,10 @@ model Restaurant {
   name  String  @unique
   location  String?
   categories  RestaurantCategory[]
+  openDate    DateWeek[]
   openTime  String
   closeTime String
+  avgCookingTime  Int
   
   adminName    String
   adminSurname String
@@ -118,7 +131,7 @@ model Menu {
   menuImg String?
   price   Int
   maxDaily  Int
-  cookingTime Int
+  cookingTime Int?
   createdAt DateTime  @default(now())
   isAvailable Boolean @default(true)
 

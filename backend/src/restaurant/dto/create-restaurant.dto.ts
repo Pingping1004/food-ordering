@@ -1,5 +1,5 @@
-import { IsNotEmpty, IsString, IsEnum, IsArray, IsOptional, IsEmail } from "class-validator";
-import { Prisma, RestaurantCategory } from "@prisma/client";
+import { IsNotEmpty, IsString, IsEnum, IsArray, IsOptional, IsEmail, IsNumber, IsDate } from "class-validator";
+import { DateWeek, RestaurantCategory } from "@prisma/client";
 import { Role } from "./update-restaurant.dto";
 
 export class CreateRestaurantDto {
@@ -20,13 +20,22 @@ export class CreateRestaurantDto {
     @IsNotEmpty()
     categories: RestaurantCategory[];
 
+    @IsArray()
+    @IsEnum(DateWeek, { each: true })
     @IsNotEmpty()
-    @IsString()
-    openTime: string;
+    openDate: DateWeek[];
 
     @IsNotEmpty()
-    @IsString()
-    closeTime: string;
+    @IsDate()
+    openTime: Date;
+
+    @IsNotEmpty()
+    @IsDate()
+    closeTime: Date;
+
+    @IsNumber()
+    @IsNotEmpty()
+    avgCookingTime: number;
 
     @IsNotEmpty()
     @IsString()

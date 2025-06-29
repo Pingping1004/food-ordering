@@ -23,8 +23,18 @@ export class RestaurantService {
         email: createRestaurantDto.email,
         categories: createRestaurantDto.categories,
         restaurantImg: restaurantImgUrl,
-        openTime: createRestaurantDto.openTime,
-        closeTime: createRestaurantDto.closeTime,
+        avgCookingTime: createRestaurantDto.avgCookingTime,
+        openDate: createRestaurantDto.openDate,
+        openTime: typeof createRestaurantDto.openTime === 'string'
+          ? createRestaurantDto.openTime
+          : (createRestaurantDto.openTime instanceof Date
+              ? createRestaurantDto.openTime.toISOString().substring(11, 16)
+              : ''),
+        closeTime: typeof createRestaurantDto.closeTime === 'string'
+          ? createRestaurantDto.closeTime
+          : (createRestaurantDto.closeTime instanceof Date
+              ? createRestaurantDto.closeTime.toISOString().substring(11, 16)
+              : ''),
         adminName: createRestaurantDto.adminName,
         adminSurname: createRestaurantDto.adminSurname,
         adminTel: createRestaurantDto.adminTel,

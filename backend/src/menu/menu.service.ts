@@ -87,7 +87,7 @@ export class MenuService {
           name: dto.name,
           price: dto.price,
           maxDaily: dto.maxDaily,
-          cookingTime: dto.cookingTime,
+          cookingTime: dto.cookingTime ?? existingRestaurant.avgCookingTime ?? 5,
           menuImg: menuImgUrl,
 
           restaurant: {
