@@ -38,17 +38,20 @@ export class RestaurantController {
     fileFilter: imageFileFilter,
   }))
   async createRestaurant(
+    @Req() req: any,
     @Body() createRestaurantDto: CreateRestaurantDto,
     @UploadedFile(new ParseFilePipe({
       fileIsRequired: false,
     }),
     ) file?: Express.Multer.File
   ) {
+    const userId = req.user.userId;
     console.log('Controller: DTO (createRestaurantDto):', createRestaurantDto);
-    return this.restaurantService.createRestaurant(createRestaurantDto, file);
+    return this.restaurantService.createRestaurant(createRestaurantDto, userId, file);
   }
 
   @Public()
+  @Roles([])
   @Get()
   async findAllRestaurant() {
     return this.restaurantService.getOpenRestaurants();

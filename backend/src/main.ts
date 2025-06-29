@@ -11,13 +11,12 @@ import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  console.log('JWT Secret from env: ', process.env.JWT_SECRET);
 
   app.use(cookieParser());
 
   const uploadsDir = join(process.cwd(), 'uploads');
   app.use('/uploads', express.static(uploadsDir));
-  console.log('Serving uploads from:', uploadsDir);
+  // console.log('Serving uploads from:', uploadsDir);
 
   app.useGlobalPipes(
     new ValidationPipe({

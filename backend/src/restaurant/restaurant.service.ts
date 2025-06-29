@@ -14,11 +14,13 @@ export class RestaurantService {
 
   async createRestaurant(
     createRestaurantDto: CreateRestaurantDto,
+    userId: string,
     file?: Express.Multer.File) {
     try {
       const restaurantImgUrl = file ? `uploads/restaurants/${file.filename}` : createRestaurantDto.restaurantImg;
 
       const newRestaurant = {
+        userId,
         name: createRestaurantDto.name,
         email: createRestaurantDto.email,
         categories: createRestaurantDto.categories,
@@ -28,13 +30,13 @@ export class RestaurantService {
         openTime: typeof createRestaurantDto.openTime === 'string'
           ? createRestaurantDto.openTime
           : (createRestaurantDto.openTime instanceof Date
-              ? createRestaurantDto.openTime.toISOString().substring(11, 16)
-              : ''),
+            ? createRestaurantDto.openTime.toISOString().substring(11, 16)
+            : ''),
         closeTime: typeof createRestaurantDto.closeTime === 'string'
           ? createRestaurantDto.closeTime
           : (createRestaurantDto.closeTime instanceof Date
-              ? createRestaurantDto.closeTime.toISOString().substring(11, 16)
-              : ''),
+            ? createRestaurantDto.closeTime.toISOString().substring(11, 16)
+            : ''),
         adminName: createRestaurantDto.adminName,
         adminSurname: createRestaurantDto.adminSurname,
         adminTel: createRestaurantDto.adminTel,
@@ -105,22 +107,29 @@ export class RestaurantService {
     }
   }
 
-  async getOpenRestaurants() {
-    const allRestaurants = await this.findAllRestaurant();
-    
-    const now = new Date();
+  private isTodayOpen(openDate: string[]): boolean {
+    const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+    const today = days[new Date().getDay()];
+    return openDate.includes(today);
+  }
 
+  async getOpenRestaurants() {
     // Use getHours() and getMinutes() to build the string with padding
+    const now = new Date();
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
     const currentTimeString = `${hours}:${minutes}`; // e.g., "14:30"
 
-    const restaurantsWithStatus = allRestaurants.map(restaurant => {
-      const isOpen = this.isTimeBetween(
+    const allRestaurants = await this.findAllRestaurant();
+    console.log('All restaurants: ', allRestaurants);
+    const openRestaurant = allRestaurants.map((restaurant) => {
+      const isOpenDay = this.isTodayOpen(restaurant.openDate);
+      const isOpenTime = this.isTimeBetween(
         currentTimeString,
         restaurant.openTime,
         restaurant.closeTime
       );
+      const isOpen = isOpenDay && isOpenTime;
 
       return {
         ...restaurant,
@@ -128,7 +137,7 @@ export class RestaurantService {
       };
     });
 
-    return restaurantsWithStatus;
+    return allRestaurants;
   }
 
   async updateRestaurant(
@@ -139,7 +148,7 @@ export class RestaurantService {
     try {
       const restaurantImgUrl = file ? `uploads/restaurants/${file.filename}` : updateRestaurantDto.restaurantImg;
       const dataToUpdate: Partial<UpdateRestaurantDto> = { ...updateRestaurantDto };
-      
+
       if (file) {
         dataToUpdate.restaurantImg = restaurantImgUrl;
       } else if (file === undefined) {

@@ -4,6 +4,8 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Role, User } from '@prisma/client';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
+import { RolesGuard } from 'src/guards/roles.guard';
+import { Roles } from 'src/decorators/role.decorator';
 
 @Controller('user')
 export class UserController {
@@ -19,8 +21,9 @@ export class UserController {
     return this.userService.findAllUsers();
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles([Role.admin, Role.cooker, Role.user])
   @Get('profile')
-  @UseGuards(JwtAuthGuard)
   async getProfile(@Req() req): Promise<Omit<User, 'password'>> {
     const userId = req.user.userId;
     const user = await this.userService.findOneUser(userId);

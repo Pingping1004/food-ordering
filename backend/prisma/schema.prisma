@@ -118,6 +118,9 @@ model Restaurant {
   adminTel     String
   adminEmail   String
 
+  userId  String  @unique
+  user  User  @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
   menus Menu[]  @relation("RestaurantMenus")
 
   orders  Order[]   @relation("restaurantToOrder")
@@ -204,6 +207,7 @@ model User {
   role    Role    @default(user)
 
   RoleRequest   RoleRequest?  @relation("UserToRoleRequest")
+  restaurant    Restaurant?
 
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
