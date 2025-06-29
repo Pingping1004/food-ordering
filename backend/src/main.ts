@@ -7,9 +7,11 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import * as express from 'express';
 import { json } from 'express';
 import * as cookieParser from 'cookie-parser'
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, { cors: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  console.log('JWT Secret from env: ', process.env.JWT_SECRET);
 
   app.use(cookieParser());
 
@@ -85,13 +87,36 @@ async function bootstrap() {
     console.error('GLOBAL UNHANDLED REJECTION at:', promise, 'reason:', reason);
     process.exit(1);
   });
-  app.enableCors({
-    origin: 'http://localhost:3000',
-    methods: 'GET, HEAD, PUT, PATCH, POST, DELETE',
-    credentials: true,
-  })
+  // app.enableCors({
+  //   origin: 'http://localhost:3000',
+  //   methods: 'GET, HEAD, PUT, PATCH, POST, DELETE',
+  //   credentials: true,
+  // })
 
-  const port = process.env.PORT || 5000;
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000', // Add this as a fallback for localhost
+    'http://192.168.1.34:3000', // Add this for local network access
+  ];
+
+  app.enableCors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS', // Include OPTIONS method
+    credentials: true,
+    exposedHeaders: ['set-cookie'], // Expose 'set-cookie' header to the browser
+    preflightContinue: false, // Set this to false
+    optionsSuccessStatus: 204, // Use 204 for OPTIONS responses
+  });
+
+  const port = process.env.PORT || 4000;
+  // // const configService = app.get(ConfigService);
+  // const port = configService.get<number>('PORT') || 4000;
   console.log('NESTJS is running on port: ', port);
   await app.listen(port);
 }

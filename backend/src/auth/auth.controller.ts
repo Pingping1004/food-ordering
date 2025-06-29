@@ -10,7 +10,7 @@ export class AuthController {
         private readonly authService: AuthService
     ) { }
 
-    @Post('/signup')
+    @Post('signup')
     async signup(@Body() signupDto: SignupDto, @Res({ passthrough: true }) res: Response) {
         const { user, accessToken, refreshToken } = await this.authService.regsiter(signupDto);
 
@@ -34,7 +34,7 @@ export class AuthController {
         };
     }
 
-    @Post('/login')
+    @Post('login')
     async login(@Body() loginDto: LoginDto, @Res({ passthrough: true }) res: Response) {
         const { user, accessToken, refreshToken } = await this.authService.login(loginDto);
 
@@ -58,7 +58,7 @@ export class AuthController {
         };
     }
 
-    @Post('/refresh')
+    @Post('refresh')
     async refresh(@Body('refreshToken') refreshToken: string) {
         if (!refreshToken) throw new UnauthorizedException('No refresh token provided');
         return this.authService.refresh(refreshToken);
