@@ -44,21 +44,21 @@ export default function SignupPage() {
                     type="email"
                     label="Email"
                     placeholder="Email"
-                    name="email"
-                    register={register}
+                    // register={register}
+                    {...register('email')}
                     variant={errors.email ? "error" : "primary"}
+                    error={errors.email?.message}
                />
-                {errors.email && <span className="text-red-500">{errors.email.message}</span>}
                 
                 <Input
                     type="password"
                     label="Password"
                     placeholder="Password"
-                    name="password"
-                    register={register}
+                    // register={register}
+                    {...register('password')}
                     variant={errors.password ? "error" : "primary"}
+                    error={errors.password?.message}
                />
-               {errors.password && <span className="text-red-500">{errors.password.message}</span>}
 
                 <div className="flex flex-row justify-end mb-8">
                 </div>

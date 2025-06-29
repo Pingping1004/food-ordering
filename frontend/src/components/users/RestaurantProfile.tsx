@@ -81,7 +81,7 @@ export const RestaurantProfile: React.FC<RestaurantProfileProps> = ({
 
     if (isOpen) {
         return (
-            <Link href={`user/restaurant/${restaurantId}`}>
+            <Link href={`/user/restaurant/${restaurantId}`}>
                 {content}
             </Link>
         );

@@ -2,7 +2,7 @@ import { OmiseBankType, OMISE_BANK_TYPE_VALUES } from "@/common/bank-type.enum";
 import { z } from "zod";
 
 export const createOrderSchema = z.object({
-    restaurantId: z.string().uuid('Invalid restaurant ID'),
+    restaurantId: z.string().uuid('ไอดีร้านอาหารไม่ถูกต้อง'),
     deliverAt: z.string() // It receives a string from TimePickerInput
     .min(1, 'กรุณาเลือกเวลารับอาหารขั้นต่ำ 5 นาทีหลังสั่ง') // Basic validation for non-empty string
     .refine(

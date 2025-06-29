@@ -58,7 +58,7 @@ const TimePickerInput: React.FC<TimePickerInputProps> = ({
       />
       {/* You can still have your display logic */}
       <p className="text-sm text-gray-500 mt-2">
-        AM: ก่อนเที่ยง / PM: หลังเที่ยง
+        {/* AM: ก่อนเที่ยง / PM: หลังเที่ยง */}
       </p>
     </div>
   );

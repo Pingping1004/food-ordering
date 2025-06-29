@@ -9,9 +9,11 @@ import { api } from "@/lib/api";
 import { useCart } from "@/context/CartContext";
 import { useRouter } from "next/navigation";
 import UserHeader from "@/components/users/Header";
-
+import { useAuth } from "@/context/Authcontext";
+                             
 
 export default function UserHomePage() {
+    const { user } = useAuth();
     const { cart } = useCart();
     const router = useRouter();
     const [data, setData] = useState<Restaurant[] | null>(null);

@@ -64,6 +64,10 @@ body {
   column-gap: 92px;
 }
 
+.text-primary-color {
+  color: #1263F0;
+}
+
 .text-primary {
   color: #1E1E1E;
 }
@@ -100,6 +104,10 @@ body {
 
 .border-color {
   border-color: #E1E1E1;
+}
+
+.border-primary {
+  border-color: #1263F0
 }
 
 .poppins-thin {

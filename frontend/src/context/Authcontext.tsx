@@ -26,6 +26,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [loading, setLoading] = useState(true);
     const router = useRouter();
 
+    useEffect(() => {
+        if (!loading && !user) {
+            alert('เซสชันหมดอายุ กรุณาล็อกอินใหม่อีกครั้ง');
+            router.push('/login');
+        }
+    }, [loading, user, router]);
+
     const login = async (email: string, password: string) => {
         try {
             const response = await api.post('/auth/login', { email, password });

@@ -9,7 +9,6 @@ import { useAuth } from "@/context/Authcontext";
 export default function UserHeader() {
     const router = useRouter();
     const { user, logout } = useAuth();
-    console.log('User from auth context: ', user);
     const userId = user?.userId;
 
     return (
@@ -22,6 +21,7 @@ export default function UserHeader() {
                         <Button
                             size="md"
                             type="button"
+                            variant="tertiary"
                             onClick={() => router.push(`/restaurant-register/${userId}`)}
                         >
                             สมัครร้านอาหาร?
@@ -33,11 +33,10 @@ export default function UserHeader() {
                         type="button"
                         onClick={() => router.push('/signup')}
                     >
-                        ลงทะเบียนร้านอาหาร?
+                        ลงทะเบียน
                     </Button>
                 )}
             </header>
         </>
     );
 }
-// frontend\src\app\restaurant-register\[userId]\page.tsx
