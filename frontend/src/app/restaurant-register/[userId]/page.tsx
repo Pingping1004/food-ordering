@@ -12,9 +12,11 @@ import { api } from '@/lib/api';
 import { buttonLabels, KeyValueType, shortEngDays } from '@/common/restaurant.enum';
 import { getCurrentTime, getApproxCloseTime } from '@/util/time';
 import { useToggle } from '@/hook/useToggle';
+import { useRouter } from 'next/navigation';
 
 export default function RestaurantRegisterPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const { 
     variants: categoryVariants, 
     selected: categories, 
@@ -35,7 +37,6 @@ export default function RestaurantRegisterPage() {
   } = useForm({
     resolver: zodResolver(createRestaurantSchema),
     defaultValues: {
-      // userId: user?.userId || '',
       name: '',
       openTime: getCurrentTime(),
       closeTime: getApproxCloseTime(),
@@ -63,7 +64,6 @@ export default function RestaurantRegisterPage() {
       const openDateList = openDate.map((date) => date.value);
 
       const formData = {
-        // userId: user?.userId,
         name: data.name,
         email: user.email,
         categories: categoriesList,
@@ -81,7 +81,9 @@ export default function RestaurantRegisterPage() {
       const response = await api.post('/restaurant', formData);
       console.log('Response data: ', response.data);
       const restaurantName = response.data.result.name;
+      const restaurantId = response.data.result.restaurantId
       alert(`ลงทะเบียนร้าน ${restaurantName} สำเร็จ`);
+      router.push(`/${restaurantId}`)
     } catch (error) {
       console.error(`error`, error);
     }

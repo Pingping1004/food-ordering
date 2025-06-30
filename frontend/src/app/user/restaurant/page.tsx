@@ -25,6 +25,7 @@ export default function UserHomePage() {
             try {
                 const response = await api.get<Restaurant[]>(`/restaurant`);
                 console.log('API response:', response.data);
+                setData(response.data)
             } catch (error) {
                 setError('Error fetching data');
                 console.error(error);

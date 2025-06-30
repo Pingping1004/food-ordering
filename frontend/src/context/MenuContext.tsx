@@ -14,6 +14,7 @@ export interface Restaurant {
     categories: RestaurantCategory[];
     openTime: string;
     closeTime: string;
+    isOpen: boolean;
 };
 
 export interface Menu {

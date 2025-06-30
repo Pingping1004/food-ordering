@@ -5,11 +5,13 @@ import { Button } from "@/components/Button";
 import CookerHeader from "@/components/cookers/Header";
 import { Order } from "@/components/cookers/Order";
 import { OrderNavBar } from "@/components/cookers/OrderNavbar";
+import { CookerProvider, useCooker } from "@/context/Cookercontext";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export default function CookerHomePage() {
+function Page() {
     const router = useRouter();
+    const { cooker, setCooker, loading, error } = useCooker();
     const [orderState, setOrderState] = useState<"receive" | "cooking" | "ready" | "done" >("receive");
     const [isUpdateMode, setIsUpdateMode] = useState(false); // State to toggle update mode
     const [selectedCount, setSelectedCount] = useState(0); // State to track selected orders
@@ -26,7 +28,12 @@ export default function CookerHomePage() {
 
     return (
         <div className="flex flex-col gap-y-10 py-10 px-6">
-            <CookerHeader />
+            <CookerHeader
+                name={cooker.name}
+                email={cooker?.email}
+                openTime={cooker?.openTime}
+                closeTime={cooker?.closeTime}
+            />
             <OrderNavBar onClick={() => router.push("/")} />
             {orderState === "done" ? (
                 <h3 className="noto-sans-bold text-base">ออเดอร์ที่มีปัญหา</h3>
@@ -90,4 +97,12 @@ export default function CookerHomePage() {
             </main>
         </div>
     );
+}
+
+export default function CookerHomePage() {
+    return (
+        <CookerProvider>
+            <Page />
+        </CookerProvider>
+    )
 }
