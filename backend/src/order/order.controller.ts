@@ -75,9 +75,9 @@ export class OrderController {
   }
 
   @Public()
-  @Get()
-  async findAllOrders() {
-    return this.orderService.findAllOrders();
+  @Get(':restaurantId')
+  async findAllOrders(@Param('restaurantId') restaurantId: string) {
+    return this.orderService.findAllOrders(restaurantId);
   }
 
   @Get(':orderId')

@@ -1,8 +1,15 @@
-import { Controller, Post, Body, Req, Res, UnauthorizedException } from '@nestjs/common';
+import { Controller, Post, Body, Get, Req, Res, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
-import { Response } from 'express';
+import { Request, Response } from 'express';
+
+// Extend the Request interface to include csrfToken
+declare module 'express-serve-static-core' {
+    interface Request {
+        csrfToken?: () => string;
+    }
+}
 
 @Controller('auth')
 export class AuthController {
@@ -56,6 +63,22 @@ export class AuthController {
             message: 'Login successful',
             user: user,
         };
+    }
+
+    @Get('csrf-token')
+    getCsrfToken(@Req() req: Request, @Res() res: Response) {
+        if (!req.csrfToken) {
+            throw new UnauthorizedException('CSRF token function not available');
+        }
+        
+        const csrfToken = req.csrfToken();
+        res.cookie('XSRF-TOKEN', csrfToken, { 
+            httpOnly: false,
+            sameSite: 'lax', 
+            secure: process.env.NODE_ENV === 'production'
+        });
+
+        return res.json({ csrfToken });
     }
 
     @Post('refresh')

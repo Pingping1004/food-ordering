@@ -5,7 +5,8 @@ import { HttpExceptionFilter } from './libs/http-exception.filter';
 import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import * as express from 'express';
-import { json } from 'express';
+import { json, Request, Response } from 'express';
+import * as csurf from 'csurf';
 import * as cookieParser from 'cookie-parser'
 import { ConfigService } from '@nestjs/config';
 
@@ -13,6 +14,22 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   app.use(cookieParser());
+  const csrfProtection = csurf({
+    cookie: {
+      key: 'XSRF-TOKEN', // Or whatever you chose
+      sameSite: 'Lax',
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: false,
+    },
+    value: (req) => req.header('x-csrf-token'),
+  });
+
+  app.use((req: Request, res: Response, next: Function) => {
+    if (req.path === '/auth/login') {
+      return next();
+    }
+    csrfProtection(req, res, next);
+  })
 
   const uploadsDir = join(process.cwd(), 'uploads');
   app.use('/uploads', express.static(uploadsDir));
@@ -56,7 +73,7 @@ async function bootstrap() {
         return new BadRequestException({
           statusCode: HttpStatus.BAD_REQUEST,
           message: 'Validation failed', // A general message for the client
-          errors: detailedErrors, // THIS IS THE KEY: The array of structured, detailed errors
+          errors: detailedErrors,
         });
       },
     }),
@@ -86,16 +103,11 @@ async function bootstrap() {
     console.error('GLOBAL UNHANDLED REJECTION at:', promise, 'reason:', reason);
     process.exit(1);
   });
-  // app.enableCors({
-  //   origin: 'http://localhost:3000',
-  //   methods: 'GET, HEAD, PUT, PATCH, POST, DELETE',
-  //   credentials: true,
-  // })
 
   const allowedOrigins = [
     'http://localhost:3000',
-    'http://127.0.0.1:3000', // Add this as a fallback for localhost
-    'http://192.168.1.34:3000', // Add this for local network access
+    'http://127.0.0.1:3000',
+    'http://192.168.1.34:3000',
   ];
 
   app.enableCors({
@@ -106,16 +118,15 @@ async function bootstrap() {
         callback(new Error('Not allowed by CORS'));
       }
     },
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS', // Include OPTIONS method
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
-    exposedHeaders: ['set-cookie'], // Expose 'set-cookie' header to the browser
-    preflightContinue: false, // Set this to false
-    optionsSuccessStatus: 204, // Use 204 for OPTIONS responses
+    exposedHeaders: ['set-cookie'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   });
 
   const port = process.env.PORT || 4000;
-  // // const configService = app.get(ConfigService);
-  // const port = configService.get<number>('PORT') || 4000;
+
   console.log('NESTJS is running on port: ', port);
   await app.listen(port);
 }

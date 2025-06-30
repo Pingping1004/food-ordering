@@ -137,7 +137,7 @@ export class RestaurantService {
       };
     });
 
-    return allRestaurants;
+    return openRestaurant;
   }
 
   async updateRestaurant(

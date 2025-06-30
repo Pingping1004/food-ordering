@@ -79,16 +79,6 @@ export class RestaurantController {
     @Body() updateRestaurantDto: UpdateRestaurantDto,
     @UploadedFile() file?: Express.Multer.File
   ) {
-    // const authRestaurantId = req.user.restaurantId;
-
-    // if (!authRestaurantId) {
-    //   throw new BadRequestException('Authentication context missing restaurant ID.');
-    // }
-
-    // // Ensure the authenticated user is trying to update their own restaurant
-    // if (restaurantId !== authRestaurantId) {
-    //   throw new BadRequestException('You are not authorized to update this restaurant profile.');
-    // }
 
     let uploadedFilePath: string | undefined;
     try {
