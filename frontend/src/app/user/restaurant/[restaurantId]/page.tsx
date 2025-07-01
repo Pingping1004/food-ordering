@@ -42,6 +42,7 @@ function MenuContext() {
             menuImg={menu.menuImg}
             name={menu.name}
             unitPrice={menu.price}
+            sellPriceDisplay={menu.sellPriceDisplay}
             maxDaily={menu.maxDaily}
             cookingTime={menu.cookingTime}
             isAvailable={menu.isAvailable}

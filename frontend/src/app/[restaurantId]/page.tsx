@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import { Button } from "@/components/Button";
@@ -6,13 +5,14 @@ import CookerHeader from "@/components/cookers/Header";
 import { Order } from "@/components/cookers/Order";
 import { OrderNavBar } from "@/components/cookers/OrderNavbar";
 import { CookerProvider, useCooker } from "@/context/Cookercontext";
+import { getDateFormat, getTimeFormat } from "@/util/time";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 function Page() {
     const router = useRouter();
-    const { cooker, setCooker, loading, error } = useCooker();
-    const [orderState, setOrderState] = useState<"receive" | "cooking" | "ready" | "done" >("receive");
+    const { cooker, setCooker, orders, setOrders, loading, error } = useCooker();
+    const [orderState, setOrderState] = useState<"receive" | "cooking" | "ready" | "done">("receive");
     const [isUpdateMode, setIsUpdateMode] = useState(false); // State to toggle update mode
     const [selectedCount, setSelectedCount] = useState(0); // State to track selected orders
 
@@ -29,6 +29,7 @@ function Page() {
     return (
         <div className="flex flex-col gap-y-10 py-10 px-6">
             <CookerHeader
+                restaurantId={cooker.restaurantId}
                 name={cooker.name}
                 email={cooker?.email}
                 openTime={cooker?.openTime}
@@ -49,7 +50,7 @@ function Page() {
                         numberIcon={2}
                         onClick={() => router.push("/issued-orders")}
                     >
-            ออเดอร์ที่มีปัญหา
+                        ออเดอร์ที่มีปัญหา
                     </Button>
 
                     <Button
@@ -58,7 +59,7 @@ function Page() {
                         className="flex items-center justify-between"
                         onClick={handleUpdateClick} // Trigger update mode
                         type={"button"}                    >
-            อัพเดทหลายออเดอร์
+                        อัพเดทหลายออเดอร์
                     </Button>
                 </section>
             ) : (
@@ -76,24 +77,22 @@ function Page() {
                 </Button>
             )}
             <main>
-                <Order
-                    orderId="123456789"
-                    name="ข้าวผัดกุ้ง"
-                    price={150}
-                    restaurantName="SomChai Suchi"
-                    selected="default"
-                    isDelay={false}
-                    variant="receive"
-                    orderAt={new Date()}
-                    deliverAt={new Date()}
-                    isPaid="unpaid"
-                    orderMenu={[
-                        { units: 1, value: "ข้าวผัดกุ้ง" },
-                        { units: 1, value: "ข้าวผัดกุ้ง" },
-                    ]}
-                    details="ข้าวผัดกุ้งรสเด็ด"
-                    className="mb-4"
-                />
+                {orders.map((order) => (
+                    <Order
+                        key={order.orderId}
+                        orderId={order.orderId}
+                        totalAmount={order.totalAmount}
+                        isDelay={order.isDelay}
+                        status={order.status}
+                        orderAt={`${getTimeFormat(new Date(order.orderAt))} ${getDateFormat(new Date(order.orderAt))}`}
+                        deliverAt={getTimeFormat(new Date(order.deliverAt))}
+                        isPaid={order.isPaid}
+                        orderMenus={order.orderMenus}
+                        details={order.details}
+                        className="mb-4"
+                        selected="default"
+                     />
+                ))}
             </main>
         </div>
     );

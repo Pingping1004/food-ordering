@@ -8,6 +8,9 @@ interface User {
     userId: string;
     email: string;
     name?: string;
+    restaurant?: {
+        restaurantId: string;
+    };
     profileImg?: string;
     role: 'user' | 'admin' | 'cooker';
 }
@@ -15,7 +18,7 @@ interface User {
 interface AuthContextType {
     user: User | null;
     loading: boolean;
-    login: (email: string, password: string) => Promise<void>;
+    login: (email: string, password: string) => Promise<User>;
     logout: () => Promise<void>;
 }
 
@@ -35,9 +38,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const login = async (email: string, password: string) => {
         try {
-            const response = await api.post('/auth/login', { email, password });
-            setUser(response.data.user);
+            await api.post('/auth/login', { email, password });
+            const profileResponse = await api.get('/user/profile');
+            setUser(profileResponse.data);
             console.log('Login successful');
+            return profileResponse.data;
         } catch (error) {
             console.error('Login failed: ', error);
             throw new Error('Invalid credentials');

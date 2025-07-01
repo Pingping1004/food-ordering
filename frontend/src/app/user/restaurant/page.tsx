@@ -10,11 +10,12 @@ import { useCart } from "@/context/CartContext";
 import { useRouter } from "next/navigation";
 import UserHeader from "@/components/users/Header";
 import { useAuth } from "@/context/Authcontext";
+import { useCooker } from "@/context/Cookercontext";
+import RestaurantHeader from "@/components/users/RestaurantHeader";
                              
 
 export default function UserHomePage() {
-    const { user } = useAuth();
-    const { cart } = useCart();
+    // const { cooker } = useCooker();
     const router = useRouter();
     const [data, setData] = useState<Restaurant[] | null>(null);
     const [loading, setLoading] = useState(true);

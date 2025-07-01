@@ -8,10 +8,9 @@ import { loginSchema, loginSchemaType } from "@/schemas/auth/loginSchema";
 import Link from "next/link";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
-import { api } from "@/lib/api";
 import { useAuth } from "@/context/Authcontext";
 
-export default function SignupPage() {
+export default function LoginPage() {
   const { register, handleSubmit, formState: { errors } } = useForm<loginSchemaType>({
     resolver: zodResolver(loginSchema),
   });
@@ -19,8 +18,13 @@ export default function SignupPage() {
   const router = useRouter();
   const { login } = useAuth();
   const submitForm = async (loginData: loginSchemaType) => {
-    await login(loginData.email, loginData.password);
-    router.push('/user/restaurant');
+    const user = await login(loginData.email, loginData.password);
+    console.log('User object: ', user);
+    if (user.role === "user") {
+      router.push('/user/restaurant');
+    } else if (user.role === 'cooker') {
+      router.push(`/${user.restaurant?.restaurantId}`)
+    }
   };
 
   return (
@@ -40,34 +44,34 @@ export default function SignupPage() {
                   Enter your email and password
                 </p>
 
-               <Input
-                    type="email"
-                    label="Email"
-                    placeholder="Email"
-                    // register={register}
-                    {...register('email')}
-                    variant={errors.email ? "error" : "primary"}
-                    error={errors.email?.message}
-               />
-                
                 <Input
-                    type="password"
-                    label="Password"
-                    placeholder="Password"
-                    // register={register}
-                    {...register('password')}
-                    variant={errors.password ? "error" : "primary"}
-                    error={errors.password?.message}
-               />
+                  type="email"
+                  label="Email"
+                  placeholder="Email"
+                  // register={register}
+                  {...register('email')}
+                  variant={errors.email ? "error" : "primary"}
+                  error={errors.email?.message}
+                />
+
+                <Input
+                  type="password"
+                  label="Password"
+                  placeholder="Password"
+                  // register={register}
+                  {...register('password')}
+                  variant={errors.password ? "error" : "primary"}
+                  error={errors.password?.message}
+                />
 
                 <div className="flex flex-row justify-end mb-8">
                 </div>
                 <div className="flex justify-center">
                   <Button
-                      variant="primary"
-                      size="full"
-                      type="submit"
-                    >
+                    variant="primary"
+                    size="full"
+                    type="submit"
+                  >
                     Login to Account
                   </Button>
                 </div>

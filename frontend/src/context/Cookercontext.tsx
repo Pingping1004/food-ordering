@@ -15,11 +15,11 @@ export interface Cooker extends Restaurant {
     adminEmail: string;
 };
 
-
-
 export interface CookerContextType {
     cooker: Cooker;
+    orders: OrderProps[];
     setCooker: React.Dispatch<React.SetStateAction<Cooker | undefined>>;
+    setOrders: React.Dispatch<React.SetStateAction<OrderProps[]>>;
     loading: boolean;
     error: string | null;
 }
@@ -45,6 +45,11 @@ export const CookerProvider = ({ children }: { children: React.ReactNode }) => {
             try {
                 const cookerResponse = await api.get(`restaurant/${restaurantId}`);
                 setCooker(cookerResponse.data);
+                console.log('Cooker context: ', cookerResponse.data);
+
+                const orderResponse = await api.get(`order/get-orders/${restaurantId}`);
+                setOrders(orderResponse.data);
+                console.log('Order context: ', orderResponse.data);
             } catch (error) {
                 setError('Error fetching cooker context');
                 console.error(error);
@@ -64,6 +69,8 @@ export const CookerProvider = ({ children }: { children: React.ReactNode }) => {
         value={{
             cooker,
             setCooker,
+            orders,
+            setOrders,
             loading,
             error,
         }}

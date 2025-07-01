@@ -88,8 +88,7 @@ export default function AddMenuPage() {
               type="text"
               placeholder="ตัวอย่าง: ข้าวผัดกุ้ง"
               label="ชื่อเมนู"
-              name="name"
-              register={register}
+              {...register('name')}
               variant={errors.name ? "error" : "primary"}
               className="flex w-1/2"
             />
@@ -98,8 +97,7 @@ export default function AddMenuPage() {
               type="text"
               placeholder="50"
               label="ราคา"
-              name="price"
-              register={register}
+              {...register('price')}
               variant={errors.price ? "error" : "primary"}
               className="flex w-1/2"
               error={errors.price?.message}
@@ -112,8 +110,7 @@ export default function AddMenuPage() {
             type="text"
             placeholder="100จาน"
             label="จำนวนจานมากสุด/วัน"
-            name="maxDaily"
-            register={register}
+            {...register('maxDaily')}
             variant={errors.maxDaily ? "error" : "primary"}
             className="flex w-1/2"
             error={errors.maxDaily?.message}
@@ -123,8 +120,7 @@ export default function AddMenuPage() {
             type="text"
             placeholder="3นาที, 5นาที"
             label="เวลาในการปรุง(นาที)"
-            name="cookingTime"
-            register={register}
+            {...register('cookingTime')}
             variant={errors.cookingTime ? "error" : "primary"}
             className="flex w-1/2"
             error={errors.cookingTime?.message}

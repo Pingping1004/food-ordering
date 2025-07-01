@@ -89,7 +89,7 @@ export const Menu = ({
         <div className="flex flex-col gap-y-2">
           <div className="flex items-center gap-x-1">
             <h3 className="noto-sans-bold text-md text-primary">{name}</h3>
-            <p className="text-sm text-light">(price)</p>
+            <p className="text-sm text-light">(sellPriceDisplay)</p>
           </div>
 
           <div>

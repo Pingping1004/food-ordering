@@ -23,6 +23,7 @@ export type MenuProfileProps = React.HTMLAttributes<HTMLDivElement> &
         name: string;
         menuImg?: string;
         totalPrice?: number;
+        sellPriceDisplay: number;
         unitPrice: number;
         maxDaily: number;
         cookingTime: number;
@@ -38,6 +39,7 @@ export default function MenuProfile({
     menuImg,
     unitPrice,
     totalPrice,
+    sellPriceDisplay,
     maxDaily,
     cookingTime,
     isAvailable,
@@ -73,7 +75,7 @@ export default function MenuProfile({
             <div className="flex flex-col gap-y-2 w-full">
                 <h3 className="noto-sans-bold text-sm text-primary">{name.substring(0, 21)}</h3>
                 <div className="flex justify-between items-center text-sm">
-                    <p className="text-light noto-sans-regular">{unitPrice}</p>
+                    <p className="text-light noto-sans-regular">{sellPriceDisplay}</p>
 
                     <div className="flex items=center gap-x-2">
                         <Button
@@ -89,7 +91,7 @@ export default function MenuProfile({
                             type="button"
                             size="sm"
                             variant="success"
-                            onClick={() => addToCart(menuId, name, unitPrice, menuImg || "", restaurantId)}
+                            onClick={() => addToCart(menuId, name, sellPriceDisplay, menuImg || "", restaurantId)}
                         >
                             +
                         </Button>

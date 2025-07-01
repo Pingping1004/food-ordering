@@ -1,12 +1,13 @@
 "use client";
 
 import React from "react";
-import { usePathname } from "next/navigation"; // Import usePathname
+import { useParams, usePathname } from "next/navigation"; // Import usePathname
 import { useRouter } from "next/navigation";
 import { Button } from "../Button";
 import Profile from "../Profile";
 
 export interface Restaurant {
+  restaurantId: string;
   name: string;
   email: string;
   location?: string;
@@ -16,6 +17,7 @@ export interface Restaurant {
 
 export default function CookerHeader({
   name,
+  restaurantId,
 }: Restaurant) {
   const pathname = usePathname();
   const router = useRouter();
@@ -28,22 +30,22 @@ export default function CookerHeader({
 
           <div className="w-full flex justify-end items-center gap-x-6">
             {/* Conditional rendering based on the current URL */}
-            {pathname === "/" && (
+            {pathname === `/${restaurantId}` && (
               <Button
                 type="button"
                 variant="primary"
                 size="md"
-                onClick={() => router.push("/managed-menu")}
+                onClick={() => router.push(`/managed-menu/${restaurantId}`)}
               >
                 จัดการเมนู
               </Button>
             )}
-            {pathname !== "/" && (
+            {pathname !== `/${restaurantId}` && (
               <Button
                 type="button"
                 variant="secondary"
                 size="md"
-                onClick={() => router.push("/")}
+                onClick={() => router.push(`/${restaurantId}`)}
               >
                 <p className="text-sm">กลับหน้าหลัก</p>
               </Button>
