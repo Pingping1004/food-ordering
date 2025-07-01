@@ -5,6 +5,7 @@ import { PrismaService } from 'prisma/prisma.service';
 import { RestaurantService } from 'src/restaurant/restaurant.service';
 import { Menu } from '@prisma/client';
 import Decimal from 'decimal.js';
+import { numberRound } from 'src/utils/round-number';
 
 export interface MenusWithDisplayPrices {
   menuId: string;
@@ -162,6 +163,8 @@ export class MenuService {
           platformFeeDisplay: displayPrices.platformFeeDisplay,
         };
       });
+
+      console.log('Menu with display price: ', menusWithCalculatedPrices);
 
       return menusWithCalculatedPrices;
     } catch (error) {

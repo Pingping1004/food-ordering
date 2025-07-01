@@ -210,6 +210,7 @@ export class OrderService {
   async findRestaurantOrders(restaurantId: string) {
     return this.prisma.order.findMany({
       where: { restaurantId },
+      include: { orderMenus: true },
       orderBy: {
         orderAt: 'desc',
       },

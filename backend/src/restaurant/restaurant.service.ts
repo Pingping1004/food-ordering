@@ -4,12 +4,15 @@ import { PrismaService } from 'prisma/prisma.service';
 import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
 import * as bcrypt from 'bcrypt';
 import { OrderService } from 'src/order/order.service';
+import { UserService } from 'src/user/user.service';
+import { UpdateUserDto } from 'src/user/dto/update-user.dto';
 
 @Injectable()
 export class RestaurantService {
   constructor(
     private prisma: PrismaService,
     private orderService: OrderService,
+    private userService: UserService,
   ) { }
 
   async createRestaurant(
@@ -47,6 +50,10 @@ export class RestaurantService {
         data: newRestaurant,
       });
 
+      const updateDto: UpdateUserDto = { role: 'cooker' };
+      const updateUserRole = await this.userService.updateUser(userId, updateDto);
+
+      console.log('Update user after register restaurant to role: ', updateUserRole.role);
       console.log("Created restaurant in service : ", result);
       return { message: 'File uploaded successfully', result, fileInfo: file };
     } catch (error) {

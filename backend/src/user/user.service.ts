@@ -48,6 +48,11 @@ export class UserService {
   async findOneUser(userId: string): Promise<User> {
     const user = await this.prisma.user.findUnique({
       where: { userId },
+      include: {
+        restaurant: {
+          select: { restaurantId: true }
+        }
+      }
     });
 
     if (!user) {
