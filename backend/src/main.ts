@@ -14,18 +14,22 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   app.use(cookieParser());
+  const cookieSecure = true;
   const csrfProtection = csurf({
     cookie: {
       key: 'XSRF-TOKEN', // Or whatever you chose
       sameSite: 'Lax',
-      secure: process.env.NODE_ENV === 'production',
+      // secure: process.env.NODE_ENV === 'production',
+      secure: cookieSecure,
       httpOnly: false,
     },
     value: (req) => req.header('x-csrf-token'),
   });
 
   app.use((req: Request, res: Response, next: Function) => {
-    if (req.path === '/auth/login') {
+    if (req.path === '/auth/login' || 
+       req.path === '/auth/signup' ||
+       req.path === '/webhooks/omise') {
       return next();
     }
     csrfProtection(req, res, next);

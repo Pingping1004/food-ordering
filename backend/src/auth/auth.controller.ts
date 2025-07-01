@@ -72,12 +72,6 @@ export class AuthController {
         }
         
         const csrfToken = req.csrfToken();
-        res.cookie('XSRF-TOKEN', csrfToken, { 
-            httpOnly: false,
-            sameSite: 'lax', 
-            secure: process.env.NODE_ENV === 'production'
-        });
-
         return res.json({ csrfToken });
     }
 

@@ -17,8 +17,13 @@ export class PaymentController {
   ) {
   }
 
-   @Post('omise')
+  @Post('omise')
   async handleOmiseWebhook(@Body() event: any, @Res() res: Response) {
+    if (!event || typeof event !== 'object') {
+      console.error('Webhook event body is missing or not an object:', event);
+      return res.status(HttpStatus.BAD_REQUEST).send('Invalid webhook payload');
+    }
+
     console.log(`Received Omise webhook: ${event.key} for object ${event.data?.object} (ID: ${event.data?.id})`);
 
     try {
@@ -27,15 +32,15 @@ export class PaymentController {
         const retrievedCharge = await this.paymentService.retrieveCharge(omiseChargeId); // <--- Use the service method
 
         if (event.key === 'charge.complete') {
-            await this.orderService.handleWebhookUpdate(retrievedCharge.id, retrievedCharge.status);
+          await this.orderService.handleWebhookUpdate(retrievedCharge.id, retrievedCharge.status);
         } else if (event.key === 'charge.failure') {
-            await this.orderService.handleWebhookUpdate(retrievedCharge.id, 'failed');
+          await this.orderService.handleWebhookUpdate(retrievedCharge.id, 'failed');
         } else if (event.key === 'charge.expire') {
-            await this.orderService.handleWebhookUpdate(retrievedCharge.id, 'expired');
+          await this.orderService.handleWebhookUpdate(retrievedCharge.id, 'expired');
         }
 
       } else {
-         console.log(`Unhandled Omise event object type: ${event.data?.object}`);
+        console.log(`Unhandled Omise event object type: ${event.data?.object}`);
       }
 
       res.status(HttpStatus.OK).send('Webhook received and processed.');

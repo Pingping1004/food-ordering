@@ -40,7 +40,7 @@ export class PaymentService {
           metadata: {
             order_id: orderId,
           },
-          webhook_endpoints: ["https://f752-124-122-126-231.ngrok-free.app/webhooks/omise"],
+          webhook_endpoints: ["https://39e5-124-120-1-65.ngrok-free.app/webhooks/omise"],
           expires_at: expirationTime,
       };
 

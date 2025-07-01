@@ -207,7 +207,7 @@ export class OrderService {
     });
   }
 
-  async findAllOrders(restaurantId: string) {
+  async findRestaurantOrders(restaurantId: string) {
     return this.prisma.order.findMany({
       where: { restaurantId },
       orderBy: {

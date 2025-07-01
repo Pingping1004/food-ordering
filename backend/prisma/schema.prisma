@@ -133,7 +133,7 @@ model Menu {
   name  String
   menuImg String?
   price   Int
-  maxDaily  Int
+  maxDaily  Int   @default(100)
   cookingTime Int?
   createdAt DateTime  @default(now())
   isAvailable Boolean @default(true)
