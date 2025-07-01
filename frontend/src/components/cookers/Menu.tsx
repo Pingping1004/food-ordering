@@ -29,7 +29,6 @@ type MenuProps = React.HtmlHTMLAttributes<HTMLDivElement> &
     menuId: string;
     name: string;
     menuImg?: string;
-    restaurantName: string;
     maxDaily: number;
     cookingTime: number;
     createdAt: Date | string | number;
@@ -42,7 +41,6 @@ export const Menu = ({
   menuId,
   name,
   menuImg,
-  restaurantName,
   maxDaily,
   cookingTime,
   createdAt = new Date(),
@@ -66,8 +64,7 @@ export const Menu = ({
     return updatedAvailable;
   };
 
-  const isBlob = menuImg?.startsWith("blob:");
-  const src = menuImg ?? "/picture.svg";
+  const src = menuImg || "/picture.svg";
 
   return (
     <div
@@ -78,18 +75,15 @@ export const Menu = ({
       )}
       {...props}
     >
-      <header className="flex items-center gap-x-6">
-        {isBlob ? (
-          /* blob URLs work fine in a normal <img> */
-          <img src={src} alt={name} className="h-24 w-24 object-cover" />
-        ) : (
-          /* static or remote image → still use next/image */
-          <Image src={src} alt={name} width={96} height={96} />
-        )}
+      <header className="flex items-center">
+        <Image src={menuImg || '/picture.svg'} alt={name} width={96} height={96} className="h-24 w-24 object-cover mr-6 rounded-2xl" />
         <div className="flex flex-col gap-y-2">
-          <div className="flex items-center gap-x-1">
-            <h3 className="noto-sans-bold text-md text-primary">{name}</h3>
-            <p className="text-sm text-light">(sellPriceDisplay)</p>
+          <div className="flex items-start gap-x-1">
+            <h3 className="w-[140px] noto-sans-bold text-md text-primary">{name}</h3>
+            <div className="flex flex-col">
+              <p className="text-md text-light noto-sans-bold">{price}</p>
+              <p className="text-sm text-light">บาท</p>
+            </div>
           </div>
 
           <div>

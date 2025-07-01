@@ -56,6 +56,12 @@ body {
     --color-success-light: #E3F4E6
 }
 
+@media (max-width: 389px) {
+  .w-140-mobile {
+    width: 140px !important;
+  }
+}
+
 .bg-primary {
     background-color: #1263F0;
 }

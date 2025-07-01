@@ -27,10 +27,11 @@ export interface Menu {
     cookingTime: number;
     isAvailable: boolean;
     restaurantId: string;
+    createdAt: string;
 }
 
 export interface MenuContextType {
-    restaurant: Restaurant | null;
+    restaurant: Restaurant;
     menus: Menu[] | null;
     setMenus: React.Dispatch<React.SetStateAction<Menu[] | null>>;
     loading: boolean;
@@ -52,7 +53,16 @@ export const MenuProvider = ({ children }: { children: React.ReactNode }) => {
     ? params.restaurantId[0]
     : params.restaurantId;
 
-    const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+    const [restaurant, setRestaurant] = useState<Restaurant>({
+        restaurantId: '',
+        name: '',
+        image: '',
+        restaurantImg: '',
+        categories: [],
+        openTime: '',
+        closeTime: '',
+        isOpen: false,
+    });
     const [menus, setMenus] = useState<Menu[] | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);

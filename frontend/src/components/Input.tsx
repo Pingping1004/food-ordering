@@ -103,6 +103,13 @@ export const Input = forwardRef<HTMLInputElement | HTMLSelectElement, InputProps
             className={clsx("hidden", className)}
             {...props} // Spread all props from react-hook-form
           />
+          <label
+            htmlFor={name}
+            className="flex items-center justify-center gap-2 cursor-pointer rounded-lg border border-dashed border-gray-400 py-4 px-6 bg-gray-50 hover:bg-gray-100 transition"
+          >
+            <UploadIcon className="w-6 h-6 text-gray-500" />
+            <span className="text-gray-700">อัปโหลดรูปภาพเมนู</span>
+          </label>
           {/* You can add a custom styled label here */}
           {error && <span className="text-sm text-danger-main">{error}</span>}
         </div>
