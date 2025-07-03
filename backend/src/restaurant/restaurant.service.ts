@@ -20,6 +20,8 @@ export class RestaurantService {
     userId: string,
     file?: Express.Multer.File) {
     try {
+      const existingRestaurant = await this.findExistingRestaurant(userId);
+      if (existingRestaurant) throw new BadRequestException(`User already register as restaurant: ${existingRestaurant.name}`)
       const restaurantImgUrl = file ? `uploads/restaurants/${file.filename}` : createRestaurantDto.restaurantImg;
 
       const newRestaurant = {
@@ -64,6 +66,14 @@ export class RestaurantService {
 
   async findAllRestaurant() {
     return this.prisma.restaurant.findMany();
+  }
+
+  async findExistingRestaurant(userId: string) {
+    const result = await this.prisma.restaurant.findUnique({
+      where: { userId },
+    });
+
+    return result;
   }
 
   async findRestaurant(restaurantId: string) {

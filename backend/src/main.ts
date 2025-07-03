@@ -31,15 +31,6 @@ async function bootstrap() {
   const isProduction = process.env.NODE_ENV === 'production';
   const cookieSecure = isProduction;
 
-  app.use((req: Request, res: Response, next: Function) => {
-    console.log(`Backend Request Debug: URL: ${req.url}`);
-    console.log(`Backend Request Debug: Method: ${req.method}`);
-    console.log('Backend Request Debug: Headers[x-csrf-token]:', req.header('x-csrf-token'));
-    console.log('Backend Request Debug: Cookies[XSRF-TOKEN]:', req.cookies['XSRF-TOKEN']);
-    console.log('Backend Request Debug: req.secret:', req.secret); // <-- ADD THIS LINE
-    next();
-  });
-
   const uploadsDir = join(process.cwd(), 'uploads');
   app.use('/uploads', express.static(uploadsDir));
   // console.log('Serving uploads from:', uploadsDir);

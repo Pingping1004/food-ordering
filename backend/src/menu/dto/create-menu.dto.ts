@@ -41,19 +41,15 @@ export class CsvMenuItemData { // <-- Change 'interface' to 'class'
 export class CreateMenuDto {
     @IsString()
     @IsNotEmpty()
+    restaurantId: string;
+
+    @IsString()
+    @IsNotEmpty()
     name: string;
 
     @IsOptional()
     @IsString()
     menuImg?: string;
-
-    @IsOptional()
-    @IsString()
-    role?: string;
-
-    @IsString()
-    @IsNotEmpty()
-    restaurantId: string;
 
     @IsNotEmpty()
     @IsPositive()

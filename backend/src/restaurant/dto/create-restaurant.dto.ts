@@ -1,6 +1,6 @@
 import { IsNotEmpty, IsString, IsEnum, IsArray, IsOptional, IsEmail, IsNumber, IsDate } from "class-validator";
 import { DateWeek, RestaurantCategory } from "@prisma/client";
-import { Role } from "./update-restaurant.dto";
+import { Type, Transform } from "class-transformer";
 
 export class CreateRestaurantDto {
     @IsNotEmpty()
@@ -15,11 +15,23 @@ export class CreateRestaurantDto {
     @IsEmail()
     email: string;
 
+    @Transform(({ value }) => {
+        if (value === null || value === undefined || Array.isArray(value)) {
+            return value;
+        } 
+        return [value];
+    })
     @IsArray()
     @IsEnum(RestaurantCategory, { each: true })
     @IsNotEmpty()
     categories: RestaurantCategory[];
 
+    @Transform(({ value }) => {
+        if (value === null || value === undefined || Array.isArray(value)) {
+            return value;
+        }
+        return [value];
+    })
     @IsArray()
     @IsEnum(DateWeek, { each: true })
     @IsNotEmpty()
@@ -34,6 +46,7 @@ export class CreateRestaurantDto {
     closeTime: Date;
 
     @IsNumber()
+    @Type(() => Number)
     @IsNotEmpty()
     avgCookingTime: number;
 

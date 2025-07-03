@@ -130,7 +130,7 @@ model Restaurant {
 
 model Menu {
   menuId  String  @default(uuid()) @id
-  name  String
+  name  String  @unique
   menuImg String?
   price   Int
   maxDaily  Int   @default(100)

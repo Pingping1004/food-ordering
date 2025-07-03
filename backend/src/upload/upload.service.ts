@@ -6,7 +6,7 @@ import * as fsSync from 'fs';
 
 const uploadDir = path.join(process.cwd(), 'uploads');
 const tempDir = path.join(uploadDir, 'temp');
-const permanentDir = path.join(uploadDir, 'menu');
+const permanentDir = path.join(uploadDir, 'menus');
 
 (async () => {
     try {
@@ -71,7 +71,7 @@ export class UploadService {
         const fileExtension = path.extname(tempId).toLowerCase();
         const permanentFileName = `${uuidv4()}${fileExtension}}`;
         const permanentFilePath = path.join(permanentDir, permanentFileName);
-        const permanentFileUrl = `/menus/${permanentFileName}`;
+        const permanentFileUrl = `uploads/menus/${permanentFileName}`;
 
         try {
             try {
