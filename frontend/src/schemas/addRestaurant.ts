@@ -1,7 +1,15 @@
 import { z } from "zod";
 
 export const createRestaurantSchema = z.object({
-    // userId: z.string().uuid('ไอดีผู้ใช้ไม่ถูกต้อง'),
+    restaurantImg: z
+    .any()
+    .refine(
+      (f) =>
+        f === undefined ||
+        (f instanceof FileList && (f.length === 0 || f.length === 1)),
+      { message: "Invalid file" }
+    )
+    .optional(),
     name: z.string({ message: 'กรุณาใส่ชื่อร้านอาหารด้วยตัวอักษร' }),
     openTime: z.string()
         .min(1, 'กรุณาเลือกเวลาเปิดทำการร้าน')

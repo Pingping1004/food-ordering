@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { buttonLabels, KeyValueType, shortEngDays } from "@/common/restaurant.enum";
 
 export function useToggle<T extends { value: string }>(
     items: T[],

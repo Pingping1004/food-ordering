@@ -58,7 +58,7 @@ function MenuContext() {
         size="full"
         numberIcon={cart.length}
         iconPosition="start"
-        className="absolute bottom-10"
+        className=""
         onClick={() => checkOrderCart()}
       >
         เช็คออเดอร์ของคุณ

@@ -35,7 +35,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         try {
             console.log('Frontend: Attempting to fetch new CSRF token...');
             await api.get('/csrf-token');
-            console.log('Frontend: CSRF token fetched successfully. XSRF-TOKEN cookie should now be set.');
         } catch (error) {
             console.error('Frontend: Failed to fetch CSRF token:', error);
         }

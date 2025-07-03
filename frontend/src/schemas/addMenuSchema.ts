@@ -15,6 +15,7 @@ export const baseCreateMenuSchema = z.object({
     )
     .optional(),
   isAvailable: z.boolean().optional(),
+  // restaurantId: z.string().min(1, "Restaurant ID is required").uuid(),
 });
 
 export const baseEditMenuSchema = z.object({
@@ -40,6 +41,7 @@ export const baseEditMenuSchema = z.object({
 });
 
 export const singleCreateMenuSchema = baseCreateMenuSchema.extend({
+  restaurantId: z.string().min(1, 'Restaurant ID is required').uuid(),
   menuImg: z
     .any()
     .refine(

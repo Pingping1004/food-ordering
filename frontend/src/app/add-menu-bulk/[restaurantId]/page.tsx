@@ -411,16 +411,7 @@ export default function BulkAddMenuPage() {
                     <p className="text-gray-700 mb-4">
                         Download, fill, and then upload the CSV template here. Ensure menu names in the CSV match exactly any image filenames if you plan to link them.
                     </p>
-                    {/* <Input
-                        type="file"
-                        id="bulkCsvFile"
-                        accept=".csv"
-                        label={`Selected: ${csvFileName || 'No file selected'}`}
-                        error={getRHFErrorMessage(errors.csvFile)}
-                        {...csvRegisterProps}
-                        onChange={handleCsvFileChange} // Use the custom handler
-                        className="mb-4"
-                    /> */}
+
                     <input
                         type="file"
                         id="nativeCsvFile"
@@ -483,7 +474,7 @@ export default function BulkAddMenuPage() {
                                 price={menu.price}
                                 isAvailable={menu.isAvailable}
                                 maxDaily={menu.maxDaily}
-                                menuImg={menu.menuImg} // Use the final image URL/path if available
+                                menuImg={menuImagePreviewUrls.toString()} // Use the final image URL/path if available
                                 cookingTime={menu.cookingTime}
                                 createdAt={menu.createdAt}
                             />

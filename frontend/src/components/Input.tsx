@@ -2,9 +2,14 @@
 
 import clsx from "clsx";
 import { cva, VariantProps } from "class-variance-authority";
-import React, { forwardRef, Ref, useRef } from "react";
+import React, { forwardRef, Ref, InputHTMLAttributes, SelectHTMLAttributes } from "react";
 import { UseFormRegister, FieldValues, Path } from "react-hook-form";
 import { UploadIcon } from "./ui/UploadIcon";
+
+interface Option {
+  key: string;
+  value: string;
+}
 
 const inputVariants = cva(
   "flex items-center w-full px-0 py-2 text-lg noto-sans-regular outline-none border-b-2 placeholder:text-gray-400",
@@ -22,9 +27,9 @@ const inputVariants = cva(
   }
 );
 
-export type InputProps<TFieldValues extends FieldValues = FieldValues> = Omit<
+export type BaseInputProps<TFieldValues extends FieldValues = FieldValues> = Omit<
   React.InputHTMLAttributes<HTMLInputElement | HTMLSelectElement>,
-  "name" | "value" | "onChange" | "onBlur"
+  "name" | "value" | "onChange" | "onBlur" | "type" | "options" | "accept"
 > &
   VariantProps<typeof inputVariants> & {
     label?: string;
@@ -43,6 +48,22 @@ export type InputProps<TFieldValues extends FieldValues = FieldValues> = Omit<
     ref?: React.Ref<HTMLInputElement | HTMLSelectElement>;
   };
 
+export type InputProps<TFieldValues extends FieldValues = FieldValues> =
+  // For type="select" inputs
+  | (BaseInputProps<TFieldValues> & {
+    type: "select"; // Discriminator
+    options: Option[]; // Required for select type
+  } & SelectHTMLAttributes<HTMLSelectElement>) // Include standard <select> attributes
+  // For type="file" inputs
+  | (BaseInputProps<TFieldValues> & {
+    type: "file"; // Discriminator
+    accept?: string; // 'accept' attribute specific to file inputs
+  } & InputHTMLAttributes<HTMLInputElement>) // Include standard <input type="file"> attributes
+  // For all other <input> types (e.g., text, number, email, password)
+  | (BaseInputProps<TFieldValues> & {
+    type?: Exclude<InputHTMLAttributes<HTMLInputElement>['type'], "select" | "file">; // Type can be text, number, etc.
+  } & InputHTMLAttributes<HTMLInputElement>);
+
 export const Input = forwardRef<HTMLInputElement | HTMLSelectElement, InputProps>(
   (
     {
@@ -59,7 +80,7 @@ export const Input = forwardRef<HTMLInputElement | HTMLSelectElement, InputProps
     ref // This is the ref from react-hook-form
   ) => {
     // Determine the variant based on the error state
-    const inputVariant = error ? "error" : variant;
+    const inputVariant = error ? "error" : (variant || 'primary');
 
     if (type === "select") {
       return (
@@ -134,4 +155,4 @@ export const Input = forwardRef<HTMLInputElement | HTMLSelectElement, InputProps
   }
 );
 
-Input.displayName = "Input"; // This is a good practice for debugging
+Input.displayName = "Input";

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from 'next/image';
 import { Button } from '@/components/Button'
 import { Input } from '@/components/Input'
 import { useAuth } from '@/context/Authcontext';
@@ -13,18 +14,20 @@ import { buttonLabels, KeyValueType, shortEngDays } from '@/common/restaurant.en
 import { getCurrentTime, getApproxCloseTime } from '@/util/time';
 import { useToggle } from '@/hook/useToggle';
 import { useRouter } from 'next/navigation';
+import { getTimeFormat } from '@/util/time';
 
 export default function RestaurantRegisterPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const { 
-    variants: categoryVariants, 
-    selected: categories, 
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const {
+    variants: categoryVariants,
+    selected: categories,
     toggle: toggleCategory,
   } = useToggle(buttonLabels, 3);
-  const { 
+  const {
     variants: dateWeekVariants,
-    selected: openDate, 
+    selected: openDate,
     toggle: toggleDateWeek,
   } = useToggle(shortEngDays, 7);
 
@@ -32,7 +35,7 @@ export default function RestaurantRegisterPage() {
     control,
     register,
     handleSubmit,
-    setValue,
+    watch,
     formState: { errors, isSubmitting }
   } = useForm({
     resolver: zodResolver(createRestaurantSchema),
@@ -48,10 +51,21 @@ export default function RestaurantRegisterPage() {
     },
     mode: 'onBlur',
   });
+  const watchedMenuImgFile = watch('restaurantImg');
 
   useEffect(() => {
-    console.log('OpenDate: ', openDate);
-  }, [openDate])
+    if (watchedMenuImgFile && watchedMenuImgFile.length > 0) {
+      const file = watchedMenuImgFile[0];
+      const url = URL.createObjectURL(file as any);
+      setImagePreviewUrl(url);
+
+      // Cleanup function to revoke the URL when the component unmounts
+      // or when a new file is selected (watchedMenuImgFile changes)
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setImagePreviewUrl(null); // Clear preview if no file is selected
+    }
+  }, [watchedMenuImgFile]);
 
   const submitData = async (data: CreateRestaurantSchemaType) => {
     try {
@@ -63,22 +77,43 @@ export default function RestaurantRegisterPage() {
       const categoriesList = categories.map((item) => item.value);
       const openDateList = openDate.map((date) => date.value);
 
-      const formData = {
-        name: data.name,
-        email: user.email,
-        categories: categoriesList,
-        openDate: openDateList,
-        openTime: data.openTime,
-        closeTime: data.closeTime,
-        avgCookingTime: data.avgCookingTime,
-        adminName: data.adminName,
-        adminSurname: data.adminSurname,
-        adminTel: data.adminTel,
-        adminEmail: data.adminEmail,
-      };
+      console.log('1. Mapped categoriesList (array of strings):', categoriesList);
+      console.log('2. Type of categoriesList:', typeof categoriesList, 'Is Array?', Array.isArray(categoriesList));
+      console.log('3. Length of categoriesList:', categoriesList.length);
+      const formData = new FormData();
 
-      console.log('Restaurant data: ', formData);
-      const response = await api.post('/restaurant', formData);
+      if (data.restaurantImg && data.restaurantImg.length > 0) {
+        formData.append('restaurantImg', data.restaurantImg[0]);
+      }
+
+      formData.append('name', data.name);
+      formData.append('email', user.email);
+
+      categoriesList.forEach(category => {
+        formData.append('categories', category);
+      });
+
+      openDateList.forEach(date => {
+        formData.append('openDate', date);
+      });
+
+      formData.append('openTime', data.openTime.toString());
+      formData.append('closeTime', data.closeTime.toString());
+      formData.append('avgCookingTime', data.avgCookingTime.toString());
+      formData.append('adminName', data.adminName);
+      formData.append('adminSurname', data.adminSurname);
+      formData.append('adminTel', data.adminTel);
+
+      if (data.adminEmail !== undefined && data.adminEmail !== null) {
+        formData.append('adminEmail', data.adminEmail);
+      }
+
+      console.log('Restaurant data: ', Object.fromEntries(formData.entries()));
+      const response = await api.post('/restaurant', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        }
+      });
       console.log('Response data: ', response.data);
       const restaurantName = response.data.result.name;
       const restaurantId = response.data.result.restaurantId
@@ -96,8 +131,42 @@ export default function RestaurantRegisterPage() {
       <form onSubmit={handleSubmit(submitData)} className="flex flex-col gap-y-10 py-10 px-6">
         <header className="flex flex-col gap-y-1">
           <h1 className="text-2xl text-primary noto-sans-bold">ข้อมูลร้านอาหาร</h1>
-          <p className="text-xs text-secondary">การระบุข้อมูลอย่างครบถ้วน สามารถช่วยดึงดูดลูกค้าได้เพิ่มขึ้น</p>
+          <p className="text-sm text-secondary">กรุณาระบุข้อมูลอย่างครบถ้วน</p>
         </header>
+
+        <div className="flex flex-col items-center justify-center">
+          {/* Image Preview */}
+          <div className="mb-4">
+            {imagePreviewUrl ? (
+              <Image
+                src={imagePreviewUrl}
+                alt="Preview menu image"
+                className="w-48 h-48 object-cover rounded-lg border border-gray-300 shadow-sm"
+                width={192} // Match w-48 (192px)
+                height={192} // Match h-48 (192px)
+              />
+            ) : (
+              <div className="w-48 h-48 bg-gray-100 flex items-center justify-center rounded-lg border border-gray-300 text-gray-400">
+                No Image Selected
+              </div>
+            )}
+          </div>
+
+          {/* File Input */}
+          <div className="w-full max-w-xs">
+            <label htmlFor="restaurantImg" className="block text-sm font-medium text-gray-700 mb-1">รูปภาพเมนู</label>
+            <Input
+              type="file"
+              id="restaurantImg"
+              placeholder="รูปโปรไฟล์ร้านอาหาร"
+              accept="image/*"
+              multiple={false} // Ensure only one file can be selected
+              error={errors.restaurantImg?.message as string | undefined}
+              {...register('restaurantImg')}
+            // Removed onChange directly here as useEffect with watch handles preview
+            />
+          </div>
+        </div>
 
         <Input
           type="text"

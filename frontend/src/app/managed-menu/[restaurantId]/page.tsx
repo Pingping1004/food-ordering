@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 
 function Page() {
   const { restaurant, menus } = useMenu();
+  console.log('RestaurantId: ', restaurant.restaurantId);
   const router = useRouter();
 
   return (
