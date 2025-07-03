@@ -58,37 +58,8 @@ export const singleCreateMenuSchema = baseCreateMenuSchema.extend({
 export type SingleCreateMenuSchemaType = z.infer<typeof singleCreateMenuSchema>
 
 export const bulkUploadFormSchema = z.object({
-  // Field for multiple menu images to be uploaded
-  // menuImgs: z
-  //   .instanceof(FileList, { message: 'Menu images must be file(s).' })
-  //   .refine((files) => files.length > 0, { message: 'At least one menu image is required.' })
-  //   .refine((files) => Array.from(files).every(file => file.size <= 5 * 1024 * 1024), { message: 'Each image must be max 5MB.' })
-  //   .refine((files) => Array.from(files).every(file => ['image/jpeg', 'image/png', 'image/webp'].includes(file.type)), {
-  //     message: 'Only JPG, PNG, or WebP images are allowed.',
-  //   }),
-
-  // // Field for the CSV file
-  // csvFile: z
-  //   .instanceof(FileList, { message: 'CSV file is required.' })
-  //   .refine((files) => files.length > 0, { message: 'Please select a CSV file.' })
-  //   .refine((files) => files[0]?.type === 'text/csv', { message: 'Only CSV files (.csv) are allowed.' })
-  //   .refine((files) => files[0]?.size <= 10 * 1024 * 1024, { message: 'Max CSV file size is 10MB.' }),
   csvFile: z.any(),
   menuImgs: z.any(),
-  // csvFile: z
-  //   .instanceof(FileList, { message: 'CSV file is required.' })
-  //   .refine((files) => files.length > 0, 'CSV file is required.')
-  //   .refine((files) => files[0] && files[0].type === 'text/csv', 'Only CSV files are allowed.'),
-
-  // // Client-side validation for menu images
-  // menuImgs: z
-  //   .instanceof(FileList, { message: 'Menu images are required.' })
-  //   .refine((files) => files.length > 0, 'At least one menu image is required.')
-  //   .refine((files) => files.length <= 10, 'You can upload a maximum of 10 images.')
-  //   .refine((files) =>
-  //     Array.from(files).every(file => ['image/png', 'image/jpeg', 'image/webp'].includes(file.type)),
-  //     'Only PNG, JPEG, or WebP images are allowed.'
-  //   ),
   restaurantId: z.string().min(1, "Restaurant ID is required").uuid(),
 });
 

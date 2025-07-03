@@ -10,6 +10,7 @@ import { MenuItem } from "../../add-menu/[restaurantId]/page";
 import { saveAs } from 'file-saver';
 import { useForm, FieldError, FieldErrorsImpl, Merge } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Menu } from "@/components/cookers/Menu";
 import * as Papa from 'papaparse';
 import {
     bulkUploadFormSchema,
@@ -19,8 +20,6 @@ import {
     FinalBulkMenuPayloadType,
 } from '@/schemas/addMenuSchema';
 import { useParams } from 'next/navigation';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/Authcontext';
 
 export interface ServerMenuItem extends MenuItem {
     name: string;
@@ -67,7 +66,7 @@ export default function BulkAddMenuPage() {
         defaultValues: {
             // menuImgs: new DataTransfer().files, // Will only run in the browser
             // csvFile: new DataTransfer().files,   // Will only run in the browser
-            restaurantId: "",
+            restaurantId: restaurantId,
         }
     });
 
@@ -360,17 +359,6 @@ export default function BulkAddMenuPage() {
                     <p className="text-gray-700 mb-4">
                         Select all your menu image files (PNG, JPEG, WebP, max 5MB each). These images will be linked to your menu items in the CSV.
                     </p>
-                    {/* <Input
-                        type="file"
-                        id="bulkImageFiles"
-                        accept="image/png, image/jpeg, image/webp"
-                        label={`Selected: ${watchedMenuImageFiles.length} file(s)`}
-                        multiple
-                        error={getRHFErrorMessage(errors.menuImgs)}
-                        {...menuImageFilesRegisterProps}
-                        onChange={handleMenuImageFilesChange} // Use the custom handler
-                        className="mb-4"
-                    /> */}
                     <label htmlFor="nativeMenuImgs" className="block text-lg font-semibold mb-2">
                         Upload Menu Images (Native Input)
                     </label>
@@ -388,12 +376,6 @@ export default function BulkAddMenuPage() {
                             }
                         }}
                     />
-                    {/* {errors.menuImgs && <p className="text-red-500 text-sm mt-1">{errors.menuImgs.message}</p>} */}
-                    {/* {watchedMenuImageFiles.length > 0 && !errors.menuImgs && (
-                        <p className="text-sm text-gray-600 mb-4">
-                            Files selected: {(Array.from(watchedMenuImageFiles) as File[]).map(f => f.name).join(', ')}
-                        </p>
-                    )} */}
 
                     {menuImagePreviewUrls.length > 0 && (
                         <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
@@ -493,7 +475,7 @@ export default function BulkAddMenuPage() {
                     <h2 className="text-2xl font-bold mb-4">Successfully Added Menus</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {/* Assuming your <Menu> component exists and displays `ServerMenuItem` */}
-                        {/* {menuList.map((menu) => (
+                        {menuList.map((menu) => (
                             <Menu
                                 key={menu.menuId}
                                 menuId={menu.menuId}
@@ -505,7 +487,7 @@ export default function BulkAddMenuPage() {
                                 cookingTime={menu.cookingTime}
                                 createdAt={menu.createdAt}
                             />
-                        ))} */}
+                        ))}
                     </div>
                 </div>
             )}
