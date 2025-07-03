@@ -33,9 +33,7 @@ export type InputProps<TFieldValues extends FieldValues = FieldValues> = Omit<
     register?: UseFormRegister<TFieldValues>;
     validation?: object;
     type?: "text" | "email" | "password" | "select" | "file" | "number"; // Added "file" type
-    onChange?: (
-      event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-    ) => void;
+    onChange?: (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
     options?: { key: string; value: string }[];
     error?: string;
     className?: string;
@@ -99,6 +97,7 @@ export const Input = forwardRef<HTMLInputElement | HTMLSelectElement, InputProps
             id={name}
             type="file"
             name={name}
+            // onChange={onChange}
             ref={ref as Ref<HTMLInputElement>} // Pass ref to the file input
             className={clsx("hidden", className)}
             {...props} // Spread all props from react-hook-form

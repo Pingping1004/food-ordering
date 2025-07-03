@@ -30,6 +30,12 @@ import { PayoutService } from './payout/payout.service';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { AdminModule } from './admin/admin.module';
+import { UploadModule } from './upload/upload.module';
+import { UploadController } from './upload/upload.controller';
+import { CsrfTokenService } from './csrf/csrf.service';
+import { CsrfGuard } from './guards/csrf.guard';
+import { APP_GUARD } from '@nestjs/core';
+import { CsrfModule } from './csrf/csrf.module';
 
 @Module({
   imports: [
@@ -38,6 +44,8 @@ import { AdminModule } from './admin/admin.module';
     PrismaModule,
     OrderModule,
     PaymentModule,
+    UploadModule,
+    CsrfModule,
 
     ConfigModule.forRoot({
       isGlobal: true,
@@ -57,7 +65,7 @@ import { AdminModule } from './admin/admin.module';
     UserModule,
     AdminModule,
   ],
-  controllers: [AppController, RestaurantController, MenuController, OrderController, PaymentController, PayoutController],
+  controllers: [AppController, RestaurantController, MenuController, OrderController, PaymentController, PayoutController, UploadController],
   providers: [
     {
       provide: APP_FILTER,
@@ -66,6 +74,11 @@ import { AdminModule } from './admin/admin.module';
     {
       provide: APP_FILTER,
       useClass: CatchEverythingFilter,
+    },
+    CsrfTokenService,
+    {
+      provide: APP_GUARD,
+      useClass: CsrfGuard,
     },
     AppService,
     RestaurantService,

@@ -6,34 +6,51 @@ import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import * as express from 'express';
 import { json, Request, Response } from 'express';
-import * as csurf from 'csurf';
 import * as cookieParser from 'cookie-parser'
 import { ConfigService } from '@nestjs/config';
+import * as session from 'express-session'
+import * as dotenv from 'dotenv';
+dotenv.config()
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  app.set('trust proxy', 1);
+
+  const APP_GLOBAL_SECRET = process.env.APP_GLOBAL_SECRET;
+  if (!APP_GLOBAL_SECRET) {
+    if (process.env.NODE_ENV === 'production') {
+      console.error('CRITICAL ERROR: APP_GLOBAL_SECRET is not defined in production environment!');
+      process.exit(1);
+    } else {
+      console.warn('WARNING: APP_GLOBAL_SECRET is not defined. Using a fallback for development only.');
+    }
+  }
+  app.set('secret', APP_GLOBAL_SECRET); 
 
   app.use(cookieParser());
-  const cookieSecure = true;
-  const csrfProtection = csurf({
-    cookie: {
-      key: 'XSRF-TOKEN', // Or whatever you chose
-      sameSite: 'Lax',
-      // secure: process.env.NODE_ENV === 'production',
-      secure: cookieSecure,
-      httpOnly: false,
-    },
-    value: (req) => req.header('x-csrf-token'),
+  const isProduction = process.env.NODE_ENV === 'production';
+  const cookieSecure = isProduction;
+
+  app.use((req: Request, res: Response, next: Function) => {
+    console.log(`Backend Request Debug: URL: ${req.url}`);
+    console.log(`Backend Request Debug: Method: ${req.method}`);
+    console.log('Backend Request Debug: Headers[x-csrf-token]:', req.header('x-csrf-token'));
+    console.log('Backend Request Debug: Cookies[XSRF-TOKEN]:', req.cookies['XSRF-TOKEN']);
+    // These should now be irrelevant for CSRF, but you'll likely still see undefined
+    console.log('Backend Request Debug: req.secret:', (req as any).secret);
+    console.log('Backend Request Debug: req.sessionID:', (req as any).sessionID);
+    console.log('Backend Request Debug: req.session.secret:', (req as any).session ? (req as any).session.secret : 'No req.session.secret (session not initialized or property missing)');
+    next();
   });
 
   app.use((req: Request, res: Response, next: Function) => {
-    if (req.path === '/auth/login' || 
-       req.path === '/auth/signup' ||
-       req.path === '/webhooks/omise') {
-      return next();
-    }
-    csrfProtection(req, res, next);
-  })
+    console.log(`Backend Request Debug: URL: ${req.url}`);
+    console.log(`Backend Request Debug: Method: ${req.method}`);
+    console.log('Backend Request Debug: Headers[x-csrf-token]:', req.header('x-csrf-token'));
+    console.log('Backend Request Debug: Cookies[XSRF-TOKEN]:', req.cookies['XSRF-TOKEN']);
+    console.log('Backend Request Debug: req.secret:', req.secret); // <-- ADD THIS LINE
+    next();
+  });
 
   const uploadsDir = join(process.cwd(), 'uploads');
   app.use('/uploads', express.static(uploadsDir));
@@ -123,6 +140,7 @@ async function bootstrap() {
       }
     },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: 'Content-Type, Accept, X-CSRF-Token, Authorization',
     credentials: true,
     exposedHeaders: ['set-cookie'],
     preflightContinue: false,

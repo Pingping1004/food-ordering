@@ -6,11 +6,13 @@ import { RestaurantModule } from '../restaurant/restaurant.module';
 import { MulterModule } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { OrderModule } from 'src/order/order.module';
+import { UploadModule } from 'src/upload/upload.module';
 
 @Module({
   imports: [
     OrderModule,
     RestaurantModule,
+    UploadModule,
     MulterModule.register({
       storage: diskStorage({
         destination: './uploads/menus',

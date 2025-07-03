@@ -28,3 +28,16 @@ api.interceptors.request.use(
         return Promise.reject(error);
     }
 );
+
+export async function fetchCsrfToken(): Promise<void> {
+    try {
+        // Make a GET request to your new CSRF endpoint.
+        // Your backend's CsrfController (`@Controller('csrf-token')`)
+        // will generate the token and set the XSRF-TOKEN cookie.
+        await api.get('/csrf-token');
+        console.log('Successfully fetched new CSRF token and cookie should be set.');
+    } catch (error) {
+        console.error('Failed to fetch CSRF token:', error);
+        // Handle error appropriately, e.g., show a message to the user, retry, etc.
+    }
+}

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Req, UseGuards, UploadedFile, UploadedFiles, BadRequestException, UseInterceptors, NotFoundException, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, UsePipes, ValidationPipe, Param, Delete, Req, UseGuards, UploadedFile, UploadedFiles, BadRequestException, UseInterceptors, NotFoundException, Query } from '@nestjs/common';
 import { MenuService, MenusWithDisplayPrices } from './menu.service';
 import { CreateMenuDto } from './dto/create-menu.dto';
 import { UpdateMenuDto } from './dto/update-menu.dto';
@@ -9,10 +9,19 @@ import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { imageFileFilter, editFileName } from 'src/utils/file-upload.utils';
 import { Express } from 'express';
+import { CsvMenuItemData } from './menu.service';
+import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
+import { Role } from '@prisma/client';
+import { Roles } from 'src/decorators/role.decorator';
+
+interface BulkCreateMenuBody {
+  menus: CsvMenuItemData[];
+  restaurantId?: string; // If you still pass it in body; prefer from auth/param
+}
 
 @Controller('menu')
-// @UseGuards(RolesGuard)
-// @Roles(['cooker'])
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles([Role.admin, Role.cooker])
 export class MenuController {
   constructor(private readonly menuService: MenuService) { }
 
@@ -68,69 +77,107 @@ export class MenuController {
     }
   }
 
+  // @Post('bulk')
+  // @UseInterceptors(
+  //   FilesInterceptor('menuImg', 20, {
+  //     storage: diskStorage({
+  //       destination: './uploads/menus',
+  //       filename: editFileName,
+  //     }),
+  //     fileFilter: imageFileFilter,
+  //   })
+  // )
+  // async createBulkMenus(
+  //   @Req() req: any,
+  //   @Body('createMenuDto') createMenuDto: string,
+  //   @UploadedFiles() files?: Express.Multer.File[],
+  // ) {
+  //   let parsedCreateMenuDtos: CreateMenuDto[];
+  //   let uploadFilePaths: string[] = [];
+
+  //   try {
+  //     try {
+  //       parsedCreateMenuDtos = JSON.parse(createMenuDto);
+  //       if (!Array.isArray(parsedCreateMenuDtos)) {
+  //         throw new BadRequestException('The "createMenuDtos" field must be a JSON array.');
+  //       }
+  //     } catch (parseError) {
+  //       throw new BadRequestException('Invalid JSON format for createMenuDto field');
+  //     }
+
+  //     // const restaurantId = req.user.restaurantId;
+  //     const restaurantId = req.body.restaurantId;
+  //     console.log(req);
+  //     if (!restaurantId) throw new NotFoundException('RestaurantId not found in create mneu controller');
+
+  //     if (files && files.length !== parsedCreateMenuDtos.length) {
+  //       throw new BadRequestException('The number of upload files must match the nubmer of create menus');
+  //     }
+
+  //     parsedCreateMenuDtos.forEach((dto, index) => {
+  //       const file = files && files[index];
+
+  //       if (file) {
+  //         dto.menuImg = `uploads/emnus/${file.filename}`;
+  //         uploadFilePaths.push(file.path);
+  //       }
+  //     });
+
+  //     const result = await this.menuService.createMenu(restaurantId, parsedCreateMenuDtos, files);
+
+  //     console.log('Successfully create menu in controller: ', result);
+  //     return result;
+  //   } catch (error) {
+  //     console.error('Bulk menu creation failed in controller: ', error);
+
+  //     // Clean up all uploaded files if any error occurred during processing
+  //     await Promise.all(uploadFilePaths.map(async (filePath) => {
+  //       try {
+  //         await fs.unlink(filePath);
+  //         console.log(`Controller: Successfully deleted temporary uploaded file: ${filePath}`);
+  //       } catch (fileDeleteError) {
+  //         console.error(`Controller: Failed to delete uploaded file ${filePath}:`, fileDeleteError);
+  //       }
+  //     }));
+  //     throw error; // Re-throw the original error
+  //   }
+  // }
+
   @Post('bulk')
-  @UseInterceptors(
-    FilesInterceptor('menuImg', 20, {
-      storage: diskStorage({
-        destination: './uploads/menus',
-        filename: editFileName,
-      }),
-      fileFilter: imageFileFilter,
-    })
-  )
+  // No @UseInterceptors(FilesInterceptor) needed here anymore!
+  // Files are not uploaded in this request.
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true })) // Optional: Add validation pipe
   async createBulkMenus(
-    @Req() req: any,
-    @Body('createMenuDto') createMenuDto: string,
-    @UploadedFiles() files?: Express.Multer.File[],
+    @Req() req: any, // Use @Request() req: Request if not using NestJS specific Req object
+    @Body() body: BulkCreateMenuBody, // The entire request body is now a JSON object
   ) {
-    let parsedCreateMenuDtos: CreateMenuDto[];
-    let uploadFilePaths: string[] = [];
+    const { menus: menusData } = body; // Destructure the 'menus' array from the body
+
+    if (!Array.isArray(menusData) || menusData.length === 0) {
+      throw new BadRequestException('The request body must contain a non-empty "menus" array.');
+    }
+
+    // IMPORTANT: Get restaurantId from an authenticated user (req.user.restaurantId)
+    // or from a route parameter for security and consistency.
+    // Avoid relying on req.body.restaurantId for this, as it's less secure.
+    // For now, I'll keep your `req.body.restaurantId` for consistency with your previous code,
+    // but strongly recommend moving it to `req.user.restaurantId` via authentication middleware.
+    const restaurantId = req.body.restaurantId; // OR: const restaurantId = req.user.restaurantId;
+
+    if (!restaurantId) {
+      throw new NotFoundException('Restaurant ID not provided or authenticated.');
+    }
 
     try {
-      try {
-        parsedCreateMenuDtos = JSON.parse(createMenuDto);
-        if (!Array.isArray(parsedCreateMenuDtos)) {
-          throw new BadRequestException('The "createMenuDtos" field must be a JSON array.');
-        }
-      } catch (parseError) {
-        throw new BadRequestException('Invalid JSON format for createMenuDto field');
-      }
+      // Call the refactored service method with the parsed data
+      const result = await this.menuService.createBulkMenus(restaurantId, menusData);
 
-      // const restaurantId = req.user.restaurantId;
-      const restaurantId = req.body.restaurantId;
-      console.log(req);
-      if (!restaurantId) throw new NotFoundException('RestaurantId not found in create mneu controller');
-
-      if (files && files.length !== parsedCreateMenuDtos.length) {
-        throw new BadRequestException('The number of upload files must match the nubmer of create menus');
-      }
-
-      parsedCreateMenuDtos.forEach((dto, index) => {
-        const file = files && files[index];
-
-        if (file) {
-          dto.menuImg = `uploads/emnus/${file.filename}`;
-          uploadFilePaths.push(file.path);
-        }
-      });
-
-      const result = await this.menuService.createMenu(restaurantId, parsedCreateMenuDtos, files);
-
-      console.log('Successfully create menu in controller: ', result);
-      return result;
+      console.log('Successfully initiated bulk menu creation in controller: ', result.message);
+      return result; // The service now returns a structured success message with created items
     } catch (error) {
       console.error('Bulk menu creation failed in controller: ', error);
-
-      // Clean up all uploaded files if any error occurred during processing
-      await Promise.all(uploadFilePaths.map(async (filePath) => {
-        try {
-          await fs.unlink(filePath);
-          console.log(`Controller: Successfully deleted temporary uploaded file: ${filePath}`);
-        } catch (fileDeleteError) {
-          console.error(`Controller: Failed to delete uploaded file ${filePath}:`, fileDeleteError);
-        }
-      }));
-      throw error; // Re-throw the original error
+      // No file cleanup needed here, as files are not handled directly by this endpoint.
+      throw error; // Re-throw the original error from the service
     }
   }
 

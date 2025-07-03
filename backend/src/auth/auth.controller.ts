@@ -3,6 +3,7 @@ import { AuthService } from './auth.service';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
 import { Request, Response } from 'express';
+import { Public } from 'src/decorators/public.decorator';
 
 // Extend the Request interface to include csrfToken
 declare module 'express-serve-static-core' {
@@ -17,6 +18,7 @@ export class AuthController {
         private readonly authService: AuthService
     ) { }
 
+    @Public()
     @Post('signup')
     async signup(@Body() signupDto: SignupDto, @Res({ passthrough: true }) res: Response) {
         const { user, accessToken, refreshToken } = await this.authService.regsiter(signupDto);
@@ -41,6 +43,7 @@ export class AuthController {
         };
     }
 
+    @Public()
     @Post('login')
     async login(@Body() loginDto: LoginDto, @Res({ passthrough: true }) res: Response) {
         const { user, accessToken, refreshToken } = await this.authService.login(loginDto);
@@ -63,16 +66,6 @@ export class AuthController {
             message: 'Login successful',
             user: user,
         };
-    }
-
-    @Get('csrf-token')
-    getCsrfToken(@Req() req: Request, @Res() res: Response) {
-        if (!req.csrfToken) {
-            throw new UnauthorizedException('CSRF token function not available');
-        }
-        
-        const csrfToken = req.csrfToken();
-        return res.json({ csrfToken });
     }
 
     @Post('refresh')

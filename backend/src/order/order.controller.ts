@@ -14,10 +14,12 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { Response } from 'express';
 import Omise from 'omise';
+import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
+import { Role } from '@prisma/client';
 
 @Controller('order')
-// @UseGuards(RolesGuard)
-// @Roles(['user'])
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles([Role.user, Role.admin])
 export class OrderController {
   constructor(private readonly orderService: OrderService) { }
 
