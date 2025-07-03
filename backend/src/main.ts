@@ -36,18 +36,6 @@ async function bootstrap() {
     console.log(`Backend Request Debug: Method: ${req.method}`);
     console.log('Backend Request Debug: Headers[x-csrf-token]:', req.header('x-csrf-token'));
     console.log('Backend Request Debug: Cookies[XSRF-TOKEN]:', req.cookies['XSRF-TOKEN']);
-    // These should now be irrelevant for CSRF, but you'll likely still see undefined
-    console.log('Backend Request Debug: req.secret:', (req as any).secret);
-    console.log('Backend Request Debug: req.sessionID:', (req as any).sessionID);
-    console.log('Backend Request Debug: req.session.secret:', (req as any).session ? (req as any).session.secret : 'No req.session.secret (session not initialized or property missing)');
-    next();
-  });
-
-  app.use((req: Request, res: Response, next: Function) => {
-    console.log(`Backend Request Debug: URL: ${req.url}`);
-    console.log(`Backend Request Debug: Method: ${req.method}`);
-    console.log('Backend Request Debug: Headers[x-csrf-token]:', req.header('x-csrf-token'));
-    console.log('Backend Request Debug: Cookies[XSRF-TOKEN]:', req.cookies['XSRF-TOKEN']);
     console.log('Backend Request Debug: req.secret:', req.secret); // <-- ADD THIS LINE
     next();
   });

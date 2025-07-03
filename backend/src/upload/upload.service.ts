@@ -1,8 +1,8 @@
 import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import * as path from 'path';
-import * as fs from 'fs/promises'; // Use promises-based fs
-import * as fsSync from 'fs'; // For synchronous checks like existsSync
+import * as fs from 'fs/promises';
+import * as fsSync from 'fs';
 
 const uploadDir = path.join(process.cwd(), 'uploads');
 const tempDir = path.join(uploadDir, 'temp');
@@ -34,6 +34,16 @@ export class UploadService {
         const uploadedInfos: UploadImageInfo[] = [];
 
         for (const file of files) {
+            console.log('--- Debugging file object ---');
+            console.log('file.originalname:', file.originalname);
+            console.log('file.mimetype:', file.mimetype);
+            console.log('file.size:', file.size);
+            console.log('typeof file.buffer:', typeof file.buffer);
+            console.log('file.buffer content (first 20 bytes):', file.buffer ? file.buffer.slice(0, 20) : 'Buffer is undefined');
+            // Log the entire file object for thorough inspection:
+            console.log('Full file object:', file);
+            console.log('--- End file object debug ---');
+
             const uniqueId = uuidv4();
             const fileExtension = path.extname(file.originalname).toLowerCase();
             const tempFileName = `${uniqueId}${fileExtension}`;
@@ -61,7 +71,7 @@ export class UploadService {
         const fileExtension = path.extname(tempId).toLowerCase();
         const permanentFileName = `${uuidv4()}${fileExtension}}`;
         const permanentFilePath = path.join(permanentDir, permanentFileName);
-        const permanentFileUrl = `/menu/${permanentFileName}`;
+        const permanentFileUrl = `/menus/${permanentFileName}`;
 
         try {
             try {

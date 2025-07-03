@@ -36,6 +36,7 @@ import { CsrfTokenService } from './csrf/csrf.service';
 import { CsrfGuard } from './guards/csrf.guard';
 import { APP_GUARD } from '@nestjs/core';
 import { CsrfModule } from './csrf/csrf.module';
+import { memoryStorage } from 'multer';
 
 @Module({
   imports: [
@@ -55,7 +56,8 @@ import { CsrfModule } from './csrf/csrf.module';
 
     MulterModule.registerAsync({
       useFactory: () => ({
-        dest: './uploads',
+        // dest: './uploads',
+        storage: memoryStorage(),
         limits: { fileSize: 30 * 1024 * 1024 },
       }),
     }),

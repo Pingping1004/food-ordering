@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Patch, UsePipes, ValidationPipe, Param, Delete, Req, UseGuards, UploadedFile, UploadedFiles, BadRequestException, UseInterceptors, NotFoundException, Query } from '@nestjs/common';
 import { MenuService, MenusWithDisplayPrices } from './menu.service';
-import { CreateMenuDto } from './dto/create-menu.dto';
+import { CreateBulkMenusJsonPayload, CreateMenuDto } from './dto/create-menu.dto';
 import { UpdateMenuDto } from './dto/update-menu.dto';
 import * as fs from 'fs/promises';
 import { Public } from '../decorators/public.decorator';
@@ -9,13 +9,13 @@ import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { imageFileFilter, editFileName } from 'src/utils/file-upload.utils';
 import { Express } from 'express';
-import { CsvMenuItemData } from './menu.service';
+import { CsvMenuItemData } from './dto/create-menu.dto';
 import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
 import { Role } from '@prisma/client';
 import { Roles } from 'src/decorators/role.decorator';
 
 interface BulkCreateMenuBody {
-  menus: CsvMenuItemData[];
+  menus: string;
   restaurantId?: string; // If you still pass it in body; prefer from auth/param
 }
 
@@ -23,7 +23,8 @@ interface BulkCreateMenuBody {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles([Role.admin, Role.cooker])
 export class MenuController {
-  constructor(private readonly menuService: MenuService) { }
+  constructor(
+    private readonly menuService: MenuService) { }
 
   @Post('single')
   @UseInterceptors(
@@ -144,42 +145,66 @@ export class MenuController {
   // }
 
   @Post('bulk')
+  async createBulkMenus(
+        @Body() payload: CreateBulkMenusJsonPayload, // <-- Using the correct DTO
+    ) {
+        console.log('Received JSON payload for bulk create:', payload); // This log is correct
+
+        // --- THE FIX IS HERE ---
+        // Change the check to refer to 'createMenuDto'
+        if (!payload.createMenuDto || !Array.isArray(payload.createMenuDto) || payload.createMenuDto.length === 0) {
+            // Also, update the message to be more specific to 'createMenuDto'
+            throw new BadRequestException('The request body must contain a non-empty "createMenuDto" array.');
+        }
+
+        // Now, pass the correct data to your service
+        try {
+            const result = await this.menuService.createBulkMenus( // Assuming your service method name
+                payload.restaurantId,
+                payload.createMenuDto, // <-- Pass the correct array
+            );
+            return result; // Return the result from the service
+        } catch (error) {
+            // Re-throw exceptions from the service layer to be caught by NestJS filters
+            throw error;
+        }
+    }
   // No @UseInterceptors(FilesInterceptor) needed here anymore!
   // Files are not uploaded in this request.
-  @UsePipes(new ValidationPipe({ transform: true, whitelist: true })) // Optional: Add validation pipe
-  async createBulkMenus(
-    @Req() req: any, // Use @Request() req: Request if not using NestJS specific Req object
-    @Body() body: BulkCreateMenuBody, // The entire request body is now a JSON object
-  ) {
-    const { menus: menusData } = body; // Destructure the 'menus' array from the body
+  // @UsePipes(new ValidationPipe({ transform: true, whitelist: true })) // Optional: Add validation pipe
+  // async createBulkMenus(
+  //   @Req() req: any, // Use @Request() req: Request if not using NestJS specific Req object
+  //   @Body() body: BulkCreateMenuBody, // The entire request body is now a JSON object
+  // ) {
+  //   const { menus: menusData } = body; // Destructure the 'menus' array from the body
 
-    if (!Array.isArray(menusData) || menusData.length === 0) {
-      throw new BadRequestException('The request body must contain a non-empty "menus" array.');
-    }
+  //   if (!Array.isArray(menusData) || menusData.length === 0) {
+  //     throw new BadRequestException('The request body must contain a non-empty "menus" array.');
+  //   }
 
-    // IMPORTANT: Get restaurantId from an authenticated user (req.user.restaurantId)
-    // or from a route parameter for security and consistency.
-    // Avoid relying on req.body.restaurantId for this, as it's less secure.
-    // For now, I'll keep your `req.body.restaurantId` for consistency with your previous code,
-    // but strongly recommend moving it to `req.user.restaurantId` via authentication middleware.
-    const restaurantId = req.body.restaurantId; // OR: const restaurantId = req.user.restaurantId;
+  //   // IMPORTANT: Get restaurantId from an authenticated user (req.user.restaurantId)
+  //   // or from a route parameter for security and consistency.
+  //   // Avoid relying on req.body.restaurantId for this, as it's less secure.
+  //   // For now, I'll keep your `req.body.restaurantId` for consistency with your previous code,
+  //   // but strongly recommend moving it to `req.user.restaurantId` via authentication middleware.
+  //   const restaurantId = req.body.restaurantId; // OR: const restaurantId = req.user.restaurantId;
 
-    if (!restaurantId) {
-      throw new NotFoundException('Restaurant ID not provided or authenticated.');
-    }
+  //   if (!restaurantId) {
+  //     throw new NotFoundException('Restaurant ID not provided or authenticated.');
+  //   }
 
-    try {
-      // Call the refactored service method with the parsed data
-      const result = await this.menuService.createBulkMenus(restaurantId, menusData);
+  //   try {
+  //     // Call the refactored service method with the parsed data
+  //     const result = await this.menuService.createBulkMenus(restaurantId, menusData);
 
-      console.log('Successfully initiated bulk menu creation in controller: ', result.message);
-      return result; // The service now returns a structured success message with created items
-    } catch (error) {
-      console.error('Bulk menu creation failed in controller: ', error);
-      // No file cleanup needed here, as files are not handled directly by this endpoint.
-      throw error; // Re-throw the original error from the service
-    }
-  }
+  //     console.log('Successfully initiated bulk menu creation in controller: ', result.message);
+  //     return result; // The service now returns a structured success message with created items
+  //   } catch (error) {
+  //     console.error('Bulk menu creation failed in controller: ', error);
+  //     // No file cleanup needed here, as files are not handled directly by this endpoint.
+  //     throw error; // Re-throw the original error from the service
+  //   }
+  // }
 
   @Public()
   @Get()

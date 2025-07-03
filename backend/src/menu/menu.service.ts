@@ -7,6 +7,7 @@ import { Menu } from '@prisma/client';
 import Decimal from 'decimal.js';
 import { numberRound } from 'src/utils/round-number';
 import { UploadService } from 'src/upload/upload.service';
+import { CsvMenuItemData } from './dto/create-menu.dto';
 
 export interface MenusWithDisplayPrices {
   menuId: string;
@@ -19,15 +20,24 @@ export interface MenusWithDisplayPrices {
   platformFeeDisplay?: number;
 }
 
-export interface CsvMenuItemData {
-  name: string;
-  description: string; // Ensure your Prisma Menu model has this field
-  price: number;
-  maxDaily: number;
-  cookingTime: number;
-  isAvailable: boolean; // Ensure your Prisma Menu model has this field
-  imageFileName: string; // This is the temporary ID (UUID.ext) from the initial image upload
-  originalFileName: string; // The user's original filename, for reference/logging
+// export interface CsvMenuItemData {
+//   name: string;
+//   description: string; // Ensure your Prisma Menu model has this field
+//   price: number;
+//   maxDaily: number;
+//   cookingTime: number;
+//   isAvailable: boolean; // Ensure your Prisma Menu model has this field
+//   imageFileName: string; // This is the temporary ID (UUID.ext) from the initial image upload
+//   originalFileName: string; // The user's original filename, for reference/logging
+// }
+
+export interface BulkCreateMenuResult {
+  message: string;
+  createdMenus: Menu[]; // Successfully created menu items
+  failedMenus: { item: CsvMenuItemData; error: string }[]; // Items that failed with their original data and error
+  totalAttempted: number;
+  totalCreated: number;
+  totalFailed: number;
 }
 
 @Injectable()
@@ -131,14 +141,141 @@ export class MenuService {
     }
   }
 
-  async createBulkMenus( // Renamed from createMenu for clarity
+  // async createBulkMenus( // Renamed from createMenu for clarity
+  //   restaurantId: string,
+  //   menusData: CsvMenuItemData[], // Now expects an array of CsvMenuItemData
+  // ): Promise<BulkCreateMenuResult> {
+  //   try {
+  //     if (!restaurantId) {
+  //       throw new BadRequestException('Restaurant ID is required.');
+  //     }
+  //     const existingRestaurant = await this.restaurantService.findRestaurant(restaurantId);
+  //     if (!existingRestaurant) {
+  //       throw new BadRequestException(`Restaurant with ID ${restaurantId} not found.`);
+  //     }
+
+  //     const newMenuNames = menusData.map(dto => dto.name);
+
+  //     // 1. Check for duplicates *within the incoming batch itself*
+  //     const uniqueNewMenuNames = new Set(newMenuNames);
+  //     if (uniqueNewMenuNames.size !== newMenuNames.length) {
+  //       const duplicateNamesInBatch = newMenuNames.filter((name, index) => newMenuNames.indexOf(name) !== index);
+  //       throw new ConflictException(
+  //         `Duplicate menu names found within the batch: ${[...new Set(duplicateNamesInBatch)].join(', ')}. ` +
+  //         `Each menu name in a bulk creation request must be unique within the batch.`
+  //       );
+  //     }
+
+  //     // 2. Check against existing menu names in the database for THIS restaurant
+  //     const existingMenusWithSameNames = await this.prisma.menu.findMany({
+  //       where: {
+  //         name: { in: newMenuNames },
+  //         restaurantId: restaurantId, // IMPORTANT: Scope to the current restaurant
+  //       },
+  //       select: { name: true },
+  //     });
+
+  //     if (existingMenusWithSameNames.length > 0) {
+  //       const duplicateNamesInDb = existingMenusWithSameNames.map(menu => menu.name);
+  //       throw new ConflictException(
+  //         `The following menu names already exist for restaurant ${restaurantId}: ${duplicateNamesInDb.join(', ')}. ` +
+  //         `Menu names must be unique per restaurant.`
+  //       );
+  //     }
+
+  //     // The check for `differentRestaurantId` is removed because the `restaurantId`
+  //     // for the entire bulk operation is now provided as a parameter,
+  //     // ensuring all items belong to the same restaurant.
+
+  //     const createdMenuResults: Menu[] = [];
+  //     const failedCreations: { menuData: CsvMenuItemData; error: string }[] = [];
+
+  //     // Use a for...of loop to correctly await asynchronous operations for each menu item
+  //     for (const dto of menusData) {
+  //       let menuImgUrl: string | undefined;
+
+  //       try {
+  //         // Process image: Move from temporary storage to permanent storage
+  //         if (dto.imageFileName) {
+  //           // `imageFileName` is the temporary ID (UUID.ext) assigned during the initial upload
+  //           menuImgUrl = await this.uploadService.moveTempImageToPermanent(dto.imageFileName);
+  //         } else {
+  //           // If `imageFileName` is not provided in the CSV, no image will be linked.
+  //           menuImgUrl = undefined;
+  //         }
+
+  //         // Prepare data for Prisma creation
+  //         const menuDataToCreate = {
+  //           name: dto.name,
+  //           description: dto.description,
+  //           price: dto.price,
+  //           maxDaily: dto.maxDaily,
+  //           // Use restaurant's average cooking time as fallback if not provided or invalid
+  //           cookingTime: dto.cookingTime ?? existingRestaurant.avgCookingTime ?? 5,
+  //           isAvailable: dto.isAvailable,
+  //           menuImg: menuImgUrl, // Use the public URL of the permanently stored image
+
+  //           restaurant: {
+  //             connect: {
+  //               restaurantId: existingRestaurant.restaurantId, // Link to the current restaurant
+  //             },
+  //           },
+  //         };
+
+  //         const createdMenu = await this.prisma.menu.create({
+  //           data: menuDataToCreate,
+  //         });
+
+  //         createdMenuResults.push(createdMenu);
+
+  //       } catch (itemError: any) {
+  //         // Log errors for individual items and collect them
+  //         console.error(
+  //           `Failed to create menu item "${dto.name}" (Original file: ${dto.originalFileName}): `,
+  //           itemError.message
+  //         );
+  //         failedCreations.push({ menuData: dto, error: itemError.message });
+  //         // Note: If an image was successfully moved but DB creation failed,
+  //         // the permanent image might become "orphaned." A separate cleanup process
+  //         // (e.g., a scheduled job) is often used to manage such scenarios.
+  //       }
+  //     }
+
+  //     if (failedCreations.length > 0) {
+  //       const failedNames = failedCreations.map(f => f.menuData.name).join(', ');
+  //       console.warn(`Partial bulk menu creation for restaurant ${restaurantId}. Failed items: ${failedNames}`);
+  //       // You might consider returning a more detailed response here,
+  //       // e.g., an array of successes and an array of failures.
+  //     }
+
+  //     console.log(`Bulk menu creation successful for restaurant ${restaurantId}. Created ${createdMenuResults.length} menus, failed ${failedCreations.length}.`);
+
+  //     return {
+  //       message: `Menus created successfully for restaurant ${restaurantId}. Created: ${createdMenuResults.length}, Failed: ${failedCreations.length}.`,
+  //       createdMenus: createdMenuResults, // Return only successfully created menus
+  //       failedMenus: failedCreations,
+  //       totalAttempted,
+  //     };
+  //   } catch (error) {
+  //     console.error(`An error occurred during bulk menu creation for restaurant ${restaurantId}: `, error);
+  //     // Re-throw specific, client-facing exceptions
+  //     if (error instanceof BadRequestException || error instanceof ConflictException) {
+  //       throw error;
+  //     }
+  //     throw new Error('Failed to perform bulk menu creation due to an internal server error.');
+  //   }
+  // }
+
+  async createBulkMenus(
     restaurantId: string,
-    menusData: CsvMenuItemData[], // Now expects an array of CsvMenuItemData
-  ): Promise<{ message: string; results: Menu[] }> {
+    menusData: CsvMenuItemData[],
+  ): Promise<BulkCreateMenuResult> { // Updated return type
     try {
+      // --- 1. Initial Validations ---
       if (!restaurantId) {
         throw new BadRequestException('Restaurant ID is required.');
       }
+
       const existingRestaurant = await this.restaurantService.findRestaurant(restaurantId);
       if (!existingRestaurant) {
         throw new BadRequestException(`Restaurant with ID ${restaurantId} not found.`);
@@ -146,7 +283,7 @@ export class MenuService {
 
       const newMenuNames = menusData.map(dto => dto.name);
 
-      // 1. Check for duplicates *within the incoming batch itself*
+      // --- 2. Check for Duplicates Within the Incoming Batch ---
       const uniqueNewMenuNames = new Set(newMenuNames);
       if (uniqueNewMenuNames.size !== newMenuNames.length) {
         const duplicateNamesInBatch = newMenuNames.filter((name, index) => newMenuNames.indexOf(name) !== index);
@@ -156,11 +293,11 @@ export class MenuService {
         );
       }
 
-      // 2. Check against existing menu names in the database for THIS restaurant
+      // --- 3. Check for Duplicates Against Existing Menus in the Database (for this restaurant) ---
       const existingMenusWithSameNames = await this.prisma.menu.findMany({
         where: {
           name: { in: newMenuNames },
-          restaurantId: restaurantId, // IMPORTANT: Scope to the current restaurant
+          restaurantId: restaurantId, // Crucial: Scope to the current restaurant
         },
         select: { name: true },
       });
@@ -173,31 +310,24 @@ export class MenuService {
         );
       }
 
-      // The check for `differentRestaurantId` is removed because the `restaurantId`
-      // for the entire bulk operation is now provided as a parameter,
-      // ensuring all items belong to the same restaurant.
-
+      // --- 4. Process Each Menu Item Individually ---
       const createdMenuResults: Menu[] = [];
-      const failedCreations: { menuData: CsvMenuItemData; error: string }[] = [];
+      const failedCreations: { item: CsvMenuItemData; error: string }[] = []; // Clearer property name: 'item' instead of 'menuData'
 
-      // Use a for...of loop to correctly await asynchronous operations for each menu item
       for (const dto of menusData) {
         let menuImgUrl: string | undefined;
 
         try {
-          // Process image: Move from temporary storage to permanent storage
+          // Move image from temporary storage to permanent storage if an image is referenced
           if (dto.imageFileName) {
             // `imageFileName` is the temporary ID (UUID.ext) assigned during the initial upload
             menuImgUrl = await this.uploadService.moveTempImageToPermanent(dto.imageFileName);
-          } else {
-            // If `imageFileName` is not provided in the CSV, no image will be linked.
-            menuImgUrl = undefined;
-          }
+          } // If no imageFileName, menuImgUrl remains undefined
 
           // Prepare data for Prisma creation
           const menuDataToCreate = {
             name: dto.name,
-            description: dto.description,
+            description: dto.description, // Ensure this property is correctly handled (e.g., nullable in Prisma schema)
             price: dto.price,
             maxDaily: dto.maxDaily,
             // Use restaurant's average cooking time as fallback if not provided or invalid
@@ -219,38 +349,55 @@ export class MenuService {
           createdMenuResults.push(createdMenu);
 
         } catch (itemError: any) {
-          // Log errors for individual items and collect them
+          // Log specific errors for individual items and collect them
           console.error(
-            `Failed to create menu item "${dto.name}" (Original file: ${dto.originalFileName}): `,
-            itemError.message
+            `Failed to create menu item "${dto.name}" (Original file: ${dto.originalFileName || 'N/A'}): `,
+            itemError.message,
+            itemError.stack // Include stack trace for better debugging of individual failures
           );
-          failedCreations.push({ menuData: dto, error: itemError.message });
+          failedCreations.push({ item: dto, error: itemError.message });
           // Note: If an image was successfully moved but DB creation failed,
-          // the permanent image might become "orphaned." A separate cleanup process
-          // (e.g., a scheduled job) is often used to manage such scenarios.
+          // the permanent image might become "orphaned." Consider a separate cleanup
+          // mechanism (e.g., a scheduled job) to manage such scenarios.
         }
       }
 
-      if (failedCreations.length > 0) {
-        const failedNames = failedCreations.map(f => f.menuData.name).join(', ');
+      // --- 5. Prepare and Return Comprehensive Results ---
+      const totalAttempted = menusData.length;
+      const totalCreated = createdMenuResults.length;
+      const totalFailed = failedCreations.length;
+
+      let responseMessage = `Bulk menu creation completed for restaurant ${restaurantId}. `;
+
+      if (totalFailed > 0) {
+        const failedNames = failedCreations.map(f => f.item.name).join(', ');
+        responseMessage += `Created: ${totalCreated}, Failed: ${totalFailed}. Failed items: ${failedNames}. Please check details for errors.`;
         console.warn(`Partial bulk menu creation for restaurant ${restaurantId}. Failed items: ${failedNames}`);
-        // You might consider returning a more detailed response here,
-        // e.g., an array of successes and an array of failures.
+      } else {
+        responseMessage += `All ${totalCreated} menus were successfully created.`;
       }
 
-      console.log(`Bulk menu creation successful for restaurant ${restaurantId}. Created ${createdMenuResults.length} menus, failed ${failedCreations.length}.`);
+      console.log(responseMessage); // Log final summary
 
       return {
-        message: `Menus created successfully for restaurant ${restaurantId}. Created: ${createdMenuResults.length}, Failed: ${failedCreations.length}.`,
-        results: createdMenuResults, // Return only successfully created menus
+        message: responseMessage,
+        createdMenus: createdMenuResults,
+        failedMenus: failedCreations,
+        totalAttempted,
+        totalCreated,
+        totalFailed,
       };
-    } catch (error) {
-      console.error(`An error occurred during bulk menu creation for restaurant ${restaurantId}: `, error);
-      // Re-throw specific, client-facing exceptions
+
+    } catch (error: any) {
+      // --- 6. Top-Level Error Handling ---
+      console.error(`An unexpected error occurred during bulk menu creation for restaurant ${restaurantId}: `, error);
+
+      // Re-throw specific, client-facing exceptions (e.g., from initial validations)
       if (error instanceof BadRequestException || error instanceof ConflictException) {
         throw error;
       }
-      throw new Error('Failed to perform bulk menu creation due to an internal server error.');
+      // For any other uncaught errors, throw a generic Internal Server Error
+      throw new InternalServerErrorException('Failed to perform bulk menu creation due to an internal server error. Please try again or contact support.');
     }
   }
 
