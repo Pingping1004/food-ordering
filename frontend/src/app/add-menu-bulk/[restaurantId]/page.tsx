@@ -1,12 +1,11 @@
 "use client";
-import '@/lib/server-shims';
+
+// import '@/lib/server-shims';
 
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import Image from "next/image";
 import { api } from "@/lib/api";
 import { Button } from "@/components/Button";
-import { Input } from "@/components/Input";
-import { Menu } from "@/components/cookers/Menu";
 import { MenuItem } from "../../add-menu/[restaurantId]/page";
 import { saveAs } from 'file-saver';
 import { useForm, FieldError, FieldErrorsImpl, Merge } from "react-hook-form";
@@ -20,6 +19,8 @@ import {
     FinalBulkMenuPayloadType,
 } from '@/schemas/addMenuSchema';
 import { useParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/Authcontext';
 
 export interface ServerMenuItem extends MenuItem {
     name: string;
@@ -45,7 +46,10 @@ interface BulkCreateMenuResult {
 
 export default function BulkAddMenuPage() {
     const [loading, setLoading] = useState(false);
-    const { restaurantId } = useParams();
+    const params = useParams();
+    const restaurantId = params.restaurantId as string;
+    // const { user } = useAuth();
+    // const restaurantId = user?.restaurant?.restaurantId;
     console.log('Receiving restaurantId: ', restaurantId);
     const [pageError, setPageError] = useState<string | null>(null); // Renamed to avoid conflict with form errors
     const [successMessage, setSuccessMessage] = useState<string | null>(null); // Renamed for consistency
@@ -66,16 +70,6 @@ export default function BulkAddMenuPage() {
             restaurantId: "",
         }
     });
-
-    useEffect(() => {
-        // Ensure restaurantId is not undefined/null and is a string
-        if (restaurantId && typeof restaurantId === 'string') {
-            // Set the value for 'restaurantId' in the form state
-            // { shouldValidate: true } tells RHF to re-run validation for this field
-            setValue('restaurantId', restaurantId, { shouldValidate: true });
-            // console.log("Restaurant ID set in form state:", restaurantId); // For debugging
-        }
-    }, [restaurantId, setValue]);
 
     // --- RHF `watch` for File Inputs to Drive Previews ---
     const watchedMenuImageFiles = watch('menuImgs');
