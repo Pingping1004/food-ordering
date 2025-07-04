@@ -15,8 +15,8 @@ import { Role } from '@prisma/client';
 import { Roles } from 'src/decorators/role.decorator';
 
 @Controller('menu')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles([Role.admin, Role.cooker])
+// @UseGuards(JwtAuthGuard, RolesGuard)
+// @Roles([Role.admin, Role.cooker])
 export class MenuController {
   constructor(
     private readonly menuService: MenuService) { }
@@ -45,7 +45,7 @@ export class MenuController {
     try {
       const menuData: CreateMenuDto = { ...createMenuDto };
       if (file) {
-        menuData.menuImg = `uploads/menus/${file.filename}`;
+        menuData.menuImg = `/uploads/menus/${file.filename}`;
         uploadedFilePath = file.path;
       }
 
@@ -108,7 +108,7 @@ export class MenuController {
   }
 
   @Public()
-  @Get(':menuId')
+  @Get('find/:menuId')
   async findMenu(@Param('menuId') menuId: string) {
     return this.menuService.findMenu(menuId);
   }
@@ -132,7 +132,7 @@ export class MenuController {
   ) {
     // const restaurantId = req.user.restaurantId;
     const restaurantId = req.body.restaurantId;
-    if (!restaurantId) throw new NotFoundException('RestaurantId not found in update mneu controller');
+    if (!restaurantId) throw new NotFoundException('RestaurantId not found in update menu controller');
 
     let uploadedFilePath: string | undefined;
     try {
@@ -182,7 +182,7 @@ export class MenuController {
   async bulkUpdateMenus(
     @Req() req: any,
     @Query('menuIds') menuIds: string[],
-    @Body('updateMenuDto') updateMenuDto: string,
+    @Body() updateMenuDto: string,
     @UploadedFiles() files?: Express.Multer.File[]
   ) {
     // const restaurantId = req.user.restaurantId;
@@ -231,6 +231,15 @@ export class MenuController {
       }));
       throw error;
     }
+  }
+
+  @Patch('is-available/:menuId')
+  async updateAvailability(
+    @Param('menuId') menuId: string,
+    @Body() updateMenuDto: UpdateMenuDto,
+  ) {
+    const updateAvailability = await this.menuService.updateIsAvailable(menuId, updateMenuDto);
+    return updateAvailability;
   }
 
   @Delete(':menuId')

@@ -154,9 +154,6 @@ export class MenuService {
             itemError.stack // Include stack trace for better debugging of individual failures
           );
           failedCreations.push({ item: dto, error: itemError.message });
-          // Note: If an image was successfully moved but DB creation failed,
-          // the permanent image might become "orphaned." Consider a separate cleanup
-          // mechanism (e.g., a scheduled job) to manage such scenarios.
         }
       }
 
@@ -265,7 +262,6 @@ export class MenuService {
 
   async findMenu(menuId: string) {
     try {
-
       const menu = await this.prisma.menu.findUnique({
         where: { menuId },
       });
@@ -273,7 +269,6 @@ export class MenuService {
       if (!menu) throw new Error('ไม่พบเมนูที่ค้นหา');
 
       await this.restaurantService.findRestaurant(menu.restaurantId);
-
       return menu;
     } catch (error) {
       if (error.code === 'P2025') {
@@ -316,9 +311,6 @@ export class MenuService {
 
   async updateMenu(restaurantId: string, menuIds: string[], updateMenuDto: UpdateMenuDto[]) {
     try {
-      // Find existing restaurant
-      await this.restaurantService.findRestaurant(restaurantId);
-
       // Check for menu ownership
       await this.isOwnerOfMenu(restaurantId, menuIds);
 
@@ -359,6 +351,34 @@ export class MenuService {
     } catch (error: any) {
       console.error(`Failed to update menus for ${restaurantId}: `, error);
       throw error;
+    }
+  }
+
+  private async isOwnerOfSingleMenu(restaurantId: string, menuId: string) {
+    await this.restaurantService.findRestaurant(restaurantId);
+    const isOwner = await this.prisma.menu.findUnique({
+      where: {
+        menuId,
+        restaurantId,
+      },
+    });
+
+    if (!isOwner) throw new BadRequestException(`You are not the owner of the menu or restaurant`);
+  }
+
+  async updateIsAvailable(menuId: string, updateMenuDto: UpdateMenuDto) {
+    try {
+      await this.isOwnerOfSingleMenu(updateMenuDto.restaurantId, menuId);
+
+      const result = await this.prisma.menu.update({
+        where: { menuId },
+        data: { isAvailable: updateMenuDto.isAvailable },
+      });
+
+      return { result, message: `Sucessfully update availability of menu ${result.name} to be ${result.isAvailable}`};
+    } catch (error) {
+      console.error(`An unexpected error occurred during update menu isavailable`, error);
+      throw new InternalServerErrorException('Failed to update isAvailable state of menu');
     }
   }
 

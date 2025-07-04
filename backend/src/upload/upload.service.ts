@@ -71,7 +71,7 @@ export class UploadService {
         const fileExtension = path.extname(tempId).toLowerCase();
         const permanentFileName = `${uuidv4()}${fileExtension}}`;
         const permanentFilePath = path.join(permanentDir, permanentFileName);
-        const permanentFileUrl = `uploads/menus/${permanentFileName}`;
+        const permanentFileUrl = `/uploads/menus/${permanentFileName}`;
 
         try {
             try {
