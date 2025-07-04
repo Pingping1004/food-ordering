@@ -6,6 +6,7 @@ import React, { useState } from "react";
 import { Button } from "../Button";
 import Image from "next/image";
 import { Toggle } from "../Toggle";
+import { useRouter } from "next/navigation";
 
 const menuVariants = cva("", {
   variants: {
@@ -64,7 +65,9 @@ export const Menu = ({
     return updatedAvailable;
   };
 
-  const src = menuImg || "/picture.svg";
+  const router = useRouter();
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+  const src = menuImg ? `${baseUrl}${menuImg}` : `/picture.svg`;
 
   return (
     <div
@@ -76,7 +79,7 @@ export const Menu = ({
       {...props}
     >
       <header className="flex items-center">
-        <Image src={menuImg || '/picture.svg'} alt={name} width={96} height={96} className="h-24 w-24 object-cover mr-6 rounded-2xl" />
+        <Image src={src} alt={name} width={96} height={96} className="h-24 w-24 object-cover mr-6 rounded-2xl" />
         <div className="flex flex-col gap-y-2">
           <div className="flex items-start gap-x-1">
             <h3 className="w-[140px] noto-sans-bold text-md text-primary">{name}</h3>
@@ -98,7 +101,12 @@ export const Menu = ({
       </header>
 
       <footer className="flex gap-x-6 justify-between">
-        <Button size="md" className="flex w-full" type="button">
+        <Button 
+          size="md" 
+          className="flex w-full" 
+          type="button"
+          onClick={() => router.push(`/edit-menu/${menuId}`)}
+        >
           แก้ไขเมนู
         </Button>
 

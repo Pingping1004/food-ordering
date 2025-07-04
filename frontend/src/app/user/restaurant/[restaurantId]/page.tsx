@@ -10,7 +10,7 @@ import { Button } from '@/components/Button';
 
 function MenuContext() {
   const { restaurant, menus } = useMenu();
-  const { cart, getQuantity } = useCart();
+  const { cart } = useCart();
   const router = useRouter();
   console.log('Menu: ', menus)
 

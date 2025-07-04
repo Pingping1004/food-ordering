@@ -147,19 +147,6 @@ export default function AddMenuPage() {
     }
   };
 
-  // --- Initial Render Guards ---
-  if (authLoading) {
-    return <div className="text-center py-10">Authenticating user...</div>;
-  }
-  if (!user) {
-    router.push('/login'); // Redirect to login if not authenticated
-    return null;
-  }
-  if (typeof restaurantId !== 'string' || !restaurantId) {
-    router.push('/error'); // Handle cases where restaurantId is missing or invalid
-    return null;
-  }
-
   return (
     <div className="flex flex-col gap-y-10 py-10 px-6">
       <div className="flex justify-between items-center">

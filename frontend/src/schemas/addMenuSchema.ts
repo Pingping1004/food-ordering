@@ -15,14 +15,12 @@ export const baseCreateMenuSchema = z.object({
     )
     .optional(),
   isAvailable: z.boolean().optional(),
-  // restaurantId: z.string().min(1, "Restaurant ID is required").uuid(),
 });
 
 export const baseEditMenuSchema = z.object({
   menuId: z.string().optional(),
   name: z.string().optional(),
   menuImg: z.string().optional(),
-  restaurantName: z.string().optional(),
   maxDaily: z.coerce
     .number()
     .min(1, { message: "Max daily order must be a positive number" })
@@ -39,6 +37,25 @@ export const baseEditMenuSchema = z.object({
   createdAt: z.coerce.date().optional(),
   isAvailable: z.boolean().optional(),
 });
+
+export const singleEditMenuSchema = baseEditMenuSchema.extend({
+  restaurantId: z.string().min(1, 'Restaurant ID is required').uuid(),
+  menuImg: z
+    .any()
+    .refine(
+      (file) => {
+        if (file === undefined) return true;
+        if (file instanceof FileList) {
+          return file.length === 0 || file.length === 1;
+        }
+        return false;
+      },
+      { message: 'Menu image must be a single file '}
+    )
+    .optional(),
+});
+
+export type singleEditMenuSchemaType = z.infer<typeof singleEditMenuSchema>
 
 export const singleCreateMenuSchema = baseCreateMenuSchema.extend({
   restaurantId: z.string().min(1, 'Restaurant ID is required').uuid(),
@@ -79,12 +96,6 @@ export const csvMenuItemSchema = z.object({
 });
 
 export type CsvMenuItemSchemaType = z.infer<typeof csvMenuItemSchema>;
-
-// export const csvMenuItemSchema = baseCreateMenuSchema.extend({
-//   originalImageFileNameCsv: z.string().optional(),
-// });
-
-// export type CsvMenuItemSchemaType = z.infer<typeof csvMenuItemSchema>;
 
 export const finalBulkMenuPayloadSchema = z.array(baseCreateMenuSchema.extend({
   imageFileName: z.string().optional(),

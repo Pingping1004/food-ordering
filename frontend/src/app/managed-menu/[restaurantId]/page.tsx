@@ -35,6 +35,7 @@ function Page() {
         <Menu
           key={menu.menuId}
           menuId={menu.menuId}
+          menuImg={menu.menuImg}
           name={menu.name}
           price={menu.price}
           maxDaily={menu.maxDaily}
