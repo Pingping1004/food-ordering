@@ -9,7 +9,7 @@ const menuProfileVariant = cva("", {
     variants: {
         variant: {
             on: '',
-            off: 'opacity-50 cursor-not-allowed',
+            off: 'opacity-50 cursor-not-allowed pointer-events-none',
         },
     },
     defaultVariants: {
@@ -33,7 +33,7 @@ export type MenuProfileProps = React.HTMLAttributes<HTMLDivElement> &
 
 export default function MenuProfile({
     menuId,
-    variant = 'on',
+    variant,
     className,
     name,
     menuImg,

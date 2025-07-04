@@ -70,10 +70,6 @@ export default function BulkAddMenuPage() {
         }
     });
 
-    // --- RHF `watch` for File Inputs to Drive Previews ---
-    const watchedMenuImageFiles = watch('menuImgs');
-    const watchedCsvFile = watch('csvFile');
-
     // --- State for Menu Image Previews and Metadata ---
     const [menuImagePreviewUrls, setMenuImagePreviewUrls] = useState<string[]>([]);
     const [uploadedImageMetadata, setUploadedImageMetadata] = useState<UploadedImageInfo[]>([]);
@@ -313,34 +309,6 @@ export default function BulkAddMenuPage() {
         return loading || !parsedCsvData || parsedCsvData.length === 0 || uploadedImageMetadata.length === 0 || Object.keys(errors).length > 0;
     }, [loading, parsedCsvData, uploadedImageMetadata, errors]);
 
-    const getRHFErrorMessage = (
-        error: FieldError | Merge<FieldError, FieldErrorsImpl<any>> | undefined
-    ): string | undefined => {
-        if (!error) {
-            return undefined;
-        }
-        // If it's a simple FieldError object with a message
-        if (typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
-            return error.message;
-        }
-        // If it's a string (though less common for top-level field errors)
-        if (typeof error === 'string') {
-            return error;
-        }
-        // Handle specific cases if Merge or FieldErrorsImpl needs deeper access,
-        // e.g., if you have nested structures like errors.someField.root.message
-        // For most single-field errors, the above 'message' check is sufficient.
-        // This part might need adjustment if your Zod schema has very complex nested structures
-        // that return errors in a non-standard way.
-        // As a fallback, stringify if it's an object and has no direct 'message' property
-        if (typeof error === 'object' && Object.keys(error).length > 0) {
-            // This is a last resort to display something, might not be user-friendly
-            // console.warn("RHF error object without a 'message' property:", error);
-            // return JSON.stringify(error); // Consider if you want to show stringified object
-        }
-        return undefined;
-    };
-
     console.log('Form error: ', errors);
 
     return (
@@ -459,29 +427,6 @@ export default function BulkAddMenuPage() {
                     {isSubmitting ? 'Processing Bulk Upload...' : 'Submit Bulk Menu Data'}
                 </Button>
             </form>
-
-            {/* --- Optional: Display Recently Added Menus --- */}
-            {menuList.length > 0 && (
-                <div className="mt-8">
-                    <h2 className="text-2xl font-bold mb-4">Successfully Added Menus</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {/* Assuming your <Menu> component exists and displays `ServerMenuItem` */}
-                        {menuList.map((menu) => (
-                            <Menu
-                                key={menu.menuId}
-                                menuId={menu.menuId}
-                                name={menu.name}
-                                price={menu.price}
-                                isAvailable={menu.isAvailable}
-                                maxDaily={menu.maxDaily}
-                                menuImg={menuImagePreviewUrls.toString()} // Use the final image URL/path if available
-                                cookingTime={menu.cookingTime}
-                                createdAt={menu.createdAt}
-                            />
-                        ))}
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

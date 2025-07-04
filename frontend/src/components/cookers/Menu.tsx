@@ -2,11 +2,13 @@
 
 import clsx from "clsx";
 import { VariantProps, cva } from "class-variance-authority";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "../Button";
 import Image from "next/image";
 import { Toggle } from "../Toggle";
 import { useRouter } from "next/navigation";
+import { getFullImageUrl } from "@/util/url";
+import { api } from "@/lib/api";
 
 const menuVariants = cva("", {
   variants: {
@@ -27,6 +29,7 @@ const menuVariants = cva("", {
 
 type MenuProps = React.HtmlHTMLAttributes<HTMLDivElement> &
   VariantProps<typeof menuVariants> & {
+    restaurantId: string;
     menuId: string;
     name: string;
     menuImg?: string;
@@ -35,10 +38,12 @@ type MenuProps = React.HtmlHTMLAttributes<HTMLDivElement> &
     createdAt: Date | string | number;
     price: number;
     isAvailable: boolean;
+    onAvailabilityChanged: (menuId: string, newAvailability: boolean) => void;
   };
 
 export const Menu = ({
   className,
+  restaurantId,
   menuId,
   name,
   menuImg,
@@ -46,40 +51,35 @@ export const Menu = ({
   cookingTime,
   createdAt = new Date(),
   price,
-  isAvailable = true,
+  isAvailable,
   children,
   variant = "default",
+  onAvailabilityChanged,
   ...props
 }: MenuProps) => {
 
   const [isMenuAvailable, setIsMenuAvailable] = useState(isAvailable);
-  const handleToggle = (isAvailable: boolean): boolean => {
-    const updatedAvailable = !isAvailable;
-    setIsMenuAvailable(updatedAvailable);
-    console.log(
-      "Current available:",
-      isAvailable,
-      "Updated available:",
-      updatedAvailable
-    );
-    return updatedAvailable;
-  };
+
+  const handleToggleClick = useCallback(() => {
+    setIsMenuAvailable(prev => !prev);
+  }, []);
 
   const router = useRouter();
   const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-  const src = menuImg ? `${baseUrl}${menuImg}` : `/picture.svg`;
+  // const src = menuImg ? `${baseUrl}/${menuImg}` : `/picture.svg`;
+  const src = menuImg ? menuImg : '/picture.svg';
 
   return (
     <div
       className={clsx(
         "flex flex-col p-4 border-1 border-[#E1E1E1] rounded-2xl gap-y-6",
-        menuVariants({ variant, isAvailable }),
+        menuVariants({ variant, isAvailable: isMenuAvailable }),
         className
       )}
       {...props}
     >
       <header className="flex items-center">
-        <Image src={src} alt={name} width={96} height={96} className="h-24 w-24 object-cover mr-6 rounded-2xl" />
+        <Image src={`${getFullImageUrl(src, baseUrl)}`} alt={name} width={96} height={96} className="h-24 w-24 object-cover mr-6 rounded-2xl" />
         <div className="flex flex-col gap-y-2">
           <div className="flex items-start gap-x-1">
             <h3 className="w-[140px] noto-sans-bold text-md text-primary">{name}</h3>
@@ -101,9 +101,9 @@ export const Menu = ({
       </header>
 
       <footer className="flex gap-x-6 justify-between">
-        <Button 
-          size="md" 
-          className="flex w-full" 
+        <Button
+          size="md"
+          className="flex w-full"
           type="button"
           onClick={() => router.push(`/edit-menu/${menuId}`)}
         >
@@ -118,7 +118,13 @@ export const Menu = ({
         >
           ลบเมนู
         </Button>
-        <Toggle label="เปิดขาย" onClick={() => handleToggle(isMenuAvailable)} />
+        <Toggle
+          id={menuId}
+          label="เปิดขาย"
+          checked={isMenuAvailable}
+          onClick={handleToggleClick}
+          onCheckedChange={(val) => onAvailabilityChanged(menuId, val)}
+        />
       </footer>
     </div>
   );

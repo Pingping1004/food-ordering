@@ -7,7 +7,7 @@ import { singleEditMenuSchema, singleEditMenuSchemaType } from "@/schemas/addMen
 import Image from "next/image";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Menu } from "@/context/MenuContext";
 
@@ -22,7 +22,7 @@ function getParamId(param: string | string[] | undefined): string | undefined {
 export default function EditMenuPage() {
   const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
   const [menu, setMenu] = useState<Menu>();
-  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
   const [restaurantId, setRestaurantId] = useState<string | undefined>(undefined);
   const params = useParams();
   const menuId = getParamId(params.menuId);
@@ -86,10 +86,8 @@ export default function EditMenuPage() {
       createdObjectURL = url;
     } else if (typeof watchedMenuImgFile === 'string' && watchedMenuImgFile) {
       currentPreviewUrl = `${baseUrl}${watchedMenuImgFile}`;
-      // currentPreviewUrl = watchedMenuImgFile;
     } else if (menu?.menuImg) {
       currentPreviewUrl = `${baseUrl}${menu.menuImg}`;
-      // currentPreviewUrl = menu.menuImg;
     }
 
     setImagePreviewUrl(currentPreviewUrl);
@@ -124,6 +122,8 @@ export default function EditMenuPage() {
       });
 
       console.log('Patch req body: ', response.data);
+      alert(`แำ้ไขเมนู ${response.data.name} สำเร็จ`);
+      router.push(`/managed-menu/${restaurantId}`);
     } catch (error) {
       console.error("Error creating menu:", error);
     }
