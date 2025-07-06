@@ -15,8 +15,8 @@ import { Role } from '@prisma/client';
 import { Roles } from 'src/decorators/role.decorator';
 
 @Controller('menu')
-// @UseGuards(JwtAuthGuard, RolesGuard)
-// @Roles([Role.admin, Role.cooker])
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles([Role.admin, Role.cooker])
 export class MenuController {
   constructor(
     private readonly menuService: MenuService) { }

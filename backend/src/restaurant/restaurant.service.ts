@@ -140,17 +140,21 @@ export class RestaurantService {
     const allRestaurants = await this.findAllRestaurant();
     console.log('All restaurants: ', allRestaurants);
     const openRestaurant = allRestaurants.map((restaurant) => {
-      const isOpenDay = this.isTodayOpen(restaurant.openDate);
-      const isOpenTime = this.isTimeBetween(
+      const isScheduledOpenDay = this.isTodayOpen(restaurant.openDate);
+      const isScheduledOpenTime = this.isTimeBetween(
         currentTimeString,
         restaurant.openTime,
         restaurant.closeTime
       );
-      const isOpen = isOpenDay && isOpenTime;
+      const isScheduledOpen = isScheduledOpenDay && isScheduledOpenTime;
+      const isManuallyClosed = restaurant.isTemporarilyClosed;
+      const isActuallyOpen = isScheduledOpen && !isManuallyClosed;
 
       return {
         ...restaurant,
-        isOpen,
+        isScheduledOpen,
+        isManuallyClosed,
+        isActuallyOpen,
       };
     });
 
@@ -190,6 +194,22 @@ export class RestaurantService {
         throw new BadRequestException('ชื่อร้านอาหารนี้ถูกใช้ไปแล้ว โปรดใช้ชื่อใหม่');
       }
       throw error;
+    }
+  }
+
+  async updateIsTemporailyClose(restaurantId: string, updateRestaurantDto: UpdateRestaurantDto) {
+    try {
+      const restaurant = await this.findRestaurant(restaurantId);
+      console.log('Update temporarily close status: ', updateRestaurantDto.isTemporarilyClosed);
+
+      const result = await this.prisma.restaurant.update({
+        where: { restaurantId },
+        data: { isTemporarilyClosed: updateRestaurantDto.isTemporarilyClosed },
+      });
+
+      return { result, message: `Successfully update temporarilyClose status of restaurant ${result.name} to be ${result.isTemporarilyClosed}` };
+    } catch (error) {
+      console.error('Failed to update temporary close status of restaurant', error.message, error.stack);
     }
   }
 

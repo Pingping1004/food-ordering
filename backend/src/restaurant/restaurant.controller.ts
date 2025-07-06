@@ -106,6 +106,14 @@ export class RestaurantController {
     }
   }
 
+  @Patch('temporarily-close/:restaurantId')
+  async updateIsTemporarilyClose(
+    @Param('restaurantId') restaurantId: string,
+    @Body() updateRestaurantDto: UpdateRestaurantDto) {
+    const updateData = await this.restaurantService.updateIsTemporailyClose(restaurantId, updateRestaurantDto);
+    return updateData;
+  }
+
   @Delete(':restaurantId')
   async deleteRestaurant(@Param('restaurantId') restaurantId: string) {
     return await this.restaurantService.removeRestaurant(restaurantId);

@@ -112,6 +112,7 @@ model Restaurant {
   openTime  String
   closeTime String
   avgCookingTime  Int
+  isTemporarilyClosed Boolean @default(false)
   
   adminName    String
   adminSurname String

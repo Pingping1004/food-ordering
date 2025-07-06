@@ -230,7 +230,6 @@ export class MenuService {
       const menus = await this.prisma.menu.findMany({
         where: {
           restaurantId,
-          isAvailable: true,
         },
         select: {
           menuId: true,
