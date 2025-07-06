@@ -8,6 +8,7 @@ import { WebhookEventDto } from './dto/webhook-event.dto';
 import { Response } from 'express';
 import Omise from 'omise';
 import * as OmiseTypes from 'omise';
+import { Public } from 'src/decorators/public.decorator';
 
 @Controller('webhooks')
 export class PaymentController {
@@ -17,6 +18,7 @@ export class PaymentController {
   ) {
   }
 
+  @Public()
   @Post('omise')
   async handleOmiseWebhook(@Body() event: any, @Res() res: Response) {
     if (!event || typeof event !== 'object') {

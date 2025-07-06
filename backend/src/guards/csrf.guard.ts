@@ -15,8 +15,8 @@ export class CsrfGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     // Check if the route is marked with @Public() decorator
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
-      context.getHandler(), // Check method handler
-      context.getClass(),   // Check class handler
+      context.getHandler(),
+      context.getClass(),
     ]);
 
     if (isPublic) {
@@ -25,13 +25,10 @@ export class CsrfGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest<Request>();
 
-    // IMPORTANT: Skip CSRF check for OPTIONS requests (CORS preflight)
     if (request.method === 'OPTIONS') {
       return true;
     }
 
-    // Define HTTP methods that require CSRF protection
-    // Typically, only state-changing methods need CSRF protection.
     const methodsRequiringCsrf = ['POST', 'PUT', 'PATCH', 'DELETE'];
     if (!methodsRequiringCsrf.includes(request.method.toUpperCase())) {
       return true; // If method doesn't require CSRF, allow
@@ -67,6 +64,6 @@ export class CsrfGuard implements CanActivate {
       });
     }
 
-    return true; // Tokens match and are valid, request is allowed
+    return true;
   }
 }

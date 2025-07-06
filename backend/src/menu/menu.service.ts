@@ -371,7 +371,9 @@ export class MenuService {
 
       const result = await this.prisma.menu.update({
         where: { menuId },
-        data: { isAvailable: updateMenuDto.isAvailable },
+        data: { 
+          isAvailable: updateMenuDto.isAvailable
+         },
       });
 
       return { result, message: `Sucessfully update availability of menu ${result.name} to be ${result.isAvailable}`};

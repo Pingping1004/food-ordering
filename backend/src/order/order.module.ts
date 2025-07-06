@@ -3,13 +3,15 @@ import { OrderService } from './order.service';
 import { OrderController } from './order.controller';
 import { PrismaService } from 'prisma/prisma.service';
 import { PaymentService } from 'src/payment/payment.service';
-import { PaymentModule } from 'src/payment/payment.module';
 import { ConfigService } from '@nestjs/config';
-import { MenuModule } from 'src/menu/menu.module';
 import { PayoutModule } from 'src/payout/payout.module';
+import { CsrfModule } from 'src/csrf/csrf.module';
 
 @Module({
-  imports: [forwardRef(() => PayoutModule)],
+  imports: [
+    forwardRef(() => PayoutModule),
+    CsrfModule,
+  ],
   controllers: [OrderController],
   providers: [OrderService, PrismaService, PaymentService, ConfigService],
   exports: [OrderService],

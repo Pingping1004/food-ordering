@@ -12,7 +12,6 @@ import {
   IsUUID,
   Min,
   ValidateNested,
-  IsIn,
   ArrayMinSize,
   ArrayMaxSize
 } from "class-validator";
@@ -58,6 +57,10 @@ export class CreateOrderDto {
   @IsNotEmpty()
   @Type(() => Date)
   deliverAt: Date;
+
+  // @IsString()
+  // @IsNotEmpty()
+  // deliverAt: string;
 
   @IsOptional()
   @IsString()

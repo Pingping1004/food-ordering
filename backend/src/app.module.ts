@@ -56,7 +56,6 @@ import { memoryStorage } from 'multer';
 
     MulterModule.registerAsync({
       useFactory: () => ({
-        // dest: './uploads',
         storage: memoryStorage(),
         limits: { fileSize: 30 * 1024 * 1024 },
       }),

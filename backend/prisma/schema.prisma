@@ -42,7 +42,6 @@ enum OrderStatus {
   cooking
   ready
   done
-  delay
   rejected
 }
 
@@ -50,6 +49,7 @@ enum Role {
   admin
   cooker
   user
+  guest
 }
 
 enum IsPaid {

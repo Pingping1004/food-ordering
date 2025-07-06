@@ -2,24 +2,18 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, BadRequestException,
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
-import { RolesGuard } from '../guards/roles.guard';
-import { Roles } from '../decorators/role.decorator';
-import { Public } from '../decorators/public.decorator';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { CreateOrderMenusDto } from './dto/create-order.dto';
-import { diskStorage } from 'multer';
-import { imageFileFilter, editFileName } from 'src/utils/file-upload.utils';
-import * as fs from 'fs/promises'
-import { plainToInstance } from 'class-transformer';
-import { validate } from 'class-validator';
 import { Response } from 'express';
 import Omise from 'omise';
+import { Public } from '../decorators/public.decorator';
+import { RolesGuard } from '../guards/roles.guard';
+import { Roles } from '../decorators/role.decorator';
 import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
 import { Role } from '@prisma/client';
+import { CsrfGuard } from 'src/guards/csrf.guard';
 
 @Controller('order')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles([Role.user, Role.admin])
+@Roles([Role.user, Role.admin, Role.cooker])
 export class OrderController {
   constructor(private readonly orderService: OrderService) { }
 
@@ -87,10 +81,14 @@ export class OrderController {
     return this.orderService.findOneOrder(orderId);
   }
 
-  @Public()
   @Patch(':orderId')
   async updateOrder(@Param('orderId') orderId: string, @Body() updateOrderDto: UpdateOrderDto) {
     return this.orderService.updateOrder(orderId, updateOrderDto);
+  }
+
+  @Patch('delay/:orderId')
+  async updateDelay(@Param('orderId') orderId: string, @Body() updateOrderDto: UpdateOrderDto) {
+    return this.orderService.updateDelay(orderId, updateOrderDto);
   }
 
   @Delete(':orderId')

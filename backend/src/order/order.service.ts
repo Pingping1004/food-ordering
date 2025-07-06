@@ -14,6 +14,7 @@ import { PrismaService } from 'prisma/prisma.service';
 import { IsPaid, OrderStatus, Order, PaymentMethodType } from '@prisma/client';
 import { PaymentService } from 'src/payment/payment.service';
 import { PayoutService } from 'src/payout/payout.service';
+import { formatInTimeZone } from 'date-fns-tz';
 
 @Injectable()
 export class OrderService {
@@ -23,6 +24,8 @@ export class OrderService {
     @Inject(forwardRef(() => PayoutService))
     private payoutService: PayoutService,
   ) { }
+
+  private readonly APP_TIMEZONE = 'Asia/Bangkok'
 
   async validateExisting(params: {
     restaurantId: string;
@@ -93,11 +96,23 @@ export class OrderService {
       throw new InternalServerErrorException('Calculated amount does not match provided amount.');
     }
 
+    // let deliverAtUtc: Date;
+    // try {
+    //   const deliverAtLocalString = createOrderDto.deliverAt;
+    //   deliverAtUtc = zonedTimeToUtc(deliverAtLocalString, this.APP_TIMEZONE);
+
+    //   console.log(`Frontend sent (as local string): ${deliverAtLocalString}`);
+    //   console.log(`Interpreted in ${this.APP_TIMEZONE}: ${deliverAtLocalString}`);
+    //   console.log(`Converted to UTC for saving: ${deliverAtUtc.toISOString()}`);
+    // } catch (error) {
+    //   console.error('Error converting deliverAt to UTC:', error);
+    //   throw new BadRequestException('Invalid deliverAt time provided.');
+    // }
+
     return await this.prisma.$transaction(async (tx) => {
       const order = await tx.order.create({
         data: {
           restaurantId: createOrderDto.restaurantId,
-          // orderAt: createOrderDto.orderAt,
           deliverAt: createOrderDto.deliverAt,
           isPaid: IsPaid.unpaid,
           paymentMethodType: createOrderDto.paymentMethod,
@@ -271,6 +286,25 @@ export class OrderService {
         isDelay: updateOrderDto.isDelay,
       },
     });
+  }
+
+  async updateDelay(orderId: string, updateOrderDto: UpdateOrderDto) {
+    const order = await this.findOneOrder(orderId);
+
+    let updatedDeliverAt = order.deliverAt;
+    updatedDeliverAt.setMinutes(updatedDeliverAt.getMinutes() + 10);
+    console.log(`Old deliverAt: ${order.deliverAt.toISOString()}`);
+    console.log(`New deliverAt: ${updatedDeliverAt.toISOString()}`);
+
+    const result = await this.prisma.order.update({
+      where: { orderId },
+      data: { 
+        isDelay: updateOrderDto.isDelay,
+        deliverAt: updatedDeliverAt,
+      },
+    });
+
+    return { result, message: `Successfully update delay status for 10 mins` }
   }
 
   async removeOrder(orderId: string) {

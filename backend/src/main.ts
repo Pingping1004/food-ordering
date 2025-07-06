@@ -7,8 +7,6 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import * as express from 'express';
 import { json, Request, Response } from 'express';
 import * as cookieParser from 'cookie-parser'
-import { ConfigService } from '@nestjs/config';
-import * as session from 'express-session'
 import * as dotenv from 'dotenv';
 dotenv.config()
 
@@ -28,8 +26,6 @@ async function bootstrap() {
   app.set('secret', APP_GLOBAL_SECRET); 
 
   app.use(cookieParser());
-  const isProduction = process.env.NODE_ENV === 'production';
-  const cookieSecure = isProduction;
 
   const uploadsDir = join(process.cwd(), 'uploads');
   app.use('/uploads', express.static(uploadsDir));
