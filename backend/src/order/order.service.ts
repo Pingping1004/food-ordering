@@ -11,10 +11,9 @@ import {
 import { CreateOrderDto, CreateOrderMenusDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { PrismaService } from 'prisma/prisma.service';
-import { IsPaid, OrderStatus, Order, PaymentMethodType } from '@prisma/client';
+import { IsPaid, OrderStatus, PaymentMethodType } from '@prisma/client';
 import { PaymentService } from 'src/payment/payment.service';
 import { PayoutService } from 'src/payout/payout.service';
-import { formatInTimeZone } from 'date-fns-tz';
 
 @Injectable()
 export class OrderService {
@@ -25,7 +24,12 @@ export class OrderService {
     private payoutService: PayoutService,
   ) { }
 
-  private readonly APP_TIMEZONE = 'Asia/Bangkok'
+  private readonly statusTransitions = {
+    [OrderStatus.receive]: OrderStatus.cooking,
+    [OrderStatus.cooking]: OrderStatus.ready,
+    [OrderStatus.ready]: OrderStatus.done,
+    [OrderStatus.done]: null, // No further transition from DONE
+  };
 
   async validateExisting(params: {
     restaurantId: string;
@@ -95,19 +99,6 @@ export class OrderService {
     if (calculatedTotalAmount !== providedTotalAmount) {
       throw new InternalServerErrorException('Calculated amount does not match provided amount.');
     }
-
-    // let deliverAtUtc: Date;
-    // try {
-    //   const deliverAtLocalString = createOrderDto.deliverAt;
-    //   deliverAtUtc = zonedTimeToUtc(deliverAtLocalString, this.APP_TIMEZONE);
-
-    //   console.log(`Frontend sent (as local string): ${deliverAtLocalString}`);
-    //   console.log(`Interpreted in ${this.APP_TIMEZONE}: ${deliverAtLocalString}`);
-    //   console.log(`Converted to UTC for saving: ${deliverAtUtc.toISOString()}`);
-    // } catch (error) {
-    //   console.error('Error converting deliverAt to UTC:', error);
-    //   throw new BadRequestException('Invalid deliverAt time provided.');
-    // }
 
     return await this.prisma.$transaction(async (tx) => {
       const order = await tx.order.create({
@@ -227,7 +218,7 @@ export class OrderService {
       where: { restaurantId },
       include: { orderMenus: true },
       orderBy: {
-        orderAt: 'desc',
+        deliverAt: 'asc',
       },
     });
   }
@@ -305,6 +296,21 @@ export class OrderService {
     });
 
     return { result, message: `Successfully update delay status for 10 mins` }
+  }
+
+  async updateOrderStatus(orderId: string) {
+    const order = await this.findOneOrder(orderId);
+    const nextStatus = this.statusTransitions[order.status];
+
+    const result = await this.prisma.order.update({
+      where: { orderId },
+      data: {
+        status: nextStatus,
+      },
+      select: { orderId: true, status: true, deliverAt: true },
+    });
+
+    return { result, message: `Successfully update order status to ${result.status} `};
   }
 
   async removeOrder(orderId: string) {

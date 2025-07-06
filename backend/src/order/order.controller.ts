@@ -8,7 +8,7 @@ import { Public } from '../decorators/public.decorator';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from '../decorators/role.decorator';
 import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
-import { Role } from '@prisma/client';
+import { OrderStatus, Role } from '@prisma/client';
 import { CsrfGuard } from 'src/guards/csrf.guard';
 
 @Controller('order')
@@ -89,6 +89,11 @@ export class OrderController {
   @Patch('delay/:orderId')
   async updateDelay(@Param('orderId') orderId: string, @Body() updateOrderDto: UpdateOrderDto) {
     return this.orderService.updateDelay(orderId, updateOrderDto);
+  }
+
+  @Patch('update-status/:orderId')
+  async updateOrderStatus(@Param('orderId') orderId: string) {
+    return this.orderService.updateOrderStatus(orderId);
   }
 
   @Delete(':orderId')
