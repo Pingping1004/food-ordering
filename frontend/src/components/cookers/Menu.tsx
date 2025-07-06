@@ -8,6 +8,7 @@ import Image from "next/image";
 import { Toggle } from "../Toggle";
 import { useRouter } from "next/navigation";
 import { getFullImageUrl } from "@/util/url";
+import { api } from "@/lib/api";
 
 const menuVariants = cva("", {
   variants: {
@@ -38,6 +39,7 @@ type MenuProps = React.HtmlHTMLAttributes<HTMLDivElement> &
     price: number;
     isAvailable: boolean;
     onAvailabilityChanged: (menuId: string, newAvailability: boolean) => void;
+    onDelete: (menuId: string) => void;
   };
 
 export const Menu = ({
@@ -54,6 +56,7 @@ export const Menu = ({
   children,
   variant = "default",
   onAvailabilityChanged,
+  onDelete,
   ...props
 }: MenuProps) => {
 
@@ -67,6 +70,18 @@ export const Menu = ({
     // Pass the new checked state directly to the parent
     onAvailabilityChanged(menuId, checked);
   }, [menuId, onAvailabilityChanged]);
+
+  // const handleDelete = async (menuId: string) => {
+  //   const response = await api.delete(`/menu/${menuId}`);
+  //   console.log('Delete response: ', response.data);
+  // onDelete(response.data);
+  // }
+
+  const handleDelete = () => {
+    // Call the parent's onDelete function immediately with the menuId
+    // The parent function will handle optimistic UI and backend call
+    onDelete(menuId);
+  };
 
   return (
     <div
@@ -120,6 +135,7 @@ export const Menu = ({
           size="md"
           className="flex w-full"
           type="button"
+          onClick={handleDelete}
         >
           ลบเมนู
         </Button>

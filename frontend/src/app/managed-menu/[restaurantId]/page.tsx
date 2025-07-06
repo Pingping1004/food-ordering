@@ -4,12 +4,13 @@ import React, { useState, useCallback } from 'react'
 import CookerHeader from '@/components/cookers/Header'
 import { Button } from '@/components/Button'
 import { Menu } from '@/components/cookers/Menu'
-import { useMenu, MenuProvider } from '@/context/MenuContext';
+import { useMenu, MenuProvider, Menu as MenuType } from '@/context/MenuContext';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 
 function Page() {
   const { restaurant, menus, setMenus } = useMenu();
+  const [error, setError] = useState<string | null>(null);
   const [patchingMenuId, setPatchingMenuId] = useState<string | null>(null);
   const router = useRouter();
 
@@ -75,6 +76,30 @@ function Page() {
     }
   }, [menus, restaurant.restaurantId, setMenus]);
 
+  const handleDeleteMenu = useCallback(async (menuIdToDelete: string) => {
+    setError(null);
+
+    let originalMenus: MenuType[] = [];
+
+    setMenus((prevMenuLists) => {
+      if (prevMenuLists === null) {
+          originalMenus = [];
+          return [];
+      }
+      originalMenus = prevMenuLists; // Store a copy of the current state
+      return prevMenuLists.filter((menu) => menu.menuId !== menuIdToDelete);
+    });
+
+    try {
+      await api.delete(`/menu/${menuIdToDelete}`);
+    } catch (err: any) {
+      console.error('Backend delete failed, reverting UI:', err);
+      // Rollback UI: Revert to the original state if deletion fails
+      setMenus(originalMenus);
+      setError(`Failed to delete menu ${menuIdToDelete}. Error: ${err.message || 'Unknown error'}`);
+    }
+  }, []); 
+
   return (
     <div className="flex flex-col gap-y-10 py-10 px-6">
       <CookerHeader
@@ -108,6 +133,7 @@ function Page() {
             createdAt={menu.createdAt}
             isAvailable={menu.isAvailable ?? false}
             onAvailabilityChanged={handleMenuAvailabilityChange}
+            onDelete={handleDeleteMenu}
           />
         )
       })}
