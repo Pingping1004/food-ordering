@@ -14,6 +14,7 @@ import { PrismaService } from 'prisma/prisma.service';
 import { IsPaid, OrderStatus, PaymentMethodType } from '@prisma/client';
 import { PaymentService } from 'src/payment/payment.service';
 import { PayoutService } from 'src/payout/payout.service';
+import { calculateWeeklyInterval } from 'src/payout/payout-calculator';
 
 @Injectable()
 export class OrderService {
@@ -255,6 +256,32 @@ export class OrderService {
     }
   }
 
+  async findWeeklyOrderForRestaurant(restaurantId: string) {
+    const now = new Date();
+    const { startDate, endDate } = calculateWeeklyInterval(now);
+    try {
+      const orders = await this.prisma.order.findMany({
+        where: { 
+          restaurantId,
+          deliverAt: {
+            gte: startDate,
+            lte: endDate,
+          },
+         },
+        orderBy: {
+          deliverAt: 'desc',
+        },
+        select: {
+          orderId: true, totalAmount:  true, isPaid: true, orderAt: true, deliverAt: true, status: true,
+        }
+      });
+
+      return orders;
+    } catch (error) {
+      throw new InternalServerErrorException('Finding weekly orders failed. Please try again.');
+    }
+  }
+
   async updateOrder(orderId: string, updateOrderDto: UpdateOrderDto) {
     const order = await this.findOneOrder(orderId);
 
@@ -289,7 +316,7 @@ export class OrderService {
 
     const result = await this.prisma.order.update({
       where: { orderId },
-      data: { 
+      data: {
         isDelay: updateOrderDto.isDelay,
         deliverAt: updatedDeliverAt,
       },
@@ -310,7 +337,7 @@ export class OrderService {
       select: { orderId: true, status: true, deliverAt: true },
     });
 
-    return { result, message: `Successfully update order status to ${result.status} `};
+    return { result, message: `Successfully update order status to ${result.status} ` };
   }
 
   async removeOrder(orderId: string) {

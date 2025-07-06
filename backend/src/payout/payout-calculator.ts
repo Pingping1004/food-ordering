@@ -16,6 +16,8 @@ export interface WeeklyPayoutType {
     formattedEndDate: string,
 }
 
+const APP_TIMEZONE = 'Asia/Bangkok';
+
 export function calculatePayout(totalPrice: number): PayoutCalculationType {
     const baseTransactionRate = new Decimal(Number(process.env.OMISE_BASE_TRANSACTION_RATE));
     const vatRate = new Decimal(Number(process.env.OMISE_VAT_RATE));
@@ -69,14 +71,15 @@ export function calculatePayout(totalPrice: number): PayoutCalculationType {
 }
 
 export function calculateWeeklyInterval(rawDate?: Date | string): WeeklyPayoutType {
-    let date: Date;
+    let baseDate: Date;
     if (rawDate) {
-        date = typeof rawDate === 'string' ? new Date(rawDate) : rawDate;
+        baseDate = typeof rawDate === 'string' ? new Date(rawDate) : rawDate;
     } else {
-        date = new Date();
+        baseDate = new Date();
     }
-    const startDate = startOfWeek(date, { weekStartsOn: 1 });
-    const endDate = endOfWeek(date, { weekStartsOn: 1 });
+
+    const startDate = startOfWeek(baseDate, { weekStartsOn: 1 });
+    const endDate = endOfWeek(baseDate, { weekStartsOn: 1 });
     const formattedStartDate = format(startDate, 'dd/MM/yy');
     const formattedEndDate = format(endDate, 'dd/MM/yy');
 

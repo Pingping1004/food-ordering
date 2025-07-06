@@ -81,6 +81,11 @@ export class OrderController {
     return this.orderService.findOneOrder(orderId);
   }
 
+  @Get('weekly/:restaurantId')
+  async findWeeklyOrdersForRestaurant(@Param('restaurantId') restaurantId: string) {
+    return this.orderService.findWeeklyOrderForRestaurant(restaurantId);
+  }
+
   @Patch(':orderId')
   async updateOrder(@Param('orderId') orderId: string, @Body() updateOrderDto: UpdateOrderDto) {
     return this.orderService.updateOrder(orderId, updateOrderDto);
