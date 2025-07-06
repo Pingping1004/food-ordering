@@ -1,20 +1,35 @@
 "use client";
 
-import { Button } from "@/components/Button";
 import CookerHeader from "@/components/cookers/Header";
 import { Order, OrderProps } from "@/components/cookers/Order";
-import { OrderNavBar } from "@/components/cookers/OrderNavbar";
-import { OrderType } from "@/components/users/OrderList";
+import { OrderNavBar, OrderStatus } from "@/components/cookers/OrderNavbar";
 import { CookerProvider, useCooker } from "@/context/Cookercontext";
+import { api } from "@/lib/api";
 import { getDateFormat, getTimeFormat } from "@/util/time";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 
 function Page() {
-    const router = useRouter();
+    const [weeklyOrders, setWeeklyOrders] = useState<OrderProps[]>([]);
     const { cooker, fetchOrders, orders, setOrders, loading, error } = useCooker();
-    const [order, setOrder] = useState<OrderProps>();
-    const [orderState, setOrderState] = useState<"receive" | "cooking" | "ready" | "done">();
+    const [, setOrder] = useState<OrderProps>();
+    const [navbarStatus, setNavbarStatus] = useState<OrderStatus>(OrderStatus.receive);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            const response = await api.get(`/order/weekly/${cooker.restaurantId}`);
+            setWeeklyOrders(response.data);
+        }
+        fetchData();
+    }, [cooker.restaurantId, orders]);
+
+    const weeklyDone = useMemo(() => {
+        return weeklyOrders.filter((order) => order.status === OrderStatus.done);
+    }, [weeklyOrders]);
+
+    const weeklySales = useMemo(() => {
+        return weeklyOrders.reduce((total, order) => total += order.totalAmount, 0);
+    }, [weeklyOrders]);
 
     // const [isUpdateMode, setIsUpdateMode] = useState(false); // State to toggle update mode
     // const [selectedCount, setSelectedCount] = useState(0); // State to track selected orders
@@ -23,6 +38,14 @@ function Page() {
         setOrder(updatedOrder);
         fetchOrders();
     };
+
+    const handleNavbarChange = (status: OrderStatus) => {
+        setNavbarStatus(status);
+    };
+
+    const filterOrderStatus: OrderProps[] = useMemo(() => {
+        return orders.filter(order => order.status === navbarStatus);
+    }, [navbarStatus, orders]);
 
     return (
         <div className="flex flex-col gap-y-10 py-10 px-6">
@@ -33,10 +56,21 @@ function Page() {
                 openTime={cooker?.openTime}
                 closeTime={cooker?.closeTime}
             />
-            <OrderNavBar onClick={() => router.push("/")} />
-            {orderState === "done" ? (
-                <h3 className="noto-sans-bold text-base">ออเดอร์ที่มีปัญหา</h3>
-            ) : ""}
+
+            <OrderNavBar
+                status={navbarStatus}
+                onStatusUpdate={handleNavbarChange}
+            />
+
+            {navbarStatus === OrderStatus.done ? (
+                <section className="flex flex-col gap-y-4">
+                    <h1 className="noto-sans-bold text-xl text-primary">สรุปรายสัปดาห์</h1>
+                    <div className="flex justify-between items-center">
+                        <h2 className="noto-sans-bold text-lg text-primary">ยอดรวม: {weeklySales}</h2>
+                        <p className="text-secondary noto-sans-regular text-lg">จำนวนออเดอร์: {weeklyDone.length}</p>
+                    </div>
+                </section>
+            ) : ('')}
             {/* {!isUpdateMode ? (
                 <section className="grid grid-cols-2 gap-4">
                     <Button
@@ -75,7 +109,7 @@ function Page() {
                 </Button>
             )} */}
             <main>
-                {orders.map((order) => (
+                {filterOrderStatus.map((order) => (
                     <Order
                         key={order.orderId}
                         orderId={order.orderId}

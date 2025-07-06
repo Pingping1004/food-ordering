@@ -7,6 +7,7 @@ import { cva, VariantProps } from "class-variance-authority";
 import clsx from "clsx";
 import { api } from "@/lib/api";
 import { getTimeFormat } from "@/util/time";
+import { OrderStatus } from "./OrderNavbar";
 
 const orderVariants = cva("noto-sans-regular justify-center text-sm", {
     variants: {
@@ -45,7 +46,7 @@ export type OrderProps = React.HTMLAttributes<HTMLDivElement> &
         orderId: string;
         orderAt: string;
         deliverAt: string;
-        status: 'receive' | 'cooking' | 'ready' | 'done';
+        status: OrderStatus;
         selected: "default" | boolean;
         totalAmount: number;
         isPaid: "paid" | "unpaid" | "processing" | "rejected";
@@ -61,7 +62,7 @@ export const Order = ({
     variant,
     selected = "default",
     orderAt,
-    status = "receive",
+    status,
     deliverAt,
     totalAmount,
     isPaid,
@@ -83,14 +84,20 @@ export const Order = ({
         setIsDelayed(isDelay);
     }, [status, isDelay]);
 
-    const renderOrderStatusLabel = useCallback((status: 'receive' | 'cooking' | 'ready' | 'done') => {
-        switch (status) {
-            case 'receive': return 'เริ่มปรุงอาหาร';
-            case 'cooking': return 'พร้อมเสิร์ฟ';
-            case 'ready': return 'เสร็จสิ้น';
-            default: return status;
-        }
-    }, []);
+    const getNextButtonProps = (currentStatus: OrderStatus) => {
+    switch (currentStatus) {
+      case OrderStatus.receive:
+        return { text: 'เริ่มปรุงอาหาร', nextStatus: OrderStatus.cooking };
+      case OrderStatus.cooking:
+        return { text: 'พร้อมสำหรับจัดส่ง', nextStatus: OrderStatus.ready };
+      case OrderStatus.ready:
+        return { text: 'เสร็จสิ้น', nextStatus: OrderStatus.done }; // Text for marking as done
+      case OrderStatus.done:
+        return { text: 'ออเดอร์เสร็จสิ้น' }; // Text for marking as done
+      default: // Should ideally not be hit
+        return { text: 'สถานะไม่ทราบ', nextStatus: currentStatus };
+    }
+  };
 
     const handleDelayOrder = async () => {
         if (isUpdating) return;
@@ -109,7 +116,7 @@ export const Order = ({
             // IMPORTANT: Call the callback to update the parent's state
             onDelayUpdate(updatedOrderFromServer);
 
-            alert(`เลื่อนเวลาจัดส่งออเดอร์ ${updatedOrderFromServer.name} ไป10นาทีสำเร็จ!`);
+            alert(`เลื่อนเวลาจัดส่งออเดอร์ไป10นาทีสำเร็จ!`);
 
         } catch (error: any) {
             console.error('Error delaying order:', error);
@@ -129,7 +136,7 @@ export const Order = ({
             setCurrentStatus(updatedOrder.status);
             onStatusUpdate(updatedOrder.status);
 
-            alert(`อัพเดทสถานะออเดอร์ ${response.data.name}เป็น: ${updatedOrder.status}`);
+            alert(`อัพเดทสถานะออเดอร์เป็น: ${updatedOrder.status}`);
         } catch (error: any) {
             console.error('Error delaying order:', error);
             alert(`Failed to delay order: ${error.message || 'Server error'}`);
@@ -211,7 +218,7 @@ export const Order = ({
                 <p className="noto-sans-bold text-sm">{details}</p>
             </section> */}
 
-            {variant === "done" ? (
+            {status === OrderStatus.done ? (
                 <Button
                     variant="secondarySuccess"
                     size="md"
@@ -231,7 +238,7 @@ export const Order = ({
                         onClick={() => handleUpdateStatus(orderId)}
                     >
                         <span className="noto-sans-regular">
-                            {renderOrderStatusLabel(status)}
+                            {getNextButtonProps(status).text}
                         </span>
                     </Button>
 

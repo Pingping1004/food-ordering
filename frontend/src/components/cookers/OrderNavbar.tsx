@@ -1,6 +1,13 @@
 import React, { useState } from "react";
 import clsx from "clsx";
-import { cva } from "class-variance-authority";
+import { cva, VariantProps } from "class-variance-authority";
+
+export enum OrderStatus {
+  receive = "receive",
+  cooking = "cooking",
+  ready = "ready",
+  done = "done",
+}
 
 const orderNavbarVariants = cva(
   "flex w-full items-center justify-center -mx-6 min-w-lvw text-light text-sm",
@@ -19,13 +26,23 @@ const orderNavbarVariants = cva(
   }
 );
 
+export type CookerNavbarProps = React.HTMLAttributes<HTMLDivElement> &
+  VariantProps<typeof orderNavbarVariants> & {
+    status: OrderStatus;
+    onStatusUpdate: (navStatus: OrderStatus) => void;
+};
+
 export const OrderNavBar = ({
   className,
+  status,
+  onStatusUpdate,
   ...props
-}: React.HTMLAttributes<HTMLDivElement>) => {
-  const [state, setState] = useState<"receive" | "cooking" | "ready" | "done">("receive");
-  const handleClick = (newState: "receive" | "cooking" | "ready" | "done") => {
+}: CookerNavbarProps) => {
+  const [state, setState] = useState<OrderStatus>(OrderStatus.receive);
+
+  const handleClick = (newState: OrderStatus) => {
     setState(newState);
+    onStatusUpdate(newState);
     console.log("Current state:", state, "Updated state:", newState);
   };
 
@@ -39,9 +56,9 @@ export const OrderNavBar = ({
       {...props}
     >
       <button
-        onClick={() => handleClick("receive")}
+        onClick={() => handleClick(OrderStatus.receive)}
         className={
-          state === "receive"
+          state === OrderStatus.receive
             ? "w-1/4 text-primary p-2 border-b-2 border-primary-main"
             : "w-1/4 p-2"
         }
@@ -49,9 +66,9 @@ export const OrderNavBar = ({
         ออเดอร์ใหม่
       </button>
       <button
-        onClick={() => handleClick("cooking")}
+        onClick={() => handleClick(OrderStatus.cooking)}
         className={
-          state === "cooking"
+          state === OrderStatus.cooking
             ? "w-1/4 text-primary p-2 border-b-2 border-primary-main"
             : "w-1/4 p-2"
         }
@@ -59,9 +76,9 @@ export const OrderNavBar = ({
         กำลังปรุง
       </button>
       <button
-        onClick={() => handleClick("ready")}
+        onClick={() => handleClick(OrderStatus.ready)}
         className={
-          state === "ready"
+          state === OrderStatus.ready
             ? "w-1/4 text-primary p-2 border-b-2 border-primary-main"
             : "w-1/4 p-2"
         }
@@ -69,9 +86,9 @@ export const OrderNavBar = ({
         พร้อมเสิร์ฟ
       </button>
       <button
-        onClick={() => handleClick("done")}
+        onClick={() => handleClick(OrderStatus.done)}
         className={
-          state === "done"
+          state === OrderStatus.done
             ? "w-1/4 text-primary p-2 border-b-2 border-primary-main"
             : "w-1/4 p-2"
         }
