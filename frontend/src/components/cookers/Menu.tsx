@@ -78,7 +78,13 @@ export const Menu = ({
       {...props}
     >
       <header className="flex items-center">
-        <Image src={`${getFullImageUrl(src, baseUrl)}`} alt={name} width={96} height={96} className="h-24 w-24 object-cover mr-6 rounded-2xl" />
+        <Image 
+          src={`${getFullImageUrl(src, baseUrl)}`} 
+          alt={name} 
+          width={96} 
+          height={96} 
+          className="h-24 w-24 object-cover mr-6 rounded-2xl" 
+        />
         <div className="flex flex-col gap-y-2">
           <div className="flex items-start gap-x-1">
             <h3 className="w-[140px] noto-sans-bold text-md text-primary">{name}</h3>

@@ -23,7 +23,7 @@ const button = cva("noto-sans-regular justify-center text-sm", {
             select: "rounded-2xl p-3"
         },
         disabled: {
-            true: "opacity-50 cursor-not-allowed",
+            true: "opacity-50 cursor-not-allowed pointer-events-none",
             false: "cursor-pointer",
         },
     },

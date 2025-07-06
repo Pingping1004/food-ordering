@@ -4,9 +4,11 @@ import React, { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import Image from 'next/image';
+import { getParamId } from '@/util/param';
 
 export default function DoneOrderPage() {
-  const { orderId } = useParams();
+  const params = useParams();
+  const orderId = getParamId(params.orderId);
 
   const [restaurantName, setRestaurantName] = useState<string | null>(null);
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
@@ -58,7 +60,7 @@ export default function DoneOrderPage() {
           />
           <div className="flex flex-col items-center gap-y-1">
             <h4 className="text-lg text-success noto-sans-regular">ส่งออเดอร์สำเร็จ</h4>
-            <h1 className="text-2xl noto-sans-bold text-primary">ออเดอร์ {restaurantId?.substring(0, 4)}</h1>
+            <h1 className="text-2xl noto-sans-bold text-primary">ออเดอร์ {orderId?.substring(0, 4)}</h1>
           </div>
         </div>
 

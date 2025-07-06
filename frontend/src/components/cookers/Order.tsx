@@ -1,15 +1,20 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { Button } from "../Button";
 import { cva, VariantProps } from "class-variance-authority";
 import clsx from "clsx";
+import { api } from "@/lib/api";
+import { getTimeFormat } from "@/util/time";
 
 const renderOrderStatusLabel = (status: 'receive' | 'cooking' | 'deliver' | 'done') => {
-    if (status === 'receive') return 'เริ่มปรุงอาหาร'
-    if (status === 'cooking') return 'พร้อมเสิร์ฟ'
-    if (status === 'deliver') return 'จบออเดอร์'
-}
+    switch (status) {
+        case 'receive': return 'เริ่มปรุงอาหาร';
+        case 'cooking': return 'พร้อมเสิร์ฟ';
+        case 'deliver': return 'เสร็จสิ้น';
+        default: return status;
+    }
+};
 
 const orderVariants = cva("noto-sans-regular justify-center text-sm", {
     variants: {
@@ -30,7 +35,7 @@ const orderVariants = cva("noto-sans-regular justify-center text-sm", {
             true: "",
             false: "",
         },
-        isDelay: {
+        isDelayProp: {
             true: "",
             false: "",
         }
@@ -39,7 +44,7 @@ const orderVariants = cva("noto-sans-regular justify-center text-sm", {
         variant: "receive",
         isPaid: "unpaid",
         selected: "default",
-        isDelay: false,
+        isDelayProp: false,
     },
 });
 
@@ -51,10 +56,11 @@ export type OrderProps = React.HTMLAttributes<HTMLDivElement> &
         status: 'receive' | 'cooking' | 'deliver' | 'done';
         selected: "default" | boolean;
         totalAmount: number;
-        isPaid: "paid" | "unpaid" | "selected" | "rejected";
+        isPaid: "paid" | "unpaid" | "processing" | "rejected";
         isDelay: boolean;
         orderMenus: { quantity: number; menuName: string; menuImg?: string }[];
         details?: string;
+        onOrderUpdate: (updateOrder: OrderProps) => void;
     };
 
 export const Order = ({
@@ -71,14 +77,51 @@ export const Order = ({
     details,
     className,
     children,
+    onOrderUpdate,
     ...props
 }: OrderProps) => {
+    const [currentStatus, setCurrentStatus] = useState(status);
+    const [isDelayed, setIsDelayed] = useState(isDelay);
+    const [isUpdating, setIsUpdating] = useState(false);
+
+    useEffect(() => {
+        setCurrentStatus(status);
+        setIsDelayed(isDelay);
+    }, [status, isDelay]);
+
+    const handleDelayOrder = async () => {
+        if (isUpdating) return;
+        setIsUpdating(true);
+
+        try {
+            const response = await api.patch(`/order/delay/${orderId}`, {
+                // delayDuration: 10,
+                isDelay: true,
+            });
+            const updatedOrderFromServer = response.data;
+
+            // Update local state for immediate feedback in this component
+            setCurrentStatus(updatedOrderFromServer.status);
+            setIsDelayed(updatedOrderFromServer.isDelayed || true);
+
+            // IMPORTANT: Call the callback to update the parent's state
+            onOrderUpdate(updatedOrderFromServer);
+
+            alert('Order successfully marked as delayed!');
+
+        } catch (error: any) {
+            console.error('Error delaying order:', error);
+            alert(`Failed to delay order: ${error.message || 'Server error'}`);
+        } finally {
+            setIsUpdating(false);
+        }
+    }
 
     return (
         <div
             className={clsx(
                 "flex flex-col p-4 border-1 border-[#E1E1E1] rounded-2xl gap-y-6",
-                orderVariants({ variant, isPaid, selected, isDelay }),
+                orderVariants({ variant, isPaid, selected, isDelayProp: isDelayed }),
                 className
             )}
             {...props}
@@ -105,7 +148,7 @@ export const Order = ({
 
                     <div>
                         <h3 className="noto-sans-bold text-lg text-primary">
-                            ออเดอร์: 145
+                            ออเดอร์ {orderId?.substring(0, 4)}
                         </h3>
                         <p className="text-light text-xs">สั่งเมื่อ {orderAt}</p>
                     </div>
@@ -132,8 +175,8 @@ export const Order = ({
 
                 <div className="flex w-1/2 grid-cols-2 items-end justify-end md:gap-x-6 gap-x-4">
                     <div className="text-center">
-                        <p className="text-xs">รับออเดอร์:</p>
-                        <h4 className="text-base text-secondary">{deliverAt}</h4>
+                        <p className="text-xs">เวลาจัดส่ง:</p>
+                        <h4 className="text-base text-secondary">{getTimeFormat(deliverAt)}</h4>
                     </div>
 
                     <div className="text-center">
@@ -166,17 +209,18 @@ export const Order = ({
 
                     <Button
                         variant="secondaryDanger"
-                        disabled={isDelay === true ? true : false}
+                        disabled={isDelay === true ? true : false || isUpdating}
                         size="md"
                         type="button"
                         className="flex w-full"
+                        onClick={handleDelayOrder}
                     >
                         <span className="noto-sans-regular">
-                            ล่าช้า10นาที
+                            {isDelay === false ? 'แจ้งล่าช้า10นาที' : 'แจ้งล่าช้าสำเร็จ'}
                         </span>
                     </Button>
                 </div>
             )}
         </div>
-    );
+    )
 };

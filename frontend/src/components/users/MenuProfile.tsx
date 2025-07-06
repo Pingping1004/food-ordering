@@ -4,6 +4,7 @@ import { cva, VariantProps } from "class-variance-authority";
 import Image from "next/image";
 import { useCart } from "@/context/CartContext";
 import { Button } from "../Button";
+import { getFullImageUrl } from "@/util/url";
 
 const menuProfileVariant = cva("", {
     variants: {
@@ -66,7 +67,7 @@ export default function MenuProfile({
                 <Image
                     width={163}
                     height={163}
-                    src={src}
+                    src={`${getFullImageUrl(src, baseUrl)}`}
                     alt="Menu profile"
                     className="rounded-lg object-cover w-full h-full"
                 />

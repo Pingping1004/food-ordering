@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, createContext, useContext, useState } from 'react';
+import React, { useEffect, createContext, useContext, useState, useCallback } from 'react';
 import { api } from '@/lib/api';
 import { RestaurantCategory } from '@/components/users/RestaurantProfile';
 import { Restaurant } from './MenuContext';
@@ -20,6 +20,7 @@ export interface CookerContextType {
     orders: OrderProps[];
     setCooker: React.Dispatch<React.SetStateAction<Cooker | undefined>>;
     setOrders: React.Dispatch<React.SetStateAction<OrderProps[]>>;
+    fetchOrders: () => void;
     loading: boolean;
     error: string | null;
 }
@@ -60,20 +61,36 @@ export const CookerProvider = ({ children }: { children: React.ReactNode }) => {
         fetchData();
     }, [restaurantId]);
 
+    const fetchOrders = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+
+        try {
+            const orderResponse = await api.get(`order/get-orders/${restaurantId}`);
+            setOrders(orderResponse.data);
+        } catch (error) {
+            console.error('Failed to fetch all orders:', error);
+            setError('Failed to load orders.');
+        } finally {
+            setLoading(false);
+        }
+    }, [])
+
     if (loading) return <div>Loading...</div>;
     if (error) return <div>{error}</div>;
     if (!cooker) return <div>No Cooker found</div>
 
     return (
         <CookerContext.Provider
-        value={{
-            cooker,
-            setCooker,
-            orders,
-            setOrders,
-            loading,
-            error,
-        }}
+            value={{
+                cooker,
+                setCooker,
+                orders,
+                setOrders,
+                fetchOrders,
+                loading,
+                error,
+            }}
         >
             {children}
         </CookerContext.Provider>

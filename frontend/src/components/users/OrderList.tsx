@@ -8,7 +8,7 @@ import { Button } from '../Button';
 
 export interface OrderType {
   orderId: string
-  status: 'receive' | 'cooking' | 'ready' | 'done' | 'delay' | 'rejected';
+  status: 'receive' | 'cooking' | 'ready' | 'done';
   details?: string;
   isPaid: 'paid' | 'unpaid' | 'processing' | 'rejected';
   isDelay: boolean;

@@ -2,28 +2,26 @@
 
 import { Button } from "@/components/Button";
 import CookerHeader from "@/components/cookers/Header";
-import { Order } from "@/components/cookers/Order";
+import { Order, OrderProps } from "@/components/cookers/Order";
 import { OrderNavBar } from "@/components/cookers/OrderNavbar";
+import { OrderType } from "@/components/users/OrderList";
 import { CookerProvider, useCooker } from "@/context/Cookercontext";
 import { getDateFormat, getTimeFormat } from "@/util/time";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 function Page() {
     const router = useRouter();
-    const { cooker, setCooker, orders, setOrders, loading, error } = useCooker();
-    const [orderState, setOrderState] = useState<"receive" | "cooking" | "ready" | "done">("receive");
-    const [isUpdateMode, setIsUpdateMode] = useState(false); // State to toggle update mode
-    const [selectedCount, setSelectedCount] = useState(0); // State to track selected orders
+    const { cooker, fetchOrders, orders, setOrders, loading, error } = useCooker();
+    const [order, setOrder] = useState<OrderProps>();
+    const [orderState, setOrderState] = useState<"receive" | "cooking" | "ready" | "done">();
 
-    const handleUpdateClick = () => {
-        setIsUpdateMode(true); // Enable update mode
-        setSelectedCount(2); // Example: Set the count of selected orders (replace with actual logic)
-    };
+    // const [isUpdateMode, setIsUpdateMode] = useState(false); // State to toggle update mode
+    // const [selectedCount, setSelectedCount] = useState(0); // State to track selected orders
 
-    const handleCompleteClick = () => {
-        setIsUpdateMode(false); // Exit update mode
-        setSelectedCount(0); // Reset selected count
+    const handleOrderUpdate = (updatedOrder: OrderProps) => {
+        setOrder(updatedOrder);
+        fetchOrders();
     };
 
     return (
@@ -39,7 +37,7 @@ function Page() {
             {orderState === "done" ? (
                 <h3 className="noto-sans-bold text-base">ออเดอร์ที่มีปัญหา</h3>
             ) : ""}
-            {!isUpdateMode ? (
+            {/* {!isUpdateMode ? (
                 <section className="grid grid-cols-2 gap-4">
                     <Button
                         variant="danger"
@@ -75,7 +73,7 @@ function Page() {
                         <span>อัพเดทสถานะ</span>
                     </div>
                 </Button>
-            )}
+            )} */}
             <main>
                 {orders.map((order) => (
                     <Order
@@ -84,14 +82,15 @@ function Page() {
                         totalAmount={order.totalAmount}
                         isDelay={order.isDelay}
                         status={order.status}
-                        orderAt={`${getTimeFormat(new Date(order.orderAt))} ${getDateFormat(new Date(order.orderAt))}`}
-                        deliverAt={getTimeFormat(new Date(order.deliverAt))}
+                        orderAt={`${getTimeFormat(order.orderAt)} ${getDateFormat(new Date(order.orderAt))}`}
+                        deliverAt={order.deliverAt}
                         isPaid={order.isPaid}
                         orderMenus={order.orderMenus}
                         details={order.details}
                         className="mb-4"
                         selected="default"
-                     />
+                        onOrderUpdate={handleOrderUpdate}
+                    />
                 ))}
             </main>
         </div>

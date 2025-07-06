@@ -13,15 +13,17 @@ export const getCurrentTime = (): string => {
   return `${hours}:${minutes}`;
 }
 
-export const getTimeFormat = (time: Date, bufferMins: number = 0): string => {
+export const getTimeFormat = (time: string, bufferMins: number = 0): string => {
+  const dateObj = new Date(time);
+  const bufferTime = new Date(dateObj.getTime() + bufferMins * 60 * 1000);
   const options: Intl.DateTimeFormatOptions = {
+    timeZone: 'UTC',
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
   };
 
-  const adjustedTime = new Date(time.getTime() + bufferMins * 60 * 1000);
-  const formattedTime = adjustedTime.toLocaleTimeString('en-US', options);
+  const formattedTime = bufferTime.toLocaleTimeString('en-US', options);
   return formattedTime;
 }
 
