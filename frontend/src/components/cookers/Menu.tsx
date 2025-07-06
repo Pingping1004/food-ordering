@@ -2,13 +2,12 @@
 
 import clsx from "clsx";
 import { VariantProps, cva } from "class-variance-authority";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback } from "react";
 import { Button } from "../Button";
 import Image from "next/image";
 import { Toggle } from "../Toggle";
 import { useRouter } from "next/navigation";
 import { getFullImageUrl } from "@/util/url";
-import { api } from "@/lib/api";
 
 const menuVariants = cva("", {
   variants: {
@@ -58,22 +57,22 @@ export const Menu = ({
   ...props
 }: MenuProps) => {
 
-  const [isMenuAvailable, setIsMenuAvailable] = useState(isAvailable);
-
-  const handleToggleClick = useCallback(() => {
-    setIsMenuAvailable(prev => !prev);
-  }, []);
 
   const router = useRouter();
   const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
   // const src = menuImg ? `${baseUrl}/${menuImg}` : `/picture.svg`;
   const src = menuImg ? menuImg : '/picture.svg';
 
+  const handleToggleClick = useCallback((checked: boolean) => {
+    // Pass the new checked state directly to the parent
+    onAvailabilityChanged(menuId, checked);
+  }, [menuId, onAvailabilityChanged]);
+
   return (
     <div
       className={clsx(
         "flex flex-col p-4 border-1 border-[#E1E1E1] rounded-2xl gap-y-6",
-        menuVariants({ variant, isAvailable: isMenuAvailable }),
+        menuVariants({ variant, isAvailable }),
         className
       )}
       {...props}
@@ -118,12 +117,12 @@ export const Menu = ({
         >
           ลบเมนู
         </Button>
+        
         <Toggle
           id={menuId}
           label="เปิดขาย"
-          checked={isMenuAvailable}
-          onClick={handleToggleClick}
-          onCheckedChange={(val) => onAvailabilityChanged(menuId, val)}
+          checked={isAvailable}
+          onCheckedChange={handleToggleClick}
         />
       </footer>
     </div>

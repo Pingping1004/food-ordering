@@ -1,23 +1,14 @@
 "use client";
 
-import { Button } from "@/components/Button";
 import { RestaurantProfile } from "@/components/users/RestaurantProfile";
 import React, { useEffect, useState } from "react";
 import { Restaurant } from "@/context/MenuContext";
-
 import { api } from "@/lib/api";
-import { useCart } from "@/context/CartContext";
-import { useRouter } from "next/navigation";
-import UserHeader from "@/components/users/Header";
-import { useAuth } from "@/context/Authcontext";
-import { useCooker } from "@/context/Cookercontext";
-import RestaurantHeader from "@/components/users/RestaurantHeader";
-                             
+import UserHeader from "@/components/users/Header";                        
 
 export default function UserHomePage() {
-    // const { cooker } = useCooker();
-    const router = useRouter();
     const [data, setData] = useState<Restaurant[] | null>(null);
+    console.log('Data: ', data);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
@@ -59,8 +50,8 @@ export default function UserHomePage() {
                             closeTime={restaurant.closeTime}
                             restaurantId={restaurant.restaurantId}
                             restaurantImg={restaurant.restaurantImg}
-                            isOpen={restaurant.isOpen}
-                            variant={restaurant.isOpen ? "isOpen" : "isClose"}
+                            isOpen={restaurant.isActuallyOpen}
+                            variant={restaurant.isActuallyOpen ? "isOpen" : "isClose"}
                         />
                     );
                 })}

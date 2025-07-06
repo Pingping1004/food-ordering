@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback } from 'react'
+import React, { useState, useCallback } from 'react'
 import CookerHeader from '@/components/cookers/Header'
 import { Button } from '@/components/Button'
 import { Menu } from '@/components/cookers/Menu'
@@ -10,30 +10,70 @@ import { api } from '@/lib/api';
 
 function Page() {
   const { restaurant, menus, setMenus } = useMenu();
+  const [patchingMenuId, setPatchingMenuId] = useState<string | null>(null);
   const router = useRouter();
 
   const handleMenuAvailabilityChange = useCallback(async (menuId: string, newIsAvailable: boolean) => {
-  try {
-    const payload = {
-      restaurantId: restaurant.restaurantId,
-      isAvailable: newIsAvailable,
+    if (!menus) {
+      console.error('No menu to manage the toggle state');
+      return;
     }
-    console.log('Payload: ', payload);
-    const response = await api.patch(`menu/is-available/${menuId}`, payload);
-    console.log('Response: ', response.data);
+
+    const targetMenu = menus.find(menu => menu.menuId === menuId);
+    if (!targetMenu) {
+      console.error(`Menu with ID ${menuId} not found.`);
+      return;
+    }
+
+    const prevIsAvailableStatus = targetMenu.isAvailable;
+    setPatchingMenuId(menuId);
     setMenus(prevMenus => {
       if (!prevMenus) return [];
       return prevMenus.map(menu => {
         if (menu.menuId === menuId) {
-          return { ...menu, isAvailable: response.data.isAvailable };
+          return { ...menu, isAvailable: newIsAvailable };
         }
         return menu;
       });
     });
-  } catch (err) {
-    console.error("Failed to update availability", err);
-  }
-}, []);
+
+    try {
+      const payload = {
+        restaurantId: restaurant.restaurantId,
+        isAvailable: newIsAvailable,
+      }
+      console.log('Payload: ', payload);
+      const response = await api.patch(`menu/is-available/${menuId}`, payload);
+      console.log('Response: ', response.data);
+
+      setMenus(prevMenus => {
+        if (!prevMenus) return [];
+        return prevMenus.map(menu => {
+          if (menu.menuId === menuId) {
+            console.log(`[API_CONFIRM] Raw response.data.isAvailable:`, response.data.isAvailable, `(Type: ${typeof response.data.isAvailable})`);
+            const confirmedIsAvailable = typeof response.data.isAvailable === 'boolean'
+              ? response.data.isAvailable
+              : newIsAvailable;
+            return { ...menu, isAvailable: confirmedIsAvailable };
+          }
+          return menu;
+        });
+      });
+    } catch (err) {
+      setMenus(prevMenus => {
+        if (!prevMenus) return [];
+        return prevMenus.map(menu => {
+          if (menu.menuId === menuId) {
+            return { ...menu, isAvailable: prevIsAvailableStatus };
+          }
+          return menu;
+        })
+      })
+      console.error("Failed to update availability", err);
+    } finally {
+      setPatchingMenuId(null);
+    }
+  }, [menus, restaurant.restaurantId, setMenus]);
 
   return (
     <div className="flex flex-col gap-y-10 py-10 px-6">
@@ -54,21 +94,23 @@ function Page() {
       </Button>
 
       <h2 className="noto-sans-bold text-lg">จัดการเมนู</h2>
-      {menus?.map((menu) => (
-        <Menu
-          restaurantId={restaurant.restaurantId}
-          key={menu.menuId}
-          menuId={menu.menuId}
-          menuImg={menu.menuImg}
-          name={menu.name}
-          price={menu.price}
-          maxDaily={menu.maxDaily}
-          cookingTime={menu.cookingTime}
-          createdAt={menu.createdAt}
-          isAvailable={menu.isAvailable}
-          onAvailabilityChanged={handleMenuAvailabilityChange}
-        />
-      ))}
+      {menus?.map((menu) => {
+        return (
+          <Menu
+            restaurantId={restaurant.restaurantId}
+            key={menu.menuId}
+            menuId={menu.menuId}
+            menuImg={menu.menuImg}
+            name={menu.name}
+            price={menu.price}
+            maxDaily={menu.maxDaily}
+            cookingTime={menu.cookingTime}
+            createdAt={menu.createdAt}
+            isAvailable={menu.isAvailable ?? false}
+            onAvailabilityChanged={handleMenuAvailabilityChange}
+          />
+        )
+      })}
 
     </div>
   )

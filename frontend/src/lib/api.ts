@@ -1,4 +1,4 @@
-import axios, { AxiosRequestConfig } from "axios";
+import axios from "axios";
 import Cookies from 'js-cookie';
 
 const baseUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL;

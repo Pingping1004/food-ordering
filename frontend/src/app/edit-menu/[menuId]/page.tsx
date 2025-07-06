@@ -10,14 +10,7 @@ import { Button } from "@/components/Button";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Menu } from "@/context/MenuContext";
-
-function getParamId(param: string | string[] | undefined): string | undefined {
-  if (Array.isArray(param)) {
-    return param[0]; // Take the first element if it's an array
-  }
-  // Ensure it's treated as string | undefined, not ParamValue
-  return typeof param === 'string' ? param : undefined;
-}
+import { getParamId } from "@/util/param";
 
 export default function EditMenuPage() {
   const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';

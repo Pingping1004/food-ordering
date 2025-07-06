@@ -19,11 +19,9 @@ export function Toggle({
   id,
   ...props
 }: ToggleProps & Omit<React.ComponentPropsWithoutRef<typeof Switch>, 'checked' | 'onCheckedChange' | 'disabled'>) {
-  // `Omit` is used to prevent prop collisions if `Switch` also had a 'label' prop for example.
-  // `React.ComponentPropsWithoutRef<typeof Switch>` includes all native props for the underlying element.
 
   return (
-    <div className={`flex flex-col items-start gap-y-2 ${className}`}>
+    <div className={`flex flex-col items-start ${className}`}>
       <Label className="text-[10px] text-primary noto-sans-regular">
         {label}
       </Label>

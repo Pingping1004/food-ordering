@@ -53,7 +53,11 @@ export default function CookerHeader({
 
             <div>
               <div className="profile-icon">
-                <Profile />
+                <button
+                  onClick={() => router.push(`/restaurant/profile/${restaurantId}`)}
+                >
+                  <Profile />
+                </button>
               </div>
             </div>
           </div>

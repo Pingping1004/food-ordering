@@ -15,7 +15,6 @@ export default function Profile({ profileSrc }: { profileSrc?: string }) {
         height={36}
         src={imageSrc}
         alt="Profile Icon"
-        onClick={() => router.push("/profile/cookers")}
       />
     </div>
   );
