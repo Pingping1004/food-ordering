@@ -85,8 +85,8 @@ model RoleRequest {
 
 model Payout {
   payoutId   String  @default(uuid())  @id
-  restaurantRevenue  Int
-  platformFee   Int
+  restaurantRevenue  Float
+  platformFee   Float
   isPaid  Boolean   @default(false)
   startDate   DateTime
   endDate   DateTime
