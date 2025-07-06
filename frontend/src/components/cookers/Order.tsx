@@ -1,20 +1,12 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import React, { useEffect, useState } from "react";
+"use client";
+
+import React, { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { Button } from "../Button";
 import { cva, VariantProps } from "class-variance-authority";
 import clsx from "clsx";
 import { api } from "@/lib/api";
 import { getTimeFormat } from "@/util/time";
-
-const renderOrderStatusLabel = (status: 'receive' | 'cooking' | 'deliver' | 'done') => {
-    switch (status) {
-        case 'receive': return 'เริ่มปรุงอาหาร';
-        case 'cooking': return 'พร้อมเสิร์ฟ';
-        case 'deliver': return 'เสร็จสิ้น';
-        default: return status;
-    }
-};
 
 const orderVariants = cva("noto-sans-regular justify-center text-sm", {
     variants: {
@@ -53,14 +45,15 @@ export type OrderProps = React.HTMLAttributes<HTMLDivElement> &
         orderId: string;
         orderAt: string;
         deliverAt: string;
-        status: 'receive' | 'cooking' | 'deliver' | 'done';
+        status: 'receive' | 'cooking' | 'ready' | 'done';
         selected: "default" | boolean;
         totalAmount: number;
         isPaid: "paid" | "unpaid" | "processing" | "rejected";
         isDelay: boolean;
         orderMenus: { quantity: number; menuName: string; menuImg?: string }[];
         details?: string;
-        onOrderUpdate: (updateOrder: OrderProps) => void;
+        onDelayUpdate: (updateOrder: OrderProps) => void;
+        onStatusUpdate: (updateStatus: OrderProps) => void;
     };
 
 export const Order = ({
@@ -77,10 +70,11 @@ export const Order = ({
     details,
     className,
     children,
-    onOrderUpdate,
+    onDelayUpdate,
+    onStatusUpdate,
     ...props
 }: OrderProps) => {
-    const [currentStatus, setCurrentStatus] = useState(status);
+    const [, setCurrentStatus] = useState(status);
     const [isDelayed, setIsDelayed] = useState(isDelay);
     const [isUpdating, setIsUpdating] = useState(false);
 
@@ -88,6 +82,15 @@ export const Order = ({
         setCurrentStatus(status);
         setIsDelayed(isDelay);
     }, [status, isDelay]);
+
+    const renderOrderStatusLabel = useCallback((status: 'receive' | 'cooking' | 'ready' | 'done') => {
+        switch (status) {
+            case 'receive': return 'เริ่มปรุงอาหาร';
+            case 'cooking': return 'พร้อมเสิร์ฟ';
+            case 'ready': return 'เสร็จสิ้น';
+            default: return status;
+        }
+    }, []);
 
     const handleDelayOrder = async () => {
         if (isUpdating) return;
@@ -101,14 +104,32 @@ export const Order = ({
             const updatedOrderFromServer = response.data;
 
             // Update local state for immediate feedback in this component
-            setCurrentStatus(updatedOrderFromServer.status);
             setIsDelayed(updatedOrderFromServer.isDelayed || true);
 
             // IMPORTANT: Call the callback to update the parent's state
-            onOrderUpdate(updatedOrderFromServer);
+            onDelayUpdate(updatedOrderFromServer);
 
-            alert('Order successfully marked as delayed!');
+            alert(`เลื่อนเวลาจัดส่งออเดอร์ ${updatedOrderFromServer.name} ไป10นาทีสำเร็จ!`);
 
+        } catch (error: any) {
+            console.error('Error delaying order:', error);
+            alert(`Failed to delay order: ${error.message || 'Server error'}`);
+        } finally {
+            setIsUpdating(false);
+        }
+    }
+
+    const handleUpdateStatus = async (orderId: string) => {
+        setIsUpdating(true);
+        try {
+            const response = await api.patch(`/order/update-status/${orderId}`);
+            console.log('Update order status to: ', response.data);
+
+            const updatedOrder = response.data.result;
+            setCurrentStatus(updatedOrder.status);
+            onStatusUpdate(updatedOrder.status);
+
+            alert(`อัพเดทสถานะออเดอร์ ${response.data.name}เป็น: ${updatedOrder.status}`);
         } catch (error: any) {
             console.error('Error delaying order:', error);
             alert(`Failed to delay order: ${error.message || 'Server error'}`);
@@ -150,7 +171,7 @@ export const Order = ({
                         <h3 className="noto-sans-bold text-lg text-primary">
                             ออเดอร์ {orderId?.substring(0, 4)}
                         </h3>
-                        <p className="text-light text-xs">สั่งเมื่อ {orderAt}</p>
+                        <p className="text-light text-sm">สั่งเมื่อ {orderAt}</p>
                     </div>
                 </div>
 
@@ -164,7 +185,7 @@ export const Order = ({
             </header>
 
             <main className="flex grid-rows-2 justify-between">
-                <div className="w-1/2 text-sm text-secondary">
+                <div className="w-1/2 text-base text-secondary">
                     <p className="mb-2 text-primary">รายละเอียดออเดอร์:</p>
                     {orderMenus.map((item, index) => (
                         <p
@@ -175,12 +196,12 @@ export const Order = ({
 
                 <div className="flex w-1/2 grid-cols-2 items-end justify-end md:gap-x-6 gap-x-4">
                     <div className="text-center">
-                        <p className="text-xs">เวลาจัดส่ง:</p>
+                        <p className="text-sm">จัดส่ง:</p>
                         <h4 className="text-base text-secondary">{getTimeFormat(deliverAt)}</h4>
                     </div>
 
                     <div className="text-center">
-                        <p className="text-xs">ราคา:</p>
+                        <p className="text-sm">ราคา:</p>
                         <h4 className="text-base text-secondary">{totalAmount}</h4>
                     </div>
                 </div>
@@ -201,7 +222,14 @@ export const Order = ({
                 </Button>
             ) : (
                 <div className="flex gap-x-6">
-                    <Button variant="primary" size="md" className="flex w-full" type="button">
+                    <Button
+                        variant="primary"
+                        size="md"
+                        className="flex w-full"
+                        type="button"
+                        disabled={isUpdating}
+                        onClick={() => handleUpdateStatus(orderId)}
+                    >
                         <span className="noto-sans-regular">
                             {renderOrderStatusLabel(status)}
                         </span>

@@ -89,7 +89,8 @@ function Page() {
                         details={order.details}
                         className="mb-4"
                         selected="default"
-                        onOrderUpdate={handleOrderUpdate}
+                        onDelayUpdate={handleOrderUpdate}
+                        onStatusUpdate={handleOrderUpdate}
                     />
                 ))}
             </main>
