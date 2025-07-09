@@ -7,8 +7,6 @@ import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
-import { Menu } from '@/components/cookers/Menu';
-import { useAuth } from '@/context/Authcontext';
 import { api } from '@/lib/api';
 import { singleCreateMenuSchema, SingleCreateMenuSchemaType } from '@/schemas/addMenuSchema'; // Adjust path
 
@@ -33,7 +31,6 @@ export default function AddMenuPage() {
   const restaurantId = getParamId(params.restaurantId);
   console.log('RestaurantId: ', restaurantId, 'type: ', typeof restaurantId);
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
 
   // State for image preview URL
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
@@ -44,10 +41,9 @@ export default function AddMenuPage() {
   const [apiSuccessMessage, setApiSuccessMessage] = useState<string | null>(null);
 
   // State to hold successfully created menu items (if you want to display them locally)
-  const [createdMenusList, setCreatedMenusList] = useState<MenuItem[]>([]);
+  const [, setCreatedMenusList] = useState<MenuItem[]>([]);
 
   const {
-    control, // Keep if you use Controller components
     register,
     handleSubmit,
     watch,

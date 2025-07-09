@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react'
 import { useParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { RestaurantCategory } from "@/components/users/RestaurantProfile";

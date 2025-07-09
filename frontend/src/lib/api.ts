@@ -41,8 +41,7 @@ api.interceptors.request.use(
             if (!config.headers) {
                 config.headers = new axios.AxiosHeaders();
             }
-            // config.headers['x-csrf-token'] = csrfToken;
-            // config.headers['X-CSRF-Token'] = csrfToken;
+
             config.headers['X-CSRF-Token'] = csrfToken;
             config.headers['x-csrf-token'] = csrfToken;
         }
@@ -72,7 +71,6 @@ api.interceptors.response.use(
 
                 if (!refreshToken) {
                     clearTokens();
-                    // window.location.href = '/login';
                     return Promise.reject(error);
                 }
 
@@ -98,7 +96,6 @@ api.interceptors.response.use(
                 } catch (refreshError: any) {
                     console.error('Failed to refresh token or token reuse detected:', refreshError);
                     clearTokens();
-                    // window.location.href = '/login';
                     isRefreshing = false;
                     processQueue(refreshError); // Reject all queued requests
                     return Promise.reject(refreshError);

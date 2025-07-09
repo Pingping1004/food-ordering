@@ -5,7 +5,6 @@ import { api } from "@/lib/api";
 import { AxiosHeaders } from "axios";
 import { useRouter } from "next/navigation";
 import { getAccessToken, getCsrfToken, setAccessToken, removeAccessToken, removeCsrfToken, setCsrfToken } from "@/lib/token";
-import { set } from "date-fns";
 
 export enum UserRole {
     user = 'user',
@@ -46,7 +45,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const alertShowRef = useRef(false);
     const failedQueue = useRef<Array<{ resolve: (value?: any) => void; reject: (reason?: any) => void; config: any }>>([]);
 
-    const processQueue = useCallback((error: any | null, token: string | null = null) => {
+    const processQueue = useCallback((error: Error | null, token: string | null = null) => {
         failedQueue.current.forEach(prom => {
             if (error) {
                 prom.reject(error);
@@ -139,7 +138,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             if (profileUser) {
                 setUser(profileUser);
                 alertShowRef.current = false;
-                router.push(`/${profileUser.role === UserRole.cooker ? (`${profileUser.restaurant?.restaurantId}`) : '/user/restaurant'}`);
+                const routePath = profileUser.role === UserRole.cooker ? (`${profileUser.restaurant?.restaurantId}`) : '/user/restaurant';
+                router.push(`/${routePath}`);
                 return profileUser;
             } else {
                 console.error('Login successful, but failed to fetch user profile.');
@@ -229,6 +229,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     useEffect(() => {
         const initializeAuthAndProfile = async () => {
             setLoading(true);
+            fetchCsrfToken();
             let userCurrentlyAuthenticated = false;
             try {
                 const accessToken = getAccessToken();
@@ -253,7 +254,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 }
 
                 if (!getCsrfToken()) {
-                    // fetchCsrfToken();
                     getCsrfToken();
                 } else {
                     console.log('Frontend: CSRF token already present in cookie.');
