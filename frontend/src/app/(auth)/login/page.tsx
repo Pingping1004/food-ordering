@@ -9,6 +9,7 @@ import Link from "next/link";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { useAuth } from "@/context/Authcontext";
+import { fetchCsrfToken } from "@/lib/api";
 
 export default function LoginPage() {
   const { register, handleSubmit, formState: { errors } } = useForm<loginSchemaType>({

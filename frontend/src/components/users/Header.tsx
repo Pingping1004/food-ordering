@@ -14,7 +14,7 @@ export default function UserHeader() {
     return (
         <>
             <header className="flex justify-between items-center">
-                <h1 className="noto-sans-bold text-2xl">วันนี้กินอะไรดี?</h1>
+                <h1 className="noto-sans-bold text-xl">วันนี้กินอะไรดี?</h1>
 
                 {userId ? (
                     <div className="flex justify-between gap-x-2">
@@ -26,7 +26,14 @@ export default function UserHeader() {
                         >
                             สมัครร้านอาหาร?
                         </Button>
-                        <Profile />
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="secondaryDanger"
+                            onClick={() => router.push(`/login`)}
+                        >
+                            Logout
+                        </Button>
                     </div>
                 ) : (
                     <Button
@@ -36,7 +43,7 @@ export default function UserHeader() {
                         ลงทะเบียน
                     </Button>
                 )}
-            </header>
+            </header >
         </>
     );
 }

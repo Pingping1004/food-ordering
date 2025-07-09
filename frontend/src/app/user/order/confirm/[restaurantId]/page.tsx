@@ -16,10 +16,11 @@ const NGROK_WEBSITE_URL = 'https://39e5-124-120-1-65.ngrok-free.app';
 
 
 const now = new Date();
-const bufferMinutes = 6;
-const minimumAllowedDeliverTime = new Date(now.getTime() + bufferMinutes * 60 * 1000);
+const previewMinutes = 6;
+const bufferMinutes = 5;
 
-const getMinimumBufferTime = (): string => {
+const getBufferTime = (bufferMins: number = 0): string => {
+  const minimumAllowedDeliverTime = new Date(now.getTime() + bufferMins * 60 * 1000);
   const hours = minimumAllowedDeliverTime.getHours().toString().padStart(2, '0');
   const minutes = minimumAllowedDeliverTime.getMinutes().toString().padStart(2, '0');
   return `${hours}:${minutes}`;
@@ -36,7 +37,7 @@ function OrderConfirmContext() {
     resolver: zodResolver(createOrderSchema),
     defaultValues: {
       paymentMethod: 'promptpay',
-      deliverAt: getMinimumBufferTime(),
+      deliverAt: getBufferTime(6),
       restaurantId: restaurant?.restaurantId,
     },
     mode: "onBlur",
@@ -64,7 +65,7 @@ function OrderConfirmContext() {
         return; // Prevent submission
       }
 
-      if (minimumAllowedDeliverTime > new Date(orderPayload.deliverAt)) {
+      if (new Date(getBufferTime(5)) > new Date(orderPayload.deliverAt)) {
         console.error('Deliver time must be after current time at least 5 mins');
         alert('เวลารับอาหารต้องอยู่หลังจากเวลาปัจจุบันอย่างน้อย 5นาที');
         return;

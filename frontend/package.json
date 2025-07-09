@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "concurrently \"next dev -p 3000\" \"local-ssl-proxy --key localhost-key.pem --cert localhost.pem --source 8000 --target 3000\"",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -20,6 +20,8 @@
     "axios": "^1.10.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cors": "^2.8.5",
+    "cors-ts": "^1.0.3",
     "date-fns": "^4.1.0",
     "file-saver": "^2.0.5",
     "js-cookie": "^3.0.5",
@@ -51,8 +53,10 @@
     "@types/papaparse": "^5.3.16",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^9.2.0",
     "eslint": "^9",
     "eslint-config-next": "15.3.3",
+    "local-ssl-proxy": "^2.0.5",
     "tailwindcss": "^4",
     "tw-animate-css": "^1.3.4",
     "typescript": "^5"
