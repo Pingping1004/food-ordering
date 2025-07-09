@@ -2,7 +2,6 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
 import { PrismaService } from 'prisma/prisma.service';
 import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
-import * as bcrypt from 'bcrypt';
 import { OrderService } from 'src/order/order.service';
 import { UserService } from 'src/user/user.service';
 import { UpdateUserDto } from 'src/user/dto/update-user.dto';
@@ -10,9 +9,9 @@ import { UpdateUserDto } from 'src/user/dto/update-user.dto';
 @Injectable()
 export class RestaurantService {
   constructor(
-    private prisma: PrismaService,
-    private orderService: OrderService,
-    private userService: UserService,
+    private readonly prisma: PrismaService,
+    private readonly orderService: OrderService,
+    private readonly userService: UserService,
   ) { }
 
   async createRestaurant(
@@ -24,6 +23,21 @@ export class RestaurantService {
       if (existingRestaurant) throw new BadRequestException(`User already register as restaurant: ${existingRestaurant.name}`)
       const restaurantImgUrl = file ? `uploads/restaurants/${file.filename}` : createRestaurantDto.restaurantImg;
 
+      let openTime: string = '';
+      let closeTime: string = '';
+
+      if (typeof createRestaurantDto.openTime === 'string') {
+        openTime = createRestaurantDto.openTime;
+      } else if (createRestaurantDto.openTime instanceof Date) {
+        openTime = createRestaurantDto.openTime.toISOString().substring(11, 16);
+      }
+
+      if (typeof createRestaurantDto.closeTime === 'string') {
+        closeTime = createRestaurantDto.closeTime;
+      } else if (createRestaurantDto.closeTime instanceof Date) {
+        closeTime = createRestaurantDto.closeTime.toISOString().substring(11, 16);
+      }
+
       const newRestaurant = {
         userId,
         name: createRestaurantDto.name,
@@ -32,16 +46,8 @@ export class RestaurantService {
         restaurantImg: restaurantImgUrl,
         avgCookingTime: createRestaurantDto.avgCookingTime,
         openDate: createRestaurantDto.openDate,
-        openTime: typeof createRestaurantDto.openTime === 'string'
-          ? createRestaurantDto.openTime
-          : (createRestaurantDto.openTime instanceof Date
-            ? createRestaurantDto.openTime.toISOString().substring(11, 16)
-            : ''),
-        closeTime: typeof createRestaurantDto.closeTime === 'string'
-          ? createRestaurantDto.closeTime
-          : (createRestaurantDto.closeTime instanceof Date
-            ? createRestaurantDto.closeTime.toISOString().substring(11, 16)
-            : ''),
+        openTime: openTime,
+        closeTime: closeTime,
         adminName: createRestaurantDto.adminName,
         adminSurname: createRestaurantDto.adminSurname,
         adminTel: createRestaurantDto.adminTel,
@@ -199,7 +205,7 @@ export class RestaurantService {
 
   async updateIsTemporailyClose(restaurantId: string, updateRestaurantDto: UpdateRestaurantDto) {
     try {
-      const restaurant = await this.findRestaurant(restaurantId);
+      await this.findRestaurant(restaurantId);
       console.log('Update temporarily close status: ', updateRestaurantDto.isTemporarilyClosed);
 
       const result = await this.prisma.restaurant.update({

@@ -4,9 +4,7 @@ import {
   UseInterceptors,
   UploadedFiles,
   Res,
-  HttpStatus,
   BadRequestException,
-  Logger,
   InternalServerErrorException,
   UseGuards
 } from '@nestjs/common';
@@ -34,7 +32,7 @@ export class UploadController {
                 fileSize: 10 * 1024 * 1024,
             },
             fileFilter: (req, file, cb) => {
-                if (!file.originalname.match(/\.(jpg|jpeg|png)$/i)) {
+                if (!RegExp(/\.(jpg|jpeg|png)$/i).test(file.originalname)) {
                     return cb(new BadRequestException('Only image with JPG JPEG and PNG is allowed'), false)
                 }
                 cb(null, true);

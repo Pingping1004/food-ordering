@@ -9,9 +9,9 @@ import { Payout } from '@prisma/client';
 @Injectable()
 export class PayoutService {
   constructor(
-    private prisma: PrismaService,
+    private readonly prisma: PrismaService,
     @Inject(forwardRef(() => OrderService))
-    private orderService: OrderService,
+    private readonly orderService: OrderService,
   ) { }
 
   async createPayout(orderId: string) {
@@ -41,7 +41,7 @@ export class PayoutService {
   }
 
   async findWeeklyPayout(date?: string, restaurantId?: string): Promise<Payout[]> {
-    const { startDate, endDate, formattedStartDate, formattedEndDate } = calculateWeeklyInterval(date);
+    const { startDate, endDate } = calculateWeeklyInterval(date);
 
     const payouts = await this.prisma.payout.findMany({
       where: {
@@ -57,7 +57,6 @@ export class PayoutService {
       }
     });
 
-    console.log(`Get weekly payouts from: ${formattedStartDate} - ${formattedEndDate}: \n ${payouts}`);
     return payouts;
   }
 

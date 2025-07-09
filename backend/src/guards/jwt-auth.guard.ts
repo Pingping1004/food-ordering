@@ -9,9 +9,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   }
 
   handleRequest(err, user, info) {
-    console.log('--- JwtAuthGuard handleRequest Method Invoked ---');
-    console.log('Passport.js Error (err):', err);     // Will be non-null if Passport.js failed
-    console.log('Validated User (user):', user);       // Will be null if Passport.js failed validation
+    console.log('Validated User (user):', user);
     console.log('Auth Info (info):', info);
 
     if (err || !user) {

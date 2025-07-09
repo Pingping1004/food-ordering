@@ -29,10 +29,10 @@ interface RefreshResult {
 @Injectable()
 export class AuthService {
   constructor(
-    private jwtService: JwtService,
-    private userService: UserService,
-    private refreshTokenService: RefreshTokenService,
-    private csrfTokenService: CsrfTokenService,
+    private readonly jwtService: JwtService,
+    private readonly userService: UserService,
+    private readonly refreshTokenService: RefreshTokenService,
+    private readonly csrfTokenService: CsrfTokenService,
   ) { }
 
   async validateUser(email: string, password: string): Promise<Partial<User> | null> {
@@ -68,7 +68,7 @@ export class AuthService {
   }
 
   async login(loginDto: LoginDto) {
-    await this.csrfTokenService.generateToken();
+    this.csrfTokenService.generateToken();
     const user = await this.validateUser(loginDto.email, loginDto.password);
     if (!user) throw new UnauthorizedException('Email or password is incorrect');
 
@@ -142,12 +142,13 @@ export class AuthService {
         }
       };
     } catch (error) {
+      console.error('Refresh token verification failed:', error);
       throw new UnauthorizedException('Invalid refresh token');
     }
   }
 
-  async regsiter(signupDto: SignupDto) {
-    await this.csrfTokenService.generateToken();
+  async register(signupDto: SignupDto) {
+    this.csrfTokenService.generateToken();
     const existingUser = await this.userService.findOneByEmail(signupDto.email);
     if (existingUser) throw new ConflictException('User with this email already exists');
 

@@ -3,7 +3,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from 'prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
-import { Prisma, Role, RoleRequestStatus, User } from '@prisma/client';
+import { Prisma, Role, RoleRequestStatus } from '@prisma/client';
 
 export type UserWithRestaurant = Prisma.UserGetPayload<{
     include: {
@@ -16,7 +16,7 @@ export type UserWithRestaurant = Prisma.UserGetPayload<{
 @Injectable()
 export class UserService {
   constructor(
-    private prisma: PrismaService,
+    private readonly prisma: PrismaService,
   ) { }
 
   async createUser(createUserDto: CreateUserDto) {

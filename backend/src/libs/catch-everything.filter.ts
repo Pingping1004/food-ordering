@@ -22,13 +22,10 @@ export class CatchEverythingFilter implements ExceptionFilter {
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
-        // Default message in Thai
-    let message = 'เกิดข้อผิดพลาดภายในระบบ'; // "Internal server error" in Thai
-
     if (exception instanceof HttpException) {
       const response = exception.getResponse();
       if (typeof response === 'object' && response['message']) {
-        message = Array.isArray(response['message'])
+        onmessage = Array.isArray(response['message'])
           ? response['message'].join(', ')
           : response['message'];
       }

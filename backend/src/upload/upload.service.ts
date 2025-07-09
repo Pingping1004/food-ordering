@@ -34,16 +34,6 @@ export class UploadService {
         const uploadedInfos: UploadImageInfo[] = [];
 
         for (const file of files) {
-            console.log('--- Debugging file object ---');
-            console.log('file.originalname:', file.originalname);
-            console.log('file.mimetype:', file.mimetype);
-            console.log('file.size:', file.size);
-            console.log('typeof file.buffer:', typeof file.buffer);
-            console.log('file.buffer content (first 20 bytes):', file.buffer ? file.buffer.slice(0, 20) : 'Buffer is undefined');
-            // Log the entire file object for thorough inspection:
-            console.log('Full file object:', file);
-            console.log('--- End file object debug ---');
-
             const uniqueId = uuidv4();
             const fileExtension = path.extname(file.originalname).toLowerCase();
             const tempFileName = `${uniqueId}${fileExtension}`;
@@ -77,12 +67,12 @@ export class UploadService {
             try {
                 await fs.access(tempFilePath, fsSync.constants.F_OK); // Check if file exist
             } catch (accessError) {
-                console.warn('Temporay file not found for moving: ', tempId);
+                console.warn('Temporary file not found for moving: ', tempId, accessError.message);
                 throw new NotFoundException(`Temporary image file with ID ${tempId} not found`);
             }
 
             await fs.rename(tempFilePath, permanentFilePath);
-            console.log(`Moved temp image ${tempId} to permanent storate ${permanentFilePath}`);
+            console.log(`Moved temp image ${tempId} to permanent storage ${permanentFilePath}`);
             return permanentFileUrl
         } catch (error) {
             if (error instanceof NotFoundException) {

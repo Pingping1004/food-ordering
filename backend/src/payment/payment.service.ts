@@ -2,16 +2,16 @@ import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common
 import { PaymentMethodType } from '@prisma/client';
 import * as  crypto from 'crypto'
 import * as Omise from 'omise';
-import * as OmiseTypes from 'omise';
+import type { Charges } from 'omise';
 import { ConfigService } from '@nestjs/config';
 import * as moment from 'moment';
 @Injectable()
 export class PaymentService {
   private readonly logger = new Logger(PaymentService.name);
-  private omiseClient: Omise.IOmise;
+  private readonly omiseClient: Omise.IOmise;
 
   constructor(
-    private configService: ConfigService,
+    private readonly configService: ConfigService,
   ) {
     const omiseConfig = this.configService.get('omise');
     this.omiseClient = Omise({
@@ -26,7 +26,7 @@ export class PaymentService {
     paymentMethodType: PaymentMethodType,
     returnUri: string,
     orderId: string,
-  ): Promise<OmiseTypes.Charges.ICharge> {
+  ): Promise<Charges.ICharge> {
     try {
       type ChargeCreateOptions = Parameters<typeof this.omiseClient.charges.create>[0];
       const amountInStang = amount * 100;

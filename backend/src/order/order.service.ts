@@ -19,10 +19,10 @@ import { calculateWeeklyInterval } from 'src/payout/payout-calculator';
 @Injectable()
 export class OrderService {
   constructor(
-    private prisma: PrismaService,
-    private paymentService: PaymentService,
+    private readonly prisma: PrismaService,
+    private readonly paymentService: PaymentService,
     @Inject(forwardRef(() => PayoutService))
-    private payoutService: PayoutService,
+    private readonly payoutService: PayoutService,
   ) { }
 
   private readonly statusTransitions = {
@@ -278,6 +278,7 @@ export class OrderService {
 
       return orders;
     } catch (error) {
+      console.error('Error finding weekly orders: ', error.message, error.stack);
       throw new InternalServerErrorException('Finding weekly orders failed. Please try again.');
     }
   }

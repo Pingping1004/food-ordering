@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, UsePipes, ValidationPipe, Param, Delete, Req, UseGuards, UploadedFile, UploadedFiles, BadRequestException, UseInterceptors, NotFoundException, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Req, UseGuards, UploadedFile, UploadedFiles, BadRequestException, UseInterceptors, NotFoundException, Query } from '@nestjs/common';
 import { MenuService, MenusWithDisplayPrices } from './menu.service';
 import { CreateBulkMenusJsonPayload, CreateMenuDto } from './dto/create-menu.dto';
 import { UpdateMenuDto } from './dto/update-menu.dto';
@@ -9,7 +9,6 @@ import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { imageFileFilter, editFileName } from 'src/utils/file-upload.utils';
 import { Express } from 'express';
-import { CsvMenuItemData } from './dto/create-menu.dto';
 import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
 import { Role } from '@prisma/client';
 import { Roles } from 'src/decorators/role.decorator';
@@ -46,7 +45,6 @@ export class MenuController {
       const menuData: CreateMenuDto = { ...createMenuDto };
       if (file) {
         menuData.menuImg = `/uploads/menus/${file.filename}`;
-        uploadedFilePath = file.path;
       }
 
       const result = await this.menuService.createSingleMenu(menuData);
@@ -89,7 +87,7 @@ export class MenuController {
             );
             return result; // Return the result from the service
         } catch (error) {
-            // Re-throw exceptions from the service layer to be caught by NestJS filters
+          console.error('Bulk menu creation failed in controller: ', error);
             throw error;
         }
     }
@@ -142,7 +140,6 @@ export class MenuController {
 
       if (file) {
         menuData.menuImg = `uploads/menus/${file.filename}`;
-        uploadedFilePath = file.path;
       } else if (updateMenuDto.menuImg === undefined) {
         menuData.menuImg = updateMenuDto.menuImg;
       }
@@ -198,11 +195,12 @@ export class MenuController {
           throw new BadRequestException('UpdateMenuDto field must be a JSON array');
         }
       } catch (parseError) {
+        console.error('Failed to parse updateMenuDto:', parseError);
         throw new BadRequestException('Invalida JSON format for updateMenuDto field');
       }
 
       parsedUpdateMenuDtos.forEach((dto, index) => {
-        const file = files && files[index];
+        const file = files?.[index];
 
         if (file) {
           dto.menuImg = `uploads/menus/${file.filename}`;

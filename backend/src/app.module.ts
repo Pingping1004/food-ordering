@@ -1,4 +1,4 @@
-import { Module, NestModule, OnModuleInit, MiddlewareConsumer, RequestMethod, Type } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { HttpExceptionFilter } from './libs/http-exception.filter';
 import { CatchEverythingFilter } from './libs/catch-everything.filter';
@@ -34,11 +34,10 @@ import { UploadModule } from './upload/upload.module';
 import { UploadController } from './upload/upload.controller';
 import { RefreshTokenModule } from './refreshToken/refresh-token.module';
 import { CsrfTokenService } from './csrf/csrf.service';
-import { CsrfGuard } from './guards/csrf.guard';
-import { APP_GUARD } from '@nestjs/core';
 import { CsrfModule } from './csrf/csrf.module';
 import { memoryStorage } from 'multer';
 import { RefreshTokenService } from './refreshToken/refresh-token.service';
+import { CorsHeadersMiddleware } from './cors.middleware';
 
 @Module({
   imports: [
@@ -80,10 +79,6 @@ import { RefreshTokenService } from './refreshToken/refresh-token.service';
       useClass: CatchEverythingFilter,
     },
     CsrfTokenService,
-    {
-      provide: APP_GUARD,
-      useClass: CsrfGuard,
-    },
     AppService,
     RestaurantService,
     MenuService,
@@ -103,5 +98,6 @@ export class AppModule implements NestModule {
         path: '*',
         method: RequestMethod.ALL,
       });
+      // consumer.apply(CorsHeadersMiddleware).forRoutes('*');
   }
 }

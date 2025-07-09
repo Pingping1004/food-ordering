@@ -1,5 +1,5 @@
 import { IsBoolean, IsArray, ValidateNested, IsNotEmpty, Min, IsNumber, IsOptional, IsPositive, IsString } from 'class-validator'
-import { Type, Expose } from 'class-transformer';
+import { Type } from 'class-transformer';
 // import { CsvMenuItemData } from '../menu.service';
 
 export class CsvMenuItemData { // <-- Change 'interface' to 'class'

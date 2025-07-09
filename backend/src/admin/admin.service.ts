@@ -1,12 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { UpdateAdminDto } from './dto/update-admin.dto';
 import { PrismaService } from 'prisma/prisma.service';
 import { RoleRequestStatus } from '@prisma/client';
 
 @Injectable()
 export class AdminService {
   constructor(
-    private prisma: PrismaService,
+    private readonly prisma: PrismaService,
   ){}
 
   async findAllRequest() {

@@ -1,6 +1,5 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Patch, Param, Delete } from '@nestjs/common';
 import { AdminService } from './admin.service';
-import { UpdateAdminDto } from './dto/update-admin.dto';
 
 @Controller('request')
 export class AdminController {

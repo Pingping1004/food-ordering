@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Req, Res, UnauthorizedException } from '@nestjs/common';
+import { Controller, Post, Body, Req, Res, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
@@ -23,7 +23,7 @@ export class AuthController {
     @Public()
     @Post('signup')
     async signup(@Body() signupDto: SignupDto, @Res({ passthrough: true }) res: Response) {
-        const { user, accessToken, refreshToken } = await this.authService.regsiter(signupDto);
+        const { user, accessToken, refreshToken } = await this.authService.register(signupDto);
 
         res.cookie('access_token', accessToken, {
             httpOnly: true,

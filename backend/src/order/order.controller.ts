@@ -1,14 +1,13 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, BadRequestException, UseGuards, UseInterceptors, UploadedFile, Query, Res } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, Res, Req } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { Response } from 'express';
 import Omise from 'omise';
-import { Public } from '../decorators/public.decorator';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from '../decorators/role.decorator';
 import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
-import { OrderStatus, Role } from '@prisma/client';
+import { Role } from '@prisma/client';
 import { CsrfGuard } from 'src/guards/csrf.guard';
 
 @Controller('order')
@@ -18,8 +17,11 @@ export class OrderController {
   constructor(private readonly orderService: OrderService) { }
 
   @Post('omise')
-  async createOrder(@Body() createOrderDto: CreateOrderDto) {
+  async createOrder(@Body() createOrderDto: CreateOrderDto, @Req() req: Request) {
     try {
+      // const userId = 'req.user.userId';
+      // const userId = req.user.userId;
+      // if (!userId) throw new Error('User ID is required to create an order');
       const result = await this.orderService.createOrderWithPayment(createOrderDto);
       console.log('Result object: ', result);
 
@@ -69,7 +71,6 @@ export class OrderController {
     }
   }
 
-  @Public()
   @Get('get-orders/:restaurantId')
   async findRestaurantOrders(@Param('restaurantId') restaurantId: string) {
     return this.orderService.findRestaurantOrders(restaurantId);

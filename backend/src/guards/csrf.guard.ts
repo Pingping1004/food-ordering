@@ -9,7 +9,7 @@ import { IS_PUBLIC_KEY } from '../decorators/public.decorator'; // Import your P
 export class CsrfGuard implements CanActivate {
   constructor(
     private readonly csrfTokenService: CsrfTokenService,
-    private reflector: Reflector // Used to check for @Public() decorator
+    private readonly reflector: Reflector // Used to check for @Public() decorator
   ) {}
 
   canActivate(context: ExecutionContext): boolean {

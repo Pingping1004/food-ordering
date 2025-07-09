@@ -7,13 +7,11 @@ import {
   UploadedFile,
   ParseFilePipe,
   Req,
-  BadRequestException,
   UseGuards,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer'; // Import diskStorage
 import { imageFileFilter, editFileName } from '../utils/file-upload.utils'; // Your utility functions
-import { Public } from '../decorators/public.decorator';
 import * as fs from 'fs/promises';
 
 import { RestaurantService } from './restaurant.service';
@@ -88,9 +86,8 @@ export class RestaurantController {
 
       if (file) {
         dataToUpdate.restaurantImg = `uploads/restaurants/${file.filename}`;
-        uploadedFilePath = file.path;
       }
-      return this.restaurantService.updateRestaurant(restaurantId, dataToUpdate);
+      return await this.restaurantService.updateRestaurant(restaurantId, dataToUpdate);
     } catch (error) {
       console.error(`Failed to update restaurant ${restaurantId} in controller:`, error);
 

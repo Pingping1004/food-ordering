@@ -1,13 +1,7 @@
-import { Controller, Req, Res, Post, Body, UsePipes, BadRequestException, ValidationPipe, HttpCode, HttpStatus, Header, Headers } from '@nestjs/common';
+import { Controller, Res, Post, Body, HttpStatus } from '@nestjs/common';
 import { PaymentService } from './payment.service';
-import { CreatePaymentDto } from './dto/create-payment.dto';
-import { UpdatePaymentDto } from './dto/update-payment.dto';
 import { OrderService } from 'src/order/order.service';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { WebhookEventDto } from './dto/webhook-event.dto';
 import { Response } from 'express';
-import Omise from 'omise';
-import * as OmiseTypes from 'omise';
 import { Public } from 'src/decorators/public.decorator';
 
 @Controller('webhooks')

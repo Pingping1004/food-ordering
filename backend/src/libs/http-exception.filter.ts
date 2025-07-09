@@ -1,4 +1,3 @@
-// src/http-exception.filter.ts
 import {
   ExceptionFilter,
   Catch,
@@ -14,9 +13,30 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse();
     const request = ctx.getRequest();
 
+    const isProd = process.env.NODE_ENV === 'production';
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message = 'Internal server error';
     let errors: string[] | object | null = null; // To hold validation messages
+
+    if (isProd && status === 500) {
+      message = 'Internal server error';
+      errors = null;
+    }
+
+    const allowedOrigins = [
+      'https://localhost:8000',
+      'http://localhost:3000',
+      'https://4e448ea267fb.ngrok-free.app',
+    ];
+    const origin = request.headers.origin as string;
+
+    if (origin && allowedOrigins.includes(origin)) {
+      response.header('Access-Control-Allow-Origin', origin);
+      response.header('Access-Control-Allow-Credentials', 'true');
+      response.header('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization, X-CSRF-Token, x-csrf-token, XSRF-TOKEN, x-xsrf-token');
+      response.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+      response.header('Access-Control-Expose-Headers', 'Set-Cookie');
+    }
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
@@ -50,7 +70,6 @@ export class HttpExceptionFilter implements ExceptionFilter {
       // Catch truly unknown exceptions
       console.error('Truly Unknown Exception Caught by Filter:', exception);
       message = 'An unknown error occurred.';
-      errors = null; // No specific error details
       status = HttpStatus.INTERNAL_SERVER_ERROR;
     }
 

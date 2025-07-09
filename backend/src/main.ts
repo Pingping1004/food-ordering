@@ -5,153 +5,135 @@ import { HttpExceptionFilter } from './libs/http-exception.filter';
 import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import * as express from 'express';
-import { json, Request, Response } from 'express';
+import { json } from 'express';
 import * as cookieParser from 'cookie-parser'
 import * as dotenv from 'dotenv';
-import cors from 'cors-ts'
-import { doubleCsrf } from 'csrf-csrf';
 
 dotenv.config()
 
 async function bootstrap() {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
   const allowedOrigins = [
     'https://localhost:8000',
     'http://localhost:3000',
     'https://4e448ea267fb.ngrok-free.app',
   ];
 
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
-
-  app.enableCors({
-    // origin: (origin, callback) => {
-    //   if (!origin || allowedOrigins.includes(origin)) {
-    //     callback(null, true);
-    //   } else {
-    //     callback(new Error('Not allowed by CORS'));
-    //   }
-    // },
-    origin: 'https://localhost:8000',
-    credentials: true,
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    allowedHeaders: [
-      'Content-Type',
-      'Accept',
-      'X-CSRF-Token',
-      'x-csrf-token',
-      'X-Csrf-Token',
-      'x-xsrf-token',
-      'Authorization'
-    ],
-    exposedHeaders: ['Set-Cookie'],
-    preflightContinue: false,
-    optionsSuccessStatus: 204,
-  });
-
-  app.use(cookieParser());
-  app.set('trust proxy', 1);
-
-  const APP_GLOBAL_SECRET = process.env.APP_GLOBAL_SECRET;
-  if (!APP_GLOBAL_SECRET) {
-    if (process.env.NODE_ENV === 'production') {
-      console.error('CRITICAL ERROR: APP_GLOBAL_SECRET is not defined in production environment!');
-      process.exit(1);
+app.enableCors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
     } else {
-      console.warn('WARNING: APP_GLOBAL_SECRET is not defined. Using a fallback for development only.');
+      callback(new Error('Not allowed by CORS'));
     }
+  },
+  // origin: allowedOrigins,
+  credentials: true,
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+  allowedHeaders: [
+    'Content-Type',
+    'Accept',
+    'X-CSRF-Token',
+    'x-csrf-token',
+    'X-Csrf-Token',
+    'x-xsrf-token',
+    'Authorization'
+  ],
+  exposedHeaders: ['Set-Cookie'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
+});
+
+app.use(cookieParser());
+app.set('trust proxy', 1);
+
+const APP_GLOBAL_SECRET = process.env.APP_GLOBAL_SECRET;
+if (!APP_GLOBAL_SECRET) {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('CRITICAL ERROR: APP_GLOBAL_SECRET is not defined in production environment!');
+    process.exit(1);
+  } else {
+    console.warn('WARNING: APP_GLOBAL_SECRET is not defined. Using a fallback for development only.');
   }
-  app.set('secret', APP_GLOBAL_SECRET);
+}
+app.set('secret', APP_GLOBAL_SECRET);
 
-  const uploadsDir = join(process.cwd(), 'uploads');
-  app.use('/uploads', express.static(uploadsDir));
-  // console.log('Serving uploads from:', uploadsDir);
+const uploadsDir = join(process.cwd(), 'uploads');
+app.use('/uploads', express.static(uploadsDir));
 
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-      transformOptions: {
-        enableImplicitConversion: true,
-      },
-      validateCustomDecorators: true,
+app.useGlobalPipes(
+  new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+    transformOptions: {
+      enableImplicitConversion: true,
+    },
+    validateCustomDecorators: true,
 
-      exceptionFactory: (errors) => {
-        console.log('----- Raw errors received by exceptionFactory -----');
-        console.dir(errors, { depth: null, colors: true });
-        // This helper function recursively formats validation errors
-        const formatErrors = (validationErrors: any[]) => {
-          return validationErrors.map(error => {
-            if (error.children && error.children.length > 0) {
-              // If there are nested errors (like for orderMenus), recurse into them
-              return {
-                property: error.property,
-                children: formatErrors(error.children), // Recursively call formatErrors for children
-              };
-            }
-            // For individual errors, get the constraint messages
+    exceptionFactory: (errors) => {
+      console.log('----- Raw errors received by exceptionFactory -----');
+      console.dir(errors, { depth: null, colors: true });
+      // This helper function recursively formats validation errors
+      const formatErrors = (validationErrors: any[]) => {
+        return validationErrors.map(error => {
+          if (error.children && error.children.length > 0) {
+            // If there are nested errors (like for orderMenus), recurse into them
             return {
               property: error.property,
-              constraints: error.constraints, // Keep the original constraints object for debugging
-              messages: error.constraints ? Object.values(error.constraints) : [], // Get just the string messages
+              children: formatErrors(error.children), // Recursively call formatErrors for children
             };
-          });
-        };
-
-        const detailedErrors = formatErrors(errors); // Call the recursive formatter
-
-        // Return a BadRequestException with the detailed, structured errors
-        return new BadRequestException({
-          statusCode: HttpStatus.BAD_REQUEST,
-          message: 'Validation failed', // A general message for the client
-          errors: detailedErrors,
+          }
+          // For individual errors, get the constraint messages
+          return {
+            property: error.property,
+            constraints: error.constraints, // Keep the original constraints object for debugging
+            messages: error.constraints ? Object.values(error.constraints) : [], // Get just the string messages
+          };
         });
-      },
-    }),
-  );
+      };
 
-  app.use((req: any, res: any, next: () => void) => {
-    if (req.method === 'GET' && req.csrfToken) {
-      if (!req.cookies['XSRF-TOKEN']) { // Check if the cookie is already there
-        res.cookie('XSRF-TOKEN', req.csrfToken(), {
-          httpOnly: false,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'Lax', // Match this with your csurf cookie options
-          path: '/',
-        });
+      const detailedErrors = formatErrors(errors); // Call the recursive formatter
+
+      // Return a BadRequestException with the detailed, structured errors
+      return new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: 'Validation failed', // A general message for the client
+        errors: detailedErrors,
+      });
+    },
+  }),
+);
+
+// IMPORTANT for webhooks: Configure body parser to get raw body
+app.use(
+  json({
+    verify: (req: any, res, buf) => {
+      if (req.originalUrl === '/payments/webhooks') {
+        req.rawBody = buf;
       }
-    }
-    next();
-  });
+    },
+    limit: '10mb',
+  }),
+);
 
+app.useGlobalFilters(new HttpExceptionFilter());
 
-  // IMPORTANT for webhooks: Configure body parser to get raw body
-  app.use(
-    json({
-      verify: (req: any, res, buf) => {
-        if (req.originalUrl === '/payments/webhooks') {
-          req.rawBody = buf;
-        }
-      },
-      limit: '10mb',
-    }),
-  );
+// Global unhandled exception/rejection handlers
+process.on('uncaughtException', (err) => {
+  console.error('GLOBAL UNCAUGHT EXCEPTION:', err);
+  process.exit(1); // Exit to prevent process from becoming zombie
+});
 
-  app.useGlobalFilters(new HttpExceptionFilter());
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('GLOBAL UNHANDLED REJECTION at:', promise, 'reason:', reason);
+  process.exit(1);
+});
 
-  // Global unhandled exception/rejection handlers
-  process.on('uncaughtException', (err) => {
-    console.error('GLOBAL UNCAUGHT EXCEPTION:', err);
-    process.exit(1); // Exit to prevent process from becoming zombie
-  });
+const port = process.env.PORT || 4000;
 
-  process.on('unhandledRejection', (reason, promise) => {
-    console.error('GLOBAL UNHANDLED REJECTION at:', promise, 'reason:', reason);
-    process.exit(1);
-  });
-
-  const port = process.env.PORT || 4000;
-
-  console.log('NESTJS is running on port: ', port);
-  await app.listen(port);
+console.log('NESTJS is running on port: ', port);
+await app.listen(port);
 }
 bootstrap();

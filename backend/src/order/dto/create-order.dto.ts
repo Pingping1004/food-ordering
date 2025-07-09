@@ -1,4 +1,4 @@
-import { Type, Transform } from "class-transformer";
+import { Type } from "class-transformer";
 import {
   IsArray,
   IsBoolean,
@@ -15,7 +15,7 @@ import {
   ArrayMinSize,
   ArrayMaxSize
 } from "class-validator";
-import { PaymentMethodType, OrderStatus } from "@prisma/client";
+import { PaymentMethodType } from "@prisma/client";
 import { CreatePaymentDto } from "src/payment/dto/create-payment.dto";
 
 export class CreateOrderMenusDto {

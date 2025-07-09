@@ -1,13 +1,11 @@
 import { Injectable, Inject, forwardRef, NotFoundException, ConflictException, InternalServerErrorException, BadRequestException, ForbiddenException } from '@nestjs/common';
-import { CreateMenuDto } from './dto/create-menu.dto';
+import { CreateMenuDto, CsvMenuItemData } from './dto/create-menu.dto';
 import { UpdateMenuDto } from './dto/update-menu.dto';
 import { PrismaService } from 'prisma/prisma.service';
 import { RestaurantService } from 'src/restaurant/restaurant.service';
 import { Menu } from '@prisma/client';
 import Decimal from 'decimal.js';
-import { numberRound } from 'src/utils/round-number';
 import { UploadService } from 'src/upload/upload.service';
-import { CsvMenuItemData } from './dto/create-menu.dto';
 
 export interface MenusWithDisplayPrices {
   menuId: string;
@@ -32,10 +30,10 @@ export interface BulkCreateMenuResult {
 @Injectable()
 export class MenuService {
   constructor(
-    private prisma: PrismaService,
+    private readonly prisma: PrismaService,
     @Inject(forwardRef(() => RestaurantService))
-    private restaurantService: RestaurantService,
-    private uploadService: UploadService,
+    private readonly restaurantService: RestaurantService,
+    private readonly uploadService: UploadService,
   ) { }
 
   async createSingleMenu(
@@ -60,7 +58,8 @@ export class MenuService {
 
       return result;
     } catch (error) {
-      console.error(`Failed to create menu ${createMenuDto.name}`);
+      console.error(`Failed to create menu ${createMenuDto.name}:`, error);
+      throw new InternalServerErrorException('Failed to create menu: ' + error.message);
     }
   }
 
@@ -255,6 +254,7 @@ export class MenuService {
 
       return menusWithCalculatedPrices;
     } catch (error) {
+      console.error('An error occurred while fetching restaurant menus with display prices:', error);
       throw new InternalServerErrorException('ค้นหาเมนูขัดข้อง');
     }
   }
