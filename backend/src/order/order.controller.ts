@@ -12,12 +12,11 @@ import { OrderStatus, Role } from '@prisma/client';
 import { CsrfGuard } from 'src/guards/csrf.guard';
 
 @Controller('order')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
 @Roles([Role.user, Role.admin, Role.cooker])
 export class OrderController {
   constructor(private readonly orderService: OrderService) { }
 
-  @Public()
   @Post('omise')
   async createOrder(@Body() createOrderDto: CreateOrderDto) {
     try {

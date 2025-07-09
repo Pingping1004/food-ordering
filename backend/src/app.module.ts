@@ -32,11 +32,13 @@ import { UserModule } from './user/user.module';
 import { AdminModule } from './admin/admin.module';
 import { UploadModule } from './upload/upload.module';
 import { UploadController } from './upload/upload.controller';
+import { RefreshTokenModule } from './refreshToken/refresh-token.module';
 import { CsrfTokenService } from './csrf/csrf.service';
 import { CsrfGuard } from './guards/csrf.guard';
 import { APP_GUARD } from '@nestjs/core';
 import { CsrfModule } from './csrf/csrf.module';
 import { memoryStorage } from 'multer';
+import { RefreshTokenService } from './refreshToken/refresh-token.service';
 
 @Module({
   imports: [
@@ -47,6 +49,7 @@ import { memoryStorage } from 'multer';
     PaymentModule,
     UploadModule,
     CsrfModule,
+    RefreshTokenModule,
 
     ConfigModule.forRoot({
       isGlobal: true,
@@ -88,6 +91,7 @@ import { memoryStorage } from 'multer';
     OrderService,
     PaymentService,
     PayoutService,
+    RefreshTokenService,
   ],
 })
 

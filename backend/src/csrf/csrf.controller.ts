@@ -13,7 +13,8 @@ export class CsrfController {
     const token = this.csrfTokenService.generateToken();
     res.cookie('XSRF-TOKEN', token, {
       httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
+      // secure: process.env.NODE_ENV === 'production',
+      secure: true,
       sameSite: 'none',
       maxAge: 3600000 * 24,
       path: '/',

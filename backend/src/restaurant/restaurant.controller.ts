@@ -23,8 +23,9 @@ import { RolesGuard } from 'src/guards/roles.guard';
 import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
 import { Roles } from 'src/decorators/role.decorator';
 import { Role } from '@prisma/client';
+import { CsrfGuard } from 'src/guards/csrf.guard';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
 @Roles([Role.user, Role.admin, Role.cooker])
 @Controller('restaurant')
 export class RestaurantController {
@@ -50,14 +51,15 @@ export class RestaurantController {
     return this.restaurantService.createRestaurant(createRestaurantDto, userId, file);
   }
 
-  @Public()
-  @Roles([])
+  // @Public()
+  @Roles([Role.user, Role.admin, Role.cooker])
   @Get()
   async findAllRestaurant() {
     return this.restaurantService.getOpenRestaurants();
   }
 
-  @Public()
+  // @Public()
+  @Roles([Role.user, Role.admin, Role.cooker])
   @Get(':restaurantId')
   async findRestaurant(@Param('restaurantId') restaurantId: string) {
     return this.restaurantService.findRestaurant(restaurantId);
@@ -106,6 +108,7 @@ export class RestaurantController {
     }
   }
 
+  @Roles([Role.user, Role.admin, Role.cooker])
   @Patch('temporarily-close/:restaurantId')
   async updateIsTemporarilyClose(
     @Param('restaurantId') restaurantId: string,
@@ -114,6 +117,7 @@ export class RestaurantController {
     return updateData;
   }
 
+  @Roles([Role.user, Role.admin, Role.cooker])
   @Delete(':restaurantId')
   async deleteRestaurant(@Param('restaurantId') restaurantId: string) {
     return await this.restaurantService.removeRestaurant(restaurantId);

@@ -8,10 +8,46 @@ import * as express from 'express';
 import { json, Request, Response } from 'express';
 import * as cookieParser from 'cookie-parser'
 import * as dotenv from 'dotenv';
+import cors from 'cors-ts'
+import { doubleCsrf } from 'csrf-csrf';
+
 dotenv.config()
 
 async function bootstrap() {
+  const allowedOrigins = [
+    'https://localhost:8000',
+    'http://localhost:3000',
+    'https://4e448ea267fb.ngrok-free.app',
+  ];
+
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  app.enableCors({
+    // origin: (origin, callback) => {
+    //   if (!origin || allowedOrigins.includes(origin)) {
+    //     callback(null, true);
+    //   } else {
+    //     callback(new Error('Not allowed by CORS'));
+    //   }
+    // },
+    origin: 'https://localhost:8000',
+    credentials: true,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: [
+      'Content-Type',
+      'Accept',
+      'X-CSRF-Token',
+      'x-csrf-token',
+      'X-Csrf-Token',
+      'x-xsrf-token',
+      'Authorization'
+    ],
+    exposedHeaders: ['Set-Cookie'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+  });
+
+  app.use(cookieParser());
   app.set('trust proxy', 1);
 
   const APP_GLOBAL_SECRET = process.env.APP_GLOBAL_SECRET;
@@ -23,9 +59,7 @@ async function bootstrap() {
       console.warn('WARNING: APP_GLOBAL_SECRET is not defined. Using a fallback for development only.');
     }
   }
-  app.set('secret', APP_GLOBAL_SECRET); 
-
-  app.use(cookieParser());
+  app.set('secret', APP_GLOBAL_SECRET);
 
   const uploadsDir = join(process.cwd(), 'uploads');
   app.use('/uploads', express.static(uploadsDir));
@@ -75,6 +109,21 @@ async function bootstrap() {
     }),
   );
 
+  app.use((req: any, res: any, next: () => void) => {
+    if (req.method === 'GET' && req.csrfToken) {
+      if (!req.cookies['XSRF-TOKEN']) { // Check if the cookie is already there
+        res.cookie('XSRF-TOKEN', req.csrfToken(), {
+          httpOnly: false,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'Lax', // Match this with your csurf cookie options
+          path: '/',
+        });
+      }
+    }
+    next();
+  });
+
+
   // IMPORTANT for webhooks: Configure body parser to get raw body
   app.use(
     json({
@@ -98,28 +147,6 @@ async function bootstrap() {
   process.on('unhandledRejection', (reason, promise) => {
     console.error('GLOBAL UNHANDLED REJECTION at:', promise, 'reason:', reason);
     process.exit(1);
-  });
-
-  const allowedOrigins = [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://192.168.1.34:3000',
-  ];
-
-  app.enableCors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    allowedHeaders: 'Content-Type, Accept, X-CSRF-Token, Authorization',
-    credentials: true,
-    exposedHeaders: ['set-cookie'],
-    preflightContinue: false,
-    optionsSuccessStatus: 204,
   });
 
   const port = process.env.PORT || 4000;

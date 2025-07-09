@@ -83,6 +83,20 @@ model RoleRequest {
   updatedAt   DateTime?
 }
 
+model RefreshToken {
+  id    String    @id @default(uuid())
+  token   String  @unique
+  jti   String    @unique
+  
+  userId    String
+  user    User  @relation("UserToRefreshTokens", fields: [userId], references: [userId])
+
+  expiresAt   DateTime
+  issuedAt    DateTime  @default(now())
+  isUsed    Boolean   @default(false)
+  isRevoked   Boolean @default(false)
+}
+
 model Payout {
   payoutId   String  @default(uuid())  @id
   restaurantRevenue  Float
@@ -209,6 +223,8 @@ model User {
 
   RoleRequest   RoleRequest?  @relation("UserToRoleRequest")
   restaurant    Restaurant?
+
+  refreshTokens    RefreshToken[]  @relation("UserToRefreshTokens")
 
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt

@@ -7,11 +7,13 @@ import { diskStorage } from 'multer';
 import { OrderModule } from 'src/order/order.module';
 import { MenuModule } from 'src/menu/menu.module';
 import { UserModule } from 'src/user/user.module';
+import { CsrfModule } from 'src/csrf/csrf.module';
 
 @Module({
   imports: [
     OrderModule,
     UserModule,
+    CsrfModule,
     MulterModule.register({
       storage: diskStorage({
         destination: './uploads/restaurants',
