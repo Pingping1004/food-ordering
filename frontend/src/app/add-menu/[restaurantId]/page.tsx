@@ -41,7 +41,7 @@ export default function AddMenuPage() {
   const [apiSuccessMessage, setApiSuccessMessage] = useState<string | null>(null);
 
   // State to hold successfully created menu items (if you want to display them locally)
-  const [, setCreatedMenusList] = useState<MenuItem[]>([]);
+  const [_createdMenuList, setCreatedMenusList] = useState<MenuItem[]>([]);
 
   const {
     register,

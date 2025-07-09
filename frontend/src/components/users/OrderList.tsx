@@ -1,9 +1,6 @@
 import React from 'react'
 import Image from 'next/image'
-import { format } from 'date-fns'
-import { CartItem } from '@/context/CartContext';
-import { Input } from '../Input';
-import { useCart } from '@/context/CartContext';
+import { CartItem, useCart } from '@/context/CartContext';
 import { Button } from '../Button';
 
 export interface OrderType {
@@ -30,18 +27,18 @@ interface CartListProps {
   items: CartItem[];
 }
 
-export default function OrderList({ items }: CartListProps) {
+export default function OrderList({ items }: Readonly<CartListProps>) {
   const { addToCart, removeFromCart } = useCart();
 
   return (
     <div>
-      {items.map((menu, index) => {
+      {items.map((menu) => {
         const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
         const src = menu.menuImg ? `${baseUrl}${menu.menuImg}` : '/picture.svg';
 
         return (
           <div
-            key={index}
+            key={menu.menuId}
             className="flex w-[calc(100%+3rem)] border-y border-color -mx-6"
           >
             <div className="flex w-full justify-between gap-x-4 py-4 px-6">

@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useEffect, createContext, useContext, useState, useCallback } from 'react';
+import React, { useEffect, createContext, useContext, useState, useCallback, useMemo } from 'react';
 import { api } from '@/lib/api';
-import { RestaurantCategory } from '@/components/users/RestaurantProfile';
 import { Restaurant } from './MenuContext';
 import { useParams } from 'next/navigation';
 import { OrderProps } from '@/components/cookers/Order';
@@ -34,7 +33,7 @@ export const useCooker = () => {
 };
 
 export const CookerProvider = ({ children }: { children: React.ReactNode }) => {
-    const [cooker, setCooker] = useState<Cooker>();
+    const [cooker, setCooker] = useState<Cooker | undefined>(undefined);
     const [orders, setOrders] = useState<OrderProps[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
@@ -74,21 +73,17 @@ export const CookerProvider = ({ children }: { children: React.ReactNode }) => {
         }
     }, [])
 
+    const contextValue = useMemo(() => ({
+        cooker: cooker!, setCooker, orders, setOrders, fetchOrders, loading, error
+    }), [cooker, setCooker, orders, setOrders, fetchOrders, loading, error]);
+
     if (loading) return <div>Loading...</div>;
     if (error) return <div>{error}</div>;
     if (!cooker) return <div>No Cooker found</div>
 
     return (
         <CookerContext.Provider
-            value={{
-                cooker,
-                setCooker,
-                orders,
-                setOrders,
-                fetchOrders,
-                loading,
-                error,
-            }}
+            value={contextValue}
         >
             {children}
         </CookerContext.Provider>

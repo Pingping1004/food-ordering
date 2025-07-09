@@ -10,11 +10,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, Controller } from 'react-hook-form';
 import { createRestaurantSchema, CreateRestaurantSchemaType } from '@/schemas/addRestaurant';
 import { api } from '@/lib/api';
-import { buttonLabels, KeyValueType, shortEngDays } from '@/common/restaurant.enum';
+import { buttonLabels, shortEngDays } from '@/common/restaurant.enum';
 import { getCurrentTime, getApproxCloseTime } from '@/util/time';
 import { useToggle } from '@/hook/useToggle';
 import { useRouter } from 'next/navigation';
-import { getTimeFormat } from '@/util/time';
 
 export default function RestaurantRegisterPage() {
   const { user } = useAuth();

@@ -11,13 +11,7 @@ interface RestaurantHeaderType {
   closeTime: string;
 }
 
-export default function RestaurantHeader({
-  restaurantId,
-  name,
-  restaurantImg,
-  openTime,
-  closeTime,
-}: RestaurantHeaderType) {
+export default function RestaurantHeader({ restaurantId, name, restaurantImg, openTime, closeTime }: Readonly<RestaurantHeaderType>) {
   const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
   const src = restaurantImg ? `${baseURL}/${restaurantImg}` : `/picture.svg`;
 

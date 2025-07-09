@@ -9,7 +9,6 @@ import Link from "next/link";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { useAuth } from "@/context/Authcontext";
-import { fetchCsrfToken } from "@/lib/api";
 
 export default function LoginPage() {
   const { register, handleSubmit, formState: { errors } } = useForm<loginSchemaType>({
@@ -20,8 +19,7 @@ export default function LoginPage() {
   const { login } = useAuth();
   const submitForm = async (loginData: loginSchemaType) => {
     const user = await login(loginData.email, loginData.password);
-    const userProfile = await 
-    console.log('User object: ', user);
+
     if (user.role === "user") {
       router.push('/user/restaurant');
     } else if (user.role === 'cooker') {
@@ -30,7 +28,6 @@ export default function LoginPage() {
   };
 
   return (
-    <>
       <div className="container flex items-center justify-center min-w-screen min-h-screen">
         <div className="flex justify-center items-center w-full h-full xl:gap-14 lg:justify-normal md:gap-5 draggable">
           <div className="flex items-center justify-center w-full h-full lg:p-12">
@@ -91,6 +88,5 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
-    </>
   );
 }

@@ -2,6 +2,14 @@ import type { NextConfig } from "next";
 
 /** @type {import('next').NextConfig} */
 const nextConfig: NextConfig = {
+    async rewrites() {
+        return [
+            {
+                source: '/api/:path*',
+                destination: 'http://localhost:4000/:path*', // proxy all /api requests to backend
+            },
+        ];
+    },
     images: {
         remotePatterns: [
             {

@@ -1,5 +1,5 @@
 "use client";
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useMemo, useState } from "react";
 
 export type CartItem = {
     menuId: string;
@@ -83,9 +83,13 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         return item ? item.quantity : 0;
     }
 
+    const contextValue = useMemo(() => ({
+        cart, addToCart, removeFromCart, getQuantity
+    }), [cart, addToCart, removeFromCart, getQuantity]);
+
     return (
         <CartContext.Provider
-            value={{ cart, addToCart, removeFromCart, getQuantity }}
+            value={contextValue}
         >
             {children}
         </CartContext.Provider>

@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,7 +20,7 @@ export default function SignupPage() {
   });
 
   const router = useRouter();
-  const [, setIsLoading] = useState(false);
+  const [_isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null); // State for the error message
 
   const submitForm = async (signupData: signupSchemaType, event?: React.BaseSyntheticEvent) => {
@@ -39,8 +38,7 @@ export default function SignupPage() {
       console.error('Signup failed:', error);
         if (error.response) {
             if (error.response.status === 409) {
-                // The server might send a specific message in the response body
-                const serverMessage = error.response.data.message; 
+
                 alert('อีเมลนี้มีผู้ใช้งานแล้ว กรุณาใช้อีเมลอื่น');
             } else if (error.response.data?.message) {
                 // Handle other server-provided error messages

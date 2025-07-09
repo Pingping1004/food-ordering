@@ -1,8 +1,7 @@
 "use client";
 
 import React from "react";
-import { useParams, usePathname } from "next/navigation"; // Import usePathname
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation"; // Import usePathname
 import { Button } from "../Button";
 import Profile from "../Profile";
 
@@ -18,12 +17,11 @@ export interface Restaurant {
 export default function CookerHeader({
   name,
   restaurantId,
-}: Restaurant) {
+}: Readonly<Restaurant>) {
   const pathname = usePathname();
   const router = useRouter();
 
   return (
-    <>
       <header className="w-full flex items-center">
         <div className="flex items-center w-full">
           <h1 className="w-2/5 noto-sans-bold md:text-2xl text-xl inline-block">{name}</h1>
@@ -73,6 +71,5 @@ export default function CookerHeader({
           </div>
         </div>
       </header>
-    </>
   );
 }

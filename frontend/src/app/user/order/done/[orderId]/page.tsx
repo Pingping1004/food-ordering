@@ -11,8 +11,8 @@ export default function DoneOrderPage() {
   const orderId = getParamId(params.orderId);
 
   const [restaurantName, setRestaurantName] = useState<string | null>(null);
-  const [restaurantId, setRestaurantId] = useState<string | null>(null);
-  const [order, setOrder] = useState();
+  const [_restaurantId, setRestaurantId] = useState<string | null>(null);
+  const [_order, setOrder] = useState();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

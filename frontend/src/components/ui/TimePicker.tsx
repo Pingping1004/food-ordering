@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import TimePicker from "react-time-picker";
 import "react-time-picker/dist/TimePicker.css";
 import "react-clock/dist/Clock.css";
 
@@ -25,20 +24,6 @@ const TimePickerInput: React.FC<TimePickerInputProps> = ({
   useEffect(() => {
     setInternalTime24hr(value || '');
   }, [value]); // Re-run whenever the 'value' prop changes
-
-  // Helper to format a "HH:mm" string into "hh:mm AM/PM" for display
-  const formatDisplayTime = (timeString: string): string => {
-    if (!timeString) return '';
-    try {
-      const [hours, minutes] = timeString.split(':').map(Number);
-      const ampm = hours >= 12 ? 'PM' : 'AM';
-      const formattedHour = hours % 12 || 12; // Convert 24hr to 12hr
-      return `${formattedHour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} ${ampm}`;
-    } catch (e) {
-      console.error("Error formatting time for display:", e);
-      return timeString; // Fallback in case of parsing error
-    }
-  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value; // This is directly "HH:mm" from the input

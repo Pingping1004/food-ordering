@@ -1,4 +1,3 @@
-import { OmiseBankType, OMISE_BANK_TYPE_VALUES } from "@/common/bank-type.enum";
 import { z } from "zod";
 
 export const createOrderSchema = z.object({
@@ -9,7 +8,7 @@ export const createOrderSchema = z.object({
       (time) => {
         // More robust validation for HH:mm format
         const [h, m] = time.split(':').map(Number);
-        return time.match(/^\d{2}:\d{2}$/) && h >= 0 && h <= 23 && m >= 0 && m <= 59;
+        return RegExp(/^\d{2}:\d{2}$/).test(time) && h >= 0 && h <= 23 && m >= 0 && m <= 59;
       },
       { message: 'รูปแบบเวลารับอาหารไม่ถูกต้อง (HH:mm)' }
     )

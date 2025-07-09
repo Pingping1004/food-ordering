@@ -8,7 +8,6 @@ import Image from "next/image";
 import { Toggle } from "../Toggle";
 import { useRouter } from "next/navigation";
 import { getFullImageUrl } from "@/util/url";
-import { api } from "@/lib/api";
 
 const menuVariants = cva("", {
   variants: {
@@ -64,7 +63,7 @@ export const Menu = ({
   const router = useRouter();
   const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
   // const src = menuImg ? `${baseUrl}/${menuImg}` : `/picture.svg`;
-  const src = menuImg ? menuImg : '/picture.svg';
+  const src = menuImg ?? '/picture.svg';
 
   const handleToggleClick = useCallback((checked: boolean) => {
     // Pass the new checked state directly to the parent

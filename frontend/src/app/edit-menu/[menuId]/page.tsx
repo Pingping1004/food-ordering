@@ -23,7 +23,6 @@ export default function EditMenuPage() {
   const {
     register,
     handleSubmit,
-    setValue,
     reset,
     watch,
     formState: { errors, isSubmitting },

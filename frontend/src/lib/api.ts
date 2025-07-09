@@ -1,8 +1,9 @@
-import axios, { AxiosRequestConfig, AxiosError, AxiosResponse, InternalAxiosRequestConfig } from "axios";
+import axios, { AxiosRequestConfig, AxiosError, InternalAxiosRequestConfig } from "axios";
 import { setAccessToken, getRefreshToken, setRefreshToken, clearTokens } from "./token";
 import Cookies from 'js-cookie';
 
-const baseUrl = process.env.NEXT_PUBLIC_NGROK_BACKEND_URL;
+// const baseUrl = `${process.env.NEXT_PUBLIC_NGROK_BACKEND_URL}/api`;
+const baseUrl = '/api';
 console.log('Axios base URL is: ', baseUrl);
 
 export const api = axios.create({
@@ -48,8 +49,8 @@ api.interceptors.request.use(
 
         return config;
     },
-    (error) => {
-        return Promise.reject(error);
+    (error: any) => {
+        return Promise.reject(error instanceof Error ? error : new Error(JSON.stringify(error)))
     }
 );
 
@@ -57,59 +58,60 @@ interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
     _retry?: boolean;
 }
 
-api.interceptors.response.use(
-    (response) => response, // On success, just pass the response through
-    async (error: AxiosError) => {
-        const originalRequest = error.config as CustomAxiosRequestConfig;
+async function handleTokenRefresh(originalRequest: CustomAxiosRequestConfig): Promise<any> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) {
+    clearTokens();
+    return Promise.reject(new Error("Missing refresh token"));
+  }
 
-        if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
-            originalRequest._retry = true; // Mark this request as retried
+  try {
+    const response = await axios.post('/auth/refresh', { refreshToken });
+    const { accessToken, refreshToken: newRefreshToken } = response.data;
 
-            if (!isRefreshing) {
-                isRefreshing = true; // Set flag to indicate refresh process is active
-                const refreshToken = getRefreshToken();
+    setAccessToken(accessToken);
+    setRefreshToken(newRefreshToken);
+    processQueue(null, accessToken);
 
-                if (!refreshToken) {
-                    clearTokens();
-                    return Promise.reject(error);
-                }
-
-                try {
-                    const refreshResponse: AxiosResponse = await axios.post('/auth/refresh', { refreshToken });
-                    const { accessToken, refreshToken: newRefreshToken } = refreshResponse.data;
-
-                    setAccessToken(accessToken);
-                    setRefreshToken(newRefreshToken);
-
-                    isRefreshing = false;
-                    processQueue(null, accessToken); // Process queued requests with the new access token
-
-                    // Re-attempt the original failed request with the new access token
-                    if (!originalRequest.headers) {
-                        originalRequest.headers = new axios.AxiosHeaders();
-                    } else if (!(originalRequest.headers instanceof axios.AxiosHeaders)) {
-                        originalRequest.headers = axios.AxiosHeaders.from(originalRequest.headers);
-                    }
-                    originalRequest.headers['Authorization'] = `Bearer ${accessToken}`;
-                    return api(originalRequest);
-
-                } catch (refreshError: any) {
-                    console.error('Failed to refresh token or token reuse detected:', refreshError);
-                    clearTokens();
-                    isRefreshing = false;
-                    processQueue(refreshError); // Reject all queued requests
-                    return Promise.reject(refreshError);
-                }
-            } else {
-                // If a refresh is already in progress, queue the current failed request
-                return new Promise((resolve, reject) => {
-                    failedQueue.push({ resolve, reject, config: originalRequest });
-                });
-            }
-        }
-
-        return Promise.reject(error);
+    if (!originalRequest.headers) {
+      originalRequest.headers = new axios.AxiosHeaders();
+    } else if (!(originalRequest.headers instanceof axios.AxiosHeaders)) {
+      originalRequest.headers = axios.AxiosHeaders.from(originalRequest.headers);
     }
+
+    originalRequest.headers['Authorization'] = `Bearer ${accessToken}`;
+    return api(originalRequest);
+  } catch (err: any) {
+    clearTokens();
+    processQueue(err);
+    return Promise.reject(err instanceof Error ? err : new Error(JSON.stringify(err)));
+  } finally {
+    isRefreshing = false;
+  }
+}
+api.interceptors.response.use(
+  (res) => res,
+  async (error: AxiosError) => {
+    const originalRequest = error.config as CustomAxiosRequestConfig;
+
+    const isUnauthorized = error.response?.status === 401;
+    const hasNotRetried = originalRequest && !originalRequest._retry;
+
+    if (!isUnauthorized || !hasNotRetried) {
+      return Promise.reject(error);
+    }
+
+    originalRequest._retry = true;
+
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => {
+        failedQueue.push({ resolve, reject, config: originalRequest });
+      });
+    }
+
+    isRefreshing = true;
+    return handleTokenRefresh(originalRequest);
+  }
 );
 
 export async function fetchCsrfToken(): Promise<void> {

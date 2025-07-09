@@ -68,6 +68,13 @@ export const MenuProvider = ({ children }: { children: React.ReactNode }) => {
     const [menus, setMenus] = useState<Menu[] | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const contextValue = useMemo(() => ({
+        restaurant,
+        menus,
+        setMenus,
+        loading,
+        error,
+    }), [restaurant, menus, setMenus, loading, error]);
 
     useEffect(() => {
         if (!restaurantId) return;
@@ -96,13 +103,7 @@ export const MenuProvider = ({ children }: { children: React.ReactNode }) => {
 
     return (
         <MenuContext.Provider
-            value={{
-                restaurant,
-                menus,
-                setMenus,
-                loading,
-                error,
-            }}
+            value={contextValue}
         >
             {children}
         </MenuContext.Provider>

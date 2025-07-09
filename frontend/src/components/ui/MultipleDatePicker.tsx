@@ -1,8 +1,7 @@
 // components/ui/multi-date-picker.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { format } from "date-fns";
+import React from "react";
 import { Calendar as CalendarIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils"; // This is a utility function from your Shadcn setup
@@ -15,9 +14,9 @@ import {
 } from "@/components/ui/popover";
 
 interface MultiDatePickerProps {
-    value: Date[] | undefined;
-    onDatesChange: (dates: Date[] | undefined) => void;
-    initialDates?: Date[];
+    readonly value: Date[] | undefined;
+    readonly onDatesChange: (dates: Date[] | undefined) => void;
+    readonly initialDates?: Date[];
 }
 
 export function MultiDatePicker({ value, onDatesChange, initialDates }: MultiDatePickerProps) {

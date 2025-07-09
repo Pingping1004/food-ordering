@@ -133,12 +133,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setAccessTokenValue(newAccessToken)
             setIsAuth(true);
             setUser(userData as User);
+            const csrfToken = await fetchCsrfToken();
+            setCsrfToken(csrfToken);
             const profileUser = await getProfile();
 
             if (profileUser) {
                 setUser(profileUser);
                 alertShowRef.current = false;
-                const routePath = profileUser.role === UserRole.cooker ? (`${profileUser.restaurant?.restaurantId}`) : '/user/restaurant';
+                const routePath = profileUser.role === UserRole.cooker ? (`${profileUser.restaurant?.restaurantId}`) : 'user/restaurant';
                 router.push(`/${routePath}`);
                 return profileUser;
             } else {
@@ -179,7 +181,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 config.withCredentials = true;
                 return config;
             },
-            (error) => Promise.reject(error)
+            (error: any) => {
+                return Promise.reject(error instanceof Error ? error : new Error(JSON.stringify(error)))
+            }
         );
 
         // Response Interceptor: Handle 401 for token refresh
@@ -208,7 +212,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                             isRefreshing.current = false;
                             processQueue(refreshError);
                             await logout();
-                            return Promise.reject(refreshError);
+                            return Promise.reject(refreshError instanceof Error ? refreshError : new Error(JSON.stringify(refreshError)));
                         }
                     } else {
                         return new Promise((resolve, reject) => {
@@ -216,7 +220,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                         });
                     }
                 }
-                return Promise.reject(error);
+                return Promise.reject(error instanceof Error ? error : new Error(JSON.stringify(error)))
             }
         );
 
@@ -229,12 +233,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     useEffect(() => {
         const initializeAuthAndProfile = async () => {
             setLoading(true);
-            fetchCsrfToken();
             let userCurrentlyAuthenticated = false;
             try {
                 const accessToken = getAccessToken();
                 if (accessToken) {
                     setAccessTokenValue(accessToken);
+
+                    const csrfToken = getCsrfToken();
+                    if (!csrfToken) await fetchCsrfToken();
 
                     const profileUser = await getProfile();
                     if (profileUser) {
@@ -242,21 +248,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                         setIsAuth(true);
                         userCurrentlyAuthenticated = true;
                     } else {
-                        setUser(null);
-                        setIsAuth(false);
-                        setAccessTokenValue(null);
-                        removeCsrfToken();
-                        removeAccessToken();
+                        handleLogoutSideEffects();
                     }
                 } else {
-                    setUser(null);
-                    setIsAuth(false);
-                }
-
-                if (!getCsrfToken()) {
-                    getCsrfToken();
-                } else {
-                    console.log('Frontend: CSRF token already present in cookie.');
+                    handleLogoutSideEffects();
                 }
             } catch (err) {
                 console.error('Initial authentication check or CSRF fetch failed:', err);
@@ -269,6 +264,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     alertShowRef.current = true;
                 }
             }
+        };
+
+        const handleLogoutSideEffects = () => {
+            setUser(null);
+            setIsAuth(false);
+            setAccessTokenValue(null);
+            removeAccessToken();
+            removeCsrfToken();
         };
         initializeAuthAndProfile();
     }, []);

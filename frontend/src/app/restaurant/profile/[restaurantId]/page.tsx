@@ -18,7 +18,7 @@ function Page() {
   const [isPatching, setIsPatching] = useState(false);
   const [error,] = useState(null);
 
-  const toggleCheckedState = cooker.isTemporarilyClosed;
+  const toggleCheckedState = cooker?.isTemporarilyClosed;
   const handleRestaurantAvailabilityChange = useCallback(async (newIsTemporarilyClosed: boolean) => {
     if (!cooker || !cooker.restaurantId) {
       console.error('Cooker data or restaurantId is missing');
@@ -75,7 +75,7 @@ function Page() {
         <p className="noto-sans-regular text-primary text-base">ปิดร้านชั่วคราว</p>
         <Toggle
           id={restaurantId}
-          checked={toggleCheckedState}
+          checked={toggleCheckedState || false}
           disabled={isPatching}
           label=""
           onCheckedChange={handleRestaurantAvailabilityChange}

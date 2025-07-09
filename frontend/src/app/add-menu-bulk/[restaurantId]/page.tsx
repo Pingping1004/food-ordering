@@ -8,9 +8,8 @@ import { api } from "@/lib/api";
 import { Button } from "@/components/Button";
 import { MenuItem } from "../../add-menu/[restaurantId]/page";
 import { saveAs } from 'file-saver';
-import { useForm, FieldError, FieldErrorsImpl, Merge } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Menu } from "@/components/cookers/Menu";
 import * as Papa from 'papaparse';
 import {
     bulkUploadFormSchema,
@@ -35,12 +34,12 @@ export interface UploadedImageInfo {
 }
 
 interface BulkCreateMenuResult {
-  message: string;
-  createdMenus: ServerMenuItem[]; // Or whatever type your created menus have on the frontend
-  failedMenus: { item: any; error: string }[]; // Adjust 'any' to your CsvMenuItemData type
-  totalAttempted: number;
-  totalCreated: number;
-  totalFailed: number;
+    message: string;
+    createdMenus: ServerMenuItem[]; // Or whatever type your created menus have on the frontend
+    failedMenus: { item: any; error: string }[]; // Adjust 'any' to your CsvMenuItemData type
+    totalAttempted: number;
+    totalCreated: number;
+    totalFailed: number;
 }
 
 export default function BulkAddMenuPage() {
@@ -52,14 +51,12 @@ export default function BulkAddMenuPage() {
     console.log('Receiving restaurantId: ', restaurantId);
     const [pageError, setPageError] = useState<string | null>(null); // Renamed to avoid conflict with form errors
     const [successMessage, setSuccessMessage] = useState<string | null>(null); // Renamed for consistency
-    const [menuList, setMenuLists] = useState<ServerMenuItem[]>([]); // For displaying newly added menus
+    const [_menuList, setMenuLists] = useState<ServerMenuItem[]>([]); // For displaying newly added menus
 
     const {
         register,
         handleSubmit,
         formState: { errors, isSubmitting },
-        setValue,
-        watch, // To get current values of form fields
         reset, // To clear the form after submission
     } = useForm<BulkUploadFormValues>({
         resolver: zodResolver(bulkUploadFormSchema),
@@ -108,64 +105,83 @@ export default function BulkAddMenuPage() {
     }, [rhfMenuImageFilesOnChange, menuImagePreviewUrls]);
 
     // --- State for CSV File Preview and Parsed Data ---
-    const [csvFileName, setCsvFileName] = useState<string | null>(null);
+    const [_csvFileName, setCsvFileName] = useState<string | null>(null);
     const [parsedCsvData, setParsedCsvData] = useState<CsvMenuItemSchemaType[] | null>(null);
     const [csvParseError, setCsvParseError] = useState<string | null>(null);
 
     // Custom onChange handler for CSV file
     const { onChange: rhfCsvOnChange, ...csvRegisterProps } = register('csvFile');
-    const handleCsvFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        rhfCsvOnChange(e as React.ChangeEvent<HTMLInputElement>); // Call RHF's handler
-        setParsedCsvData(null); // Reset previous parse data
-        setCsvParseError(null); // Clear previous errors
 
-        if (e.target instanceof HTMLInputElement) {
-            const file = e.target.files?.[0];
-            if (file) {
-                setCsvFileName(file.name);
-                Papa.parse(file, {
-                    header: true,
-                    skipEmptyLines: true,
-                    dynamicTyping: false,
-                    complete: (results) => {
-                        const parsedRows: CsvMenuItemSchemaType[] = [];
-                        const rowErrors: string[] = [];
-
-                        results.data.forEach((row: any, index) => {
-                            // Trim keys (column headers) from CSV data before parsing with Zod
-                            const trimmedRow: { [key: string]: any } = {};
-                            for (const key in row) {
-                                if (Object.prototype.hasOwnProperty.call(row, key)) {
-                                    trimmedRow[key.trim()] = row[key];
-                                }
-                            }
-                            const validationResult = csvMenuItemSchema.safeParse(trimmedRow);
-                            if (validationResult.success) {
-                                parsedRows.push(validationResult.data);
-                            } else {
-                                rowErrors.push(`Row ${index + 1}: ${validationResult.error.errors.map(err => err.message).join(', ')}`);
-                            }
-                        });
-
-                        if (rowErrors.length > 0) {
-                            setCsvParseError(`CSV parsing errors:\n${rowErrors.join('\n')}`);
-                            setParsedCsvData(null);
-                        } else {
-                            setParsedCsvData(parsedRows);
-                            setCsvParseError(null);
-                            setSuccessMessage('CSV file parsed successfully. Review data below.');
-                        }
-                    },
-                    error: (error: any) => {
-                        setCsvParseError(`Failed to parse CSV: ${error.message}`);
-                        setParsedCsvData(null);
-                    },
-                });
-            } else {
-                setCsvFileName(null);
+    const parseCsvRow = (row: any, index: number): { valid?: CsvMenuItemSchemaType, error?: string } => {
+        const trimmedRow: { [key: string]: any } = {};
+        for (const key in row) {
+            if (Object.hasOwn(row, key)) {
+                trimmedRow[key.trim()] = row[key];
             }
         }
-    }, [rhfCsvOnChange]);
+
+        const validationResult = csvMenuItemSchema.safeParse(trimmedRow);
+
+        if (validationResult.success) {
+            return { valid: validationResult.data };
+        }
+
+        const rowNumber = index + 1;
+        const errorMessages = validationResult.error.errors.map(err => err.message).join(', ');
+        return { error: `Row ${rowNumber}: ${errorMessages}` };
+    };
+
+    const handlePapaParseComplete = (
+        results: Papa.ParseResult<any>,
+        setParsedCsvData: (data: CsvMenuItemSchemaType[] | null) => void,
+        setCsvParseError: (msg: string | null) => void,
+        setSuccessMessage: (msg: string) => void
+    ) => {
+        const parsedRows: CsvMenuItemSchemaType[] = [];
+        const rowErrors: string[] = [];
+
+        results.data.forEach((row, index) => {
+            const { valid, error } = parseCsvRow(row, index);
+            if (valid) parsedRows.push(valid);
+            if (error) rowErrors.push(error);
+        });
+
+        if (rowErrors.length > 0) {
+            setParsedCsvData(null);
+            setCsvParseError(`CSV parsing errors:\n${rowErrors.join('\n')}`);
+        } else {
+            setParsedCsvData(parsedRows);
+            setCsvParseError(null);
+            setSuccessMessage('CSV file parsed successfully. Review data below.');
+        }
+    };
+
+    const handleCsvFileChange = useCallback(
+        (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+            rhfCsvOnChange(e as React.ChangeEvent<HTMLInputElement>);
+            setParsedCsvData(null);
+            setCsvParseError(null);
+
+            const input = e.target as HTMLInputElement;
+            const file = input.files?.[0];
+            if (!file) return setCsvFileName(null);
+
+            setCsvFileName(file.name);
+
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                dynamicTyping: false,
+                complete: (results) =>
+                    handlePapaParseComplete(results, setParsedCsvData, setCsvParseError, setSuccessMessage),
+                error: (error: any) => {
+                    setCsvParseError(`Failed to parse CSV: ${error.message}`);
+                    setParsedCsvData(null);
+                },
+            });
+        },
+        [rhfCsvOnChange]
+    );
 
     const onSubmit = async (data: BulkUploadFormValues) => {
         console.log('Form submission initiated.');
@@ -347,11 +363,11 @@ export default function BulkAddMenuPage() {
 
                     {menuImagePreviewUrls.length > 0 && (
                         <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                            {menuImagePreviewUrls.map((url, index) => (
-                                <div key={index} className="relative aspect-video w-full">
+                            {menuImagePreviewUrls.map((url) => (
+                                <div key={url} className="relative aspect-video w-full">
                                     <Image
                                         src={url}
-                                        alt={`Menu Image Preview ${index + 1}`}
+                                        alt={`Menu Image Preview`}
                                         fill // Use fill for responsive images
                                         className="object-contain rounded-lg border border-gray-200"
                                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"

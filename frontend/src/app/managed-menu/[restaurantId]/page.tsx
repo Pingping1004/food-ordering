@@ -10,8 +10,8 @@ import { api } from '@/lib/api';
 
 function Page() {
   const { restaurant, menus, setMenus } = useMenu();
-  const [error, setError] = useState<string | null>(null);
-  const [patchingMenuId, setPatchingMenuId] = useState<string | null>(null);
+  const [_error, setError] = useState<string | null>(null);
+  const [_patchingMenuId, setPatchingMenuId] = useState<string | null>(null);
   const router = useRouter();
 
   const handleMenuAvailabilityChange = useCallback(async (menuId: string, newIsAvailable: boolean) => {

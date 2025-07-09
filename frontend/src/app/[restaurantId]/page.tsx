@@ -6,13 +6,12 @@ import { OrderNavBar, OrderStatus } from "@/components/cookers/OrderNavbar";
 import { CookerProvider, useCooker } from "@/context/Cookercontext";
 import { api } from "@/lib/api";
 import { getDateFormat, getTimeFormat } from "@/util/time";
-import { useRouter } from "next/navigation";
 import { useState, useEffect, useMemo } from "react";
 
 function Page() {
     const [weeklyOrders, setWeeklyOrders] = useState<OrderProps[]>([]);
-    const { cooker, fetchOrders, orders, setOrders, loading, error } = useCooker();
-    const [, setOrder] = useState<OrderProps>();
+    const { cooker, fetchOrders, orders } = useCooker();
+    const [_order, setOrder] = useState<OrderProps>();
     const [navbarStatus, setNavbarStatus] = useState<OrderStatus>(OrderStatus.receive);
 
     useEffect(() => {
@@ -30,9 +29,6 @@ function Page() {
     const weeklySales = useMemo(() => {
         return weeklyOrders.reduce((total, order) => total += order.totalAmount, 0);
     }, [weeklyOrders]);
-
-    // const [isUpdateMode, setIsUpdateMode] = useState(false); // State to toggle update mode
-    // const [selectedCount, setSelectedCount] = useState(0); // State to track selected orders
 
     const handleOrderUpdate = (updatedOrder: OrderProps) => {
         setOrder(updatedOrder);

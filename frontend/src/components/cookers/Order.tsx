@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { Button } from "../Button";
 import { cva, VariantProps } from "class-variance-authority";
@@ -75,7 +75,7 @@ export const Order = ({
     onStatusUpdate,
     ...props
 }: OrderProps) => {
-    const [, setCurrentStatus] = useState(status);
+    const [_currentStatus, setCurrentStatus] = useState(status);
     const [isDelayed, setIsDelayed] = useState(isDelay);
     const [isUpdating, setIsUpdating] = useState(false);
 
@@ -196,7 +196,7 @@ export const Order = ({
                     <p className="mb-2 text-primary">รายละเอียดออเดอร์:</p>
                     {orderMenus.map((item, index) => (
                         <p
-                            key={index}
+                            key={item.menuName}
                         >{item.quantity}x - {item.menuName}</p>
                     ))}
                 </div>
@@ -244,7 +244,7 @@ export const Order = ({
 
                     <Button
                         variant="secondaryDanger"
-                        disabled={isDelay === true ? true : false || isUpdating}
+                        disabled={isDelay || isUpdating}
                         size="md"
                         type="button"
                         className="flex w-full"
