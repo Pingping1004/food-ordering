@@ -1,4 +1,4 @@
-// "use client";
+"use client";
 
 // import React from "react";
 // import CookerHeader from "@/components/cookers/Header";
@@ -37,3 +37,9 @@
 //     </div>
 //   );
 // }
+
+export default function IssuedOrderPage() {
+    return (
+        <div>Hello world</div>
+    );
+}
