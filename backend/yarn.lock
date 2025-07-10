@@ -909,7 +909,7 @@
     "@napi-rs/nice-win32-ia32-msvc" "1.0.1"
     "@napi-rs/nice-win32-x64-msvc" "1.0.1"
 
-"@nestjs/cli@^11.0.0":
+"@nestjs/cli@^11.0.7":
   version "11.0.7"
   resolved "https://registry.npmjs.org/@nestjs/cli/-/cli-11.0.7.tgz"
   integrity sha512-svrP8j1R0/lQVJ8ZI3BlDtuZxmkvVJokUJSB04sr6uibunk2wHeVDDVLZvYBUorCdGU/RHJl1IufhqUBM91vAQ==
