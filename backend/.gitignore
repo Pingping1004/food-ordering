@@ -70,3 +70,6 @@ prisma/migrations/
 .env
 .env.local
 .env.*.local
+
+dist
+*.tsbuildinfo
