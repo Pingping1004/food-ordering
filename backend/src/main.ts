@@ -13,6 +13,7 @@ dotenv.config()
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  app.setGlobalPrefix('api');
 
   const allowedOrigins = [
     'https://localhost:8000',

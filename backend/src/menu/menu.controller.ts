@@ -38,7 +38,7 @@ export class MenuController {
   ) {
     console.log('Request object: ', createMenuDto);
     if (!createMenuDto.restaurantId) throw new NotFoundException('RestaurantId not found in create mneu controller');
-    
+
     let uploadedFilePath: string | undefined;
 
     try {
@@ -68,29 +68,29 @@ export class MenuController {
 
   @Post('bulk')
   async createBulkMenus(
-        @Body() payload: CreateBulkMenusJsonPayload, // <-- Using the correct DTO
-    ) {
-        console.log('Received JSON payload for bulk create:', payload); // This log is correct
+    @Body() payload: CreateBulkMenusJsonPayload, // <-- Using the correct DTO
+  ) {
+    console.log('Received JSON payload for bulk create:', payload); // This log is correct
 
-        // --- THE FIX IS HERE ---
-        // Change the check to refer to 'createMenuDto'
-        if (!payload.createMenuDto || !Array.isArray(payload.createMenuDto) || payload.createMenuDto.length === 0) {
-            // Also, update the message to be more specific to 'createMenuDto'
-            throw new BadRequestException('The request body must contain a non-empty "createMenuDto" array.');
-        }
-
-        // Now, pass the correct data to your service
-        try {
-            const result = await this.menuService.createBulkMenus( // Assuming your service method name
-                payload.restaurantId,
-                payload.createMenuDto, // <-- Pass the correct array
-            );
-            return result; // Return the result from the service
-        } catch (error) {
-          console.error('Bulk menu creation failed in controller: ', error);
-            throw error;
-        }
+    // --- THE FIX IS HERE ---
+    // Change the check to refer to 'createMenuDto'
+    if (!payload.createMenuDto || !Array.isArray(payload.createMenuDto) || payload.createMenuDto.length === 0) {
+      // Also, update the message to be more specific to 'createMenuDto'
+      throw new BadRequestException('The request body must contain a non-empty "createMenuDto" array.');
     }
+
+    // Now, pass the correct data to your service
+    try {
+      const result = await this.menuService.createBulkMenus( // Assuming your service method name
+        payload.restaurantId,
+        payload.createMenuDto, // <-- Pass the correct array
+      );
+      return result; // Return the result from the service
+    } catch (error) {
+      console.error('Bulk menu creation failed in controller: ', error);
+      throw error;
+    }
+  }
 
   @Public()
   @Get()
@@ -123,13 +123,13 @@ export class MenuController {
   )
 
   async updateSingleMenu(
-    @Req() req: any,
     @Param('menuId') menuId: string,
     @Body() updateMenuDto: UpdateMenuDto,
     @UploadedFile() file?: Express.Multer.File
   ) {
-    // const restaurantId = req.user.restaurantId;
-    const restaurantId = req.body.restaurantId;
+
+    const restaurantId = updateMenuDto.restaurantId;
+    const existingMenu = await this.findMenu(menuId);
     if (!restaurantId) throw new NotFoundException('RestaurantId not found in update menu controller');
 
     let uploadedFilePath: string | undefined;
@@ -140,12 +140,13 @@ export class MenuController {
 
       if (file) {
         menuData.menuImg = `uploads/menus/${file.filename}`;
-      } else if (updateMenuDto.menuImg === undefined) {
-        menuData.menuImg = updateMenuDto.menuImg;
+      } else if (updateMenuDto.menuImg === 'undefined' || typeof updateMenuDto.menuImg === 'string') {
+        menuData.menuImg = existingMenu.menuImg;
+      } else {
+        menuData.menuImg = null;
       }
 
       const result = await this.menuService.updateMenu(
-        restaurantId,
         [menuId],
         [menuData],
       );
@@ -182,9 +183,6 @@ export class MenuController {
     @Body() updateMenuDto: string,
     @UploadedFiles() files?: Express.Multer.File[]
   ) {
-    // const restaurantId = req.user.restaurantId;
-    const restaurantId = req.body.restaurantId;
-    if (!restaurantId) throw new NotFoundException('RestaurantId not found in bulk update menu controller');
 
     let parsedUpdateMenuDtos: UpdateMenuDto[];
     let uploadedFilePaths: string[] = [];
@@ -201,6 +199,8 @@ export class MenuController {
 
       parsedUpdateMenuDtos.forEach((dto, index) => {
         const file = files?.[index];
+        const restaurantId = dto.restaurantId;
+        if (!restaurantId) throw new NotFoundException('RestaurantId is missing in the update payload');
 
         if (file) {
           dto.menuImg = `uploads/menus/${file.filename}`;
@@ -209,7 +209,6 @@ export class MenuController {
       });
 
       const result = await this.menuService.updateMenu(
-        restaurantId,
         menuIds,
         parsedUpdateMenuDtos,
         // files,

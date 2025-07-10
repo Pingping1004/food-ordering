@@ -91,7 +91,7 @@ export class OrderService {
     return calculatedTotalAmount;
   }
 
-  async createOrderWithPayment(createOrderDto: CreateOrderDto) {
+  async createOrderWithPayment(createOrderDto: CreateOrderDto, userId: string) {
     const calculatedTotalAmount = await this.validateOrderMenus(createOrderDto.orderMenus, createOrderDto.restaurantId);
 
     const providedTotalAmount = createOrderDto.orderMenus

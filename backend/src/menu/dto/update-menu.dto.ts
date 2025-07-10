@@ -1,6 +1,6 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { CreateMenuDto } from './create-menu.dto';
-import { IsOptional, IsNumber, IsString, IsPositive, IsDate, IsBoolean, IsNotEmpty, IsUUID } from 'class-validator';
+import { IsOptional, IsNumber, IsString, IsPositive, IsBoolean, IsNotEmpty, IsUUID } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class UpdateMenuDto extends PartialType(CreateMenuDto) {
@@ -15,7 +15,7 @@ export class UpdateMenuDto extends PartialType(CreateMenuDto) {
 
         @IsOptional()
         @IsString()
-        menuImg?: string;
+        menuImg?: string | null;
 
         @IsOptional()
         @IsString()
@@ -32,10 +32,6 @@ export class UpdateMenuDto extends PartialType(CreateMenuDto) {
         @IsPositive()
         @Type(() => Number)
         cookingTime?: number;
-
-        @IsOptional()
-        @IsDate()
-        createdAt?: string;
 
         @IsOptional()
         @IsNumber({ maxDecimalPlaces: 2 })

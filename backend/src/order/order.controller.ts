@@ -2,12 +2,12 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, Re
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
-import { Response } from 'express';
+import { Response, Request } from 'express';
 import Omise from 'omise';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from '../decorators/role.decorator';
 import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
-import { Role } from '@prisma/client';
+import { Role, User } from '@prisma/client';
 import { CsrfGuard } from 'src/guards/csrf.guard';
 
 @Controller('order')
@@ -17,12 +17,13 @@ export class OrderController {
   constructor(private readonly orderService: OrderService) { }
 
   @Post('omise')
-  async createOrder(@Body() createOrderDto: CreateOrderDto, @Req() req: Request) {
+  async createOrder(@Body() createOrderDto: CreateOrderDto, @Req() req: Request & { user: User}) {
     try {
-      // const userId = 'req.user.userId';
-      // const userId = req.user.userId;
-      // if (!userId) throw new Error('User ID is required to create an order');
-      const result = await this.orderService.createOrderWithPayment(createOrderDto);
+
+      const userId = req.user.userId;
+      if (!userId) throw new Error('User ID is required to create an order');
+
+      const result = await this.orderService.createOrderWithPayment(createOrderDto, userId);
       console.log('Result object: ', result);
 
       return {

@@ -49,7 +49,7 @@ export class CreateMenuDto {
 
     @IsOptional()
     @IsString()
-    menuImg?: string;
+    menuImg?: string | null;
 
     @IsNotEmpty()
     @IsPositive()

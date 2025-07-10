@@ -308,84 +308,131 @@ export class MenuService {
     }
   }
 
-  async updateMenu(restaurantId: string, menuIds: string[], updateMenuDto: UpdateMenuDto[]) {
-    try {
-      // Check for menu ownership
-      await this.isOwnerOfMenu(restaurantId, menuIds);
+  omitUnchangedFields<T extends object>(original: T, updates: Partial<T>): Partial<T> {
+  const changedFields: Partial<T> = {};
 
-      const updateMenuLists = updateMenuDto.map(async (dto, index) => {
-        const menuId = menuIds[index];
-        // const file = files && files[index];
-        const menuImgUrl = dto.menuImg;
+  for (const key in updates) {
+    if (
+      updates[key] !== undefined &&
+      updates[key] !== original[key]
+    ) {
+      changedFields[key] = updates[key];
+    }
 
-        const updateLists: Partial<Menu> = {};
-        if (dto.name !== undefined) updateLists.name = dto.name;
-        if (dto.price !== undefined) updateLists.price = dto.price;
-        if (dto.maxDaily !== undefined) updateLists.maxDaily = dto.maxDaily;
-        if (dto.cookingTime !== undefined) updateLists.cookingTime = dto.cookingTime;
-        if (dto.isAvailable !== undefined) updateLists.isAvailable = dto.isAvailable;
-        if (menuImgUrl !== undefined) updateLists.menuImg = menuImgUrl;
-
-        const updateMenus = await this.prisma.menu.update({
-          where: {
-            menuId: menuId,
-            restaurantId,
-          },
-          data: updateLists,
-        });
-
-        return updateMenus;
-      });
-
-      if (Object.keys(updateMenuLists).length === 0) {
-        throw new BadRequestException('ไม่พบข้อมูลให้อัพเดต');
-      }
-
-      const results = await Promise.all(updateMenuLists);
-      console.log(`Bulk menus update successful for restaurant ${restaurantId}. Updated menus: `, results.map(m => m.name));
-      return {
-        message: `Menus updated successfully for restaurant ${restaurantId}`,
-        results: results
-      };
-    } catch (error: any) {
-      console.error(`Failed to update menus for ${restaurantId}: `, error);
-      throw error;
+    if (key === 'menuImg' && typeof updates[key] === 'string' && updates[key] === '/') {
+      continue;
     }
   }
 
+  return changedFields;
+}
+
+//   async updateMenu(restaurantId: string, menuIds: string[], updateMenuDto: UpdateMenuDto[]) {
+//   try {
+//     // Check for menu ownership
+//     await this.isOwnerOfMenu(restaurantId, menuIds);
+
+//     const updateMenuLists = updateMenuDto.map(async (dto, index) => {
+//       const menuId = menuIds[index];
+//       const existingMenu = await this.findMenu(menuId);
+//       // const file = files && files[index];
+//       const menuImgUrl = dto.menuImg;
+
+//       const updateLists: Partial<Menu> = {};
+//       if (dto.name !== undefined) updateLists.name = dto.name;
+//       if (dto.price !== undefined) updateLists.price = dto.price;
+//       if (dto.maxDaily !== undefined) updateLists.maxDaily = dto.maxDaily;
+//       if (dto.cookingTime !== undefined) updateLists.cookingTime = dto.cookingTime;
+//       if (dto.isAvailable !== undefined) updateLists.isAvailable = dto.isAvailable;
+//       if (menuImgUrl !== undefined) updateLists.menuImg = menuImgUrl;
+
+//       this.omitUnchangedFields(existingMenu, updateLists);
+
+//       const updateMenus = await this.prisma.menu.update({
+//         where: {
+//           menuId: menuId,
+//           restaurantId,
+//         },
+//         data: updateLists,
+//       });
+
+//       return updateMenus;
+//     });
+
+//     if (Object.keys(updateMenuLists).length === 0) {
+//       throw new BadRequestException('ไม่พบข้อมูลให้อัพเดต');
+//     }
+
+//     const results = await Promise.all(updateMenuLists);
+//     console.log(`Bulk menus update successful for restaurant ${restaurantId}. Updated menus: `, results.map(m => m.name));
+//     return {
+//       message: `Menus updated successfully for restaurant ${restaurantId}`,
+//       results: results
+//     };
+//   } catch (error: any) {
+//     console.error(`Failed to update menus for ${restaurantId}: `, error);
+//     throw error;
+//   }
+// }
+
+async updateMenu(
+  menuIds: string[],
+  updateMenuDtos: UpdateMenuDto[],
+) {
+  const results: Menu[] = [];
+  for (let i = 0; i < menuIds.length; i++) {
+    const menuId = menuIds[i];
+    const menuDto = updateMenuDtos[i];
+
+    const restaurantId = menuDto.restaurantId;
+    const existingMenu = await this.findMenu(menuId);
+    const updateData = this.omitUnchangedFields(existingMenu, menuDto);
+    updateData['restaurantId'] = restaurantId;
+
+    const result = await this.prisma.menu.update({
+      where: { menuId },
+      data: updateData,
+    });
+
+    results.push(result);
+  }
+
+  return results;
+}
+
   private async isOwnerOfSingleMenu(restaurantId: string, menuId: string) {
-    await this.restaurantService.findRestaurant(restaurantId);
-    const isOwner = await this.prisma.menu.findUnique({
-      where: {
-        menuId,
-        restaurantId,
+  await this.restaurantService.findRestaurant(restaurantId);
+  const isOwner = await this.prisma.menu.findUnique({
+    where: {
+      menuId,
+      restaurantId,
+    },
+  });
+
+  if (!isOwner) throw new BadRequestException(`You are not the owner of the menu or restaurant`);
+}
+
+  async updateIsAvailable(menuId: string, updateMenuDto: UpdateMenuDto) {
+  try {
+    await this.isOwnerOfSingleMenu(updateMenuDto.restaurantId, menuId);
+
+    const result = await this.prisma.menu.update({
+      where: { menuId },
+      data: {
+        isAvailable: updateMenuDto.isAvailable
       },
     });
 
-    if (!isOwner) throw new BadRequestException(`You are not the owner of the menu or restaurant`);
+    return { result, message: `Sucessfully update availability of menu ${result.name} to be ${result.isAvailable}` };
+  } catch (error) {
+    console.error(`An unexpected error occurred during update menu isavailable`, error);
+    throw new InternalServerErrorException('Failed to update isAvailable state of menu');
   }
-
-  async updateIsAvailable(menuId: string, updateMenuDto: UpdateMenuDto) {
-    try {
-      await this.isOwnerOfSingleMenu(updateMenuDto.restaurantId, menuId);
-
-      const result = await this.prisma.menu.update({
-        where: { menuId },
-        data: { 
-          isAvailable: updateMenuDto.isAvailable
-         },
-      });
-
-      return { result, message: `Sucessfully update availability of menu ${result.name} to be ${result.isAvailable}`};
-    } catch (error) {
-      console.error(`An unexpected error occurred during update menu isavailable`, error);
-      throw new InternalServerErrorException('Failed to update isAvailable state of menu');
-    }
-  }
+}
 
   async removeMenu(menuId: string) {
-    return this.prisma.menu.delete({
-      where: { menuId },
-    });
-  }
+  return this.prisma.menu.delete({
+    where: { menuId },
+  });
+}
 }
