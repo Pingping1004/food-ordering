@@ -8,8 +8,17 @@ import * as express from 'express';
 import { json } from 'express';
 import * as cookieParser from 'cookie-parser'
 import * as dotenv from 'dotenv';
+import helmet from 'helmet'
+import compression from 'compression';
 
 dotenv.config()
+declare global {
+  namespace Express {
+    interface Request {
+      rawBody?: Buffer;
+    }
+  }
+}
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -21,114 +30,127 @@ async function bootstrap() {
     'http://localhost:3000',
     'https://4e448ea267fb.ngrok-free.app',
   ];
-    
-app.enableCors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  // origin: allowedOrigins,
-  credentials: true,
-  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-  allowedHeaders: [
-    'Content-Type',
-    'Accept',
-    'X-CSRF-Token',
-    'x-csrf-token',
-    'X-Csrf-Token',
-    'x-xsrf-token',
-    'Authorization'
-  ],
-  exposedHeaders: ['Set-Cookie'],
-  preflightContinue: false,
-  optionsSuccessStatus: 204,
-});
 
-app.use(cookieParser());
-app.set('trust proxy', 1);
-
-const APP_GLOBAL_SECRET = process.env.APP_GLOBAL_SECRET;
-if (!APP_GLOBAL_SECRET) {
-  if (process.env.NODE_ENV === 'production') {
-    process.exit(1);
-  }
-}
-app.set('secret', APP_GLOBAL_SECRET);
-
-const uploadsDir = join(process.cwd(), 'uploads');
-app.use('/uploads', express.static(uploadsDir));
-
-app.useGlobalPipes(
-  new ValidationPipe({
-    whitelist: true,
-    forbidNonWhitelisted: true,
-    transform: true,
-    transformOptions: {
-      enableImplicitConversion: true,
-    },
-    validateCustomDecorators: true,
-
-    exceptionFactory: (errors) => {
-      // This helper function recursively formats validation errors
-      const formatErrors = (validationErrors: any[]) => {
-        return validationErrors.map(error => {
-          if (error.children && error.children.length > 0) {
-            // If there are nested errors (like for orderMenus), recurse into them
-            return {
-              property: error.property,
-              children: formatErrors(error.children), // Recursively call formatErrors for children
-            };
-          }
-          // For individual errors, get the constraint messages
-          return {
-            property: error.property,
-            constraints: error.constraints, // Keep the original constraints object for debugging
-            messages: error.constraints ? Object.values(error.constraints) : [], // Get just the string messages
-          };
-        });
-      };
-
-      const detailedErrors = formatErrors(errors); // Call the recursive formatter
-
-      // Return a BadRequestException with the detailed, structured errors
-      return new BadRequestException({
-        statusCode: HttpStatus.BAD_REQUEST,
-        message: 'Validation failed', // A general message for the client
-        errors: detailedErrors,
-      });
-    },
-  }),
-);
-
-// IMPORTANT for webhooks: Configure body parser to get raw body
-app.use(
-  json({
-    verify: (req: any, res, buf) => {
-      if (req.originalUrl === '/payments/webhooks') {
-        req.rawBody = buf;
+  app.enableCors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
       }
     },
-    limit: '10mb',
-  }),
-);
+    // origin: allowedOrigins,
+    credentials: true,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: [
+      'Content-Type',
+      'Accept',
+      'X-CSRF-Token',
+      'x-csrf-token',
+      'X-Csrf-Token',
+      'x-xsrf-token',
+      'Authorization'
+    ],
+    exposedHeaders: ['Set-Cookie'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+  });
 
-app.useGlobalFilters(new HttpExceptionFilter());
+  app.use(cookieParser());
+  app.set('trust proxy', 1);
+  app.use(helmet());
+  app.use(compression());
 
-// Global unhandled exception/rejection handlers
-process.on('uncaughtException', (err) => {
-  logger.error('GLOBAL UNCAUGHT EXCEPTION:', err);
-  process.exit(1); // Exit to prevent process from becoming zombie
-});
+  function assertEnvVar(name: string): string {
+    const value = process.env[name];
+    if (!value) {
+      throw new Error(`Environment variable ${name} is missing.`);
+    }
+    return value;
+  }
 
-process.on('unhandledRejection', (reason, promise) => {
-  logger.error('GLOBAL UNHANDLED REJECTION at:', promise, 'reason:', reason);
-  process.exit(1);
-});
+  const APP_GLOBAL_SECRET = assertEnvVar('APP_GLOBAL_SECRET');
+  if (!APP_GLOBAL_SECRET) {
+    const errorMessage = '❌ CRITICAL: APP_GLOBAL_SECRET is missing. Cannot start the server.';
+    logger.error(errorMessage);
 
-const port = process.env.PORT || 4000;
-await app.listen(port);
+    setTimeout(() => {
+      process.exit(1);
+    }, 1000);
+  }
+  app.set('secret', APP_GLOBAL_SECRET);
+
+  const uploadsDir = join(process.cwd(), 'uploads');
+  app.use('/uploads', express.static(uploadsDir));
+
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
+      validateCustomDecorators: true,
+
+      exceptionFactory: (errors) => {
+        // This helper function recursively formats validation errors
+        const formatErrors = (validationErrors: any[]) => {
+          return validationErrors.map(error => {
+            if (error.children && error.children.length > 0) {
+              // If there are nested errors (like for orderMenus), recurse into them
+              return {
+                property: error.property,
+                children: formatErrors(error.children), // Recursively call formatErrors for children
+              };
+            }
+            // For individual errors, get the constraint messages
+            return {
+              property: error.property,
+              constraints: error.constraints, // Keep the original constraints object for debugging
+              messages: error.constraints ? Object.values(error.constraints) : [], // Get just the string messages
+            };
+          });
+        };
+
+        const detailedErrors = formatErrors(errors); // Call the recursive formatter
+
+        // Return a BadRequestException with the detailed, structured errors
+        return new BadRequestException({
+          statusCode: HttpStatus.BAD_REQUEST,
+          message: 'Validation failed', // A general message for the client
+          errors: detailedErrors,
+        });
+      },
+    }),
+  );
+
+  // IMPORTANT for webhooks: Configure body parser to get raw body
+  app.use(
+    json({
+      verify: (req: express.Request, res: express.Response, buf: Buffer) => {
+        if (req.originalUrl === process.env.WEBHOOK_PATH) {
+          req.rawBody = buf;
+        }
+      },
+      limit: '10mb',
+    }),
+  );
+
+  app.useGlobalFilters(new HttpExceptionFilter());
+
+  // Global unhandled exception/rejection handlers
+  process.on('uncaughtException', (err) => {
+    logger.error('GLOBAL UNCAUGHT EXCEPTION:', err);
+    process.exit(1); // Exit to prevent process from becoming zombie
+  });
+
+  process.on('unhandledRejection', (reason, promise) => {
+    logger.error('GLOBAL UNHANDLED REJECTION at:', promise, 'reason:', reason);
+    process.exit(1);
+  });
+
+  const port = process.env.PORT || 4000;
+  await app.listen(port);
 }
 bootstrap();
