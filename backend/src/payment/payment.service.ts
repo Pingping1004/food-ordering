@@ -40,7 +40,7 @@ export class PaymentService {
           metadata: {
             order_id: orderId,
           },
-          webhook_endpoints: ["https://39e5-124-120-1-65.ngrok-free.app/webhooks/omise"],
+          webhook_endpoints: ["https://4e448ea267fb.ngrok-free.app/webhooks/omise"],
           expires_at: expirationTime,
       };
 
@@ -55,14 +55,13 @@ export class PaymentService {
           currency: 'THB',
         };
       } else {
-        console.warn('Attempted to create charge with unhandled payment method type');
         throw new Error('Unsupported payment method type');
       }
 
       const charge = await this.omiseClient.charges.create(chargeOptions);
       return charge;
     } catch (error) {
-      console.error('Failed to create Payment charge: ', error.message);
+      this.logger.error('Failed to create Payment charge: ', error.message);
       throw new InternalServerErrorException('Failed to process payment');
     }
   }

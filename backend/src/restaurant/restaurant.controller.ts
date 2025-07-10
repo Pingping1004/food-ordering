@@ -8,6 +8,7 @@ import {
   ParseFilePipe,
   Req,
   UseGuards,
+  Logger,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer'; // Import diskStorage
@@ -28,6 +29,8 @@ import { CsrfGuard } from 'src/guards/csrf.guard';
 @Controller('restaurant')
 export class RestaurantController {
   constructor(private readonly restaurantService: RestaurantService) { }
+
+  private readonly logger = new Logger('RestaurantController'); 
   @Post()
   @UseInterceptors(FileInterceptor('restaurantImg', {
     storage: diskStorage({
@@ -45,7 +48,6 @@ export class RestaurantController {
     ) file?: Express.Multer.File
   ) {
     const userId = req.user.userId;
-    console.log('Controller: DTO (createRestaurantDto):', createRestaurantDto);
     return this.restaurantService.createRestaurant(createRestaurantDto, userId, file);
   }
 
@@ -89,15 +91,14 @@ export class RestaurantController {
       }
       return await this.restaurantService.updateRestaurant(restaurantId, dataToUpdate);
     } catch (error) {
-      console.error(`Failed to update restaurant ${restaurantId} in controller:`, error);
+      this.logger.error(`Failed to update restaurant ${restaurantId} in controller:`, error);
 
       // --- 4. Clean up Uploaded File on Error ---
       if (uploadedFilePath) {
         try {
           await fs.unlink(uploadedFilePath);
-          console.log(`Controller: Successfully deleted temporary uploaded file: ${uploadedFilePath}`);
         } catch (fileDeleteError) {
-          console.error(`Controller: Failed to delete uploaded file ${uploadedFilePath}:`, fileDeleteError);
+          this.logger.error(`Controller: Failed to delete uploaded file ${uploadedFilePath}:`, fileDeleteError);
         }
       }
       // Re-throw the error so NestJS's global exception filters can handle it

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
 import { PrismaService } from 'prisma/prisma.service';
 import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
@@ -13,6 +13,8 @@ export class RestaurantService {
     private readonly orderService: OrderService,
     private readonly userService: UserService,
   ) { }
+
+  private readonly logger = new Logger('RestaurantService');
 
   async createRestaurant(
     createRestaurantDto: CreateRestaurantDto,
@@ -59,13 +61,11 @@ export class RestaurantService {
       });
 
       const updateDto: UpdateUserDto = { role: 'cooker' };
-      const updateUserRole = await this.userService.updateUser(userId, updateDto);
+      await this.userService.updateUser(userId, updateDto);
 
-      console.log('Update user after register restaurant to role: ', updateUserRole.role);
-      console.log("Created restaurant in service : ", result);
       return { message: 'File uploaded successfully', result, fileInfo: file };
     } catch (error) {
-      console.error('Failed to create restaurant service: ', error);
+      this.logger.error('Failed to create restaurant service: ', error);
       throw error;
     }
   }
@@ -144,7 +144,6 @@ export class RestaurantService {
     const currentTimeString = `${hours}:${minutes}`; // e.g., "14:30"
 
     const allRestaurants = await this.findAllRestaurant();
-    console.log('All restaurants: ', allRestaurants);
     const openRestaurant = allRestaurants.map((restaurant) => {
       const isScheduledOpenDay = this.isTodayOpen(restaurant.openDate);
       const isScheduledOpenTime = this.isTimeBetween(
@@ -206,7 +205,6 @@ export class RestaurantService {
   async updateIsTemporailyClose(restaurantId: string, updateRestaurantDto: UpdateRestaurantDto) {
     try {
       await this.findRestaurant(restaurantId);
-      console.log('Update temporarily close status: ', updateRestaurantDto.isTemporarilyClosed);
 
       const result = await this.prisma.restaurant.update({
         where: { restaurantId },
@@ -215,7 +213,7 @@ export class RestaurantService {
 
       return { result, message: `Successfully update temporarilyClose status of restaurant ${result.name} to be ${result.isTemporarilyClosed}` };
     } catch (error) {
-      console.error('Failed to update temporary close status of restaurant', error.message, error.stack);
+      this.logger.error('Failed to update temporary close status of restaurant', error.message, error.stack);
     }
   }
 

@@ -20,7 +20,7 @@ async function bootstrap() {
     'http://localhost:3000',
     'https://4e448ea267fb.ngrok-free.app',
   ];
-
+    
 app.enableCors({
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) {
@@ -52,10 +52,7 @@ app.set('trust proxy', 1);
 const APP_GLOBAL_SECRET = process.env.APP_GLOBAL_SECRET;
 if (!APP_GLOBAL_SECRET) {
   if (process.env.NODE_ENV === 'production') {
-    console.error('CRITICAL ERROR: APP_GLOBAL_SECRET is not defined in production environment!');
     process.exit(1);
-  } else {
-    console.warn('WARNING: APP_GLOBAL_SECRET is not defined. Using a fallback for development only.');
   }
 }
 app.set('secret', APP_GLOBAL_SECRET);
@@ -74,8 +71,6 @@ app.useGlobalPipes(
     validateCustomDecorators: true,
 
     exceptionFactory: (errors) => {
-      console.log('----- Raw errors received by exceptionFactory -----');
-      console.dir(errors, { depth: null, colors: true });
       // This helper function recursively formats validation errors
       const formatErrors = (validationErrors: any[]) => {
         return validationErrors.map(error => {
@@ -123,18 +118,16 @@ app.useGlobalFilters(new HttpExceptionFilter());
 
 // Global unhandled exception/rejection handlers
 process.on('uncaughtException', (err) => {
-  console.error('GLOBAL UNCAUGHT EXCEPTION:', err);
+  this.logger.error('GLOBAL UNCAUGHT EXCEPTION:', err);
   process.exit(1); // Exit to prevent process from becoming zombie
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('GLOBAL UNHANDLED REJECTION at:', promise, 'reason:', reason);
+  this.logger.error('GLOBAL UNHANDLED REJECTION at:', promise, 'reason:', reason);
   process.exit(1);
 });
 
 const port = process.env.PORT || 4000;
-
-console.log('NESTJS is running on port: ', port);
 await app.listen(port);
 }
 bootstrap();

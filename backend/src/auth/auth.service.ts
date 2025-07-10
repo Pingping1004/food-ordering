@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
 import * as bcrypt from 'bcrypt';
@@ -34,6 +34,8 @@ export class AuthService {
     private readonly refreshTokenService: RefreshTokenService,
     private readonly csrfTokenService: CsrfTokenService,
   ) { }
+
+  private readonly logger = new Logger('AuthService');
 
   async validateUser(email: string, password: string): Promise<Partial<User> | null> {
     const user = await this.userService.findOneByEmail(email);
@@ -109,7 +111,6 @@ export class AuthService {
 
       if (storedToken.isUsed) {
         await this.refreshTokenService.invalidateAllUserRefreshTokens(payload.sub);
-        console.warn(`Refresh Token reuse detected for user ${payload.sub}. All tokens revoked.`);
         throw new UnauthorizedException('Compromised token detected. Please log in again.');
       }
 
@@ -142,7 +143,7 @@ export class AuthService {
         }
       };
     } catch (error) {
-      console.error('Refresh token verification failed:', error);
+      this.logger.error('Refresh token verification failed:', error);
       throw new UnauthorizedException('Invalid refresh token');
     }
   }

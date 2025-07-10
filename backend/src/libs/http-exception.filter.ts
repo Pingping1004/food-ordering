@@ -4,24 +4,20 @@ import {
   ArgumentsHost,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 
 @Catch() // Catch ALL exceptions
 export class HttpExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger('ExceptionFilter');
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse();
     const request = ctx.getRequest();
 
-    const isProd = process.env.NODE_ENV === 'production';
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message = 'Internal server error';
     let errors: string[] | object | null = null; // To hold validation messages
-
-    if (isProd && status === 500) {
-      message = 'Internal server error';
-      errors = null;
-    }
 
     const allowedOrigins = [
       'https://localhost:8000',
@@ -43,8 +39,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
       const exceptionResponse = exception.getResponse();
 
       // Log the full exception object for debugging
-      console.error(`HttpException Caught:`, exception);
-      console.error(`Exception Response:`, exceptionResponse);
+      this.logger.error(`HttpException Caught:`, exception);
+      this.logger.error(`Exception Response:`, exceptionResponse);
 
       // Handle ValidationPipe's BadRequestException format (often an array of strings)
       if (typeof exceptionResponse === 'object' && exceptionResponse !== null && 'message' in exceptionResponse) {
@@ -62,13 +58,13 @@ export class HttpExceptionFilter implements ExceptionFilter {
       }
     } else if (exception instanceof Error) {
       // Catch generic JavaScript Errors (e.g., TypeError, ReferenceError)
-      console.error('Unhandled JavaScript Error Caught by Filter:', exception);
+      this.logger.error('Unhandled JavaScript Error Caught by Filter:', exception);
       message = exception.message || 'An unexpected error occurred.';
       errors = [message];
       status = HttpStatus.INTERNAL_SERVER_ERROR; // Default to 500 for generic errors
     } else {
       // Catch truly unknown exceptions
-      console.error('Truly Unknown Exception Caught by Filter:', exception);
+      this.logger.error('Truly Unknown Exception Caught by Filter:', exception);
       message = 'An unknown error occurred.';
       status = HttpStatus.INTERNAL_SERVER_ERROR;
     }

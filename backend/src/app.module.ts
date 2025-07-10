@@ -37,7 +37,7 @@ import { CsrfTokenService } from './csrf/csrf.service';
 import { CsrfModule } from './csrf/csrf.module';
 import { memoryStorage } from 'multer';
 import { RefreshTokenService } from './refreshToken/refresh-token.service';
-import { CorsHeadersMiddleware } from './cors.middleware';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
   imports: [
@@ -49,7 +49,14 @@ import { CorsHeadersMiddleware } from './cors.middleware';
     UploadModule,
     CsrfModule,
     RefreshTokenModule,
-
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: 60000,
+          limit: 10,
+        },
+      ],
+    }),
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],

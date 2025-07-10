@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, Res, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, Res, Req, Logger } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
@@ -16,6 +16,8 @@ import { CsrfGuard } from 'src/guards/csrf.guard';
 export class OrderController {
   constructor(private readonly orderService: OrderService) { }
 
+  private readonly logger = new Logger('OrderController')
+
   @Post('omise')
   async createOrder(@Body() createOrderDto: CreateOrderDto, @Req() req: Request & { user: User}) {
     try {
@@ -24,7 +26,6 @@ export class OrderController {
       if (!userId) throw new Error('User ID is required to create an order');
 
       const result = await this.orderService.createOrderWithPayment(createOrderDto, userId);
-      console.log('Result object: ', result);
 
       return {
         message: 'Order created and payment initiated successfully',
@@ -35,7 +36,7 @@ export class OrderController {
         qrDownloadUri: result.qrDownloadUri,
       };
     } catch (error) {
-      console.error('Error in createOrder controller function: ', error.message, error.stack);
+      this.logger.error('Error in createOrder controller function: ', error.message, error.stack);
       throw error;
     }
   }
@@ -47,7 +48,7 @@ export class OrderController {
     @Res() res: Response
   ) {
     if (!chargeId) {
-      console.error('Omise return_uri called without charge_id');
+      this.logger.error('Omise return_uri called without charge_id');
       return res.redirect(`${process.env.NGROK_FRONTEND_URL}/user/order/done/error`);
     }
 
@@ -60,14 +61,14 @@ export class OrderController {
       const retrievedCharge = await omise.charges.retrieve(chargeId);
 
       if (retrievedCharge.paid) {
-        console.log(`Omise charge ${chargeId} for order ${orderId} is paid successfully.`);
+        this.logger.log(`Omise charge ${chargeId} for order ${orderId} is paid successfully.`);
         // res.redirect(`${process.env.NGROK_FRONTEND_URL}/user/order/done`)
       } else {
-        console.log(`Omise charge ${chargeId} not paid. Status: ${retrievedCharge.status}. Failure: ${retrievedCharge.failure_message}`);
+        this.logger.log(`Omise charge ${chargeId} not paid. Status: ${retrievedCharge.status}. Failure: ${retrievedCharge.failure_message}`);
         // res.redirect(`${process.env.NGROK_FRONTEND_URL}/user/order/done/${orderId}?status=failed`);
       }
     } catch (error) {
-      console.error('Error handling Omise return: ', error);
+      this.logger.error('Error handling Omise return: ', error);
       // res.redirect(`${process.env.NGROK_FRONTEND_URL}/user/order/done/${orderId}?status=error&message=${error.message}`);
     }
   }

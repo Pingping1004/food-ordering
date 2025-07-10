@@ -36,7 +36,6 @@ export class CsrfGuard implements CanActivate {
 
     // 1. Get CSRF token from the custom header (sent by frontend)
     const csrfHeader = request.header('x-csrf-token') as string;
-    console.log('CSRF Header:', csrfHeader);
     if (!csrfHeader) {
       throw new ForbiddenException({
         statusCode: HttpStatus.FORBIDDEN,
@@ -47,7 +46,6 @@ export class CsrfGuard implements CanActivate {
 
     // 2. Get CSRF token from the cookie (set by server earlier)
     const csrfCookie = request.cookies['XSRF-TOKEN'] as string;
-    console.log('REQUEST Cookies:', request.cookies);
     if (!csrfCookie) {
       throw new ForbiddenException({
         statusCode: HttpStatus.FORBIDDEN,

@@ -6,7 +6,8 @@ import {
   Res,
   BadRequestException,
   InternalServerErrorException,
-  UseGuards
+  UseGuards,
+  Logger
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
@@ -23,6 +24,8 @@ export class UploadController {
     constructor(
         private readonly uploadService: UploadService
     ) {}
+
+    private readonly logger = new Logger('UploadController');
 
     @Post('temp-images')
     @UseInterceptors(
@@ -47,13 +50,11 @@ export class UploadController {
             throw new BadRequestException('No image files provided for upload');
         }
 
-        console.log(`Received ${files.length} images for temporary upload`);
-
         try {
             const uploadedInfos: UploadImageInfo[] = await this.uploadService.saveTempImages(files);
             res.status(200).json(uploadedInfos);
         } catch (error) {
-            console.error(`Error during temporary image uplaod: ${error.message}`, error.stack);
+            this.logger.error(`Error during temporary image uplaod: ${error.message}`, error.stack);
             if (error instanceof BadRequestException) {
                 throw error;
             }

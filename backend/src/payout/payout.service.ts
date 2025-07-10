@@ -32,7 +32,6 @@ export class PayoutService {
       restaurantId: order.restaurantId,
     };
 
-    console.log('Created new payout service: ', newPayout);
     const result = await this.prisma.payout.create({
       data: newPayout,
     });
@@ -94,7 +93,7 @@ export class PayoutService {
   private async getAllRevenue() {
     const payouts = await this.prisma.payout.findMany();
     const allRevenue = payouts.reduce((total, store) => total + store.platformFee, 0);
-    console.log('This is all platform revenue: ', allRevenue);
+    return allRevenue;
   }
 
   update(id: number, updatePayoutDto: UpdatePayoutDto) {

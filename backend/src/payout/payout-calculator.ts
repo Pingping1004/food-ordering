@@ -44,23 +44,6 @@ export function calculatePayout(totalPrice: number): PayoutCalculationType {
     const finalPlatformNetEarning = platformNetEarning.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber();
     const finalUserPaidAmount = userPaidAmountDecimal.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber(); // Ensure consistent rounding for total
 
-    console.log('User Paid (Total Revenue): ', finalUserPaidAmount);
-    console.log('Gross Platform Commission: ', finalGrossPlatformCommission);
-    console.log('Transaction Fee + 7% VAT): ', finalTotalTransactionFee);
-    console.log('Restaurant Net Earning: ', finalRestaurantEarning);
-    console.log('Platform Net Earning (after Transaction Fee): ', finalPlatformNetEarning);
-
-    // Verification: Sum of all components should equal the total user paid amount
-    const verificationSum = new Decimal(finalRestaurantEarning)
-        .plus(finalPlatformNetEarning)
-        .plus(finalTotalTransactionFee)
-        .toNumber();
-    console.log('Verification (restaurant + platform_net + tx_fee):', verificationSum);
-    if (Math.abs(verificationSum - finalUserPaidAmount) > 0.01) {
-        console.warn('Payout sum does not exactly match total user paid amount after rounding!');
-    }
-
-
     return {
         totalRevenue: finalUserPaidAmount,
         restaurantEarning: finalRestaurantEarning,

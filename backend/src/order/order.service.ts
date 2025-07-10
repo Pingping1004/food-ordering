@@ -7,6 +7,7 @@ import {
   forwardRef,
   Inject,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { CreateOrderDto, CreateOrderMenusDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
@@ -24,6 +25,8 @@ export class OrderService {
     @Inject(forwardRef(() => PayoutService))
     private readonly payoutService: PayoutService,
   ) { }
+
+  private readonly logger = new Logger('OrderService');
 
   private readonly statusTransitions = {
     [OrderStatus.receive]: OrderStatus.cooking,
@@ -164,7 +167,7 @@ export class OrderService {
           qrDownloadUri: charge.source?.scannable_code?.image?.download_uri || null,
         };
       } catch (paymentError) {
-        console.error('Error initiating payment with Omise: ', paymentError.message, paymentError.stack);
+        this.logger.error('Error initiating payment with Omise: ', paymentError.message, paymentError.stack);
 
         await tx.order.update({
           where: { orderId: order.orderId },
@@ -185,23 +188,17 @@ export class OrderService {
       where: { omiseChargeId: omiseChargeId }
     });
 
-    if (!order) {
-      console.warn('Order not found for Omise charge ID: ', omiseChargeId);
-      return;
-    }
+    if (!order) return;
 
     let newIsPaidStatus: IsPaid;
 
     if (omiseStatus === 'successful') {
       newIsPaidStatus = IsPaid.paid;
-      console.log(`Order ${order.orderId} payment status updated to PAID via webhook.`);
 
       await this.payoutService.createPayout(order.orderId);
     } else if (omiseStatus === 'failed' || omiseStatus === 'expired') {
       newIsPaidStatus = IsPaid.rejected;
-      console.warn(`Order ${order.orderId} payment status updated to FAILED via webhook.`);
     } else {
-      console.log(`Order ${order.orderId}: Received Omise status "${omiseStatus}", no change to isPaid.`);
       newIsPaidStatus = order.isPaid;
     }
 
@@ -278,16 +275,13 @@ export class OrderService {
 
       return orders;
     } catch (error) {
-      console.error('Error finding weekly orders: ', error.message, error.stack);
+      this.logger.error('Error finding weekly orders: ', error.message, error.stack);
       throw new InternalServerErrorException('Finding weekly orders failed. Please try again.');
     }
   }
 
   async updateOrder(orderId: string, updateOrderDto: UpdateOrderDto) {
     const order = await this.findOneOrder(orderId);
-
-    console.log('Order.RestaurantId: ', order.restaurantId);
-    console.log('UpdatedOrderDto.RestaurantId: ', updateOrderDto.restaurantId);
 
     if (order.restaurantId !== updateOrderDto.restaurantId) {
       throw new ForbiddenException('You do not have permission to update this order.');
@@ -312,8 +306,6 @@ export class OrderService {
 
     let updatedDeliverAt = order.deliverAt;
     updatedDeliverAt.setMinutes(updatedDeliverAt.getMinutes() + 10);
-    console.log(`Old deliverAt: ${order.deliverAt.toISOString()}`);
-    console.log(`New deliverAt: ${updatedDeliverAt.toISOString()}`);
 
     const result = await this.prisma.order.update({
       where: { orderId },

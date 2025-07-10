@@ -1,4 +1,4 @@
-import { Injectable, Inject, forwardRef, NotFoundException, ConflictException, InternalServerErrorException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, Inject, forwardRef, NotFoundException, ConflictException, InternalServerErrorException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
 import { CreateMenuDto, CsvMenuItemData } from './dto/create-menu.dto';
 import { UpdateMenuDto } from './dto/update-menu.dto';
 import { PrismaService } from 'prisma/prisma.service';
@@ -34,7 +34,9 @@ export class MenuService {
     @Inject(forwardRef(() => RestaurantService))
     private readonly restaurantService: RestaurantService,
     private readonly uploadService: UploadService,
-  ) { }
+  ) {}
+
+  private readonly logger = new Logger('menuService')
 
   async createSingleMenu(
     createMenuDto: CreateMenuDto,
@@ -58,7 +60,7 @@ export class MenuService {
 
       return result;
     } catch (error) {
-      console.error(`Failed to create menu ${createMenuDto.name}:`, error);
+      this.logger.error(`Failed to create menu ${createMenuDto.name}:`, error);
       throw new InternalServerErrorException('Failed to create menu: ' + error.message);
     }
   }
@@ -147,7 +149,7 @@ export class MenuService {
 
         } catch (itemError: any) {
           // Log specific errors for individual items and collect them
-          console.error(
+          this.logger.error(
             `Failed to create menu item "${dto.name}" (Original file: ${dto.originalFileName || 'N/A'}): `,
             itemError.message,
             itemError.stack // Include stack trace for better debugging of individual failures
@@ -166,12 +168,9 @@ export class MenuService {
       if (totalFailed > 0) {
         const failedNames = failedCreations.map(f => f.item.name).join(', ');
         responseMessage += `Created: ${totalCreated}, Failed: ${totalFailed}. Failed items: ${failedNames}. Please check details for errors.`;
-        console.warn(`Partial bulk menu creation for restaurant ${restaurantId}. Failed items: ${failedNames}`);
       } else {
         responseMessage += `All ${totalCreated} menus were successfully created.`;
       }
-
-      console.log(responseMessage); // Log final summary
 
       return {
         message: responseMessage,
@@ -184,7 +183,7 @@ export class MenuService {
 
     } catch (error: any) {
       // --- 6. Top-Level Error Handling ---
-      console.error(`An unexpected error occurred during bulk menu creation for restaurant ${restaurantId}: `, error);
+      this.logger.error(`An unexpected error occurred during bulk menu creation for restaurant ${restaurantId}: `, error);
 
       // Re-throw specific, client-facing exceptions (e.g., from initial validations)
       if (error instanceof BadRequestException || error instanceof ConflictException) {
@@ -250,11 +249,9 @@ export class MenuService {
         };
       });
 
-      console.log('Menu with display price: ', menusWithCalculatedPrices);
-
       return menusWithCalculatedPrices;
     } catch (error) {
-      console.error('An error occurred while fetching restaurant menus with display prices:', error);
+      this.logger.error('An error occurred while fetching restaurant menus with display prices:', error);
       throw new InternalServerErrorException('ค้นหาเมนูขัดข้อง');
     }
   }
@@ -364,13 +361,13 @@ export class MenuService {
 //     }
 
 //     const results = await Promise.all(updateMenuLists);
-//     console.log(`Bulk menus update successful for restaurant ${restaurantId}. Updated menus: `, results.map(m => m.name));
+//     this.logger.log(`Bulk menus update successful for restaurant ${restaurantId}. Updated menus: `, results.map(m => m.name));
 //     return {
 //       message: `Menus updated successfully for restaurant ${restaurantId}`,
 //       results: results
 //     };
 //   } catch (error: any) {
-//     console.error(`Failed to update menus for ${restaurantId}: `, error);
+//     this.logger.error(`Failed to update menus for ${restaurantId}: `, error);
 //     throw error;
 //   }
 // }
@@ -425,7 +422,7 @@ async updateMenu(
 
     return { result, message: `Sucessfully update availability of menu ${result.name} to be ${result.isAvailable}` };
   } catch (error) {
-    console.error(`An unexpected error occurred during update menu isavailable`, error);
+    this.logger.error(`An unexpected error occurred during update menu isavailable`, error);
     throw new InternalServerErrorException('Failed to update isAvailable state of menu');
   }
 }

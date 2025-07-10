@@ -1,27 +1,22 @@
 // src/common/utils/csrf.util.ts
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
 
 @Injectable()
 export class CsrfTokenService {
   private readonly CSRF_SECRET: string;
+  private readonly logger = new Logger();
 
   constructor() {
     const envSecret = process.env.CSRF_SECRET;
 
     if (!envSecret) {
       if (process.env.NODE_ENV === 'production') {
-        console.error('CRITICAL ERROR: CSRF_SECRET is not defined in production environment!');
+        this.logger.error('CRITICAL ERROR: CSRF_SECRET is not defined in production environment!');
         process.exit(1); // Exit process in production if critical secret is missing
-      } else {
-        console.warn('WARNING: CSRF_SECRET is not defined. Using a fallback for development only.');
       }
     } else {
       this.CSRF_SECRET = envSecret;
-    }
-
-    if (this.CSRF_SECRET.length < 32 && process.env.NODE_ENV === 'production') {
-      console.warn('SECURITY WARNING: CSRF_SECRET is too short. It should be at least 32 characters for production.');
     }
   }
 

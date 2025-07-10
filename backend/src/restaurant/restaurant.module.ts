@@ -1,11 +1,10 @@
-import { forwardRef, Module, OnModuleInit } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { RestaurantController } from './restaurant.controller';
 import { RestaurantService } from './restaurant.service';
 import { PrismaService } from 'prisma/prisma.service';
 import { MulterModule } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { OrderModule } from 'src/order/order.module';
-import { MenuModule } from 'src/menu/menu.module';
 import { UserModule } from 'src/user/user.module';
 import { CsrfModule } from 'src/csrf/csrf.module';
 

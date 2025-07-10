@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Req, UseGuards, UploadedFile, UploadedFiles, BadRequestException, UseInterceptors, NotFoundException, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Req, UseGuards, UploadedFile, UploadedFiles, BadRequestException, UseInterceptors, NotFoundException, Query, Logger } from '@nestjs/common';
 import { MenuService, MenusWithDisplayPrices } from './menu.service';
 import { CreateBulkMenusJsonPayload, CreateMenuDto } from './dto/create-menu.dto';
 import { UpdateMenuDto } from './dto/update-menu.dto';
@@ -18,7 +18,10 @@ import { Roles } from 'src/decorators/role.decorator';
 @Roles([Role.admin, Role.cooker])
 export class MenuController {
   constructor(
-    private readonly menuService: MenuService) { }
+    private readonly menuService: MenuService
+  ) { }
+
+  private readonly logger = new Logger('MenuService')
 
   @Post('single')
   @UseInterceptors(
@@ -36,7 +39,6 @@ export class MenuController {
     @Body() createMenuDto: CreateMenuDto,
     @UploadedFile() file?: Express.Multer.File
   ) {
-    console.log('Request object: ', createMenuDto);
     if (!createMenuDto.restaurantId) throw new NotFoundException('RestaurantId not found in create mneu controller');
 
     let uploadedFilePath: string | undefined;
@@ -48,46 +50,38 @@ export class MenuController {
       }
 
       const result = await this.menuService.createSingleMenu(menuData);
-
-      console.log('Create menu in controller: ', result);
       return result;
     } catch (error) {
       if (uploadedFilePath) {
         try {
           await fs.unlink(uploadedFilePath);
-          console.log(`Controller: Successfully deleted temporary uploaded file: ${uploadedFilePath}`)
         } catch (fileDeleteError) {
-          console.error(`Controller: Failed to delete uploaded file ${uploadedFilePath}:`, fileDeleteError)
+          this.logger.error(`Controller: Failed to delete uploaded file ${uploadedFilePath}:`, fileDeleteError)
         }
       }
 
-      console.error('Create menu controller failed: ', error);
+      this.logger.error('Create menu controller failed: ', error);
       throw error;
     }
   }
 
   @Post('bulk')
   async createBulkMenus(
-    @Body() payload: CreateBulkMenusJsonPayload, // <-- Using the correct DTO
+    @Body() payload: CreateBulkMenusJsonPayload,
   ) {
-    console.log('Received JSON payload for bulk create:', payload); // This log is correct
 
-    // --- THE FIX IS HERE ---
-    // Change the check to refer to 'createMenuDto'
     if (!payload.createMenuDto || !Array.isArray(payload.createMenuDto) || payload.createMenuDto.length === 0) {
-      // Also, update the message to be more specific to 'createMenuDto'
       throw new BadRequestException('The request body must contain a non-empty "createMenuDto" array.');
     }
 
-    // Now, pass the correct data to your service
     try {
-      const result = await this.menuService.createBulkMenus( // Assuming your service method name
+      const result = await this.menuService.createBulkMenus(
         payload.restaurantId,
-        payload.createMenuDto, // <-- Pass the correct array
+        payload.createMenuDto,
       );
-      return result; // Return the result from the service
+      return result;
     } catch (error) {
-      console.error('Bulk menu creation failed in controller: ', error);
+      this.logger.error('Bulk menu creation failed in controller: ', error);
       throw error;
     }
   }
@@ -151,16 +145,14 @@ export class MenuController {
         [menuData],
       );
 
-      console.log('Single menu update successful in controller: ', result);
       return result;
     } catch (error) {
-      console.error('Single menu update failed in controller: ', error);
+      this.logger.error('Single menu update failed in controller: ', error);
       if (uploadedFilePath) {
         try {
           await fs.unlink(uploadedFilePath);
-          console.log(`Controller: Successfully deleted temporary uploaded file: ${uploadedFilePath}`);
         } catch (fileDeleteError) {
-          console.error(`Controller: Failed to delete uploaded file ${uploadedFilePath}:`, fileDeleteError);
+          this.logger.error(`Controller: Failed to delete uploaded file ${uploadedFilePath}:`, fileDeleteError);
         }
       }
       throw error;
@@ -193,7 +185,7 @@ export class MenuController {
           throw new BadRequestException('UpdateMenuDto field must be a JSON array');
         }
       } catch (parseError) {
-        console.error('Failed to parse updateMenuDto:', parseError);
+        this.logger.error('Failed to parse updateMenuDto:', parseError);
         throw new BadRequestException('Invalida JSON format for updateMenuDto field');
       }
 
@@ -214,16 +206,14 @@ export class MenuController {
         // files,
       );
 
-      console.log('Bulk menu update successfully in controller: ', result);
       return result;
     } catch (error) {
-      console.error('Bulk menu update failed in controller: ', error);
+      this.logger.error('Bulk menu update failed in controller: ', error);
       await Promise.all(uploadedFilePaths.map(async (filePath) => {
         try {
           await fs.unlink(filePath);
-          console.log(`Controller: Successfully deleted temporary uploaded file: ${filePath}`);
         } catch (fileDeleteError) {
-          console.error(`Controller: Failed to delete uploaded file ${filePath}:`, fileDeleteError);
+          this.logger.error(`Controller: Failed to delete uploaded file ${filePath}:`, fileDeleteError);
         }
       }));
       throw error;
