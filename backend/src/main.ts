@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe, BadRequestException, HttpStatus } from '@nestjs/common';
+import { ValidationPipe, BadRequestException, HttpStatus, Logger } from '@nestjs/common';
 import { HttpExceptionFilter } from './libs/http-exception.filter';
 import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
@@ -14,6 +14,7 @@ dotenv.config()
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.setGlobalPrefix('api');
+  const logger = new Logger('Bootstrap');
 
   const allowedOrigins = [
     'https://localhost:8000',
@@ -118,12 +119,12 @@ app.useGlobalFilters(new HttpExceptionFilter());
 
 // Global unhandled exception/rejection handlers
 process.on('uncaughtException', (err) => {
-  this.logger.error('GLOBAL UNCAUGHT EXCEPTION:', err);
+  logger.error('GLOBAL UNCAUGHT EXCEPTION:', err);
   process.exit(1); // Exit to prevent process from becoming zombie
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  this.logger.error('GLOBAL UNHANDLED REJECTION at:', promise, 'reason:', reason);
+  logger.error('GLOBAL UNHANDLED REJECTION at:', promise, 'reason:', reason);
   process.exit(1);
 });
 
