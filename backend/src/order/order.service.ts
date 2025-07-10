@@ -142,7 +142,7 @@ export class OrderService {
       let charge;
 
       try {
-        const frontendReturnUri = `http://localhost:3000/user/order/done/${order.orderId}`;
+        const frontendReturnUri = `${process.env.FRONTEND_BASE_URL}/order/done/${order.orderId}`;
 
         charge = await this.paymentService.createPromptPayCharge(
           calculatedTotalAmount,

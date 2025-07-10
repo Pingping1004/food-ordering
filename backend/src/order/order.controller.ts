@@ -49,7 +49,7 @@ export class OrderController {
   ) {
     if (!chargeId) {
       this.logger.error('Omise return_uri called without charge_id');
-      return res.redirect(`${process.env.NGROK_FRONTEND_URL}/user/order/done/error`);
+      return res.redirect(`${process.env.FRONTEND_BASE_URL}/user/order/failed/${orderId}`);
     }
 
     const omise = Omise({
@@ -62,14 +62,14 @@ export class OrderController {
 
       if (retrievedCharge.paid) {
         this.logger.log(`Omise charge ${chargeId} for order ${orderId} is paid successfully.`);
-        // res.redirect(`${process.env.NGROK_FRONTEND_URL}/user/order/done`)
+        res.redirect(`${process.env.FRONTEND_BASE_URL}/user/order/done/${orderId}`)
       } else {
         this.logger.log(`Omise charge ${chargeId} not paid. Status: ${retrievedCharge.status}. Failure: ${retrievedCharge.failure_message}`);
-        // res.redirect(`${process.env.NGROK_FRONTEND_URL}/user/order/done/${orderId}?status=failed`);
+        res.redirect(`${process.env.FRONTEND_BASE_URL}/user/order/failed/${orderId}`);
       }
     } catch (error) {
       this.logger.error('Error handling Omise return: ', error);
-      // res.redirect(`${process.env.NGROK_FRONTEND_URL}/user/order/done/${orderId}?status=error&message=${error.message}`);
+      res.redirect(`${process.env.FRONTEND_BASE_URL}/user/order/failed/${orderId}`);
     }
   }
 
