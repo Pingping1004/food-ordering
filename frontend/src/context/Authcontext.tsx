@@ -2,9 +2,9 @@
 
 import React, { createContext, useContext, useCallback, useState, useEffect, useRef } from "react";
 import { api } from "@/lib/api";
-import { AxiosHeaders } from "axios";
+import { AxiosResponse, AxiosRequestConfig } from "axios";
 import { useRouter } from "next/navigation";
-import { getAccessToken, getCsrfToken, setAccessToken, removeAccessToken, removeCsrfToken, setCsrfToken } from "@/lib/token";
+import { getCsrfToken, setAccessToken, removeAccessToken, removeCsrfToken, setCsrfToken } from "@/lib/token";
 
 export enum UserRole {
     user = 'user',
@@ -32,35 +32,46 @@ interface AuthContextType {
     logout: () => Promise<void>;
 }
 
+type FailedRequest = {
+    resolve: (value: AxiosResponse | PromiseLike<AxiosResponse>) => void;
+    reject: (reason?: unknown) => void;
+    config: AxiosRequestConfig;
+};
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [isAuth, setIsAuth] = useState(false);
+    const [loading, setLoading] = useState<boolean>(true);
+    const [isAuth, setIsAuth] = useState<boolean>(false);
     const [accessTokenValue, setAccessTokenValue] = useState<string | null>(null);
     const router = useRouter();
 
     const isRefreshing = useRef(false);
     const alertShowRef = useRef(false);
-    const failedQueue = useRef<Array<{ resolve: (value?: any) => void; reject: (reason?: any) => void; config: any }>>([]);
+    const failedQueue = useRef<FailedRequest[]>([]);
 
-    const processQueue = useCallback((error: Error | null, token: string | null = null) => {
-        failedQueue.current.forEach(prom => {
-            if (error) {
-                prom.reject(error);
-            } else if (token) {
-                if (!prom.config.headers) {
-                    prom.config.headers = new AxiosHeaders();
-                } else if (!(prom.config.headers instanceof AxiosHeaders)) {
-                    prom.config.headers = AxiosHeaders.from(prom.config.headers);
+    const processQueue = useCallback(
+        (error: Error | null, token: string | null = null) => {
+            failedQueue.current.forEach((prom) => {
+                if (error) {
+                    prom.reject(error);
+                } else if (token) {
+                    // Ensure headers exist and are mutable
+                    prom.config.headers = {
+                        ...(prom.config.headers || {}),
+                        Authorization: `Bearer ${token}`,
+                    };
+
+                    prom.resolve(api(prom.config));
                 }
-                prom.config.headers['Authorization'] = `Bearer ${token}`;
-                prom.resolve(api(prom.config));
-            }
-        });
-        failedQueue.current = [];
-    }, []);
+            });
+
+            // Clear the queue
+            failedQueue.current = [];
+        },
+        []
+    );
 
     const fetchCsrfToken = useCallback(async () => {
         try {
@@ -130,14 +141,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setAccessToken(newAccessToken);
             setAccessTokenValue(newAccessToken)
             localStorage.setItem('accessToken', newAccessToken);
-            
+
             setIsAuth(true);
             setUser(userData as User);
 
             const csrfToken = getCsrfToken();
             if (!csrfToken) throw new Error('Fail to get csrf token');
             setCsrfToken(csrfToken);
-            
+
             const profileUser = await getProfile();
             if (profileUser) {
                 setUser(profileUser);
@@ -180,7 +191,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 config.withCredentials = true;
                 return config;
             },
-            (error: any) => {
+            (error) => {
                 return Promise.reject(error instanceof Error ? error : new Error(JSON.stringify(error)))
             }
         );
@@ -207,11 +218,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
                             originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
                             return api(originalRequest);
-                        } catch (refreshError: any) {
+                        } catch (refreshError: unknown) {
                             isRefreshing.current = false;
-                            processQueue(refreshError);
+
+                            const error =
+                                refreshError instanceof Error
+                                    ? refreshError
+                                    : new Error(typeof refreshError === 'string' ? refreshError : JSON.stringify(refreshError));
+
+                            processQueue(error);
                             await logout();
-                            return Promise.reject(refreshError instanceof Error ? refreshError : new Error(JSON.stringify(refreshError)));
+                            return Promise.reject(error);
                         }
                     } else {
                         return new Promise((resolve, reject) => {
@@ -245,13 +262,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 setUser(profileUser);
                 setIsAuth(true);
                 alertShowRef.current = false;
-            } catch (err: any) {
-                if (err.response?.status === 401 || err.response?.status === 403) {
-                    await logout(false);
-                    if (!alertShowRef.current) {
-                        alert('เซสชันหมดอายุ กรุณาล็อกอินใหม่อีกครั้ง');
-                        router.push('/login');
-                        alertShowRef.current = true;
+            } catch (err: unknown) {
+                if (
+                    typeof err === 'object' &&
+                    err !== null &&
+                    'response' in err &&
+                    err.response !== null &&
+                    typeof err.response === 'object' &&
+                    'status' in err.response
+                ) {
+                    const status = (err.response as { status?: number }).status;
+                    if (status === 401 || status === 403) {
+                        await logout(false);
+                        if (!alertShowRef.current) {
+                            alert('เซสชันหมดอายุ กรุณาล็อกอินใหม่อีกครั้ง');
+                            router.push('/login');
+                            alertShowRef.current = true;
+                        }
                     }
                 }
             } finally {

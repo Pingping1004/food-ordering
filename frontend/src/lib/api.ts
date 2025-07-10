@@ -1,4 +1,4 @@
-import axios, { AxiosRequestConfig, AxiosError, InternalAxiosRequestConfig } from "axios";
+import axios, { AxiosRequestConfig, AxiosError, InternalAxiosRequestConfig, AxiosResponse } from "axios";
 import { setAccessToken, getRefreshToken, setRefreshToken, clearTokens } from "./token";
 import Cookies from 'js-cookie';
 
@@ -11,7 +11,11 @@ export const api = axios.create({
 });
 
 let isRefreshing = false;
-let failedQueue: { resolve: (value?: any) => void; reject: (reason?: any) => void; config: AxiosRequestConfig }[] = [];
+let failedQueue: {
+  resolve: (value?: unknown) => void;
+  reject: (reason?: unknown) => void;
+  config: AxiosRequestConfig;
+}[] = [];
 
 // Function to process the queue of failed requests
 const processQueue = (error: AxiosError | null, token: string | null = null) => {
@@ -47,7 +51,7 @@ api.interceptors.request.use(
 
         return config;
     },
-    (error: any) => {
+    (error) => {
         return Promise.reject(error instanceof Error ? error : new Error(JSON.stringify(error)))
     }
 );
@@ -56,60 +60,70 @@ interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
     _retry?: boolean;
 }
 
-async function handleTokenRefresh(originalRequest: CustomAxiosRequestConfig): Promise<any> {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) {
-    clearTokens();
-    return Promise.reject(new Error("Missing refresh token"));
-  }
-
-  try {
-    const response = await axios.post('/auth/refresh', { refreshToken });
-    const { accessToken, refreshToken: newRefreshToken } = response.data;
-
-    setAccessToken(accessToken);
-    setRefreshToken(newRefreshToken);
-    processQueue(null, accessToken);
-
-    if (!originalRequest.headers) {
-      originalRequest.headers = new axios.AxiosHeaders();
-    } else if (!(originalRequest.headers instanceof axios.AxiosHeaders)) {
-      originalRequest.headers = axios.AxiosHeaders.from(originalRequest.headers);
+async function handleTokenRefresh(originalRequest: CustomAxiosRequestConfig): Promise<AxiosResponse> {
+    const refreshToken = getRefreshToken();
+    if (!refreshToken) {
+        clearTokens();
+        return Promise.reject(new Error("Missing refresh token"));
     }
 
-    originalRequest.headers['Authorization'] = `Bearer ${accessToken}`;
-    return api(originalRequest);
-  } catch (err: any) {
-    clearTokens();
-    processQueue(err);
-    return Promise.reject(err instanceof Error ? err : new Error(JSON.stringify(err)));
-  } finally {
-    isRefreshing = false;
-  }
+    try {
+        const response = await axios.post('/auth/refresh', { refreshToken });
+        const { accessToken, refreshToken: newRefreshToken } = response.data;
+
+        setAccessToken(accessToken);
+        setRefreshToken(newRefreshToken);
+        processQueue(null, accessToken);
+
+        if (!originalRequest.headers) {
+            originalRequest.headers = new axios.AxiosHeaders();
+        } else if (!(originalRequest.headers instanceof axios.AxiosHeaders)) {
+            originalRequest.headers = axios.AxiosHeaders.from(originalRequest.headers);
+        }
+
+        originalRequest.headers['Authorization'] = `Bearer ${accessToken}`;
+        return api(originalRequest);
+    } catch (err: unknown) {
+        clearTokens();
+
+        if (err && typeof err === 'object' && (err as AxiosError).isAxiosError) {
+            processQueue(err as AxiosError); // safe cast
+        } else {
+            processQueue(null); // or handle differently
+        }
+
+        return Promise.reject(
+            err instanceof Error
+                ? err
+                : new Error(typeof err === 'string' ? err : JSON.stringify(err))
+        );
+    } finally {
+        isRefreshing = false;
+    }
 }
 api.interceptors.response.use(
-  (res) => res,
-  async (error: AxiosError) => {
-    const originalRequest = error.config as CustomAxiosRequestConfig;
+    (res) => res,
+    async (error: AxiosError) => {
+        const originalRequest = error.config as CustomAxiosRequestConfig;
 
-    const isUnauthorized = error.response?.status === 401;
-    const hasNotRetried = originalRequest && !originalRequest._retry;
+        const isUnauthorized = error.response?.status === 401;
+        const hasNotRetried = originalRequest && !originalRequest._retry;
 
-    if (!isUnauthorized || !hasNotRetried) {
-      return Promise.reject(error);
+        if (!isUnauthorized || !hasNotRetried) {
+            return Promise.reject(error);
+        }
+
+        originalRequest._retry = true;
+
+        if (isRefreshing) {
+            return new Promise((resolve, reject) => {
+                failedQueue.push({ resolve, reject, config: originalRequest });
+            });
+        }
+
+        isRefreshing = true;
+        return handleTokenRefresh(originalRequest);
     }
-
-    originalRequest._retry = true;
-
-    if (isRefreshing) {
-      return new Promise((resolve, reject) => {
-        failedQueue.push({ resolve, reject, config: originalRequest });
-      });
-    }
-
-    isRefreshing = true;
-    return handleTokenRefresh(originalRequest);
-  }
 );
 
 export async function fetchCsrfToken(): Promise<void> {

@@ -32,8 +32,8 @@ export type RestaurantProfileProps = React.HTMLAttributes<HTMLDivElement> &
         restaurantImg: string;
         name: string;
         categories: RestaurantCategory[];
-        openTime: Date | string;
-        closeTime: Date | string;
+        // openTime: Date | string;
+        // closeTime: Date | string;
         isOpen: boolean;
     }
 
@@ -43,10 +43,9 @@ export const RestaurantProfile: React.FC<RestaurantProfileProps> = ({
     name,
     restaurantImg,
     categories,
-    children,
-    openTime,
-    closeTime,
     isOpen,
+    // openTime,
+    // closeTime,
     className,
     ...props
 
@@ -60,7 +59,7 @@ export const RestaurantProfile: React.FC<RestaurantProfileProps> = ({
             restaurantProfileVariant({ variant }),
             className
         )}
-            {...props}
+        {...props}
         >
             <div className="flex relative w-[163px] h-[163px] justify-center aspect-square">
                 <Image

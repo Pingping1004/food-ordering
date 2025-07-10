@@ -2,14 +2,14 @@ import { z } from "zod";
 
 export const createRestaurantSchema = z.object({
     restaurantImg: z
-    .any()
-    .refine(
-      (f) =>
-        f === undefined ||
+        .any()
+        .refine(
+            (f) =>
+                f === undefined ||
         (f instanceof FileList && (f.length === 0 || f.length === 1)),
-      { message: "Invalid file" }
-    )
-    .optional(),
+            { message: "Invalid file" }
+        )
+        .optional(),
     name: z.string({ message: 'กรุณาใส่ชื่อร้านอาหารด้วยตัวอักษร' }),
     openTime: z.string()
         .min(1, 'กรุณาเลือกเวลาเปิดทำการร้าน')
@@ -26,7 +26,7 @@ export const createRestaurantSchema = z.object({
                 const today = new Date();
                 today.setHours(hours, minutes, 0, 0);
                 return today;
-            } catch (e) {
+            } catch {
                 ctx.addIssue({
                     code: z.ZodIssueCode.custom,
                     message: 'ไม่สามารถแปลงเวลาได้',
@@ -51,7 +51,7 @@ export const createRestaurantSchema = z.object({
                 const today = new Date();
                 today.setHours(hours, minutes, 0, 0);
                 return today;
-            } catch (e) {
+            } catch {
                 ctx.addIssue({
                     code: z.ZodIssueCode.custom,
                     message: 'ไม่สามารถแปลงเวลาได้',

@@ -1,4 +1,5 @@
 /** @type {import('tailwindcss').Config} */
+import { twElements } from 'tw-elements';
 
 module.exports = {
     content: [
@@ -6,7 +7,7 @@ module.exports = {
         "./src/**/*.{js,ts,jsx,tsx,mdx}",
         "./node_modules/tw-elements/dist/js/**/*.js",
     ],
-    plugins: [require("tw-elements")],
+    plugins: [twElements],
     darkMode: "class",
     theme: {
         extend: {

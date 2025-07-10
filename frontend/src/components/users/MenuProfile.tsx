@@ -25,10 +25,10 @@ export type MenuProfileProps = React.HTMLAttributes<HTMLDivElement> &
         menuImg?: string;
         totalPrice?: number;
         sellPriceDisplay: number;
-        unitPrice: number;
-        maxDaily: number;
-        cookingTime: number;
-        isAvailable: boolean;
+        // unitPrice: number;
+        // maxDaily: number;
+        // cookingTime: number;
+        // isAvailable: boolean;
         restaurantId: string;
     }
 
@@ -38,14 +38,13 @@ export default function MenuProfile({
     className,
     name,
     menuImg,
-    unitPrice,
-    totalPrice,
+    // unitPrice, //
+    // totalPrice, //
     sellPriceDisplay,
-    maxDaily,
-    cookingTime,
-    isAvailable,
-    restaurantId,
-    children,
+    // maxDaily, //
+    // cookingTime, //
+    // isAvailable, //
+    restaurantId, //
     ...props
 }: MenuProfileProps) {
     const { getQuantity, addToCart, removeFromCart } = useCart();

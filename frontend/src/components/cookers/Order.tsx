@@ -68,14 +68,12 @@ export const Order = ({
     isPaid,
     isDelay = false,
     orderMenus = [],
-    details,
     className,
-    children,
     onDelayUpdate,
     onStatusUpdate,
     ...props
 }: OrderProps) => {
-    const [_currentStatus, setCurrentStatus] = useState(status);
+    const [, setCurrentStatus] = useState(status);
     const [isDelayed, setIsDelayed] = useState(isDelay);
     const [isUpdating, setIsUpdating] = useState(false);
 
@@ -85,19 +83,19 @@ export const Order = ({
     }, [status, isDelay]);
 
     const getNextButtonProps = (currentStatus: OrderStatus) => {
-    switch (currentStatus) {
-      case OrderStatus.receive:
-        return { text: 'เริ่มปรุงอาหาร', nextStatus: OrderStatus.cooking };
-      case OrderStatus.cooking:
-        return { text: 'พร้อมสำหรับจัดส่ง', nextStatus: OrderStatus.ready };
-      case OrderStatus.ready:
-        return { text: 'เสร็จสิ้น', nextStatus: OrderStatus.done }; // Text for marking as done
-      case OrderStatus.done:
-        return { text: 'ออเดอร์เสร็จสิ้น' }; // Text for marking as done
-      default: // Should ideally not be hit
-        return { text: 'สถานะไม่ทราบ', nextStatus: currentStatus };
-    }
-  };
+        switch (currentStatus) {
+        case OrderStatus.receive:
+            return { text: 'เริ่มปรุงอาหาร', nextStatus: OrderStatus.cooking };
+        case OrderStatus.cooking:
+            return { text: 'พร้อมสำหรับจัดส่ง', nextStatus: OrderStatus.ready };
+        case OrderStatus.ready:
+            return { text: 'เสร็จสิ้น', nextStatus: OrderStatus.done }; // Text for marking as done
+        case OrderStatus.done:
+            return { text: 'ออเดอร์เสร็จสิ้น' }; // Text for marking as done
+        default: // Should ideally not be hit
+            return { text: 'สถานะไม่ทราบ', nextStatus: currentStatus };
+        }
+    };
 
     const handleDelayOrder = async () => {
         if (isUpdating) return;
@@ -118,9 +116,8 @@ export const Order = ({
 
             alert(`เลื่อนเวลาจัดส่งออเดอร์ไป10นาทีสำเร็จ!`);
 
-        } catch (error: any) {
-            console.error('Error delaying order:', error);
-            alert(`Failed to delay order: ${error.message || 'Server error'}`);
+        } catch {
+            alert(`Failed to delay order`);
         } finally {
             setIsUpdating(false);
         }
@@ -136,9 +133,8 @@ export const Order = ({
             onStatusUpdate(updatedOrder.status);
 
             alert(`อัพเดทสถานะออเดอร์เป็น: ${updatedOrder.status}`);
-        } catch (error: any) {
-            console.error('Error delaying order:', error);
-            alert(`Failed to delay order: ${error.message || 'Server error'}`);
+        } catch {
+            alert(`Failed to delay order`);
         } finally {
             setIsUpdating(false);
         }

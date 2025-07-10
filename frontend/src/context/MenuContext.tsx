@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 import { RestaurantCategory } from "@/components/users/RestaurantProfile";
 
 export interface Restaurant {
-    [x: string]: any;
+    // [x: string]: any;
     restaurantId: string;
     name: string;
     image: string;
@@ -15,6 +15,7 @@ export interface Restaurant {
     openTime: string;
     closeTime: string;
     isOpen: boolean;
+    isActuallyOpen: boolean;
     isTemporarilyClosed: boolean;
 };
 
@@ -32,7 +33,7 @@ export interface Menu {
 }
 
 export interface MenuContextType {
-    restaurant: Restaurant;
+    restaurant: Omit<Restaurant, 'email'>;
     menus: Menu[] | null;
     setMenus: React.Dispatch<React.SetStateAction<Menu[] | null>>;
     loading: boolean;
@@ -51,8 +52,8 @@ export const useMenu = () => {
 export const MenuProvider = ({ children }: { children: React.ReactNode }) => {
     const params = useParams();
     const restaurantId = Array.isArray(params.restaurantId)
-    ? params.restaurantId[0]
-    : params.restaurantId;
+        ? params.restaurantId[0]
+        : params.restaurantId;
 
     const [restaurant, setRestaurant] = useState<Restaurant>({
         restaurantId: '',
@@ -63,6 +64,7 @@ export const MenuProvider = ({ children }: { children: React.ReactNode }) => {
         openTime: '',
         closeTime: '',
         isOpen: true,
+        isActuallyOpen: true,
         isTemporarilyClosed: false,
     });
     const [menus, setMenus] = useState<Menu[] | null>(null);

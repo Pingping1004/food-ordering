@@ -36,7 +36,6 @@ export interface UploadedImageInfo {
 interface BulkCreateMenuResult {
     message: string;
     createdMenus: ServerMenuItem[]; // Or whatever type your created menus have on the frontend
-    failedMenus: { item: any; error: string }[]; // Adjust 'any' to your CsvMenuItemData type
     totalAttempted: number;
     totalCreated: number;
     totalFailed: number;
@@ -50,7 +49,7 @@ export default function BulkAddMenuPage() {
 
     const [pageError, setPageError] = useState<string | null>(null); // Renamed to avoid conflict with form errors
     const [successMessage, setSuccessMessage] = useState<string | null>(null); // Renamed for consistency
-    const [_menuList, setMenuLists] = useState<ServerMenuItem[]>([]); // For displaying newly added menus
+    const [, setMenuLists] = useState<ServerMenuItem[]>([]); // For displaying newly added menus
 
     const {
         register,
@@ -79,7 +78,7 @@ export default function BulkAddMenuPage() {
     }, [menuImagePreviewUrls]);
 
     // Custom onChange handler for menu image files
-    const { onChange: rhfMenuImageFilesOnChange, ...menuImageFilesRegisterProps } = register('menuImgs');
+    const { onChange: rhfMenuImageFilesOnChange } = register('menuImgs');
     const handleMenuImageFilesChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         rhfMenuImageFilesOnChange(e as React.ChangeEvent<HTMLInputElement>); // Call RHF's handler
 
@@ -104,15 +103,15 @@ export default function BulkAddMenuPage() {
     }, [rhfMenuImageFilesOnChange, menuImagePreviewUrls]);
 
     // --- State for CSV File Preview and Parsed Data ---
-    const [_csvFileName, setCsvFileName] = useState<string | null>(null);
+    const [, setCsvFileName] = useState<string | null>(null);
     const [parsedCsvData, setParsedCsvData] = useState<CsvMenuItemSchemaType[] | null>(null);
     const [csvParseError, setCsvParseError] = useState<string | null>(null);
 
     // Custom onChange handler for CSV file
-    const { onChange: rhfCsvOnChange, ...csvRegisterProps } = register('csvFile');
+    const { onChange: rhfCsvOnChange } = register('csvFile');
 
-    const parseCsvRow = (row: any, index: number): { valid?: CsvMenuItemSchemaType, error?: string } => {
-        const trimmedRow: { [key: string]: any } = {};
+    const parseCsvRow = (row: Record<string, unknown>, index: number): { valid?: CsvMenuItemSchemaType, error?: string } => {
+        const trimmedRow: Record<string, unknown> = {};
         for (const key in row) {
             if (Object.hasOwn(row, key)) {
                 trimmedRow[key.trim()] = row[key];
@@ -131,7 +130,7 @@ export default function BulkAddMenuPage() {
     };
 
     const handlePapaParseComplete = (
-        results: Papa.ParseResult<any>,
+        results: Papa.ParseResult<Record<string, unknown>>,
         setParsedCsvData: (data: CsvMenuItemSchemaType[] | null) => void,
         setCsvParseError: (msg: string | null) => void,
         setSuccessMessage: (msg: string) => void
@@ -167,14 +166,14 @@ export default function BulkAddMenuPage() {
 
             setCsvFileName(file.name);
 
-            Papa.parse(file, {
+            Papa.parse<Record<string, unknown>>(file, {
                 header: true,
                 skipEmptyLines: true,
                 dynamicTyping: false,
                 complete: (results) =>
                     handlePapaParseComplete(results, setParsedCsvData, setCsvParseError, setSuccessMessage),
-                error: (error: any) => {
-                    setCsvParseError(`Failed to parse CSV: ${error.message}`);
+                error: () => {
+                    setCsvParseError(`Failed to parse CSV`);
                     setParsedCsvData(null);
                 },
             });
@@ -184,11 +183,11 @@ export default function BulkAddMenuPage() {
 
     const onError = (formErrors: typeof errors) => {
         const messages = Object.entries(formErrors)
-          .map(([field, error]) => `${field}: ${error?.message}`)
-          .join('\n');
+            .map(([field, error]) => `${field}: ${error?.message}`)
+            .join('\n');
 
         alert(`กรุณากรอกข้อมูลให้ถูกต้อง:\n\n${messages}`);
-      };
+    };
 
     const onSubmit = async (data: BulkUploadFormValues) => {
         if (!parsedCsvData || parsedCsvData.length === 0) {
@@ -269,16 +268,13 @@ export default function BulkAddMenuPage() {
             setParsedCsvData(null); // Clear parsed CSV data
             setCsvParseError(null); // Clear any CSV parsing errors
 
-        } catch (err: any) {
-            console.error("Bulk upload processing failed:", err);
-            // Display a user-friendly error message
-            setPageError(err.response?.data?.message || err.message || "An unexpected error occurred during bulk menu upload.");
+        } catch {
+            setPageError("An unexpected error occurred during bulk menu upload.");
         } finally {
             setLoading(false); // End loading state
         }
     };
 
-    // Handler for generating CSV template (remains largely the same)
     const handleGenerateCsvTemplate = useCallback(() => {
         if (uploadedImageMetadata.length === 0) {
             alert("Please upload images first to generate the CSV template.");

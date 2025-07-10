@@ -7,31 +7,29 @@ interface ToggleProps {
   disabled?: boolean;
   label: string;
   className?: string;
-  id?: string;
 }
 
 export function Toggle({
-  checked,
-  onCheckedChange,
-  disabled,
-  label,
-  className,
-  id,
-  ...props
+    checked,
+    onCheckedChange,
+    disabled,
+    label,
+    className,
+    ...props
 }: ToggleProps & Omit<React.ComponentPropsWithoutRef<typeof Switch>, 'checked' | 'onCheckedChange' | 'disabled'>) {
 
-  return (
-    <div className={`flex flex-col items-start ${className}`}>
-      <Label className="text-[10px] text-primary noto-sans-regular">
-        {label}
-      </Label>
-      <Switch
-        id="order-available"
-        checked={checked}
-        onCheckedChange={onCheckedChange}
-        disabled={disabled}
-        {...props}
-      />
-    </div>
-  );
+    return (
+        <div className={`flex flex-col items-start ${className}`}>
+            <Label className="text-[10px] text-primary noto-sans-regular">
+                {label}
+            </Label>
+            <Switch
+                id="order-available"
+                checked={checked}
+                onCheckedChange={onCheckedChange}
+                disabled={disabled}
+                {...props}
+            />
+        </div>
+    );
 }

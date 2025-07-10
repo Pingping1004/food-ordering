@@ -16,24 +16,18 @@ import {
 interface MultiDatePickerProps {
     readonly value: Date[] | undefined;
     readonly onDatesChange: (dates: Date[] | undefined) => void;
-    readonly initialDates?: Date[];
 }
 
-export function MultiDatePicker({ value, onDatesChange, initialDates }: MultiDatePickerProps) {
+export function MultiDatePicker({ value, onDatesChange }: MultiDatePickerProps) {
     const shortEngDays = [
-  { label: 'Sun', value: 'sun' },
-  { label: 'Mon', value: 'mon' },
-  { label: 'Tue', value: 'tue' },
-  { label: 'Wed', value: 'wed' },
-  { label: 'Thu', value: 'thu' },
-  { label: 'Fri', value: 'fri' },
-  { label: 'Sat', value: 'sat' },
-];
-    // const [dates, setDates] = useState<Date[] | undefined>(initialDates);
-
-    // useEffect(() => {
-    //     onDatesChange(dates);
-    // }, [dates, onDatesChange]);
+        { label: 'Sun', value: 'sun' },
+        { label: 'Mon', value: 'mon' },
+        { label: 'Tue', value: 'tue' },
+        { label: 'Wed', value: 'wed' },
+        { label: 'Thu', value: 'thu' },
+        { label: 'Fri', value: 'fri' },
+        { label: 'Sat', value: 'sat' },
+    ];
 
     return (
         <Popover>
@@ -47,7 +41,11 @@ export function MultiDatePicker({ value, onDatesChange, initialDates }: MultiDat
                 >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {value && value.length > 0 ? (
-                            value.map(date => shortEngDays.join(', '))
+                        value.map((date: Date) => {
+                            const dayIndex = date.getDay();
+                            const dayLabel = shortEngDays[dayIndex]?.label || 'Unknown';
+                            return <span key={dayLabel}>{dayLabel}</span>;
+                        })
                     ) : (
                         <span>เลือกวัน</span>
                     )}
@@ -58,7 +56,7 @@ export function MultiDatePicker({ value, onDatesChange, initialDates }: MultiDat
                     mode="multiple"
                     selected={value}
                     onSelect={onDatesChange}
-                    // disabled={(date) => date.getDay() === 0 || date.getDay() === 6}
+                // disabled={(date) => date.getDay() === 0 || date.getDay() === 6}
                 />
             </PopoverContent>
         </Popover>

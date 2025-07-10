@@ -4,7 +4,7 @@ import { RestaurantProfile } from "@/components/users/RestaurantProfile";
 import React, { useEffect, useState } from "react";
 import { Restaurant } from "@/context/MenuContext";
 import { api } from "@/lib/api";
-import UserHeader from "@/components/users/Header";                        
+import UserHeader from "@/components/users/Header";
 
 export default function UserHomePage() {
     const [data, setData] = useState<Restaurant[] | null>(null);
@@ -42,8 +42,8 @@ export default function UserHomePage() {
                             key={restaurant.restaurantId}
                             name={restaurant.name}
                             categories={restaurant.categories}
-                            openTime={restaurant.openTime}
-                            closeTime={restaurant.closeTime}
+                            // openTime={restaurant.openTime}
+                            // closeTime={restaurant.closeTime}
                             restaurantId={restaurant.restaurantId}
                             restaurantImg={restaurant.restaurantImg}
                             isOpen={restaurant.isActuallyOpen}

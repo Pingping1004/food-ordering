@@ -1,7 +1,5 @@
 "use client";
-import React from 'react';
 
-const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 export function getFullImageUrl(relativePath: string | undefined, baseUrl: string): string | null {
     if (!relativePath) {
         return null;

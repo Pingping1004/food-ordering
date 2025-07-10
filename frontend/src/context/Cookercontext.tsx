@@ -71,7 +71,7 @@ export const CookerProvider = ({ children }: { children: React.ReactNode }) => {
         } finally {
             setLoading(false);
         }
-    }, [])
+    }, [restaurantId]);
 
     const contextValue = useMemo(() => ({
         cooker: cooker!, setCooker, orders, setOrders, fetchOrders, loading, error
