@@ -1,20 +1,14 @@
 "use client";
-import React, { useCallback } from 'react';
+import React from 'react';
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 export function getFullImageUrl(relativePath: string | undefined, baseUrl: string): string | null {
-    // console.log("--- getFullImageUrl called ---"); // Debugging logs
-    // console.log("  Input relativePath:", relativePath); // Debugging logs
-    // console.log("  Using baseUrl parameter:", baseUrl); // Debugging logs
-
     if (!relativePath) {
-        // console.log("  Result: null (no path provided)"); // Debugging logs
         return null;
     }
 
     // Scenario 1: Already an absolute URL (http://, https://) or a blob URL (for new uploads)
     if (relativePath.startsWith('http://') || relativePath.startsWith('https://') || relativePath.startsWith('blob:')) {
-        // console.log("  Result: Already absolute/blob. Returning as-is:", relativePath); // Debugging logs
         return relativePath;
     }
 
@@ -32,6 +26,5 @@ export function getFullImageUrl(relativePath: string | undefined, baseUrl: strin
 
     // Now, combine them with exactly one slash in between
     const fullUrl = `${normalizedBaseUrl}${normalizedRelativePath}`;
-    // console.log("  Result: Constructed full URL:", fullUrl); // Debugging logs
     return fullUrl;
 }

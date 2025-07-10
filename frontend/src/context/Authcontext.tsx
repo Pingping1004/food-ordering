@@ -67,7 +67,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             const result = await api.get('/csrf-token');
             const csrfTokenValue = result.data.csrfToken;
             setCsrfToken(csrfTokenValue);
-            console.log('Frontend: CSRF token fetched successfully:', result.headers);
             return csrfTokenValue;
         } catch (error) {
             console.error('Frontend: Failed to fetch CSRF token:', error);
@@ -113,7 +112,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             alertShowRef.current = false;
 
             if (redirectImmediately) {
-                console.log('Frontend: Redirecting to login after logout.');
                 router.push('/login');
             }
         }
@@ -175,10 +173,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     if (!isCsrfFetchRequest && isMutatingMethod) {
                         if (!config.headers['X-CSRF-TOKEN']) {
                             config.headers['X-CSRF-TOKEN'] = currentCsrfToken;
-                            console.log('Interceptor: Added X-CSRF-TOKEN for:', config.url, 'method:', config.method);
                         }
-                    } else if (isCsrfFetchRequest) {
-                        console.log('Interceptor: Skipping X-CSRF-TOKEN for /csrf-token endpoint.');
                     }
                 }
 
@@ -251,8 +246,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 setIsAuth(true);
                 alertShowRef.current = false;
             } catch (err: any) {
-                console.error('Initial authentication check or CSRF fetch failed:', err);
-
                 if (err.response?.status === 401 || err.response?.status === 403) {
                     await logout(false);
                     if (!alertShowRef.current) {

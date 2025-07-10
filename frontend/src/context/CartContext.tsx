@@ -27,7 +27,6 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         setCart((prev) => {
             if (prev.length > 0 && prev[0].restaurantId !== restaurantId) {
                 alert('ไม่สามารถสั่งเมนูจากร้านอาหารอื่นได้');
-                console.log('Blocked add from different restaurant');
                 return prev;
             }
             const existingCartItem = prev.find((item) => item.menuId === menuId);

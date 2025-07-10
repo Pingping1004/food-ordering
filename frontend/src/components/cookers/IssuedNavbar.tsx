@@ -31,7 +31,6 @@ export const IssuedOrderNavbar = ({
   const [state, setState] = useState<"delay" | "rejected">("delay");
   const handleClick = (newState: "delay" | "rejected") => {
     setState(newState);
-    console.log("Current state:", state, "Updated state:", newState);
   };
 
   return (

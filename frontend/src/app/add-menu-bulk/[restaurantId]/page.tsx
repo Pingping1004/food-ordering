@@ -47,9 +47,7 @@ export default function BulkAddMenuPage() {
     const params = useParams();
     const router = useRouter();
     const restaurantId = params.restaurantId as string;
-    // const { user } = useAuth();
-    // const restaurantId = user?.restaurant?.restaurantId;
-    console.log('Receiving restaurantId: ', restaurantId);
+
     const [pageError, setPageError] = useState<string | null>(null); // Renamed to avoid conflict with form errors
     const [successMessage, setSuccessMessage] = useState<string | null>(null); // Renamed for consistency
     const [_menuList, setMenuLists] = useState<ServerMenuItem[]>([]); // For displaying newly added menus
@@ -184,9 +182,15 @@ export default function BulkAddMenuPage() {
         [rhfCsvOnChange]
     );
 
-    const onSubmit = async (data: BulkUploadFormValues) => {
-        console.log('Form submission initiated.');
+    const onError = (formErrors: typeof errors) => {
+        const messages = Object.entries(formErrors)
+          .map(([field, error]) => `${field}: ${error?.message}`)
+          .join('\n');
 
+        alert(`กรุณากรอกข้อมูลให้ถูกต้อง:\n\n${messages}`);
+      };
+
+    const onSubmit = async (data: BulkUploadFormValues) => {
         if (!parsedCsvData || parsedCsvData.length === 0) {
             setPageError('Please upload and successfully parse a CSV file before submitting.');
             return;
@@ -202,24 +206,18 @@ export default function BulkAddMenuPage() {
             // --- STAGE 1: Upload ALL Menu Images to Temporary Storage (only if images exist) ---
             const filesToUpload = Array.from(data.menuImgs || []); // Ensure it's an array, handle null/undefined
             if (filesToUpload.length > 0) {
-                console.log(`Attempting to upload ${filesToUpload.length} images.`);
                 const menuImagesFormData = new FormData();
                 filesToUpload.forEach((file) => {
                     menuImagesFormData.append('images', file as File);
                 });
 
-                // console.log(`Sending FormData to /upload/temp-images. (Note: FormData objects log as [object FormData])`); // This log is not very useful
                 const { data: responseData } = await api.post<UploadedImageInfo[]>('/upload/temp-images', menuImagesFormData, {
                     headers: { 'Content-Type': 'multipart/form-data' },
                 });
                 uploadedImagesMetadata = responseData; // Store metadata for display and mapping
                 setUploadedImageMetadata(uploadedImagesMetadata);
-                console.log(`Successfully uploaded ${uploadedImagesMetadata.length} images to temporary storage.`);
                 router.push(`/managed-menu/${restaurantId}`);
-            } else {
-                console.log("No menu images provided for upload. Skipping temporary image upload stage.");
             }
-
             const originalNameToTempIdMap = new Map<string, string>();
             uploadedImagesMetadata.forEach(info => {
                 originalNameToTempIdMap.set(info.originalName.toLowerCase(), info.tempId);
@@ -251,8 +249,6 @@ export default function BulkAddMenuPage() {
                 });
             }
 
-            console.log(`Prepared ${finalMenuPayload.length} menu items for final bulk submission.`);
-
             // --- STAGE 3: Submit Final Bulk Payload to Backend (as JSON) ---
             // This assumes your backend /menu/bulk endpoint now accepts a JSON body.
             const { data: BulkCreateMenuResult } = await api.post<BulkCreateMenuResult>('/menu/bulk', { // Add leading slash for clarity
@@ -279,11 +275,9 @@ export default function BulkAddMenuPage() {
             setPageError(err.response?.data?.message || err.message || "An unexpected error occurred during bulk menu upload.");
         } finally {
             setLoading(false); // End loading state
-            console.log('Form submission process completed.');
         }
     };
 
-    console.log('Update img metadata: ', uploadedImageMetadata);
     // Handler for generating CSV template (remains largely the same)
     const handleGenerateCsvTemplate = useCallback(() => {
         if (uploadedImageMetadata.length === 0) {
@@ -327,8 +321,6 @@ export default function BulkAddMenuPage() {
         return loading || !parsedCsvData || parsedCsvData.length === 0 || uploadedImageMetadata.length === 0 || Object.keys(errors).length > 0;
     }, [loading, parsedCsvData, uploadedImageMetadata, errors]);
 
-    console.log('Form error: ', errors);
-
     return (
         <div className="container mx-auto p-4 md:p-8 space-y-8">
             <h1 className="text-3xl font-bold mb-6 text-gray-800">Bulk Add Menu Items</h1>
@@ -338,7 +330,7 @@ export default function BulkAddMenuPage() {
             {isSubmitting && <p className="text-blue-600 font-medium text-center">Submitting form...</p>}
 
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+            <form onSubmit={handleSubmit(onSubmit, onError)} className="space-y-8">
                 {/* --- Step 1: Upload Images --- */}
                 <div className="bg-white p-6 rounded-lg shadow-md border border-blue-200">
                     <h2 className="text-2xl font-semibold mb-4 text-blue-700">Step 1: Upload Menu Images</h2>

@@ -4,7 +4,6 @@ import Cookies from 'js-cookie';
 
 // const baseUrl = `${process.env.NEXT_PUBLIC_NGROK_BACKEND_URL}/api`;
 const baseUrl = '/api';
-console.log('Axios base URL is: ', baseUrl);
 
 export const api = axios.create({
     baseURL: baseUrl,
@@ -35,7 +34,6 @@ const processQueue = (error: AxiosError | null, token: string | null = null) => 
 api.interceptors.request.use(
     (config) => {
         const csrfToken = Cookies.get('XSRF-TOKEN');
-        console.log('CSRF Token from cookies:', csrfToken);
         if (!config.method) throw Error('Not found config method');
 
         if (csrfToken && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(config.method.toUpperCase())) {

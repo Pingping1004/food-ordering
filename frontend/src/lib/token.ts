@@ -3,7 +3,6 @@ import Cookies from 'js-cookie';
 export const getAccessToken = (): string | null => {
     const accessToken = Cookies.get('access_token');
     if (!accessToken) {
-        console.warn(`Access token '${accessToken}' not found in cookies.`);
         return null;
     }
     return accessToken;
@@ -25,7 +24,6 @@ export const setAccessToken = (token: string): void => {
 export const getRefreshToken = (): string | null => {
     const refreshToken = Cookies.get('refresh_token');
     if (!refreshToken) {
-        console.warn('Refresh token not found in cookies');
         return null;
     }
 

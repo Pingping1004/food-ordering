@@ -43,15 +43,12 @@ function Page() {
         restaurantId: restaurant.restaurantId,
         isAvailable: newIsAvailable,
       }
-      console.log('Payload: ', payload);
       const response = await api.patch(`menu/is-available/${menuId}`, payload);
-      console.log('Response: ', response.data);
 
       setMenus(prevMenus => {
         if (!prevMenus) return [];
         return prevMenus.map(menu => {
           if (menu.menuId === menuId) {
-            console.log(`[API_CONFIRM] Raw response.data.isAvailable:`, response.data.isAvailable, `(Type: ${typeof response.data.isAvailable})`);
             const confirmedIsAvailable = typeof response.data.isAvailable === 'boolean'
               ? response.data.isAvailable
               : newIsAvailable;

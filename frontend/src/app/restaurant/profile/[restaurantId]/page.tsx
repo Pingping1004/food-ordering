@@ -38,7 +38,6 @@ function Page() {
       };
 
       const response = await api.patch(`restaurant/temporarily-close/${restaurantId}`, payload);
-      console.log('Update open-close status of restaurant to: ', response.data);
 
       const confirmedIsTemporarilyClosed = typeof response.data.isTemporarilyClosed === 'boolean'
         ? response.data.isTemporarilyClosed

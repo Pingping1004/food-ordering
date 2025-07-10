@@ -78,6 +78,14 @@ export default function AddMenuPage() {
     }
   }, [watchedMenuImgFile]);
 
+  const onError = (formErrors: typeof errors) => {
+    const messages = Object.entries(formErrors)
+      .map(([field, error]) => `${field}: ${error?.message}`)
+      .join('\n');
+
+    alert(`กรุณากรอกข้อมูลให้ถูกต้อง:\n\n${messages}`);
+  };
+
   // --- API Call and Form Submission ---
   const onSubmit: SubmitHandler<SingleCreateMenuSchemaType> = async (data) => {
     setIsApiLoading(true);
@@ -110,10 +118,6 @@ export default function AddMenuPage() {
         return;
       }
 
-      console.log('Sending FormData for Restaurant ID:', data.restaurantId); // Debugging: Confirm ID here
-      console.log('FormData content:', Object.fromEntries(formData.entries()));
-
-      // Perform the API call
       const response = await api.post<MenuItem>(
         `/menu/single`, // Your API endpoint
         formData,
@@ -125,7 +129,6 @@ export default function AddMenuPage() {
       );
 
       const createdMenuItem: MenuItem = response.data;
-      console.log('Create menuItem: ', createdMenuItem);
       setApiSuccessMessage(`Menu "${createdMenuItem.name}" created successfully!`);
 
       // Add the newly created menu item to the local list (optional, for display)
@@ -168,7 +171,7 @@ export default function AddMenuPage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-y-10">
+      <form onSubmit={handleSubmit(onSubmit, onError)} className="flex flex-col gap-y-10">
         <div className="grid grid-cols-1 md:grid-cols-2 md:gap-x-10 gap-y-6">
           {/* Left Column: Image Preview & Upload */}
           <div className="flex flex-col items-center justify-center">

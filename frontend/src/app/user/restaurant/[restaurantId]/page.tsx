@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from 'react'
+import React from 'react'
 import { MenuProvider, useMenu } from '@/context/MenuContext'
 import { useCart } from '@/context/CartContext';
 import { useRouter } from 'next/navigation';
@@ -12,17 +12,16 @@ function MenuContext() {
   const { restaurant, menus } = useMenu();
   const { cart } = useCart();
   const router = useRouter();
-  console.log('Menu: ', menus)
-
-  useEffect(() => {
-    console.log('Cart changed:', cart);
-  }, [cart]);
 
   const checkOrderCart = () => {
     router.push(`/user/order/confirm/${restaurant?.restaurantId}`);
   }
 
-  console.log('RestaurantId: ', restaurant?.restaurantId)
+  const isNowOpen = restaurant.isOpen && !restaurant.isTemporarilyClosed;
+  if (!isNowOpen) {
+    alert(`ขณะนี้ร้าน ${restaurant.name}ยังไม่เปิดให้บริการ`);
+  }
+
   return (
     <div className="flex flex-col gap-y-10 py-10 px-6">
       <RestaurantHeader
@@ -47,7 +46,7 @@ function MenuContext() {
             cookingTime={menu.cookingTime}
             isAvailable={menu.isAvailable}
             restaurantId={menu.restaurantId}
-            variant={menu.isAvailable ? "on" : "off"}
+            variant={(menu.isAvailable && isNowOpen) ? "on" : "off"}
 
           />
         ))}

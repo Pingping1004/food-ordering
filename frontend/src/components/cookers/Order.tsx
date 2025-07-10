@@ -130,7 +130,6 @@ export const Order = ({
         setIsUpdating(true);
         try {
             const response = await api.patch(`/order/update-status/${orderId}`);
-            console.log('Update order status to: ', response.data);
 
             const updatedOrder = response.data.result;
             setCurrentStatus(updatedOrder.status);

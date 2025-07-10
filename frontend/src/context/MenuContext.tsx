@@ -82,7 +82,6 @@ export const MenuProvider = ({ children }: { children: React.ReactNode }) => {
             try {
                 const menuResponse = await api.get(`menu/${restaurantId}`);
                 setMenus(menuResponse.data);
-                console.log('Menu with display price: ', menuResponse.data);
 
                 const restaurantResponse = await api.get(`restaurant/${restaurantId}`);
                 setRestaurant(restaurantResponse.data);

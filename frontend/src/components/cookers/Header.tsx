@@ -43,7 +43,7 @@ export default function CookerHeader({
                 type="button"
                 variant="secondary"
                 size="md"
-                onClick={() => router.push(`/${restaurantId}`)}
+                onClick={() => router.push(`/cooker/${restaurantId}`)}
               >
                 <p className="text-sm">กลับหน้าหลัก</p>
               </Button>

@@ -43,7 +43,6 @@ export const OrderNavBar = ({
   const handleClick = (newState: OrderStatus) => {
     setState(newState);
     onStatusUpdate(newState);
-    console.log("Current state:", state, "Updated state:", newState);
   };
 
   return (

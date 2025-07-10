@@ -70,12 +70,6 @@ export const Menu = ({
     onAvailabilityChanged(menuId, checked);
   }, [menuId, onAvailabilityChanged]);
 
-  // const handleDelete = async (menuId: string) => {
-  //   const response = await api.delete(`/menu/${menuId}`);
-  //   console.log('Delete response: ', response.data);
-  // onDelete(response.data);
-  // }
-
   const handleDelete = () => {
     // Call the parent's onDelete function immediately with the menuId
     // The parent function will handle optimistic UI and backend call

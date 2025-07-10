@@ -66,6 +66,14 @@ export default function RestaurantRegisterPage() {
     }
   }, [watchedMenuImgFile]);
 
+  const onError = (formErrors: typeof errors) => {
+    const messages = Object.entries(formErrors)
+      .map(([field, error]) => `${field}: ${error?.message}`)
+      .join('\n');
+
+    alert(`กรุณากรอกข้อมูลให้ถูกต้อง:\n\n${messages}`);
+  };
+
   const submitData = async (data: CreateRestaurantSchemaType) => {
     try {
       if (!user?.userId) {
@@ -76,9 +84,6 @@ export default function RestaurantRegisterPage() {
       const categoriesList = categories.map((item) => item.value);
       const openDateList = openDate.map((date) => date.value);
 
-      console.log('1. Mapped categoriesList (array of strings):', categoriesList);
-      console.log('2. Type of categoriesList:', typeof categoriesList, 'Is Array?', Array.isArray(categoriesList));
-      console.log('3. Length of categoriesList:', categoriesList.length);
       const formData = new FormData();
 
       if (data.restaurantImg && data.restaurantImg.length > 0) {
@@ -107,27 +112,24 @@ export default function RestaurantRegisterPage() {
         formData.append('adminEmail', data.adminEmail);
       }
 
-      console.log('Restaurant data: ', Object.fromEntries(formData.entries()));
       const response = await api.post('/restaurant', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         }
       });
-      console.log('Response data: ', response.data);
+
       const restaurantName = response.data.result.name;
       const restaurantId = response.data.result.restaurantId
       alert(`ลงทะเบียนร้าน ${restaurantName} สำเร็จ`);
-      router.push(`/${restaurantId}`)
+      router.push(`/cooker/${restaurantId}`)
     } catch (error) {
       console.error(`error`, error);
     }
   }
 
-  console.log('Form errors:', errors);
-
   return (
     <div>
-      <form onSubmit={handleSubmit(submitData)} className="flex flex-col gap-y-10 py-10 px-6">
+      <form onSubmit={handleSubmit(submitData, onError)} className="flex flex-col gap-y-10 py-10 px-6">
         <header className="flex flex-col gap-y-1">
           <h1 className="text-2xl text-primary noto-sans-bold">ข้อมูลร้านอาหาร</h1>
           <p className="text-sm text-secondary">กรุณาระบุข้อมูลอย่างครบถ้วน</p>
@@ -162,7 +164,6 @@ export default function RestaurantRegisterPage() {
               multiple={false} // Ensure only one file can be selected
               error={errors.restaurantImg?.message as string | undefined}
               {...register('restaurantImg')}
-            // Removed onChange directly here as useEffect with watch handles preview
             />
           </div>
         </div>

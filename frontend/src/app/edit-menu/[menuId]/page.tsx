@@ -57,8 +57,6 @@ export default function EditMenuPage() {
           menuImg: (menuResponse.data.menuImg && menuResponse.data.menuImg !== '/') ? menuResponse.data.menuImg : undefined,
           restaurantId: menuResponse.data.restaurantId, // <--- Set restaurantId here too!
         });
-
-        console.log('Fetch menu: ', menuResponse.data);
       } catch (error) {
         console.error('Failed to fetch menu: ', error);
       }
@@ -105,26 +103,28 @@ export default function EditMenuPage() {
         formData.append('menuImg', data.menuImg[0]);
       }
 
-      console.log('Edit menu data: ', Object.fromEntries(formData.entries()));
-
       const response = await api.patch<singleEditMenuSchemaType>(`menu/single/${menuId}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
 
-
       const updateResult = Array.isArray(response.data) ? response.data : [response.data];
-      console.log('Patch res body: ', updateResult);
       alert(`แก้ไขเมนู ${updateResult.map(menu => menu.name).join(', ')} สำเร็จ`);
       router.push(`/managed-menu/${restaurantId}`);
     } catch (error) {
       console.error("Error creating menu:", error);
     }
-
   }
-  console.log('Form error: ', errors);
-  console.log('Image previewUrl: ', imagePreviewUrl);
+
+  const onError = (formErrors: typeof errors) => {
+    const messages = Object.entries(formErrors)
+      .map(([field, error]) => `${field}: ${error?.message}`)
+      .join('\n');
+
+    alert(`กรุณากรอกข้อมูลให้ถูกต้อง:\n\n${messages}`);
+  };
+
   return (
     <div className="flex flex-col gap-y-10 py-10 px-6">
       <div className="flex justify-between items-center">
@@ -143,7 +143,7 @@ export default function EditMenuPage() {
           </div>
         )} */}
 
-      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-y-10">
+      <form onSubmit={handleSubmit(onSubmit, onError)} className="flex flex-col gap-y-10">
         <div className="grid grid-cols-1 md:grid-cols-2 md:gap-x-10 gap-y-6">
           {/* Left Column: Image Preview & Upload */}
           <div className="flex flex-col items-center justify-center">

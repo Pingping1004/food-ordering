@@ -8,7 +8,6 @@ import UserHeader from "@/components/users/Header";
 
 export default function UserHomePage() {
     const [data, setData] = useState<Restaurant[] | null>(null);
-    console.log('Data: ', data);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
@@ -16,7 +15,6 @@ export default function UserHomePage() {
         const fetchData = async () => {
             try {
                 const response = await api.get<Restaurant[]>(`/restaurant`);
-                console.log('API response:', response.data);
                 setData(response.data)
             } catch (error) {
                 setError('Error fetching data');
@@ -32,8 +30,6 @@ export default function UserHomePage() {
     if (loading) return <div>Loading...</div>;
     if (error) return <div>{error}</div>;
     if (!data) return <div>No Data found</div>
-
-    console.log('Fetch restaurant data: ', data);
 
     return (
         <div className="flex flex-col gap-y-10 py-10 px-6">

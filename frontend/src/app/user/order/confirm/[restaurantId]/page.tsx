@@ -43,8 +43,15 @@ function OrderConfirmContext() {
     mode: "onBlur",
   });
 
+  const onError = (formErrors: typeof errors) => {
+    const messages = Object.entries(formErrors)
+      .map(([field, error]) => `${field}: ${error?.message}`)
+      .join('\n');
+
+    alert(`กรุณากรอกข้อมูลให้ถูกต้อง:\n\n${messages}`);
+  };
+
   const submitOrder = async (data: CreateOrderSchemaType) => {
-    console.log('Form is submitted!');
     try {
       const orderPayload = {
         restaurantId: restaurant?.restaurantId,
@@ -71,22 +78,17 @@ function OrderConfirmContext() {
         return;
       }
 
-      console.log('Order Payload: ', orderPayload);
       const response = await api.post(`${NGROK_WEBSITE_URL}/order/omise`, orderPayload);
-      console.log('Created new order: ', response);
       alert(`สั่งอาหารออเดอร์: ${response.data.orderId}`)
     } catch (error) {
       console.error(error);
     }
   }
 
-  console.log('Form errors on render:', errors); // <--- Add this for immediate error visibility
-  console.log('Is submitting:', isSubmitting); // Debug submit state
-
   return (
     <form
       className="flex flex-col h-screen gap-y-10 py-10 px-6"
-      onSubmit={handleSubmit(submitOrder)}
+      onSubmit={handleSubmit(submitOrder, onError)}
     >
       <h3
         className="flex w-full justify-center noto-sans-bold text-primary text-2xl"
@@ -124,11 +126,7 @@ function OrderConfirmContext() {
           )}
         />
         {errors.deliverAt && (
-          <>
-            {console.log('DEBUG: errors.deliverAt object:', errors.deliverAt)}
-            {console.log('DEBUG: Message string being rendered:', errors.deliverAt.message?.toString())}
-            <p className="text-red-500 text-sm z-50">{errors.deliverAt.message}</p>
-          </>
+          <p className="text-red-500 text-sm z-50">{errors.deliverAt.message}</p>
         )}
       </div>
 
@@ -151,7 +149,7 @@ function OrderConfirmContext() {
         {errors.paymentMethod && <p className="text-red-500 text-sm">{errors.paymentMethod.message}</p>}
       </div>
 
-      <div className="fixed left-0 right-0 bottom-10 w-full px-6 z-50 flex">
+      <div className=" w-full px-6 z-50 flex">
         <Button
           className="w-full noto-sans-bold py-4"
           type="submit"

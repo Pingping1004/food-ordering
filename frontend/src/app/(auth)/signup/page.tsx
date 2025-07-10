@@ -29,8 +29,6 @@ export default function SignupPage() {
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      console.log("Attempting to navigate to home page...");
-
       await api.post(`/auth/signup`, signupData);
       alert(`ลงทะเบียนใช้งานสำเร็จ!`);
       router.push("/user/restaurant"); // Navigate to the home page
