@@ -2,8 +2,8 @@ import axios, { AxiosRequestConfig, AxiosError, InternalAxiosRequestConfig, Axio
 import { setAccessToken, getRefreshToken, setRefreshToken, clearTokens } from "./token";
 import Cookies from 'js-cookie';
 
-// const baseUrl = `${process.env.NEXT_PUBLIC_NGROK_BACKEND_URL}/api`;
-const baseUrl = '/api';
+const baseUrl = `${process.env.NEXT_PUBLIC_NGROK_BACKEND_URL}/api`;
+// const baseUrl = '/api';
 
 export const api = axios.create({
     baseURL: baseUrl,
