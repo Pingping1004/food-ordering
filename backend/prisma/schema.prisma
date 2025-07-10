@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,6 +5,142 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+model RoleRequest {
+  requestId   String            @id @default(uuid())
+  userId      String            @unique
+  requestRole Role
+  status      RoleRequestStatus
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime?
+  user        User              @relation("UserToRoleRequest", fields: [userId], references: [userId])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  jti       String   @unique
+  userId    String
+  expiresAt DateTime
+  issuedAt  DateTime @default(now())
+  isUsed    Boolean  @default(false)
+  isRevoked Boolean  @default(false)
+  user      User     @relation("UserToRefreshTokens", fields: [userId], references: [userId])
+}
+
+model Payout {
+  payoutId          String     @id @default(uuid())
+  restaurantRevenue Float
+  platformFee       Float
+  isPaid            Boolean    @default(false)
+  startDate         DateTime
+  endDate           DateTime
+  paidAt            DateTime?
+  createdAt         DateTime   @default(now())
+  orderId           String     @unique
+  restaurantId      String
+  order             Order      @relation("OrderToPayout", fields: [orderId], references: [orderId])
+  restaurant        Restaurant @relation("RestaurantPayment", fields: [restaurantId], references: [restaurantId])
+}
+
+model Restaurant {
+  restaurantId        String               @id @default(uuid())
+  email               String               @unique
+  restaurantImg       String?
+  name                String               @unique
+  location            String?
+  categories          RestaurantCategory[]
+  openTime            String
+  closeTime           String
+  avgCookingTime      Int
+  adminName           String
+  adminSurname        String
+  adminTel            String
+  adminEmail          String
+  openDate            DateWeek[]
+  userId              String               @unique
+  isTemporarilyClosed Boolean              @default(false)
+  menus               Menu[]               @relation("RestaurantMenus")
+  orders              Order[]              @relation("restaurantToOrder")
+  payout              Payout[]             @relation("RestaurantPayment")
+  user                User                 @relation(fields: [userId], references: [userId], onDelete: Cascade)
+}
+
+model Menu {
+  menuId       String      @id @default(uuid())
+  name         String      @unique
+  menuImg      String?
+  price        Int
+  maxDaily     Int         @default(100)
+  cookingTime  Int?
+  createdAt    DateTime    @default(now())
+  isAvailable  Boolean     @default(true)
+  restaurantId String
+  restaurant   Restaurant  @relation("RestaurantMenus", fields: [restaurantId], references: [restaurantId], onDelete: Cascade)
+  orderMenus   OrderMenu[] @relation("menuToOrderMenus")
+
+  @@unique([restaurantId, name])
+  @@index([restaurantId])
+  @@index([isAvailable])
+  @@index([cookingTime])
+}
+
+model OrderMenu {
+  orderMenuId String  @id @default(uuid())
+  quantity    Int
+  menuName    String
+  menuImg     String?
+  unitPrice   Float
+  totalPrice  Float?
+  orderId     String
+  menuId      String
+  menu        Menu    @relation("menuToOrderMenus", fields: [menuId], references: [menuId], onDelete: Cascade)
+  order       Order   @relation("OrderToMenu", fields: [orderId], references: [orderId], onDelete: Cascade)
+
+  @@index([menuId])
+  @@index([orderId])
+}
+
+model Order {
+  orderId              String      @id @default(uuid())
+  status               OrderStatus @default(receive)
+  orderAt              DateTime    @default(now())
+  deliverAt            DateTime
+  isPaid               IsPaid      @default(unpaid)
+  isDelay              Boolean     @default(false)
+  totalAmount          Int
+  paidAt               DateTime?
+  omiseChargeId        String?     @unique @map("omise_charge_id")
+  paymentMethodType    String?     @map("payment_method_type")
+  paymentCurrency      String?     @map("payment_currency")
+  paymentGatewayStatus String?     @map("payment_gateway_status")
+  failureReason        String?
+  restaurantId         String
+  restaurant           Restaurant  @relation("restaurantToOrder", fields: [restaurantId], references: [restaurantId], onDelete: Cascade)
+  orderMenus           OrderMenu[] @relation("OrderToMenu")
+  payout               Payout?     @relation("OrderToPayout")
+
+  @@index([restaurantId])
+  @@index([status])
+  @@index([isPaid])
+  @@index([orderAt])
+}
+
+model User {
+  userId        String         @id @default(uuid())
+  email         String         @unique
+  name          String?
+  password      String
+  profileImg    String?
+  role          Role           @default(user)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  refreshTokens RefreshToken[] @relation("UserToRefreshTokens")
+  restaurant    Restaurant?
+  RoleRequest   RoleRequest?   @relation("UserToRoleRequest")
+
+  @@index([name])
 }
 
 enum DateWeek {
@@ -68,166 +198,4 @@ enum RestaurantCategory {
   Appetizer
   Noodle
   Dessert
-}
-
-model RoleRequest {
-  requestId    String    @id @default(uuid())
-
-  userId    String  @unique
-  user    User  @relation("UserToRoleRequest", fields: [userId], references: [userId])
-
-  requestRole   Role
-  status    RoleRequestStatus
-
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime?
-}
-
-model RefreshToken {
-  id    String    @id @default(uuid())
-  token   String  @unique
-  jti   String    @unique
-  
-  userId    String
-  user    User  @relation("UserToRefreshTokens", fields: [userId], references: [userId])
-
-  expiresAt   DateTime
-  issuedAt    DateTime  @default(now())
-  isUsed    Boolean   @default(false)
-  isRevoked   Boolean @default(false)
-}
-
-model Payout {
-  payoutId   String  @default(uuid())  @id
-  restaurantRevenue  Float
-  platformFee   Float
-  isPaid  Boolean   @default(false)
-  startDate   DateTime
-  endDate   DateTime
-  paidAt  DateTime?
-  createdAt   DateTime  @default(now())
-
-
-  orderId   String  @unique
-  order   Order   @relation("OrderToPayout", fields: [orderId], references: [orderId])
-
-  restaurantId  String
-  restaurant  Restaurant  @relation("RestaurantPayment", fields: [restaurantId], references: [restaurantId])
-}
-
-model Restaurant {
-  restaurantId  String @default(uuid()) @id
-  email String @unique
-  restaurantImg String?
-  name  String  @unique
-  location  String?
-  categories  RestaurantCategory[]
-  openDate    DateWeek[]
-  openTime  String
-  closeTime String
-  avgCookingTime  Int
-  isTemporarilyClosed Boolean @default(false)
-  
-  adminName    String
-  adminSurname String
-  adminTel     String
-  adminEmail   String
-
-  userId  String  @unique
-  user  User  @relation(fields: [userId], references: [userId], onDelete: Cascade)
-
-  menus Menu[]  @relation("RestaurantMenus")
-
-  orders  Order[]   @relation("restaurantToOrder")
-
-  payout   Payout[]  @relation("RestaurantPayment")
-}
-
-model Menu {
-  menuId  String  @default(uuid()) @id
-  name  String  @unique
-  menuImg String?
-  price   Int
-  maxDaily  Int   @default(100)
-  cookingTime Int?
-  createdAt DateTime  @default(now())
-  isAvailable Boolean @default(true)
-
-  restaurantId  String
-  restaurant  Restaurant  @relation("RestaurantMenus", fields: [restaurantId], references: [restaurantId], onDelete: Cascade)
-
-  orderMenus  OrderMenu[]  @relation("menuToOrderMenus")
-
-  @@unique([restaurantId, name])
-
-  @@index([restaurantId])
-  @@index([isAvailable])
-  @@index([cookingTime])
-}
-
-model OrderMenu {
-  orderMenuId      String @default(uuid()) @id
-  quantity   Int
-  menuName   String
-  menuImg   String?
-  unitPrice Float
-  totalPrice Float?
-
-  orderId String
-  order   Order  @relation("OrderToMenu", fields: [orderId], references: [orderId], onDelete: Cascade)
-
-  menuId  String
-  menu  Menu  @relation("menuToOrderMenus", fields: [menuId], references: [menuId], onDelete: Cascade)
-
-  @@index([menuId])
-  @@index([orderId])
-}
-
-// must validate that restaurantName is included in restaurantNameList
-model Order {
-  orderId String @default(uuid()) @id
-  status  OrderStatus @default(receive)
-  orderAt DateTime  @default(now())
-  deliverAt DateTime
-  isPaid  IsPaid  @default(unpaid)
-  isDelay Boolean @default(false)
-  totalAmount   Int
-  paidAt    DateTime?
-
-  omiseChargeId   String?   @unique   @map("omise_charge_id")
-  paymentMethodType   String?   @map("payment_method_type")
-  paymentCurrency   String?   @map("payment_currency")
-  paymentGatewayStatus  String? @map("payment_gateway_status")
-  failureReason String?
-
-  restaurantId  String
-  restaurant  Restaurant  @relation("restaurantToOrder", fields: [restaurantId], references: [restaurantId], onDelete: Cascade)
-  
-  orderMenus OrderMenu[] @relation("OrderToMenu")
-
-  payout  Payout?   @relation("OrderToPayout")
-
-  @@index([restaurantId])
-  @@index([status])
-  @@index([isPaid])
-  @@index([orderAt])
-}
-
-model User {
-  userId  String @id  @default(uuid())
-  email   String  @unique
-  name    String?
-  password    String
-  profileImg  String?
-  role    Role    @default(user)
-
-  RoleRequest   RoleRequest?  @relation("UserToRoleRequest")
-  restaurant    Restaurant?
-
-  refreshTokens    RefreshToken[]  @relation("UserToRefreshTokens")
-
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
-  @@index([name])
 }

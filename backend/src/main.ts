@@ -6,7 +6,7 @@ import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import * as express from 'express';
 import { json } from 'express';
-import * as cookieParser from 'cookie-parser'
+import cookieParser from 'cookie-parser';
 import * as dotenv from 'dotenv';
 import helmet from 'helmet'
 import compression from 'compression';

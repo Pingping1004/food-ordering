@@ -1,7 +1,7 @@
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { PaymentMethodType } from '@prisma/client';
 import * as  crypto from 'crypto'
-import * as Omise from 'omise';
+import Omise from 'omise';
 import type { Charges } from 'omise';
 import { ConfigService } from '@nestjs/config';
 import * as moment from 'moment';
