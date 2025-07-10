@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"next dev -p 3000\" \"local-ssl-proxy --key localhost-key.pem --cert localhost.pem --source 8000 --target 3000\"",
+    "check": "concurrently \"next dev -p 3000\" \"local-ssl-proxy --key localhost-key.pem --cert localhost.pem --source 8000 --target 3000\"",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
