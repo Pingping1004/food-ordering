@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MenuService } from './menu.service';
 import { MenuController } from './menu.controller';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import { RestaurantModule } from '../restaurant/restaurant.module';
 import { MulterModule } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';

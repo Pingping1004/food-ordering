@@ -6,7 +6,7 @@ import { UserModule } from 'src/user/user.module';
 import { PassportModule } from '@nestjs/passport';
 import { LocalStrategy } from './strategy/local.strategy';
 import { JwtStrategy } from './strategy/jwt.strategy';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from 'prisma/prisma.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { RefreshTokenModule } from 'src/refreshToken/refresh-token.module';
 import { CsrfModule } from 'src/csrf/csrf.module';
