@@ -138,7 +138,6 @@ export default function AddMenuPage() {
             setImagePreviewUrl(null); // Clear preview image
             router.push(`/managed-menu/${restaurantId}`);
         } catch (error) {
-            console.error("Error creating menu:", error);
             setApiError("Failed to create menu. Please try again.");
 
         } finally {

@@ -87,9 +87,8 @@ export const MenuProvider = ({ children }: { children: React.ReactNode }) => {
 
                 const restaurantResponse = await api.get(`restaurant/${restaurantId}`);
                 setRestaurant(restaurantResponse.data);
-            } catch (error) {
+            } catch {
                 setError('Error fetching menu context');
-                console.error(error);
             } finally {
                 setLoading(false);
             }

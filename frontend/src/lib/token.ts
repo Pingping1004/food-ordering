@@ -9,10 +9,7 @@ export const getAccessToken = (): string | null => {
 };
 
 export const setAccessToken = (token: string): void => {
-    if (!token) {
-        console.error('Attempted to set an empty access token');
-        return;
-    }
+    if (!token) return;
 
     Cookies.set('access_token', token, {
         secure: process.env.NODE_ENV === 'production',
@@ -35,10 +32,7 @@ export const getCsrfToken = (): string | null => {
 }
 
 export const setCsrfToken = (token: string): void => {
-    if (!token) {
-        console.error('Attempted to set an empty CSRF token');
-        return;
-    }
+    if (!token) return
 
     Cookies.set('XSRF-TOKEN', token, {
         secure: process.env.NODE_ENV === 'production',
@@ -47,11 +41,7 @@ export const setCsrfToken = (token: string): void => {
 }
 
 export const setRefreshToken = (token: string): void => {
-    if (!token) {
-        console.error('Attempted to set an empty refresh token');
-        return;
-    }
-
+    if (!token) return;
     Cookies.set('refresh_token', token);
 }
 

@@ -127,9 +127,5 @@ api.interceptors.response.use(
 );
 
 export async function fetchCsrfToken(): Promise<void> {
-    try {
-        await api.get('/csrf-token');
-    } catch (error) {
-        console.error('Failed to fetch CSRF token:', error);
-    }
+    await api.get('/csrf-token');
 }

@@ -56,10 +56,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     const removeFromCart = (menuId: string) => {
         setCart((prev) => {
             const existingCartItem = prev.find((item) => item.menuId === menuId);
-            if (!existingCartItem) {
-                console.error('Item does not exist to delete');
-                return prev;
-            }
+            if (!existingCartItem) return prev;
 
             if (existingCartItem.quantity > 1) {
                 return prev.map((item) =>

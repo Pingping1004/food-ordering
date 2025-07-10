@@ -75,56 +75,52 @@ export default function RestaurantRegisterPage() {
     };
 
     const submitData = async (data: CreateRestaurantSchemaType) => {
-        try {
-            if (!user?.userId) {
-                alert('กรุณาเข้าสู่ระบบก่อนลงทะเบียนร้านอาหาร');
-                return;
-            }
-
-            const categoriesList = categories.map((item) => item.value);
-            const openDateList = openDate.map((date) => date.value);
-
-            const formData = new FormData();
-
-            if (data.restaurantImg && data.restaurantImg.length > 0) {
-                formData.append('restaurantImg', data.restaurantImg[0]);
-            }
-
-            formData.append('name', data.name);
-            formData.append('email', user.email);
-
-            categoriesList.forEach(category => {
-                formData.append('categories', category);
-            });
-
-            openDateList.forEach(date => {
-                formData.append('openDate', date);
-            });
-
-            formData.append('openTime', data.openTime.toString());
-            formData.append('closeTime', data.closeTime.toString());
-            formData.append('avgCookingTime', data.avgCookingTime.toString());
-            formData.append('adminName', data.adminName);
-            formData.append('adminSurname', data.adminSurname);
-            formData.append('adminTel', data.adminTel);
-
-            if (data.adminEmail !== undefined && data.adminEmail !== null) {
-                formData.append('adminEmail', data.adminEmail);
-            }
-
-            const response = await api.post('/restaurant', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                }
-            });
-
-            const restaurantName = response.data.result.name;
-            const restaurantId = response.data.result.restaurantId
-            alert(`ลงทะเบียนร้าน ${restaurantName} สำเร็จ`);
-            router.push(`/cooker/${restaurantId}`)
-        } catch (error) {
-            console.error(`error`, error);
+        if (!user?.userId) {
+            alert('กรุณาเข้าสู่ระบบก่อนลงทะเบียนร้านอาหาร');
+            return;
         }
+
+        const categoriesList = categories.map((item) => item.value);
+        const openDateList = openDate.map((date) => date.value);
+
+        const formData = new FormData();
+
+        if (data.restaurantImg && data.restaurantImg.length > 0) {
+            formData.append('restaurantImg', data.restaurantImg[0]);
+        }
+
+        formData.append('name', data.name);
+        formData.append('email', user.email);
+
+        categoriesList.forEach(category => {
+            formData.append('categories', category);
+        });
+
+        openDateList.forEach(date => {
+            formData.append('openDate', date);
+        });
+
+        formData.append('openTime', data.openTime.toString());
+        formData.append('closeTime', data.closeTime.toString());
+        formData.append('avgCookingTime', data.avgCookingTime.toString());
+        formData.append('adminName', data.adminName);
+        formData.append('adminSurname', data.adminSurname);
+        formData.append('adminTel', data.adminTel);
+
+        if (data.adminEmail !== undefined && data.adminEmail !== null) {
+            formData.append('adminEmail', data.adminEmail);
+        }
+
+        const response = await api.post('/restaurant', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            }
+        });
+
+        const restaurantName = response.data.result.name;
+        const restaurantId = response.data.result.restaurantId
+        alert(`ลงทะเบียนร้าน ${restaurantName} สำเร็จ`);
+        router.push(`/cooker/${restaurantId}`)
     }
 
     return (
@@ -148,7 +144,7 @@ export default function RestaurantRegisterPage() {
                             />
                         ) : (
                             <div className="w-48 h-48 bg-gray-100 flex items-center justify-center rounded-lg border border-gray-300 text-gray-400">
-                No Image Selected
+                                No Image Selected
                             </div>
                         )}
                     </div>
@@ -304,7 +300,7 @@ export default function RestaurantRegisterPage() {
                     className="py-4 noto-sans-bold"
                     disabled={isSubmitting}
                 >
-          ยืนยัน
+                    ยืนยัน
                 </Button>
             </form>
         </div>

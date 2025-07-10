@@ -20,10 +20,7 @@ function Page() {
 
     const toggleCheckedState = cooker?.isTemporarilyClosed;
     const handleRestaurantAvailabilityChange = useCallback(async (newIsTemporarilyClosed: boolean) => {
-        if (!cooker || !cooker.restaurantId) {
-            console.error('Cooker data or restaurantId is missing');
-            return;
-        }
+        if (!cooker || !cooker.restaurantId) return;
 
         const prevIsTemporarilyClosed = !!cooker.isTemporarilyClosed;
         setIsPatching(true);
@@ -47,8 +44,7 @@ function Page() {
                 if (!prevData) return;
                 return { ...prevData, isTemporarilyClosed: confirmedIsTemporarilyClosed };
             });
-        } catch (error) {
-            console.error('Failed to update temporarily close status', error);
+        } catch {
             setCooker(prevCooker => {
                 if (!prevCooker) return prevCooker;
                 return { ...prevCooker, isTemporarilyClosed: prevIsTemporarilyClosed };

@@ -33,9 +33,8 @@ export default function DoneOrderPage() {
 
                 const newRestaurantName = restaurantResponse.data.name;
                 setRestaurantName(newRestaurantName);
-            } catch (error) {
+            } catch {
                 setError('Error fetching order data');
-                console.error(error);
             } finally {
                 setLoading(false);
             }

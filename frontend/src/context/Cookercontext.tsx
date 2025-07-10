@@ -48,9 +48,8 @@ export const CookerProvider = ({ children }: { children: React.ReactNode }) => {
 
                 const orderResponse = await api.get(`order/get-orders/${restaurantId}`);
                 setOrders(orderResponse.data);
-            } catch (error) {
+            } catch {
                 setError('Error fetching cooker context');
-                console.error(error);
             } finally {
                 setLoading(false);
             }
@@ -65,8 +64,7 @@ export const CookerProvider = ({ children }: { children: React.ReactNode }) => {
         try {
             const orderResponse = await api.get(`order/get-orders/${restaurantId}`);
             setOrders(orderResponse.data);
-        } catch (error) {
-            console.error('Failed to fetch all orders:', error);
+        } catch {
             setError('Failed to load orders.');
         } finally {
             setLoading(false);

@@ -44,22 +44,18 @@ export default function EditMenuPage() {
 
     useEffect(() => {
         const fetchData = async () => {
-            try {
-                const menuResponse = await api.get<Menu>(`menu/find/${menuId}`);
-                setMenu(menuResponse.data);
-                setRestaurantId(menuResponse.data.restaurantId);
+            const menuResponse = await api.get<Menu>(`menu/find/${menuId}`);
+            setMenu(menuResponse.data);
+            setRestaurantId(menuResponse.data.restaurantId);
 
-                reset({
-                    name: menuResponse.data.name || '',
-                    price: menuResponse.data.price ?? undefined,
-                    maxDaily: menuResponse.data.maxDaily ?? undefined,
-                    cookingTime: menuResponse.data.cookingTime ?? undefined,
-                    menuImg: (menuResponse.data.menuImg && menuResponse.data.menuImg !== '/') ? menuResponse.data.menuImg : undefined,
-                    restaurantId: menuResponse.data.restaurantId, // <--- Set restaurantId here too!
-                });
-            } catch (error) {
-                console.error('Failed to fetch menu: ', error);
-            }
+            reset({
+                name: menuResponse.data.name || '',
+                price: menuResponse.data.price ?? undefined,
+                maxDaily: menuResponse.data.maxDaily ?? undefined,
+                cookingTime: menuResponse.data.cookingTime ?? undefined,
+                menuImg: (menuResponse.data.menuImg && menuResponse.data.menuImg !== '/') ? menuResponse.data.menuImg : undefined,
+                restaurantId: menuResponse.data.restaurantId, // <--- Set restaurantId here too!
+            });
         }
         fetchData();
     }, [menuId]);
@@ -90,31 +86,27 @@ export default function EditMenuPage() {
     }, [watchedMenuImgFile, menu?.menuImg]);
 
     const onSubmit: SubmitHandler<singleEditMenuSchemaType> = async (data) => {
-        try {
-            const formData = new FormData();
+        const formData = new FormData();
 
-            if (restaurantId && restaurantId !== undefined) formData.append('restaurantId', restaurantId);
-            if (data.name !== undefined) formData.append('name', data.name);
-            if (data.price !== undefined) formData.append('price', data.price.toString());
-            if (data.maxDaily !== undefined) formData.append('maxDaily', data.maxDaily.toString());
-            if (data.cookingTime !== undefined) formData.append('cookingTime', data.cookingTime.toString());
+        if (restaurantId && restaurantId !== undefined) formData.append('restaurantId', restaurantId);
+        if (data.name !== undefined) formData.append('name', data.name);
+        if (data.price !== undefined) formData.append('price', data.price.toString());
+        if (data.maxDaily !== undefined) formData.append('maxDaily', data.maxDaily.toString());
+        if (data.cookingTime !== undefined) formData.append('cookingTime', data.cookingTime.toString());
 
-            if (data.menuImg && data.menuImg.length > 0 && !(typeof data.menuImg === 'string' && data.menuImg === '/')) {
-                formData.append('menuImg', data.menuImg[0]);
-            }
-
-            const response = await api.patch<singleEditMenuSchemaType>(`menu/single/${menuId}`, formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            });
-
-            const updateResult = Array.isArray(response.data) ? response.data : [response.data];
-            alert(`แก้ไขเมนู ${updateResult.map(menu => menu.name).join(', ')} สำเร็จ`);
-            router.push(`/managed-menu/${restaurantId}`);
-        } catch (error) {
-            console.error("Error creating menu:", error);
+        if (data.menuImg && data.menuImg.length > 0 && !(typeof data.menuImg === 'string' && data.menuImg === '/')) {
+            formData.append('menuImg', data.menuImg[0]);
         }
+
+        const response = await api.patch<singleEditMenuSchemaType>(`menu/single/${menuId}`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+
+        const updateResult = Array.isArray(response.data) ? response.data : [response.data];
+        alert(`แก้ไขเมนู ${updateResult.map(menu => menu.name).join(', ')} สำเร็จ`);
+        router.push(`/managed-menu/${restaurantId}`);
     }
 
     const onError = (formErrors: typeof errors) => {
@@ -160,7 +152,7 @@ export default function EditMenuPage() {
                                 />
                             ) : (
                                 <div className="w-48 h-48 bg-gray-100 flex items-center justify-center rounded-lg border border-gray-300 text-gray-400">
-                  No Image Selected
+                                    No Image Selected
                                 </div>
                             )}
                         </div>
@@ -176,7 +168,7 @@ export default function EditMenuPage() {
                                 multiple={false} // Ensure only one file can be selected
                                 error={errors.menuImg?.message as string | undefined}
                                 {...register('menuImg')}
-                                // Removed onChange directly here as useEffect with watch handles preview
+                            // Removed onChange directly here as useEffect with watch handles preview
                             />
                         </div>
                     </div>

@@ -15,16 +15,10 @@ function Page() {
     const router = useRouter();
 
     const handleMenuAvailabilityChange = useCallback(async (menuId: string, newIsAvailable: boolean) => {
-        if (!menus) {
-            console.error('No menu to manage the toggle state');
-            return;
-        }
+        if (!menus) return;
 
         const targetMenu = menus.find(menu => menu.menuId === menuId);
-        if (!targetMenu) {
-            console.error(`Menu with ID ${menuId} not found.`);
-            return;
-        }
+        if (!targetMenu) return;
 
         const prevIsAvailableStatus = targetMenu.isAvailable;
         setPatchingMenuId(menuId);
@@ -57,7 +51,7 @@ function Page() {
                     return menu;
                 });
             });
-        } catch (err) {
+        } catch {
             setMenus(prevMenus => {
                 if (!prevMenus) return [];
                 return prevMenus.map(menu => {
@@ -67,7 +61,6 @@ function Page() {
                     return menu;
                 })
             })
-            console.error("Failed to update availability", err);
         } finally {
             setPatchingMenuId(null);
         }

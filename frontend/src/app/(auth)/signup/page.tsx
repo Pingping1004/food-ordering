@@ -33,8 +33,6 @@ export default function SignupPage() {
             alert(`ลงทะเบียนใช้งานสำเร็จ!`);
             router.push("/user/restaurant"); // Navigate to the home page
         } catch (error: unknown) {
-            console.error('Signup failed:', error);
-
             if (typeof error === 'object' && error !== null && 'response' in error) {
                 const err = error as { response: { status: number; data?: { message?: string } } };
 

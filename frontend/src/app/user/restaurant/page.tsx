@@ -16,9 +16,8 @@ export default function UserHomePage() {
             try {
                 const response = await api.get<Restaurant[]>(`/restaurant`);
                 setData(response.data)
-            } catch (error) {
+            } catch {
                 setError('Error fetching data');
-                console.error(error);
             } finally {
                 setLoading(false);
             }

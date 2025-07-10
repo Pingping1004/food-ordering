@@ -11,10 +11,7 @@ export function getFullImageUrl(relativePath: string | undefined, baseUrl: strin
     }
 
     // Scenario 2: It's a relative path from the backend (e.g., 'uploads/menus/...' or '/uploads/menus/...')
-    if (!baseUrl) {
-        console.error("ERROR: baseUrl is undefined or empty! Cannot construct full URL.");
-        return null;
-    }
+    if (!baseUrl) return null;
 
     // Normalize the base URL: ensure it *doesn't* end with a slash for concatenation
     const normalizedBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;

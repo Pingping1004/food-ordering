@@ -79,8 +79,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             const csrfTokenValue = result.data.csrfToken;
             setCsrfToken(csrfTokenValue);
             return csrfTokenValue;
-        } catch (error) {
-            console.error('Frontend: Failed to fetch CSRF token:', error);
+        } catch(error) {
             throw error;
         }
     }, []);
@@ -89,8 +88,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         try {
             const response = await api.get('/user/profile');
             return response.data as User;
-        } catch (error) {
-            console.error('Frontend: Authentication check failed:', error);
+        } catch(error) {
             throw error;
         }
     };
@@ -111,8 +109,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setLoading(true);
         try {
             await api.post('/auth/logout');
-        } catch (error) {
-            console.error('Logout failed: ', error);
+        } catch {
+            console.error('Logout failed');
         } finally {
             setUser(null);
             setAccessTokenValue(null);
@@ -157,12 +155,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 router.push(`/${routePath}`);
                 return profileUser;
             } else {
-                console.error('Login successful, but failed to fetch user profile.');
                 await logout();
                 throw new Error('Login successful, but user profile could not be loaded.');
             }
-        } catch (error) {
-            console.error('Login failed: ', error);
+        } catch {
             throw new Error('Invalid credentials');
         } finally {
             setLoading(false);

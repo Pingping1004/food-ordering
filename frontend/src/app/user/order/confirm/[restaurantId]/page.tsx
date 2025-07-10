@@ -50,37 +50,31 @@ function OrderConfirmContext() {
     };
 
     const submitOrder = async (data: CreateOrderSchemaType) => {
-        try {
-            const orderPayload = {
-                restaurantId: restaurant?.restaurantId,
-                orderMenus: cart.map((item) => ({
-                    menuId: item.menuId,
-                    menuName: item.menuName,
-                    quantity: item.quantity,
-                    unitPrice: item.unitPrice,
-                    menuImg: item.menuImg,
-                })),
-                paymentMethod: data.paymentMethod,
-                deliverAt: data.deliverAt?.toISOString(),
-            };
+        const orderPayload = {
+            restaurantId: restaurant?.restaurantId,
+            orderMenus: cart.map((item) => ({
+                menuId: item.menuId,
+                menuName: item.menuName,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice,
+                menuImg: item.menuImg,
+            })),
+            paymentMethod: data.paymentMethod,
+            deliverAt: data.deliverAt?.toISOString(),
+        };
 
-            if (!cart || cart.length === 0) {
-                console.error('Validation Error: Cart is empty.');
-                alert('ตะกร้าสินค้าว่างเปล่า กรุณาเพิ่มรายการอาหาร');
-                return; // Prevent submission
-            }
-
-            if (new Date(getBufferTime(5)) > new Date(orderPayload.deliverAt)) {
-                console.error('Deliver time must be after current time at least 5 mins');
-                alert('เวลารับอาหารต้องอยู่หลังจากเวลาปัจจุบันอย่างน้อย 5นาที');
-                return;
-            }
-
-            const response = await api.post(`${NGROK_WEBSITE_URL}/order/omise`, orderPayload);
-            alert(`สั่งอาหารออเดอร์: ${response.data.orderId}`)
-        } catch (error) {
-            console.error(error);
+        if (!cart || cart.length === 0) {
+            alert('ตะกร้าสินค้าว่างเปล่า กรุณาเพิ่มรายการอาหาร');
+            return; // Prevent submission
         }
+
+        if (new Date(getBufferTime(5)) > new Date(orderPayload.deliverAt)) {
+            alert('เวลารับอาหารต้องอยู่หลังจากเวลาปัจจุบันอย่างน้อย 5นาที');
+            return;
+        }
+
+        const response = await api.post(`${NGROK_WEBSITE_URL}/order/omise`, orderPayload);
+        alert(`สั่งอาหารออเดอร์: ${response.data.orderId}`)
     }
 
     return (
@@ -111,7 +105,7 @@ function OrderConfirmContext() {
                 <div className="flex justify-between items-center">
                     <h3 className="noto-sans-bold text-base">เลือกเวลารับอาหาร</h3>
                     <p className="noto-sans-regular text-sm text-danger-main">
-            ใช้เวลาจัดเตรียมขั้นต่ำ5นาที
+                        ใช้เวลาจัดเตรียมขั้นต่ำ5นาที
                     </p>
                 </div>
                 <Controller
@@ -153,7 +147,7 @@ function OrderConfirmContext() {
                     type="submit"
                     disabled={isSubmitting}
                 >
-          ยืนยันออเดอร์พร้อมชำระเงิน
+                    ยืนยันออเดอร์พร้อมชำระเงิน
                 </Button>
             </div>
         </form>
