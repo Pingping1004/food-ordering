@@ -84,6 +84,10 @@ export class RestaurantService {
 
   async findRestaurant(restaurantId: string) {
     try {
+      const now = new Date();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const currentTimeString = `${hours}:${minutes}`;
       const restaurant = await this.prisma.restaurant.findUnique({
         where: { restaurantId },
       });
@@ -94,7 +98,18 @@ export class RestaurantService {
         );
       }
 
-      return restaurant;
+      const isScheduledOpenDay = this.isTodayOpen(restaurant.openDate);
+      const isScheduledOpenTime = this.isTimeBetween(
+        currentTimeString,
+        restaurant.openTime,
+        restaurant.closeTime,
+      );
+
+      const isOpen = isScheduledOpenDay && isScheduledOpenTime;
+      const isManuallyClosed = restaurant.isTemporarilyClosed;
+      const isActuallyOpen = isOpen && !isManuallyClosed;
+
+      return { ...restaurant, isActuallyOpen };
     } catch (error) {
       // Wrap Prisma errors or other errors if needed
       if (error.code === 'P2025') {
@@ -151,13 +166,13 @@ export class RestaurantService {
         restaurant.openTime,
         restaurant.closeTime
       );
-      const isScheduledOpen = isScheduledOpenDay && isScheduledOpenTime;
+      const isOpen = isScheduledOpenDay && isScheduledOpenTime;
       const isManuallyClosed = restaurant.isTemporarilyClosed;
-      const isActuallyOpen = isScheduledOpen && !isManuallyClosed;
+      const isActuallyOpen = isOpen && !isManuallyClosed;
 
       return {
         ...restaurant,
-        isScheduledOpen,
+        isOpen,
         isManuallyClosed,
         isActuallyOpen,
       };
