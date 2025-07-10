@@ -196,7 +196,7 @@ export const Order = ({
                     <p className="mb-2 text-primary">รายละเอียดออเดอร์:</p>
                     {orderMenus.map((item, index) => (
                         <p
-                            key={item.menuName}
+                            key={index}
                         >{item.quantity}x - {item.menuName}</p>
                     ))}
                 </div>

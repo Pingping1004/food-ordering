@@ -41,8 +41,9 @@ export const baseEditMenuSchema = z.object({
 export const singleEditMenuSchema = baseEditMenuSchema.extend({
   restaurantId: z.string().min(1, 'Restaurant ID is required').uuid(),
   menuImg: z
-    .any()
-    .refine(
+  .union([
+    z.string(), // accept string URLs for existing images
+    z.any().refine(
       (file) => {
         if (file === undefined) return true;
         if (file instanceof FileList) {
@@ -50,9 +51,10 @@ export const singleEditMenuSchema = baseEditMenuSchema.extend({
         }
         return false;
       },
-      { message: 'Menu image must be a single file '}
-    )
-    .optional(),
+      { message: 'Menu image must be a single file' }
+    ),
+  ])
+  .optional(),
 });
 
 export type singleEditMenuSchemaType = z.infer<typeof singleEditMenuSchema>
@@ -86,7 +88,7 @@ export type BulkUploadFormValues = z.infer<typeof bulkUploadFormSchema>;
 
 export const csvMenuItemSchema = z.object({
   name: z.string().min(1, "Menu name is required."),
-  description: z.string().optional(), // Description can be empty
+  // description: z.string().optional(), // Description can be empty
   price: z.coerce.number().min(0.01, "Price must be a number greater than 0."), // Coerce string to number
   maxDaily: z.coerce.number().int().min(0, "Max daily must be a non-negative integer.").optional().default(0), // Coerce string to number, allow 0
   cookingTime: z.coerce.number().int().min(1, "Cooking time must be an integer at least 1.").optional().default(1), // Coerce string to number

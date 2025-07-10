@@ -29,7 +29,6 @@ function getParamId(param: string | string[] | undefined): string | undefined {
 export default function AddMenuPage() {
   const params = useParams();
   const restaurantId = getParamId(params.restaurantId);
-  console.log('RestaurantId: ', restaurantId, 'type: ', typeof restaurantId);
   const router = useRouter();
 
   // State for image preview URL

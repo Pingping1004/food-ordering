@@ -5,7 +5,9 @@ import { Order, OrderProps } from "@/components/cookers/Order";
 import { OrderNavBar, OrderStatus } from "@/components/cookers/OrderNavbar";
 import { CookerProvider, useCooker } from "@/context/Cookercontext";
 import { api } from "@/lib/api";
+import { getParamId } from "@/util/param";
 import { getDateFormat, getTimeFormat } from "@/util/time";
+import { useParams } from "next/navigation";
 import { useState, useEffect, useMemo } from "react";
 
 function Page() {
@@ -13,7 +15,9 @@ function Page() {
     const { cooker, fetchOrders, orders } = useCooker();
     const [_order, setOrder] = useState<OrderProps>();
     const [navbarStatus, setNavbarStatus] = useState<OrderStatus>(OrderStatus.receive);
-
+    const params = useParams();
+    const restaurantId = getParamId(params[0]);
+    
     useEffect(() => {
         const fetchData = async () => {
             const response = await api.get(`/order/weekly/${cooker.restaurantId}`);

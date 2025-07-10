@@ -81,7 +81,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             return response.data as User;
         } catch (error) {
             console.error('Frontend: Authentication check failed:', error);
-            return null;
+            throw error;
         }
     };
 
@@ -131,16 +131,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
             setAccessToken(newAccessToken);
             setAccessTokenValue(newAccessToken)
+            localStorage.setItem('accessToken', newAccessToken);
+            
             setIsAuth(true);
             setUser(userData as User);
-            const csrfToken = await fetchCsrfToken();
-            setCsrfToken(csrfToken);
-            const profileUser = await getProfile();
 
+            const csrfToken = getCsrfToken();
+            if (!csrfToken) throw new Error('Fail to get csrf token');
+            setCsrfToken(csrfToken);
+            
+            const profileUser = await getProfile();
             if (profileUser) {
                 setUser(profileUser);
                 alertShowRef.current = false;
-                const routePath = profileUser.role === UserRole.cooker ? (`${profileUser.restaurant?.restaurantId}`) : 'user/restaurant';
+                const routePath = profileUser.role === UserRole.cooker ? (`cooker/${profileUser.restaurant?.restaurantId}`) : 'user/restaurant';
                 router.push(`/${routePath}`);
                 return profileUser;
             } else {
@@ -233,46 +237,42 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     useEffect(() => {
         const initializeAuthAndProfile = async () => {
             setLoading(true);
-            let userCurrentlyAuthenticated = false;
             try {
-                const accessToken = getAccessToken();
-                if (accessToken) {
-                    setAccessTokenValue(accessToken);
+                const accessToken = localStorage.getItem('accessToken');
+                if (!accessToken) throw new Error('Access token missing');
 
-                    const csrfToken = getCsrfToken();
-                    if (!csrfToken) await fetchCsrfToken();
+                setAccessTokenValue(accessToken);
+                if (!getCsrfToken()) await fetchCsrfToken();
 
-                    const profileUser = await getProfile();
-                    if (profileUser) {
-                        setUser(profileUser);
-                        setIsAuth(true);
-                        userCurrentlyAuthenticated = true;
-                    } else {
-                        handleLogoutSideEffects();
-                    }
-                } else {
-                    handleLogoutSideEffects();
-                }
-            } catch (err) {
+                const profileUser = await getProfile();
+                if (!profileUser) throw new Error("Failed to fetch profile");
+
+                setUser(profileUser);
+                setIsAuth(true);
+                alertShowRef.current = false;
+            } catch (err: any) {
                 console.error('Initial authentication check or CSRF fetch failed:', err);
-                await logout(false);
+
+                if (err.response?.status === 401 || err.response?.status === 403) {
+                    await logout(false);
+                    if (!alertShowRef.current) {
+                        alert('เซสชันหมดอายุ กรุณาล็อกอินใหม่อีกครั้ง');
+                        router.push('/login');
+                        alertShowRef.current = true;
+                    }
+                }
             } finally {
                 setLoading(false);
-                if (!userCurrentlyAuthenticated && !alertShowRef.current) {
-                    alert('เซสชันหมดอายุ กรุณาล็อกอินใหม่อีกครั้ง');
-                    router.push('/login');
-                    alertShowRef.current = true;
-                }
             }
         };
 
-        const handleLogoutSideEffects = () => {
-            setUser(null);
-            setIsAuth(false);
-            setAccessTokenValue(null);
-            removeAccessToken();
-            removeCsrfToken();
-        };
+        // const handleLogoutSideEffects = () => {
+        //     setUser(null);
+        //     setIsAuth(false);
+        //     setAccessTokenValue(null);
+        //     removeAccessToken();
+        //     removeCsrfToken();
+        // };
         initializeAuthAndProfile();
     }, []);
 

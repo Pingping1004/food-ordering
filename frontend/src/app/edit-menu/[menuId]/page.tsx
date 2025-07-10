@@ -13,7 +13,7 @@ import { Menu } from "@/context/MenuContext";
 import { getParamId } from "@/util/param";
 
 export default function EditMenuPage() {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+  const imageBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
   const [menu, setMenu] = useState<Menu>();
   const router = useRouter();
   const [restaurantId, setRestaurantId] = useState<string | undefined>(undefined);
@@ -33,7 +33,7 @@ export default function EditMenuPage() {
       restaurantId: undefined,
       menuId: menuId,
       name: menu?.name || '',
-      menuImg: menu?.menuImg || '',
+      menuImg: menu?.menuImg ?? undefined,
       price: menu?.price ?? undefined,
       maxDaily: menu?.maxDaily ?? undefined,
       cookingTime: menu?.cookingTime ?? undefined,
@@ -54,7 +54,7 @@ export default function EditMenuPage() {
           price: menuResponse.data.price ?? undefined,
           maxDaily: menuResponse.data.maxDaily ?? undefined,
           cookingTime: menuResponse.data.cookingTime ?? undefined,
-          menuImg: menuResponse.data.menuImg || '', // This will be the string URL
+          menuImg: (menuResponse.data.menuImg && menuResponse.data.menuImg !== '/') ? menuResponse.data.menuImg : undefined,
           restaurantId: menuResponse.data.restaurantId, // <--- Set restaurantId here too!
         });
 
@@ -77,9 +77,9 @@ export default function EditMenuPage() {
       currentPreviewUrl = url;
       createdObjectURL = url;
     } else if (typeof watchedMenuImgFile === 'string' && watchedMenuImgFile) {
-      currentPreviewUrl = `${baseUrl}${watchedMenuImgFile}`;
+      currentPreviewUrl = `${imageBaseUrl}${watchedMenuImgFile}`;
     } else if (menu?.menuImg) {
-      currentPreviewUrl = `${baseUrl}${menu.menuImg}`;
+      currentPreviewUrl = `${imageBaseUrl}${menu.menuImg}`;
     }
 
     setImagePreviewUrl(currentPreviewUrl);
@@ -101,7 +101,7 @@ export default function EditMenuPage() {
       if (data.maxDaily !== undefined) formData.append('maxDaily', data.maxDaily.toString());
       if (data.cookingTime !== undefined) formData.append('cookingTime', data.cookingTime.toString());
 
-      if (data.menuImg && data.menuImg.length > 0) {
+      if (data.menuImg && data.menuImg.length > 0 && !(typeof data.menuImg === 'string' && data.menuImg === '/')) {
         formData.append('menuImg', data.menuImg[0]);
       }
 
@@ -113,8 +113,10 @@ export default function EditMenuPage() {
         },
       });
 
-      console.log('Patch req body: ', response.data);
-      alert(`แำ้ไขเมนู ${response.data.name} สำเร็จ`);
+
+      const updateResult = Array.isArray(response.data) ? response.data : [response.data];
+      console.log('Patch res body: ', updateResult);
+      alert(`แก้ไขเมนู ${updateResult.map(menu => menu.name).join(', ')} สำเร็จ`);
       router.push(`/managed-menu/${restaurantId}`);
     } catch (error) {
       console.error("Error creating menu:", error);

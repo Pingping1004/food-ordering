@@ -23,7 +23,7 @@ export default function LoginPage() {
     if (user.role === "user") {
       router.push('/user/restaurant');
     } else if (user.role === 'cooker') {
-      router.push(`/${user.restaurant?.restaurantId}`)
+      router.push(`/cooker/${user.restaurant?.restaurantId}`)
     }
   };
 

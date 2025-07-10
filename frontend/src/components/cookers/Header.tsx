@@ -28,7 +28,7 @@ export default function CookerHeader({
 
           <div className="w-full flex justify-end items-center gap-x-6">
             {/* Conditional rendering based on the current URL */}
-            {pathname === `/${restaurantId}` && (
+            {pathname === `/cooker/${restaurantId}` && (
               <Button
                 type="button"
                 variant="primary"
@@ -38,7 +38,7 @@ export default function CookerHeader({
                 จัดการเมนู
               </Button>
             )}
-            {pathname !== `/${restaurantId}` && (
+            {pathname !== `/cooker/${restaurantId}` && (
               <Button
                 type="button"
                 variant="secondary"

@@ -18,7 +18,7 @@ import {
     CsvMenuItemSchemaType,
     FinalBulkMenuPayloadType,
 } from '@/schemas/addMenuSchema';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 
 export interface ServerMenuItem extends MenuItem {
     name: string;
@@ -45,6 +45,7 @@ interface BulkCreateMenuResult {
 export default function BulkAddMenuPage() {
     const [loading, setLoading] = useState(false);
     const params = useParams();
+    const router = useRouter();
     const restaurantId = params.restaurantId as string;
     // const { user } = useAuth();
     // const restaurantId = user?.restaurant?.restaurantId;
@@ -214,6 +215,7 @@ export default function BulkAddMenuPage() {
                 uploadedImagesMetadata = responseData; // Store metadata for display and mapping
                 setUploadedImageMetadata(uploadedImagesMetadata);
                 console.log(`Successfully uploaded ${uploadedImagesMetadata.length} images to temporary storage.`);
+                router.push(`/managed-menu/${restaurantId}`);
             } else {
                 console.log("No menu images provided for upload. Skipping temporary image upload stage.");
             }
