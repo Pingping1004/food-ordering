@@ -1,7 +1,7 @@
 import { Injectable, Inject, forwardRef, NotFoundException, ConflictException, InternalServerErrorException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
 import { CreateMenuDto, CsvMenuItemData } from './dto/create-menu.dto';
 import { UpdateMenuDto } from './dto/update-menu.dto';
-import { PrismaService } from 'prisma/prisma.service';
+import { PrismaService } from 'src/prisma/prisma.service';
 import { RestaurantService } from 'src/restaurant/restaurant.service';
 import { Menu } from '@prisma/client';
 import Decimal from 'decimal.js';

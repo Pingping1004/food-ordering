@@ -2,7 +2,7 @@ import { Module, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/c
 import { APP_FILTER } from '@nestjs/core';
 import { HttpExceptionFilter } from './libs/http-exception.filter';
 import { CatchEverythingFilter } from './libs/catch-everything.filter';
-import { RequestLoggerMiddleware } from 'logger.middleware';
+import { RequestLoggerMiddleware } from 'src/logger.middleware';
 import { MulterModule } from '@nestjs/platform-express';
 import configuration from './config/configuration';
 
@@ -15,8 +15,8 @@ import { RestaurantService } from './restaurant/restaurant.service';
 import { MenuService } from './menu/menu.service';
 import { RestaurantController } from './restaurant/restaurant.controller';
 import { MenuController } from './menu/menu.controller';
-import { PrismaModule } from 'prisma/prisma.module';
-import { PrismaService } from 'prisma/prisma.service';
+import { PrismaModule } from 'src/prisma/prisma.module';
+import { PrismaService } from 'src/prisma/prisma.service';
 import { OrderModule } from './order/order.module';
 import { OrderService } from './order/order.service';
 import { OrderController } from './order/order.controller';
