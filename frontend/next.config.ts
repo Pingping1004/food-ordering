@@ -1,17 +1,26 @@
-import {withSentryConfig} from '@sentry/nextjs';
+import { withSentryConfig } from '@sentry/nextjs';
 import type { NextConfig } from "next";
 
 /** @type {import('next').NextConfig} */
 const nextConfig: NextConfig = {
     async redirects() {
-    return [
-      {
-        source: '/',
-        destination: '/login',
-        permanent: true,
-      },
-    ];
-  },
+        return [
+            {
+                source: '/',
+                destination: '/login',
+                permanent: true,
+            },
+        ];
+    },
+
+    async rewrites() {
+        return [
+            {
+                source: '/api/:path*',
+                destination: 'https://food-ordering-mvp.onrender.com',
+            },
+        ];
+    },
     images: {
         remotePatterns: [
             {
@@ -24,8 +33,8 @@ const nextConfig: NextConfig = {
 };
 
 export default withSentryConfig(nextConfig, {
-// For all available options, see:
-// https://www.npmjs.com/package/@sentry/webpack-plugin#options
+    // For all available options, see:
+    // https://www.npmjs.com/package/@sentry/webpack-plugin#options
 
     org: "pings-org",
     project: "javascript-nextjs",
