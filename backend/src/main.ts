@@ -26,9 +26,9 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
 
   const allowedOrigins = [
-    'https://localhost:8000',
-    'http://localhost:3000',
-    'https://4e448ea267fb.ngrok-free.app',
+    process.env.NEXT_PUBLIC_BACKEND_API_URL,
+    process.env.FRONTEND_BASE_URL,
+    process.env.WEBHOOK_ENDPOINT,
   ];
 
   app.enableCors({
