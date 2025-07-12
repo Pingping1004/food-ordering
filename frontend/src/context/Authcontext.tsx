@@ -263,7 +263,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 if (!accessToken) throw new Error('Access token missing');
 
                 setAccessTokenValue(accessToken);
-                if (!getCsrfToken()) await fetchCsrfToken();
+                if (!getCsrfToken()) {
+                    const csrfToken = await fetchCsrfToken();
+                    setCsrfToken(csrfToken);
+                }
 
                 const profileUser = await getProfile();
                 if (!profileUser) throw new Error("Failed to fetch profile");
