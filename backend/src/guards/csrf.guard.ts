@@ -35,7 +35,7 @@ export class CsrfGuard implements CanActivate {
     }
 
     // 1. Get CSRF token from the custom header (sent by frontend)
-    const csrfHeader = request.header('x-csrf-token') as string;
+    const csrfHeader = request.header('X-Csrf-Token') as string;
     if (!csrfHeader) {
       throw new ForbiddenException({
         statusCode: HttpStatus.FORBIDDEN,
