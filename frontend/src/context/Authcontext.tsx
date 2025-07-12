@@ -4,7 +4,7 @@ import React, { createContext, useContext, useCallback, useState, useEffect, use
 import { api } from "@/lib/api";
 import { AxiosResponse, AxiosRequestConfig } from "axios";
 import { useRouter } from "next/navigation";
-import { getCsrfToken, setAccessToken, removeAccessToken, removeCsrfToken, setCsrfToken } from "@/lib/token";
+import { getCsrfToken, setAccessToken, removeAccessToken, removeCsrfToken, setCsrfToken, removeRefreshToken } from "@/lib/token";
 
 export enum UserRole {
     user = 'user',
@@ -112,11 +112,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         } catch {
             console.error('Logout failed');
         } finally {
-            setUser(null);
-            setAccessTokenValue(null);
-            removeCsrfToken();
-            removeAccessToken();
-            setIsAuth(false);
+            handleLogoutSideEffects();
             setLoading(false);
             alertShowRef.current = false;
 
@@ -125,6 +121,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             }
         }
     }, [router]);
+
+    const handleLogoutSideEffects = () => {
+            setUser(null);
+            setIsAuth(false);
+            setAccessTokenValue(null);
+            removeAccessToken();
+            removeRefreshToken();
+            removeCsrfToken();
+            localStorage.removeItem('accessToken');
+        };
 
     const login = useCallback(async (email: string, password: string): Promise<User> => {
         setLoading(true);
@@ -281,14 +287,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 setLoading(false);
             }
         };
-
-        // const handleLogoutSideEffects = () => {
-        //     setUser(null);
-        //     setIsAuth(false);
-        //     setAccessTokenValue(null);
-        //     removeAccessToken();
-        //     removeCsrfToken();
-        // };
         initializeAuthAndProfile();
     }, []);
 
