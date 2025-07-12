@@ -20,6 +20,7 @@ export default function LoginPage() {
     const { login } = useAuth();
     const submitForm = async (loginData: loginSchemaType) => {
         const user = await login(loginData.email, loginData.password);
+        console.log('Login response: ', user);
 
         if (user.role === "user") {
             router.push('/user/restaurant');
