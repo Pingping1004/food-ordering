@@ -28,7 +28,7 @@ async function bootstrap() {
   const allowedOrigins = [
     process.env.FRONTEND_BASE_URL?.replace(/\/$/, ''),
     process.env.NEXT_PUBLIC_BACKEND_API_URL?.replace(/\/$/, ''),
-    process.env.WEBHOOK_ENDPOINT?.replace(/\/$/, ''),
+    process.env.WEBHOOK_ENDPOINT?.split('/').slice(0, 3).join('/'),
   ].filter(Boolean); // remove undefined entries
 
   app.enableCors({
