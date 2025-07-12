@@ -5,7 +5,7 @@ import { HttpExceptionFilter } from './libs/http-exception.filter';
 import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import * as express from 'express';
-import { json } from 'express';
+import { json, Request, Response } from 'express';
 import cookieParser from 'cookie-parser';
 import * as dotenv from 'dotenv';
 import helmet from 'helmet'
@@ -63,6 +63,10 @@ async function bootstrap() {
   app.enableShutdownHooks();
   app.use(helmet());
   app.use(compression());
+
+  app.getHttpAdapter().get('/health', (req: Request, res: Response) => {
+  res.send('OK');
+});
 
   function assertEnvVar(name: string): string {
     const value = process.env[name];
