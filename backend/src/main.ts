@@ -58,7 +58,13 @@ async function bootstrap() {
     ],
     exposedHeaders: ['Set-Cookie'],
   });
-  logger.log('Allowed origins:', allowedOrigins);
+  
+  app.use((req, res, next) => {
+  logger.log('Origin:', req.headers.origin);
+  logger.log('Cookies:', req.headers.cookie);
+  logger.log('CSRF Header:', req.headers['x-csrf-token']);
+  next();
+});
 
   app.use(cookieParser());
   app.set('trust proxy', 1);
