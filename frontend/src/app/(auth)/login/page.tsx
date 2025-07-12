@@ -11,8 +11,9 @@ import { Input } from "@/components/Input";
 import { useAuth } from "@/context/Authcontext";
 
 export default function LoginPage() {
-    const { register, handleSubmit, formState: { errors } } = useForm<loginSchemaType>({
+    const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<loginSchemaType>({
         resolver: zodResolver(loginSchema),
+        mode: 'onBlur',
     });
 
     const router = useRouter();
@@ -26,6 +27,8 @@ export default function LoginPage() {
             router.push(`/cooker/${user.restaurant?.restaurantId}`)
         }
     };
+
+    console.error('Login form error: ', errors);
 
     return (
         <div className="container flex items-center justify-center min-w-screen min-h-screen">
@@ -70,6 +73,7 @@ export default function LoginPage() {
                                     variant="primary"
                                     size="full"
                                     type="submit"
+                                    disabled={isSubmitting}
                                 >
                     Login to Account
                                 </Button>

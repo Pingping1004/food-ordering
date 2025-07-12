@@ -7,7 +7,7 @@ import { useAuth } from "@/context/Authcontext";
 
 export default function UserHeader() {
     const router = useRouter();
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
     const userId = user?.userId;
 
     return (
@@ -28,7 +28,7 @@ export default function UserHeader() {
                         type="button"
                         size="sm"
                         variant="secondaryDanger"
-                        onClick={() => router.push(`/login`)}
+                        onClick={() => logout()}
                     >
                         Logout
                     </Button>

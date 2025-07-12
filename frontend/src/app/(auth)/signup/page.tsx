@@ -14,7 +14,7 @@ export default function SignupPage() {
     const {
         register,
         handleSubmit,
-        formState: { errors },
+        formState: { errors, isSubmitting },
     } = useForm<signupSchemaType>({
         resolver: zodResolver(signupSchema),
     });
@@ -95,7 +95,7 @@ export default function SignupPage() {
 
                             <div className="flex flex-row justify-end mb-8"></div>
                             <div className="flex justify-center">
-                                <Button variant="primary" size="full" type="submit">
+                                <Button variant="primary" size="full" type="submit" disabled={isSubmitting}>
                                     Create Account
                                 </Button>
                             </div>

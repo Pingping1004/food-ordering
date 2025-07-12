@@ -32,7 +32,7 @@ export const createOrderSchema = z.object({
         .refine(
             (deliverAtDate) => {
                 const now = new Date();
-                const bufferMinutes = 5;
+                const bufferMinutes = 4;
                 const minimumAllowedDeliverTime = new Date(now.getTime() + bufferMinutes * 60 * 1000); // 10 minutes in milliseconds
                 return deliverAtDate > minimumAllowedDeliverTime;
             },

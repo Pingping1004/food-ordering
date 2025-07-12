@@ -45,6 +45,7 @@ function OrderConfirmContext() {
 
         alert(`กรุณากรอกข้อมูลให้ถูกต้อง:\n\n${messages}`);
     };
+    console.log('Form error: ', errors);
 
     const submitOrder = async (data: CreateOrderSchemaType) => {
         const orderPayload = {
@@ -65,7 +66,7 @@ function OrderConfirmContext() {
             return; // Prevent submission
         }
 
-        if (new Date(getBufferTime(5)) > new Date(orderPayload.deliverAt)) {
+        if (new Date(getBufferTime(4)) > new Date(orderPayload.deliverAt)) {
             alert('เวลารับอาหารต้องอยู่หลังจากเวลาปัจจุบันอย่างน้อย 5นาที');
             return;
         }
