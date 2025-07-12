@@ -29,7 +29,7 @@ export default function LoginPage() {
         }
     };
 
-    console.error('Login form error: ', errors);
+    console.log('Login form error: ', errors);
 
     return (
         <div className="container flex items-center justify-center min-w-screen min-h-screen">
