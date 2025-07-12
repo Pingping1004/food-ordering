@@ -12,10 +12,13 @@ export class CsrfController {
   getCsrfToken(@Req() req: Request, @Res() res: Response) {
     const origin = req.headers.origin;
     const allowedOrigins = [
-      'https://localhost:8000',
-      'http://localhost:3000',
-      'https://4e448ea267fb.ngrok-free.app',
-    ];
+    'https://food-orderingv1.vercel.app/',
+    'https://food-ordering-five-rho.vercel.app/',
+    'https://food-ordering-mvp.onrender.com',
+    process.env.FRONTEND_BASE_URL,
+    process.env.NEXT_PUBLIC_BACKEND_API_URL,
+    process.env.WEBHOOK_ENDPOINT,
+  ].map(origin => origin?.replace(/\/$/, '')); // strip trailing slashesƒ
 
     if (origin && allowedOrigins.includes(origin)) {
       res.setHeader('Access-Control-Allow-Origin', origin);

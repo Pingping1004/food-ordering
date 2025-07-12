@@ -33,7 +33,7 @@ async function bootstrap() {
     process.env.FRONTEND_BASE_URL,
     process.env.NEXT_PUBLIC_BACKEND_API_URL,
     process.env.WEBHOOK_ENDPOINT,
-  ].map(origin => origin?.replace(/\/$/, '')); // strip trailing slashesƒ
+  ].map(origin => origin?.replace(/\/$/, ''));
 
   app.enableCors({
     origin: (origin, callback) => {
