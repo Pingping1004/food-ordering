@@ -26,7 +26,8 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
 
   const allowedOrigins = [
-    'https://food-ordering-etnepbev7-piyatanas-projects.vercel.app',
+    'https://food-orderingv1.vercel.app/',
+    'https://food-ordering-five-rho.vercel.app/',
     'https://food-ordering-mvp.onrender.com',
     process.env.FRONTEND_BASE_URL,
     process.env.NEXT_PUBLIC_BACKEND_API_URL,
