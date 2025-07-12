@@ -19,6 +19,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
     let message = 'Internal server error';
     let errors: string[] | object | null = null; // To hold validation messages
 
+    const origin = request.headers.origin;
+
     const allowedOrigins = [
       'https://food-orderingv1.vercel.app',
       'https://food-ordering-five-rho.vercel.app',
@@ -26,9 +28,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
       process.env.FRONTEND_BASE_URL,
       process.env.NEXT_PUBLIC_BACKEND_API_URL,
       process.env.WEBHOOK_ENDPOINT,
-    ].map(origin => origin?.replace(/\/$/, '')); // strip trailing slashesƒ
+    ].map(origin => origin?.replace(/\/$/, ''));
 
-    if (origin && allowedOrigins.includes(origin)) {
+    if (origin && allowedOrigins.includes(origin.replace(/\$/, ''))) {
       response.header('Access-Control-Allow-Origin', origin);
       response.header('Access-Control-Allow-Credentials', 'true');
       response.header('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization, X-CSRF-Token, x-csrf-token, XSRF-TOKEN, x-xsrf-token');
