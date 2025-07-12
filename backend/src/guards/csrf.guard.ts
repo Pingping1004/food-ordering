@@ -1,5 +1,5 @@
 // src/common/guards/csrf.guard.ts
-import { CanActivate, ExecutionContext, Injectable, ForbiddenException, HttpStatus } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable, ForbiddenException, HttpStatus, Logger } from '@nestjs/common';
 import { Request } from 'express';
 import { CsrfTokenService } from 'src/csrf/csrf.service';
 import { Reflector } from '@nestjs/core';
@@ -11,6 +11,8 @@ export class CsrfGuard implements CanActivate {
     private readonly csrfTokenService: CsrfTokenService,
     private readonly reflector: Reflector // Used to check for @Public() decorator
   ) {}
+
+  private readonly logger = new Logger(CsrfGuard.name);
 
   canActivate(context: ExecutionContext): boolean {
     // Check if the route is marked with @Public() decorator
@@ -36,6 +38,7 @@ export class CsrfGuard implements CanActivate {
 
     // 1. Get CSRF token from the custom header (sent by frontend)
     const csrfHeader = request.header('X-Csrf-Token') as string;
+    this.logger.log('CSRF header in guard: ', csrfHeader);
     if (!csrfHeader) {
       throw new ForbiddenException({
         statusCode: HttpStatus.FORBIDDEN,
@@ -46,6 +49,7 @@ export class CsrfGuard implements CanActivate {
 
     // 2. Get CSRF token from the cookie (set by server earlier)
     const csrfCookie = request.cookies['XSRF-TOKEN'] as string;
+    this.logger.log('CSRF cookie in guard: ', csrfCookie);
     if (!csrfCookie) {
       throw new ForbiddenException({
         statusCode: HttpStatus.FORBIDDEN,
