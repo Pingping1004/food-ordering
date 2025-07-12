@@ -12,7 +12,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { createOrderSchema, CreateOrderSchemaType } from '@/schemas/addOrderSchema';
 import { zodResolver } from '@hookform/resolvers/zod';
 
-const NGROK_WEBSITE_URL = 'https://39e5-124-120-1-65.ngrok-free.app';
+const BACKEND_URL = 'https://food-orderingV1.vercel.app';
 
 
 const now = new Date();
@@ -73,7 +73,7 @@ function OrderConfirmContext() {
             return;
         }
 
-        const response = await api.post(`${NGROK_WEBSITE_URL}/order/omise`, orderPayload);
+        const response = await api.post(`${BACKEND_URL}/order/omise`, orderPayload);
         alert(`สั่งอาหารออเดอร์: ${response.data.orderId}`)
     }
 
