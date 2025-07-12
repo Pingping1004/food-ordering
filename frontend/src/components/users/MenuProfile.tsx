@@ -48,7 +48,7 @@ export default function MenuProfile({
     ...props
 }: MenuProfileProps) {
     const { getQuantity, addToCart, removeFromCart } = useCart();
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+    const baseUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://food-ordering-mvp.onrender.com';
     const src = menuImg ? `${baseUrl}${menuImg}` : `/picture.svg`;
     const quantity = getQuantity(menuId) > 0 ? `${getQuantity(menuId)}` : '';
 

@@ -13,7 +13,7 @@ import { Menu } from "@/context/MenuContext";
 import { getParamId } from "@/util/param";
 
 export default function EditMenuPage() {
-    const imageBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+    const imageBaseUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL;
     const [menu, setMenu] = useState<Menu>();
     const router = useRouter();
     const [restaurantId, setRestaurantId] = useState<string | undefined>(undefined);

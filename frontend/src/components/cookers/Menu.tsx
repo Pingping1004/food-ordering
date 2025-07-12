@@ -58,7 +58,7 @@ export const Menu = ({
 
 
     const router = useRouter();
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+    const baseUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://food-ordering-mvp.onrender.com';
     // const src = menuImg ? `${baseUrl}/${menuImg}` : `/picture.svg`;
     const src = menuImg ?? '/picture.svg';
 
