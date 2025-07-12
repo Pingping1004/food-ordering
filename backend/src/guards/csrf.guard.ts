@@ -10,7 +10,7 @@ export class CsrfGuard implements CanActivate {
   constructor(
     private readonly csrfTokenService: CsrfTokenService,
     private readonly reflector: Reflector // Used to check for @Public() decorator
-  ) {}
+  ) { }
 
   private readonly logger = new Logger(CsrfGuard.name);
 
@@ -36,29 +36,21 @@ export class CsrfGuard implements CanActivate {
       return true; // If method doesn't require CSRF, allow
     }
 
-    // 1. Get CSRF token from the custom header (sent by frontend)
-    const csrfHeader = request.header('X-Csrf-Token') as string;
-    this.logger.log('CSRF header in guard: ', csrfHeader);
-    if (!csrfHeader) {
+    const csrfHeader = request.header('X-Csrf-Token') || request.header('x-csrf-token') || request.header('X-CSRF-Token') as string;
+    const csrfCookie = request.cookies['XSRF-TOKEN'];
+
+    this.logger.log('CSRF header: ' + csrfHeader);
+    this.logger.log('CSRF cookie: ' + csrfCookie);
+
+    if (!csrfHeader || !csrfCookie || csrfHeader !== csrfCookie) {
+      this.logger.error('CSRF MISMATCH');
       throw new ForbiddenException({
         statusCode: HttpStatus.FORBIDDEN,
-        message: 'CSRF token missing in X-CSRF-Token header.',
-        code: 'CSRF_TOKEN_MISSING_HEADER'
+        message: 'Invalid CSRF token.',
+        code: 'INVALID_CSRF_TOKEN'
       });
     }
 
-    // 2. Get CSRF token from the cookie (set by server earlier)
-    const csrfCookie = request.cookies['XSRF-TOKEN'] as string;
-    this.logger.log('CSRF cookie in guard: ', csrfCookie);
-    if (!csrfCookie) {
-      throw new ForbiddenException({
-        statusCode: HttpStatus.FORBIDDEN,
-        message: 'CSRF token missing in XSRF-TOKEN cookie.',
-        code: 'CSRF_TOKEN_MISSING_COOKIE'
-      });
-    }
-
-    // 3. Compare the header token with the cookie token
     // And verify the token's integrity using the CsrfTokenService
     if (csrfHeader !== csrfCookie || !this.csrfTokenService.verifyToken(csrfHeader)) {
       throw new ForbiddenException({
