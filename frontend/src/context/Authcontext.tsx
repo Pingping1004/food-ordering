@@ -148,11 +148,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setUser(userData as User);
             await new Promise(res => setTimeout(res, 300));
 
-            let csrfToken;
-            // const csrfToken = getCsrfToken();
-            // if (!csrfToken) throw new Error('Fail to get csrf token');
-            if (!getCsrfToken) csrfToken = await fetchCsrfToken();
-            setCsrfToken(csrfToken);
+            const existingToken = getCsrfToken();
+            if (!existingToken) {
+                const csrfToken = await fetchCsrfToken();
+                setCsrfToken(csrfToken);
+            }
 
             const profileUser = await getProfile();
             if (profileUser) {
