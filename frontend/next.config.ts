@@ -17,7 +17,7 @@ const nextConfig: NextConfig = {
         return [
             {
                 source: '/api/:path*',
-                destination: 'https://food-ordering-mvp.onrender.com',
+                destination: 'https://food-ordering-mvp.onrender.com/api/:path=*',
             },
         ];
     },

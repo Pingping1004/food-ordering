@@ -73,7 +73,7 @@ function OrderConfirmContext() {
             return;
         }
 
-        const response = await api.post(`${BACKEND_URL}/order/omise`, orderPayload);
+        const response = await api.post(`/order/omise`, orderPayload);
         alert(`สั่งอาหารออเดอร์: ${response.data.orderId}`)
     }
 
