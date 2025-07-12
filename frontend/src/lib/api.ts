@@ -1,4 +1,4 @@
-import axios, { AxiosRequestConfig, AxiosError, InternalAxiosRequestConfig, AxiosResponse } from "axios";
+import axios, { AxiosRequestConfig, AxiosError, InternalAxiosRequestConfig, AxiosResponse, AxiosHeaders } from "axios";
 import { setAccessToken, getRefreshToken, setRefreshToken, clearTokens } from "./token";
 import Cookies from 'js-cookie';
 
@@ -12,9 +12,9 @@ export const api = axios.create({
 
 let isRefreshing = false;
 let failedQueue: {
-  resolve: (value?: unknown) => void;
-  reject: (reason?: unknown) => void;
-  config: AxiosRequestConfig;
+    resolve: (value?: unknown) => void;
+    reject: (reason?: unknown) => void;
+    config: AxiosRequestConfig;
 }[] = [];
 
 // Function to process the queue of failed requests
@@ -43,10 +43,11 @@ api.interceptors.request.use(
         if (csrfToken && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(config.method.toUpperCase())) {
             if (!config.headers) {
                 config.headers = new axios.AxiosHeaders();
+            } else if (!(config.headers instanceof AxiosHeaders)) {
+                config.headers = AxiosHeaders.from(config.headers);
             }
 
             config.headers['X-CSRF-Token'] = csrfToken;
-            config.headers['x-csrf-token'] = csrfToken;
         }
 
         return config;

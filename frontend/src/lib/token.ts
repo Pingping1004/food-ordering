@@ -12,7 +12,7 @@ export const setAccessToken = (token: string): void => {
     if (!token) return;
 
     Cookies.set('access_token', token, {
-        secure: process.env.NODE_ENV === 'production',
+        secure: true,
         sameSite: 'Lax',
         expires: new Date(Date.now() + 60 * 30 * 1000),
     });
@@ -35,8 +35,9 @@ export const setCsrfToken = (token: string): void => {
     if (!token) return
 
     Cookies.set('XSRF-TOKEN', token, {
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'Lax',
+        secure: true,
+        sameSite: 'None',
+        path: '/',
     });
 }
 
