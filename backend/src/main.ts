@@ -26,20 +26,23 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
 
   const allowedOrigins = [
-    process.env.NEXT_PUBLIC_BACKEND_API_URL,
-    process.env.FRONTEND_BASE_URL,
-    process.env.WEBHOOK_ENDPOINT,
-  ];
+    process.env.FRONTEND_BASE_URL?.replace(/\/$/, ''),
+    process.env.NEXT_PUBLIC_BACKEND_API_URL?.replace(/\/$/, ''),
+    process.env.WEBHOOK_ENDPOINT?.replace(/\/$/, ''),
+  ].filter(Boolean); // remove undefined entries
 
   app.enableCors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      const cleanOrigin = origin?.replace(/\/$/, '');
+      const isAllowed = !origin || allowedOrigins.includes(cleanOrigin);
+
+      if (isAllowed) {
         callback(null, true);
       } else {
+        logger.warn(`🚫 Blocked by CORS: ${origin}`);
         callback(new Error('Not allowed by CORS'));
       }
     },
-    // origin: allowedOrigins,
     credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: [
@@ -52,9 +55,8 @@ async function bootstrap() {
       'Authorization'
     ],
     exposedHeaders: ['Set-Cookie'],
-    preflightContinue: false,
-    optionsSuccessStatus: 204,
   });
+  logger.log('Allowed origins:', allowedOrigins);
 
   app.use(cookieParser());
   app.set('trust proxy', 1);
