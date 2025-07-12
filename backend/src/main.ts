@@ -62,7 +62,7 @@ async function bootstrap() {
   app.use((req, res, next) => {
   logger.log('Origin:', req.headers.origin);
   logger.log('Cookies:', req.headers.cookie);
-  logger.log('CSRF Header:', req.headers['x-csrf-token']);
+  logger.log('CSRF Header:', req.headers['X-Csrf-Token']);
   next();
 });
 
