@@ -12,9 +12,6 @@ import { useForm, Controller } from 'react-hook-form';
 import { createOrderSchema, CreateOrderSchemaType } from '@/schemas/addOrderSchema';
 import { zodResolver } from '@hookform/resolvers/zod';
 
-const BACKEND_URL = 'https://food-orderingV1.vercel.app';
-
-
 const now = new Date();
 
 const getBufferTime = (bufferMins: number = 0): string => {
