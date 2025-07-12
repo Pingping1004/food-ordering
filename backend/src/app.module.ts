@@ -16,7 +16,7 @@ import { MenuService } from './menu/menu.service';
 import { RestaurantController } from './restaurant/restaurant.controller';
 import { MenuController } from './menu/menu.controller';
 import { PrismaModule } from './prisma/prisma.module';
-import { PrismaService } from '../src/prisma/prisma.service';
+import { PrismaService } from './prisma/prisma.service';
 import { OrderModule } from './order/order.module';
 import { OrderService } from './order/order.service';
 import { OrderController } from './order/order.controller';
