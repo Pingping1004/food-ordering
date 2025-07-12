@@ -4,7 +4,7 @@ import React, { createContext, useContext, useCallback, useState, useEffect, use
 import { api } from "@/lib/api";
 import { AxiosResponse, AxiosRequestConfig } from "axios";
 import { useRouter } from "next/navigation";
-import { getCsrfToken, setAccessToken, removeAccessToken, removeCsrfToken, setCsrfToken, removeRefreshToken, clearTokens } from "@/lib/token";
+import { getCsrfToken, setAccessToken, setCsrfToken, clearTokens } from "@/lib/token";
 
 export enum UserRole {
     user = 'user',
