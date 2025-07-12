@@ -79,7 +79,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             const csrfTokenValue = result.data.csrfToken;
             setCsrfToken(csrfTokenValue);
             return csrfTokenValue;
-        } catch(error) {
+        } catch (error) {
             throw error;
         }
     }, []);
@@ -88,7 +88,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         try {
             const response = await api.get('/user/profile');
             return response.data as User;
-        } catch(error) {
+        } catch (error) {
             throw error;
         }
     };
@@ -123,12 +123,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }, [router]);
 
     const handleLogoutSideEffects = () => {
-            setUser(null);
-            setIsAuth(false);
-            setAccessTokenValue(null);
-            clearTokens();
-            localStorage.removeItem('accessToken');
-        };
+        setUser(null);
+        setIsAuth(false);
+        setAccessTokenValue(null);
+        clearTokens();
+        localStorage.removeItem('accessToken');
+    };
 
     const login = useCallback(async (email: string, password: string): Promise<User> => {
         setLoading(true);
@@ -163,10 +163,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 await logout();
                 throw new Error('Login successful, but user profile could not be loaded.');
             }
-        } catch (err) {
+        } catch (err: unknown) {
             if (err instanceof Error) {
-                throw new Error(`Invalid credentials', ${err.message}, ${err.stack}`);
+                console.error('Native error:', err.message, err.stack);
+                throw err; // preserve original stack trace
             }
+
+            console.error('Unknown error during login:', err);
+            throw new Error('An unknown error occurred during login.');
         } finally {
             setLoading(false);
         }
