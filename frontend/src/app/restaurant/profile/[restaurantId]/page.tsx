@@ -52,7 +52,7 @@ function Page() {
         } finally {
             setIsPatching(false);
         }
-    }, [cooker, setCooker]);
+    }, [cooker, setCooker, restaurantId]);
 
     if (!cooker) return <div>Loading restaurant profile...</div>
     if (error) return <div>Error</div>

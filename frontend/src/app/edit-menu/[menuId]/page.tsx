@@ -58,7 +58,7 @@ export default function EditMenuPage() {
             });
         }
         fetchData();
-    }, [menuId]);
+    }, [menuId, reset]);
 
     // --- Image Preview Logic ---
     useEffect(() => {

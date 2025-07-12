@@ -25,7 +25,7 @@ function MenuContext() {
             alertShownRef.current = true;
             setIsNowOpen(false);
         }
-    }, []);
+    }, [restaurant.isActuallyOpen, restaurant.name]);
 
     return (
         <div className="flex flex-col gap-y-10 py-10 px-6">

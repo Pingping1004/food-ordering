@@ -178,7 +178,7 @@ export default function BulkAddMenuPage() {
                 },
             });
         },
-        [rhfCsvOnChange]
+        [rhfCsvOnChange, handlePapaParseComplete]
     );
 
     const onError = (formErrors: typeof errors) => {
