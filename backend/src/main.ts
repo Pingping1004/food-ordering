@@ -26,10 +26,12 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
 
   const allowedOrigins = [
-    process.env.FRONTEND_BASE_URL?.replace(/\/$/, ''),
-    process.env.NEXT_PUBLIC_BACKEND_API_URL?.replace(/\/$/, ''),
-    process.env.WEBHOOK_ENDPOINT?.split('/').slice(0, 3).join('/'),
-  ].filter(Boolean); // remove undefined entries
+    'https://food-ordering-etnepbev7-piyatanas-projects.vercel.app',
+    'https://food-ordering-mvp.onrender.com',
+    process.env.FRONTEND_BASE_URL,
+    process.env.NEXT_PUBLIC_BACKEND_API_URL,
+    process.env.WEBHOOK_ENDPOINT,
+  ].map(origin => origin?.replace(/\/$/, '')); // strip trailing slashesƒ
 
   app.enableCors({
     origin: (origin, callback) => {
@@ -65,8 +67,8 @@ async function bootstrap() {
   app.use(compression());
 
   app.getHttpAdapter().get('/health', (req: Request, res: Response) => {
-  res.send('OK');
-});
+    res.send('OK');
+  });
 
   function assertEnvVar(name: string): string {
     const value = process.env[name];
