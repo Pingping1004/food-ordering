@@ -60,6 +60,7 @@ async function bootstrap() {
 
   app.use(cookieParser());
   app.set('trust proxy', 1);
+  app.enableShutdownHooks();
   app.use(helmet());
   app.use(compression());
 
