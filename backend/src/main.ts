@@ -62,7 +62,7 @@ async function bootstrap() {
   });
 
   app.use(
-    '/webhooks/omise',
+    '/api/webhooks/omise',
     cors({
       origin: true,
       method: ['POST'],
@@ -71,7 +71,7 @@ async function bootstrap() {
   );
 
   app.use(
-    '/webhooks/omise',
+    '/api/webhooks/omise',
     express.raw({ type: 'application/json' })
   );
 
