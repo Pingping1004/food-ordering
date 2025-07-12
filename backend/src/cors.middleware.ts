@@ -5,8 +5,8 @@ import { Request, Response, NextFunction } from 'express';
 export class CorsHeadersMiddleware implements NestMiddleware {
   use(req: Request, res: Response, next: NextFunction) {
     const allowedOrigins = [
-    'https://food-orderingv1.vercel.app/',
-    'https://food-ordering-five-rho.vercel.app/',
+    'https://food-orderingv1.vercel.app',
+    'https://food-ordering-five-rho.vercel.app',
     'https://food-ordering-mvp.onrender.com',
     process.env.FRONTEND_BASE_URL,
     process.env.NEXT_PUBLIC_BACKEND_API_URL,

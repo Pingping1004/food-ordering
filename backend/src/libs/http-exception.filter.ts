@@ -20,8 +20,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
     let errors: string[] | object | null = null; // To hold validation messages
 
     const allowedOrigins = [
-      'https://food-orderingv1.vercel.app/',
-      'https://food-ordering-five-rho.vercel.app/',
+      'https://food-orderingv1.vercel.app',
+      'https://food-ordering-five-rho.vercel.app',
       'https://food-ordering-mvp.onrender.com',
       process.env.FRONTEND_BASE_URL,
       process.env.NEXT_PUBLIC_BACKEND_API_URL,
