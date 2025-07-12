@@ -163,8 +163,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 await logout();
                 throw new Error('Login successful, but user profile could not be loaded.');
             }
-        } catch {
-            throw new Error('Invalid credentials');
+        } catch (err) {
+            if (err instanceof Error) {
+                throw new Error(`Invalid credentials', ${err.message}, ${err.stack}`);
+            }
         } finally {
             setLoading(false);
         }
