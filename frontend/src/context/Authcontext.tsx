@@ -4,7 +4,7 @@ import React, { createContext, useContext, useCallback, useState, useEffect, use
 import { api } from "@/lib/api";
 import { AxiosResponse, AxiosRequestConfig } from "axios";
 import { useRouter } from "next/navigation";
-import { getCsrfToken, setAccessToken, setCsrfToken, clearTokens } from "@/lib/token";
+import { getCsrfToken, setAccessToken, clearTokens } from "@/lib/token";
 
 export enum UserRole {
     user = 'user',
@@ -77,7 +77,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         try {
             const result = await api.get('/csrf-token');
             const csrfTokenValue = result.data.csrfToken;
-            setCsrfToken(csrfTokenValue);
+            // setCsrfToken(csrfTokenValue);
             return csrfTokenValue;
         } catch(error) {
             throw error;
@@ -149,7 +149,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
             const csrfToken = getCsrfToken();
             if (!csrfToken) throw new Error('Fail to get csrf token');
-            setCsrfToken(csrfToken);
+            // setCsrfToken(csrfToken);
 
             const profileUser = await getProfile();
             if (profileUser) {
