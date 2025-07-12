@@ -25,7 +25,7 @@ const nextConfig: NextConfig = {
         remotePatterns: [
             {
                 protocol: 'https',
-                hostname: 'food-ordering-five-rho.vercel.app',
+                hostname: 'food-orderingV1.vercel.app',
                 pathname: '/uploads/**',
             }
         ],
