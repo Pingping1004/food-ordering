@@ -204,6 +204,8 @@ export class RestaurantService {
 
       return {
         ...restaurant,
+        isScheduledOpenDay,
+        isScheduledOpenTime,
         isOpen,
         isActuallyOpen,
       };
