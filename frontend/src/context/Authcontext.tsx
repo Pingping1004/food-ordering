@@ -130,34 +130,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         localStorage.removeItem('accessToken');
     };
 
-
-    function handleLoginError(err: unknown): void {
-        if (axios.isAxiosError(err)) {
-            const status = err.response?.status;
-
-            if (status === 401) {
-                alert('รหัสผ่านหรืออีเมลไม่ถูกต้อง');
-                return;
-            }
-
-            if (status === 404) {
-                alert('ไม่พบบัญชีผู้ใช้นี้');
-                return;
-            }
-
-            if (status === 403) {
-                alert('เซสชันหมดอายุ กรุณาล็อกอินใหม่อีกครั้ง');
-                return;
-            }
-
-            // fallback if status doesn't match
-            alert(err.response?.data?.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่');
-        } else {
-            alert('เกิดข้อผิดพลาดที่ไม่รู้จัก กรุณาลองใหม่');
-            console.error('Unexpected login error:', err);
-        }
-    }
-
     const login = useCallback(async (email: string, password: string): Promise<User> => {
         setLoading(true);
         try {
@@ -193,7 +165,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 throw new Error('Login successful, but user profile could not be loaded.');
             }
         } catch (err: unknown) {
-            handleLoginError(err);
             throw err;
         } finally {
             setLoading(false);

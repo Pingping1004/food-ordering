@@ -28,13 +28,30 @@ export default function LoginPage() {
     };
 
     const submitForm = async (loginData: loginSchemaType) => {
-        const user = await login(loginData.email, loginData.password);
-        console.log('Login response: ', user);
+        try {
 
-        if (user.role === "user") {
-            router.push('/user/restaurant');
-        } else if (user.role === 'cooker') {
-            router.push(`/cooker/${user.restaurant?.restaurantId}`)
+            const user = await login(loginData.email, loginData.password);
+            console.log('Login response: ', user);
+
+            if (user.role === "user") {
+                router.push('/user/restaurant');
+            } else if (user.role === 'cooker') {
+                router.push(`/cooker/${user.restaurant?.restaurantId}`)
+            }
+        } catch (error: unknown) {
+            if (typeof error === 'object' && error !== null && 'response' in error) {
+                const err = error as { response: { status: number; data?: { message?: string } } };
+                if (err.response.status === 401) {
+                    alert('รหัสผ่านหรืออีเมลไม่ถูกต้อง');
+                } else if (err.response.status === 404) {
+                    alert('ไม่พบบัญชีผู้ใช้นี้');
+                } else if (err.response.status === 403) {
+                    alert('เซสชันหมดอายุ กรุณาล็อกอินใหม่อีกครั้ง');
+                }
+                else if (err.response.data?.message) {
+                    alert(err.response.data?.message);
+                }
+            }
         }
     };
 
