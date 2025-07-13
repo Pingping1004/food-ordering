@@ -9,6 +9,7 @@ import Omise from 'omise';
 import type { Charges } from 'omise';
 import { ConfigService } from '@nestjs/config';
 import * as moment from 'moment';
+import Decimal from 'decimal.js';
 @Injectable()
 export class PaymentService {
   private readonly logger = new Logger(PaymentService.name);
@@ -24,7 +25,7 @@ export class PaymentService {
   }
 
   async createPromptPayCharge(
-    amount: number,
+    amount: number | Decimal,
     paymentMethodType: PaymentMethodType,
     returnUri: string,
     orderId: string,
@@ -33,7 +34,8 @@ export class PaymentService {
       type ChargeCreateOptions = Parameters<
         typeof this.omiseClient.charges.create
       >[0];
-      const amountInStang = amount * 100;
+      const decimalAmount = amount instanceof Decimal ? amount : new Decimal(amount);
+      const amountInStang = decimalAmount.mul(100).toNumber();
 
       const expirationTime = moment.utc().add(10, 'minutes').toISOString();
       const chargeOptions: ChargeCreateOptions = {
