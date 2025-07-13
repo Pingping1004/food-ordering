@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException, Logger } from '@nestjs/common';
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
@@ -22,7 +22,7 @@ export class RestaurantService {
     file?: Express.Multer.File) {
     try {
       const existingRestaurant = await this.findExistingRestaurant(userId);
-      if (existingRestaurant) throw new BadRequestException(`User already register as restaurant: ${existingRestaurant.name}`)
+      if (existingRestaurant) throw new ConflictException(`User already register as restaurant: ${existingRestaurant.name}`)
       const restaurantImgUrl = file ? `uploads/restaurants/${file.filename}` : createRestaurantDto.restaurantImg;
 
       let openTime: string = '';
