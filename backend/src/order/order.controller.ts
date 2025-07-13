@@ -11,6 +11,7 @@ import {
   Res,
   Req,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -27,7 +28,7 @@ import { CsrfGuard } from 'src/guards/csrf.guard';
 @UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
 @Roles([Role.user, Role.admin, Role.cooker])
 export class OrderController {
-  constructor(private readonly orderService: OrderService) {}
+  constructor(private readonly orderService: OrderService) { }
 
   private readonly logger = new Logger('OrderController');
 
@@ -72,14 +73,12 @@ export class OrderController {
   ) {
     if (!chargeId) {
       this.logger.error('Omise return_uri called without charge_id');
-      return res.redirect(
-        `${process.env.FRONTEND_BASE_URL}/user/order/failed/${orderId}`,
-      );
+      throw new NotFoundException('Cannot find chargeId');
     }
 
     if (!orderId) {
       this.logger.error(`Not found userId in handle payment status return`);
-      return res.redirect(`${process.env.FRONTEND_BASE_URL}/user/order/failed/${orderId}`);
+      throw new NotFoundException('Cannot find orderId');
     }
 
     const omise = Omise({
@@ -94,22 +93,28 @@ export class OrderController {
         this.logger.log(
           `Omise charge ${chargeId} for order ${orderId} is paid successfully.`,
         );
-        res.redirect(
-          `${process.env.FRONTEND_BASE_URL}/user/order/done/${orderId}`,
-        );
+        return {
+          status: 'paid',
+          redirectUrl: `${process.env.FRONTEND_BASE_URL}/user/order/done/${orderId}`,
+          message: `Purchasement successfully`,
+        }
       } else {
         this.logger.log(
           `Omise charge ${chargeId} not paid. Status: ${retrievedCharge.status}. Failure: ${retrievedCharge.failure_message}`,
         );
-        res.redirect(
-          `${process.env.FRONTEND_BASE_URL}/user/order/failed/${orderId}`,
-        );
+        return {
+          status: 'unpaid',
+          redirectUrl: `${process.env.FRONTEND_BASE_URL}/user/order/failed/${orderId}`,
+          message: `You haven't paid for the order`
+        }
       }
     } catch (error) {
       this.logger.error('Error handling Omise return: ', error);
-      res.redirect(
-        `${process.env.FRONTEND_BASE_URL}/user/order/failed/${orderId}`,
-      );
+      return {
+        status: 'rejected',
+        redirectUrl: `${process.env.FRONTEND_BASE_URL}/user/order/failed/${orderId}`,
+        message: `You haven't paid for the order`
+      }
     }
   }
 
