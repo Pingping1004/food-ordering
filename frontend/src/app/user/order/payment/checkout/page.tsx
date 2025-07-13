@@ -1,11 +1,11 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Image from "next/image";
 import { api } from "@/lib/api";
 
-export default function CheckoutPage() {
+function Page() {
     const searchParams = useSearchParams();
 
     const orderId = searchParams.get('orderId');
@@ -48,24 +48,34 @@ export default function CheckoutPage() {
                     สั่งซื้อหมายเลข: <span className="font-medium text-black">{orderId}</span>
                 </p>
 
-                qrUrl ? (
-                <div className="flex justify-center mb-4">
-                    <Image
-                        src={qrUrl}
-                        alt="PromptPay QR"
-                        width={240}
-                        height={240}
-                        className="rounded-lg"
-                    />
-                </div>
-                <p className="text-sm text-gray-600 mb-2">
-                    กรุณาสแกน QR นี้ด้วยแอป Mobile Banking เพื่อชำระเงิน
-                </p>
-                <p className="text-xs text-gray-400">ระบบจะตรวจสอบการชำระเงินโดยอัตโนมัติ</p>
+                {qrUrl ? (
+                    <>
+                        <div className="flex justify-center mb-4">
+                            <Image
+                                src={qrUrl}
+                                alt="PromptPay QR"
+                                width={240}
+                                height={240}
+                                className="rounded-lg"
+                            />
+                        </div>
+                        <p className="text-sm text-gray-600 mb-2">
+                            กรุณาสแกน QR นี้ด้วยแอป Mobile Banking เพื่อชำระเงิน
+                        </p>
+                        <p className="text-xs text-gray-400">ระบบจะตรวจสอบการชำระเงินโดยอัตโนมัติ</p>
+                    </>
                 ) : (
-                <p className="text-red-500">ไม่สามารถโหลด QR ได้ กรุณาลองใหม่อีกครั้ง</p>
-                )
+                    <p className="text-red-500">ไม่สามารถโหลด QR ได้ กรุณาลองใหม่อีกครั้ง</p>
+                )}
             </div>
         </main>
     );
+}
+
+export default function CheckoutPage() {
+    return (
+        <Suspense>
+            <Page />
+        </Suspense>
+    )
 }
