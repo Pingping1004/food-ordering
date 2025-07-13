@@ -2,11 +2,11 @@ import { startOfWeek, endOfWeek, format } from 'date-fns';
 import Decimal from 'decimal.js';
 
 export interface PayoutCalculationType {
-  totalRevenue: number;
-  restaurantEarning: number;
-  platformFee: number;
-  grossPlatformCommission: number;
-  transactionFee: number;
+  totalRevenue: number | Decimal;
+  restaurantEarning: number | Decimal;
+  platformFee: number | Decimal;
+  grossPlatformCommission: number | Decimal;
+  transactionFee: number | Decimal;
 }
 
 export interface WeeklyPayoutType {
@@ -18,7 +18,7 @@ export interface WeeklyPayoutType {
 
 const APP_TIMEZONE = 'Asia/Bangkok';
 
-export function calculatePayout(totalPrice: number): PayoutCalculationType {
+export function calculatePayout(totalPrice: number | Decimal): PayoutCalculationType {
   const baseTransactionRate = new Decimal(
     Number(process.env.OMISE_BASE_TRANSACTION_RATE),
   );

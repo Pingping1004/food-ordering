@@ -5,15 +5,16 @@ import {
   IsOptional,
   IsUUID,
 } from 'class-validator';
+import Decimal from 'decimal.js';
 
 export class CreatePayoutDto {
   @IsNumber()
   @IsNotEmpty()
-  restaurantRevenue: number;
+  restaurantRevenue: number | Decimal;
 
   @IsNumber()
   @IsNotEmpty()
-  platformFee: number;
+  platformFee: number | Decimal;
 
   @IsDate()
   @IsOptional()

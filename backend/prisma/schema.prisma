@@ -31,8 +31,8 @@ model RefreshToken {
 
 model Payout {
   payoutId          String     @id @default(uuid())
-  restaurantRevenue Float
-  platformFee       Float
+  restaurantRevenue Decimal
+  platformFee       Decimal
   isPaid            Boolean    @default(false)
   startDate         DateTime
   endDate           DateTime
