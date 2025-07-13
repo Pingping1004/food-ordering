@@ -90,11 +90,12 @@ export class OrderService {
       }
 
       const markupPrice = numberRound(markupRate * existingMenu?.price);
-      if (markupPrice !== numberRound(item.unitPrice)) {
-        this.logger.log('Markup price: ', markupRate * existingMenu.price);
-        this.logger.log('Unitprice: ', item.unitPrice);
+      const roundedUnitPrice = numberRound(item.unitPrice);
+      if (markupPrice !== roundedUnitPrice) {
+        this.logger.log('Markup price: ', markupPrice);
+        this.logger.log('Unitprice: ', roundedUnitPrice);
         throw new BadRequestException(
-          `Mismatched price for menu ${item.menuName}. Expected ${existingMenu.price}, got ${item.unitPrice}`,
+          `Mismatched price for menu ${item.menuName}. Expected ${markupPrice}, got ${roundedUnitPrice}`,
         );
       }
 
