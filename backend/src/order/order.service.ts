@@ -67,6 +67,7 @@ export class OrderService {
 
   async validateOrderMenus(orderMenus: CreateOrderMenusDto[], restaurantId: string): Promise<number> {
     let calculatedTotalAmount = 0;
+    const markupRate: number = 1 + Number(process.env.SELL_PRICE_MARKUP_RATE);
 
     for (const item of orderMenus) {
       const existingMenu = await this.prisma.menu.findUnique({
@@ -81,7 +82,7 @@ export class OrderService {
         throw new BadRequestException(`Menu item ${item.menuName} does not belong to the selected restaurant.`);
       }
 
-      if (existingMenu.price !== item.unitPrice) {
+      if (markupRate * (existingMenu.price) !== item.unitPrice) {
         throw new BadRequestException(`Mismatched price for menu ${item.menuName}. Expected ${existingMenu.price}, got ${item.unitPrice}`)
       }
 
