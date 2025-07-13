@@ -91,7 +91,7 @@ export class OrderService {
 
       const markupPrice = numberRound(markupRate * existingMenu?.price);
       const roundedUnitPrice = numberRound(item.unitPrice);
-      if (markupPrice !== roundedUnitPrice) {
+      if (markupPrice.equals(roundedUnitPrice)) {
         this.logger.log('Markup price: ', markupPrice);
         this.logger.log('Unitprice: ', roundedUnitPrice);
         throw new BadRequestException(
