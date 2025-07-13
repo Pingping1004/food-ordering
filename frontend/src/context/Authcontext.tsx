@@ -146,7 +146,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
             setIsAuth(true);
             setUser(userData as User);
-            await new Promise(res => setTimeout(res, 300));
 
             const existingToken = getCsrfToken();
             if (!existingToken) {
