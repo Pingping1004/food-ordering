@@ -1,11 +1,10 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { api } from "@/lib/api";
 import { Button } from "@/components/Button";
-import { useRouter } from "next/router";
 
 function Page() {
     const searchParams = useSearchParams();
