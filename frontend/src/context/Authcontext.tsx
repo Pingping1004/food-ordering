@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useCallback, useState, useEffect, useRef } from "react";
 import { api } from "@/lib/api";
-import { AxiosResponse, AxiosRequestConfig } from "axios";
+import { AxiosResponse, AxiosRequestConfig, AxiosError } from "axios";
 import { useRouter } from "next/navigation";
 import { getCsrfToken, setAccessToken, setCsrfToken, clearTokens } from "@/lib/token";
 
@@ -130,25 +130,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         localStorage.removeItem('accessToken');
     };
 
-    function handleLoginError(err: any) {
-        const status = err?.response?.status;
-        switch (status) {
-            case 401:
-                alert('รหัสผ่านหรืออีเมลไม่ถูกต้อง');
-                break;
-            case 404:
-                alert('ไม่พบบัญชีผู้ใช้นี้');
-                break;
-            case 403:
-                logout(false);
-                if (!alertShowRef.current) {
+    function handleLoginError(err: unknown): void {
+        if (err instanceof Error && (err as AxiosError).isAxiosError) {
+            const axiosError = err as AxiosError<{ message: string }>;
+
+            const status = axiosError.response?.status;
+            const message = axiosError.response?.data?.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่';
+
+            switch (status) {
+                case 401:
+                    alert('รหัสผ่านหรืออีเมลไม่ถูกต้อง');
+                    break;
+                case 404:
+                    alert('ไม่พบบัญชีผู้ใช้นี้');
+                    break;
+                case 403:
                     alert('เซสชันหมดอายุ กรุณาล็อกอินใหม่อีกครั้ง');
-                    router.push('/login');
-                    alertShowRef.current = true;
-                }
-                break;
-            default:
-                alert('เกิดข้อผิดพลาด กรุณาลองใหม่');
+                    break;
+                default:
+                    alert(message);
+            }
+
+            console.error(`Login failed [${status}]:`, axiosError.message);
+        } else {
+            alert('เกิดข้อผิดพลาดที่ไม่รู้จัก กรุณาลองใหม่');
+            console.error('Unexpected error during login:', err);
         }
     }
 
