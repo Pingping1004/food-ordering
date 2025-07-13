@@ -83,6 +83,8 @@ export class OrderService {
       }
 
       if (markupRate * (existingMenu.price) !== item.unitPrice) {
+        this.logger.log('Markup price: ', markupRate * (existingMenu.price));
+        this.logger.log('Unitprice: ', item.unitPrice);
         throw new BadRequestException(`Mismatched price for menu ${item.menuName}. Expected ${existingMenu.price}, got ${item.unitPrice}`)
       }
 
