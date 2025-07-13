@@ -46,7 +46,8 @@ export default function UserHomePage() {
                             // closeTime={restaurant.closeTime}
                             restaurantId={restaurant.restaurantId}
                             restaurantImg={restaurant.restaurantImg}
-                            isOpen={restaurant.isActuallyOpen}
+                            // isOpen={restaurant.isActuallyOpen}
+                            isOpen={true}
                             // variant={restaurant.isActuallyOpen ? "isOpen" : "isClose"}
                             variant="isOpen"
                         />
