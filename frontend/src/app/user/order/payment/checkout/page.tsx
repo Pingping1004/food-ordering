@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { api } from "@/lib/api";
 
@@ -11,6 +11,7 @@ function Page() {
     const orderId = searchParams.get('orderId');
     const chargeId = searchParams.get('chargeId');
     const qrImageUri = searchParams.get('qrImageUri');
+    const errorRef = useRef(false);
 
     const [qrUrl, setQrUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -26,9 +27,15 @@ function Page() {
                 } catch (error: unknown) {
                     if (typeof error === 'object' && error !== null && 'response' in error) {
                         const err = error as { response: { status: number; data?: { message?: string } } };
-                        alert(err.response.data?.message);
+                        if (!errorRef.current) {
+                            errorRef.current = true;
+                            alert(err.response.data?.message);
+                        }
                     } else {
-                        alert(`พบข้อผิดพลาด กรุณาลองใหม่อีกครั้ง`);
+                        if (!errorRef.current) {
+                            errorRef.current = true;
+                            alert('พบข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
+                        }
                     }
                 }
             }, 5000);
