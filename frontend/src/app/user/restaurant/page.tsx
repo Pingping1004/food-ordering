@@ -47,7 +47,8 @@ export default function UserHomePage() {
                             restaurantId={restaurant.restaurantId}
                             restaurantImg={restaurant.restaurantImg}
                             isOpen={restaurant.isActuallyOpen}
-                            variant={restaurant.isActuallyOpen ? "isOpen" : "isClose"}
+                            // variant={restaurant.isActuallyOpen ? "isOpen" : "isClose"}
+                            variant="isOpen"
                         />
                     );
                 })}

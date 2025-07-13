@@ -58,9 +58,9 @@ function Page() {
 
     return (
         <main className="min-h-screen flex flex-col items-center justify-center px-4 py-10 bg-gray-50">
-            <div className="bg-white p-6 rounded-2xl shadow-lg max-w-md w-full text-center">
+            <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full text-center">
                 <h1 
-                    className="noto-sans-regular text-xl text-red-500"
+                    className="noto-sans-bold text-xl text-red-500 mb-6"
                 >กรุณาอย่ารีเฟรช กดย้อนกลับ หรือปิดเว็บไซต์จนกว่าจะได้รับสถานะชำระเงินสำเร็จ
                 </h1>
                 <h1 className="text-2xl text-primary noto-sans-bold mb-2">ชำระเงินด้วย PromptPay</h1>
@@ -79,7 +79,7 @@ function Page() {
                                 className="rounded-lg"
                             />
                         </div>
-                        <p className="text-base text-secondary mb-2">
+                        <p className="text-xl text-secondary mb-2">
                             กรุณาสแกน QR นี้ด้วยแอป Mobile Banking เพื่อชำระเงิน
                         </p>
                         <p className="text-sm text-light">ระบบจะตรวจสอบการชำระเงินโดยอัตโนมัติ</p>
