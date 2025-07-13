@@ -11,40 +11,19 @@ function Page() {
 
     const orderId = searchParams.get('orderId');
     const chargeId = searchParams.get('chargeId');
-    const qrDownloaduri = searchParams.get('qrDownloaduri');
+    const qrImageUri = searchParams.get('qrImageUri');
     const errorRef = useRef(false);
 
     const [qrUrl, setQrUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     console.log('Qr URL: ', qrUrl);
-    console.log('qrDownloaduri: ', qrDownloaduri);
+    console.log('qrImageUri: ', qrImageUri);
 
     useEffect(() => {
         if (orderId && chargeId) {
-            setQrUrl(qrDownloaduri);
+            setQrUrl(qrImageUri);
             setIsLoading(false);
-
-            // const interval = setInterval(async () => {
-            //     try {
-            //         await api.get(`/order/omise/complete?orderId=${orderId}&charge_id=${chargeId}`);
-            //     } catch (error: unknown) {
-            //         if (typeof error === 'object' && error !== null && 'response' in error) {
-            //             const err = error as { response: { status: number; data?: { message?: string } } };
-            //             if (!errorRef.current) {
-            //                 errorRef.current = true;
-            //                 alert(err.response.data?.message);
-            //             }
-            //         } else {
-            //             if (!errorRef.current) {
-            //                 errorRef.current = true;
-            //                 alert('พบข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
-            //             }
-            //         }
-            //     }
-            // }, 5000);
-
-            // return () => clearInterval(interval);
         }
     }, [orderId, chargeId]);
 

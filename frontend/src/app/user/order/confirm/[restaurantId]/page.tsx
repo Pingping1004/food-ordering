@@ -76,9 +76,9 @@ function OrderConfirmContext() {
             }
 
             const response = await api.post(`/order/omise`, orderPayload);
-            console.log('Response data: ', response.data);
             alert(`สั่งอาหารออเดอร์: ${response.data.orderId}`);
-            const { orderId, chargeId, qrDownloaduri } = response.data;
+            const { orderId, chargeId, qrDownloaduri, qrImageUri } = response.data;
+            console.log('QR Image Url: ', qrImageUri);
             router.push(`/user/order/payment/checkout?orderId=${orderId}&chargeId=${chargeId}&qrImageUri=${encodeURIComponent(qrDownloaduri)}`);
 
         } catch (error: unknown) {
