@@ -156,32 +156,32 @@ export class RestaurantService {
   }
 
   private isTodayOpen(openDate: string[], openTime: string, closeTime: string): boolean {
-  const now = new Date();
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+    const now = new Date();
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
-  const openParts = openTime.split(':').map(Number);
-  const closeParts = closeTime.split(':').map(Number);
+    const todayIndex = now.getDay();
+    const yesterdayIndex = (todayIndex + 6) % 7;
 
-  const openMinutes = openParts[0] * 60 + openParts[1];
-  const closeMinutes = closeParts[0] * 60 + closeParts[1];
+    const today = days[todayIndex];
+    const yesterday = days[yesterdayIndex];
 
-  const isOvernight = openMinutes > closeMinutes;
+    const openParts = openTime.split(':').map(Number);
+    const closeParts = closeTime.split(':').map(Number);
 
-  const todayIndex = now.getDay();
-  const yesterdayIndex = (todayIndex + 6) % 7;
+    const openMinutes = openParts[0] * 60 + openParts[1];
+    const closeMinutes = closeParts[0] * 60 + closeParts[1];
 
-  const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-  const today = days[todayIndex];
-  const yesterday = days[yesterdayIndex];
+    const isOvernight = openMinutes > closeMinutes;
 
-  // If now is after midnight but before close, and it’s an overnight schedule,
-  // then the restaurant is considered "open from yesterday"
-  if (isOvernight && nowMinutes < closeMinutes) {
-    return openDate.includes(yesterday);
+    // If it's an overnight shift, check if yesterday was in openDate
+    if (isOvernight) {
+      return openDate.includes(today) || (nowMinutes < closeMinutes && openDate.includes(yesterday));
+    }
+
+    // Normal schedule (e.g. 09:00–17:00)
+    return openDate.includes(today);
   }
-
-  return openDate.includes(today);
-}
 
   async getOpenRestaurants() {
     // Use getHours() and getMinutes() to build the string with padding
