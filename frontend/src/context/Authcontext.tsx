@@ -278,7 +278,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     'status' in err.response
                 ) {
                     const status = (err.response as { status?: number }).status;
-                    if (status === 401 || status === 403) {
+                    if (status === 401) {
+                        alert('รหัสผ่านหรืออีเมลไม่ถูกต้อง');
+                        return;
+                    }
+
+                    if (status === 404) {
+                        alert('ไม่พบบัญชีผู้ใช้นี้');
+                        return;
+                    }
+
+                    if (status === 403) {
                         await logout(false);
                         if (!alertShowRef.current) {
                             alert('เซสชันหมดอายุ กรุณาล็อกอินใหม่อีกครั้ง');
@@ -286,6 +296,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                             alertShowRef.current = true;
                         }
                     }
+
+                    alert('เกิดข้อผิดพลาด กรุณาลองใหม่');
+                    return;
                 }
             } finally {
                 setLoading(false);

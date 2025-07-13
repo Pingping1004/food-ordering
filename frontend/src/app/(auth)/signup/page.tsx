@@ -21,7 +21,7 @@ export default function SignupPage() {
 
     const router = useRouter();
     const [, setIsLoading] = useState(false);
-    const [, setErrorMessage] = useState<string | null>(null); // State for the error message
+    const [, setErrorMessage] = useState<string | null>(null);
 
     const submitForm = async (signupData: signupSchemaType, event?: React.BaseSyntheticEvent) => {
         event?.preventDefault();
