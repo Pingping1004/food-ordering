@@ -130,6 +130,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         localStorage.removeItem('accessToken');
     };
 
+    function handleLoginError(err: any) {
+        const status = err?.response?.status;
+        switch (status) {
+            case 401:
+                alert('รหัสผ่านหรืออีเมลไม่ถูกต้อง');
+                break;
+            case 404:
+                alert('ไม่พบบัญชีผู้ใช้นี้');
+                break;
+            case 403:
+                logout(false);
+                if (!alertShowRef.current) {
+                    alert('เซสชันหมดอายุ กรุณาล็อกอินใหม่อีกครั้ง');
+                    router.push('/login');
+                    alertShowRef.current = true;
+                }
+                break;
+            default:
+                alert('เกิดข้อผิดพลาด กรุณาลองใหม่');
+        }
+    }
+
     const login = useCallback(async (email: string, password: string): Promise<User> => {
         setLoading(true);
         try {
@@ -165,13 +187,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 throw new Error('Login successful, but user profile could not be loaded.');
             }
         } catch (err: unknown) {
-            if (err instanceof Error) {
-                console.error('Native error:', err.message, err.stack);
-                throw err; // preserve original stack trace
-            }
-
-            console.error('Unknown error during login:', err);
-            throw new Error('An unknown error occurred during login.');
+            handleLoginError(err);
+            throw err;
         } finally {
             setLoading(false);
         }
