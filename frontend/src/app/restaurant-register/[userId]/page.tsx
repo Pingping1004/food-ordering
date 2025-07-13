@@ -80,47 +80,62 @@ export default function RestaurantRegisterPage() {
             return;
         }
 
-        const categoriesList = categories.map((item) => item.value);
-        const openDateList = openDate.map((date) => date.value);
+        try {
 
-        const formData = new FormData();
+            const categoriesList = categories.map((item) => item.value);
+            const openDateList = openDate.map((date) => date.value);
 
-        if (data.restaurantImg && data.restaurantImg.length > 0) {
-            formData.append('restaurantImg', data.restaurantImg[0]);
-        }
+            const formData = new FormData();
 
-        formData.append('name', data.name);
-        formData.append('email', user.email);
-
-        categoriesList.forEach(category => {
-            formData.append('categories', category);
-        });
-
-        openDateList.forEach(date => {
-            formData.append('openDate', date);
-        });
-
-        formData.append('openTime', data.openTime.toString());
-        formData.append('closeTime', data.closeTime.toString());
-        formData.append('avgCookingTime', data.avgCookingTime.toString());
-        formData.append('adminName', data.adminName);
-        formData.append('adminSurname', data.adminSurname);
-        formData.append('adminTel', data.adminTel);
-
-        if (data.adminEmail !== undefined && data.adminEmail !== null) {
-            formData.append('adminEmail', data.adminEmail);
-        }
-
-        const response = await api.post('/restaurant', formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
+            if (data.restaurantImg && data.restaurantImg.length > 0) {
+                formData.append('restaurantImg', data.restaurantImg[0]);
             }
-        });
 
-        const restaurantName = response.data.result.name;
-        const restaurantId = response.data.result.restaurantId
-        alert(`ลงทะเบียนร้าน ${restaurantName} สำเร็จ`);
-        router.push(`/cooker/${restaurantId}`)
+            formData.append('name', data.name);
+            formData.append('email', user.email);
+
+            categoriesList.forEach(category => {
+                formData.append('categories', category);
+            });
+
+            openDateList.forEach(date => {
+                formData.append('openDate', date);
+            });
+
+            formData.append('openTime', data.openTime.toString());
+            formData.append('closeTime', data.closeTime.toString());
+            formData.append('avgCookingTime', data.avgCookingTime.toString());
+            formData.append('adminName', data.adminName);
+            formData.append('adminSurname', data.adminSurname);
+            formData.append('adminTel', data.adminTel);
+
+            if (data.adminEmail !== undefined && data.adminEmail !== null) {
+                formData.append('adminEmail', data.adminEmail);
+            }
+
+            const response = await api.post('/restaurant', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                }
+            });
+
+            const restaurantName = response.data.result.name;
+            const restaurantId = response.data.result.restaurantId
+            alert(`ลงทะเบียนร้าน ${restaurantName} สำเร็จ`);
+            router.push(`/cooker/${restaurantId}`)
+        } catch (error: unknown) {
+            if (typeof error === 'object' && error !== null && 'response' in error) {
+                const err = error as { response: { status: number; data?: { message?: string } } };
+                if (err.response.status === 409) {
+                    alert(`ผู้ใช้งานได้ลงทะเบียนร้านอาหารไปแล้ว`)
+                }
+            }
+        }
+    }
+
+    if (user?.restaurant?.restaurantId) {
+        alert(`ผู้ใช้งานได้ลงทะเบียนร้านอาหารไปแล้ว`)
+        router.push(`/cooker/${user.restaurant.restaurantId}`);
     }
 
     return (
