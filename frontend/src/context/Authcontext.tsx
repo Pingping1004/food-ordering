@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useCallback, useState, useEffect, useRef } from "react";
 import { api } from "@/lib/api";
-import axios, { AxiosResponse, AxiosRequestConfig } from "axios";
+import { AxiosResponse, AxiosRequestConfig } from "axios";
 import { useRouter } from "next/navigation";
 import { getCsrfToken, setAccessToken, setCsrfToken, clearTokens } from "@/lib/token";
 
