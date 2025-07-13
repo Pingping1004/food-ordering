@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useCallback, useState, useEffect, useRef } from "react";
 import { api } from "@/lib/api";
-import { AxiosResponse, AxiosRequestConfig, AxiosError } from "axios";
+import axios, { AxiosResponse, AxiosRequestConfig, AxiosError } from "axios";
 import { useRouter } from "next/navigation";
 import { getCsrfToken, setAccessToken, setCsrfToken, clearTokens } from "@/lib/token";
 
@@ -130,31 +130,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         localStorage.removeItem('accessToken');
     };
 
+
     function handleLoginError(err: unknown): void {
-        if (err instanceof Error && (err as AxiosError).isAxiosError) {
-            const axiosError = err as AxiosError<{ message: string }>;
+        if (axios.isAxiosError(err)) {
+            const status = err.response?.status;
 
-            const status = axiosError.response?.status;
-            const message = axiosError.response?.data?.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่';
-
-            switch (status) {
-                case 401:
-                    alert('รหัสผ่านหรืออีเมลไม่ถูกต้อง');
-                    break;
-                case 404:
-                    alert('ไม่พบบัญชีผู้ใช้นี้');
-                    break;
-                case 403:
-                    alert('เซสชันหมดอายุ กรุณาล็อกอินใหม่อีกครั้ง');
-                    break;
-                default:
-                    alert(message);
+            if (status === 401) {
+                alert('รหัสผ่านหรืออีเมลไม่ถูกต้อง');
+                return;
             }
 
-            console.error(`Login failed [${status}]:`, axiosError.message);
+            if (status === 404) {
+                alert('ไม่พบบัญชีผู้ใช้นี้');
+                return;
+            }
+
+            if (status === 403) {
+                alert('เซสชันหมดอายุ กรุณาล็อกอินใหม่อีกครั้ง');
+                return;
+            }
+
+            // fallback if status doesn't match
+            alert(err.response?.data?.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่');
         } else {
             alert('เกิดข้อผิดพลาดที่ไม่รู้จัก กรุณาลองใหม่');
-            console.error('Unexpected error during login:', err);
+            console.error('Unexpected login error:', err);
         }
     }
 
