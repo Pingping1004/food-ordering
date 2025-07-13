@@ -18,7 +18,7 @@ export class RestaurantService {
     private readonly prisma: PrismaService,
     private readonly orderService: OrderService,
     private readonly userService: UserService,
-  ) {}
+  ) { }
 
   private readonly logger = new Logger('RestaurantService');
 
@@ -110,7 +110,7 @@ export class RestaurantService {
         throw new NotFoundException(`ไม่พบร้านอาหารที่มีID: ${restaurantId}`);
       }
 
-      const isScheduledOpenDay = this.isTodayOpen(restaurant.openDate);
+      const isScheduledOpenDay = this.isTodayOpen(restaurant.openDate, restaurant.openTime, restaurant.closeTime);
       const isScheduledOpenTime = this.isTimeBetween(
         currentTimeString,
         restaurant.openTime,
@@ -146,20 +146,42 @@ export class RestaurantService {
 
     const nowMinutes = nowParts[0] * 60 + nowParts[1];
     const openMinutes = openParts[0] * 60 + openParts[1];
-    const closeMinutes = closeParts[0] * 60 + closeParts[1];
+    const closeMinutes = close === '00:00' ? 1440 : closeParts[0] * 60 + closeParts[1];
 
     if (openMinutes <= closeMinutes) {
-      return nowMinutes >= openMinutes && nowMinutes <= closeMinutes;
+      return nowMinutes >= openMinutes && nowMinutes < closeMinutes;
     } else {
-      return nowMinutes >= openMinutes || nowMinutes <= closeMinutes;
+      return nowMinutes >= openMinutes || nowMinutes < closeMinutes;
     }
   }
 
-  private isTodayOpen(openDate: string[]): boolean {
-    const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-    const today = days[new Date().getDay()];
-    return openDate.includes(today);
+  private isTodayOpen(openDate: string[], openTime: string, closeTime: string): boolean {
+  const now = new Date();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+  const openParts = openTime.split(':').map(Number);
+  const closeParts = closeTime.split(':').map(Number);
+
+  const openMinutes = openParts[0] * 60 + openParts[1];
+  const closeMinutes = closeParts[0] * 60 + closeParts[1];
+
+  const isOvernight = openMinutes > closeMinutes;
+
+  const todayIndex = now.getDay();
+  const yesterdayIndex = (todayIndex + 6) % 7;
+
+  const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+  const today = days[todayIndex];
+  const yesterday = days[yesterdayIndex];
+
+  // If now is after midnight but before close, and it’s an overnight schedule,
+  // then the restaurant is considered "open from yesterday"
+  if (isOvernight && nowMinutes < closeMinutes) {
+    return openDate.includes(yesterday);
   }
+
+  return openDate.includes(today);
+}
 
   async getOpenRestaurants() {
     // Use getHours() and getMinutes() to build the string with padding
@@ -170,7 +192,7 @@ export class RestaurantService {
 
     const allRestaurants = await this.findAllRestaurant();
     const openRestaurant = allRestaurants.map((restaurant) => {
-      const isScheduledOpenDay = this.isTodayOpen(restaurant.openDate);
+      const isScheduledOpenDay = this.isTodayOpen(restaurant.openDate, restaurant.openTime, restaurant.closeTime);
       const isScheduledOpenTime = this.isTimeBetween(
         currentTimeString,
         restaurant.openTime,
@@ -183,7 +205,6 @@ export class RestaurantService {
       return {
         ...restaurant,
         isOpen,
-        isManuallyClosed,
         isActuallyOpen,
       };
     });
