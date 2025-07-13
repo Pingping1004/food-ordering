@@ -79,7 +79,7 @@ function OrderConfirmContext() {
             console.log('Response data: ', response.data);
             alert(`สั่งอาหารออเดอร์: ${response.data.orderId}`);
             const { orderId, chargeId, qrImageUri } = response.data;
-            router.push(`user/order/payment/checkout?orderId=${orderId}&chargeId=${chargeId}&qrImageUri=${encodeURIComponent(qrImageUri)}`);
+            router.push(`/user/order/payment/checkout?orderId=${orderId}&chargeId=${chargeId}&qrImageUri=${encodeURIComponent(qrImageUri)}`);
 
         } catch (error: unknown) {
             if (typeof error === 'object' && error !== null && 'response' in error) {
