@@ -11,6 +11,7 @@ import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
 import { OrderService } from 'src/order/order.service';
 import { UserService } from 'src/user/user.service';
 import { UpdateUserDto } from 'src/user/dto/update-user.dto';
+import moment from 'moment-timezone';
 
 @Injectable()
 export class RestaurantService {
@@ -98,10 +99,7 @@ export class RestaurantService {
 
   async findRestaurant(restaurantId: string) {
     try {
-      const now = new Date();
-      const hours = String(now.getHours()).padStart(2, '0');
-      const minutes = String(now.getMinutes()).padStart(2, '0');
-      const currentTimeString = `${hours}:${minutes}`;
+      const currentTimeString = moment().tz('Asia/Bangkok').format('HH:mm');
       const restaurant = await this.prisma.restaurant.findUnique({
         where: { restaurantId },
       });
@@ -192,11 +190,7 @@ export class RestaurantService {
   }
 
   async getOpenRestaurants() {
-    // Use getHours() and getMinutes() to build the string with padding
-    const now = new Date();
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    const currentTimeString = `${hours}:${minutes}`; // e.g., "14:30"
+    const currentTimeString = moment().tz('Asia/Bangkok').format('HH:mm');
 
     const allRestaurants = await this.findAllRestaurant();
     const openRestaurant = allRestaurants.map((restaurant) => {
