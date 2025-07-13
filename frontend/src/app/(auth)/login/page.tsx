@@ -18,6 +18,15 @@ export default function LoginPage() {
 
     const router = useRouter();
     const { login } = useAuth();
+
+    const onError = (formErrors: typeof errors) => {
+        const messages = Object.entries(formErrors)
+            .map(([field, error]) => `${field}: ${error?.message}`)
+            .join('\n');
+
+        alert(`กรุณากรอกข้อมูลให้ถูกต้อง:\n\n${messages}`);
+    };
+
     const submitForm = async (loginData: loginSchemaType) => {
         const user = await login(loginData.email, loginData.password);
         console.log('Login response: ', user);
@@ -37,14 +46,14 @@ export default function LoginPage() {
                 <div className="flex items-center justify-center w-full h-full lg:p-12">
                     <div className="flex items-center justify-center w-full h-full xl:p-10">
                         <form
-                            onSubmit={handleSubmit(submitForm)}
+                            onSubmit={handleSubmit(submitForm, onError)}
                             className="flex flex-col w-full h-full p-20 text-center bg-white rounded-3xl"
                         >
                             <h3 className="mb-3 text-4xl font-extrabold text-gray-900">
-                  Already Have an Account?
+                                Already Have an Account?
                             </h3>
                             <p className="mb-16 text-gray-700">
-                  Enter your email and password
+                                Enter your email and password
                             </p>
 
                             <Input
@@ -76,16 +85,16 @@ export default function LoginPage() {
                                     type="submit"
                                     disabled={isSubmitting}
                                 >
-                    Login to Account
+                                    Login to Account
                                 </Button>
                             </div>
                             <p className="text-sm leading-relaxed text-gray-900">
-                  Not Register Yet?{" "}
+                                Not Register Yet?{" "}
                                 <Link
                                     href="/signup"
                                     className="font-[700] text-blue-400 transition duration-500 hover:text-blue-600"
                                 >
-                    Signup
+                                    Signup
                                 </Link>
                             </p>
                         </form>
