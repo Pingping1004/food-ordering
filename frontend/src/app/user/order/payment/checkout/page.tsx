@@ -50,7 +50,7 @@ function Page() {
 
     const handlePayment = (async () => {
         try {
-            await api.get(`/order/omise/complete?orderId=${orderId}&charge_id=${chargeId}`);
+            await api.get(`/order/omise/complete?charge_id=${chargeId}&orderId=${orderId}`);
             alert(`กรุณาอย่ารีเฟรช กดย้อนกลับ หรือปิดเว็บไซต์จนกว่าจะได้รับสถานะชำระเงินสำเร็จ`)
         } catch (error: unknown) {
             if (typeof error === 'object' && error !== null && 'response' in error) {
