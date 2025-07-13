@@ -177,8 +177,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
             const existingToken = getCsrfToken();
             if (!existingToken) {
-                const csrfToken = await fetchCsrfToken();
-                setCsrfToken(csrfToken);
+                await fetchCsrfToken();
             }
 
             const profileUser = await getProfile();
