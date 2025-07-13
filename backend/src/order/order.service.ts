@@ -16,6 +16,7 @@ import { IsPaid, OrderStatus, PaymentMethodType } from '@prisma/client';
 import { PaymentService } from 'src/payment/payment.service';
 import { PayoutService } from 'src/payout/payout.service';
 import { calculateWeeklyInterval } from 'src/payout/payout-calculator';
+import { numberRound } from '../../src/utils/round-number';
 
 @Injectable()
 export class OrderService {
@@ -73,16 +74,17 @@ export class OrderService {
       const existingMenu = await this.prisma.menu.findUnique({
         where: { menuId: item.menuId },
       });
-
+      
       if (!existingMenu) {
         throw new NotFoundException(`Menu item with ID ${item.menuName} not found.`);
       }
-
+      
       if (existingMenu.restaurantId !== restaurantId) {
         throw new BadRequestException(`Menu item ${item.menuName} does not belong to the selected restaurant.`);
       }
-
-      if (markupRate * (existingMenu.price) !== item.unitPrice) {
+      
+      const markupPrice = numberRound(markupRate * existingMenu?.price);
+      if (markupPrice !== numberRound(item.unitPrice)) {
         this.logger.log('Markup price: ', markupRate * (existingMenu.price));
         this.logger.log('Unitprice: ', item.unitPrice);
         throw new BadRequestException(`Mismatched price for menu ${item.menuName}. Expected ${existingMenu.price}, got ${item.unitPrice}`)
