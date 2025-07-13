@@ -223,6 +223,7 @@ export class OrderService {
     });
 
     if (!order) return;
+    this.logger.log('Order payment status: ', order.isPaid);
 
     let newIsPaidStatus: IsPaid;
 

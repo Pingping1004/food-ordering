@@ -35,8 +35,8 @@ export class PaymentController {
       if (event.data?.object === 'charge') {
         // Check if the event is about a charge
         const omiseChargeId = event.data.id;
-        const retrievedCharge =
-          await this.paymentService.retrieveCharge(omiseChargeId); // <--- Use the service method
+        const retrievedCharge = await this.paymentService.retrieveCharge(omiseChargeId);
+        this.logger.log('Payment status: ', retrievedCharge.status);
 
         if (event.key === 'charge.complete') {
           await this.orderService.handleWebhookUpdate(
