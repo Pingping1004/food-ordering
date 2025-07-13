@@ -11,15 +11,18 @@ function Page() {
 
     const orderId = searchParams.get('orderId');
     const chargeId = searchParams.get('chargeId');
-    const qrImageUri = searchParams.get('qrImageUri');
+    const qrDownloaduri = searchParams.get('qrDownloaduri');
     const errorRef = useRef(false);
 
     const [qrUrl, setQrUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
+    console.log('Qr URL: ', qrUrl);
+    console.log('qrDownloaduri: ', qrDownloaduri);
+
     useEffect(() => {
         if (orderId && chargeId) {
-            setQrUrl(qrImageUri);
+            setQrUrl(qrDownloaduri);
             setIsLoading(false);
 
             // const interval = setInterval(async () => {
@@ -99,6 +102,7 @@ function Page() {
                     type="button"
                     size="full"
                     onClick={() => handlePayment()}
+                    className="mt-10"
                 >
                     ชำระเงินแล้ว
                 </Button>
