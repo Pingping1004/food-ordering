@@ -185,13 +185,14 @@ export class OrderService {
           },
         });
 
+        this.logger.log('QrImageUri: ', charge.source?.scannable_code?.image?.image_uri);
+
         return {
           orderId: order.orderId,
           chargeId: charge.id,
           authorizeUri: charge.authorize_uri || null,
           status: charge.status,
-          qrDownloadUri:
-            charge.source?.scannable_code?.image?.download_uri || null,
+          qrDownloadUri: charge.source?.scannable_code?.image?.download_uri || null,
           qrImageUri: charge.source?.scannable_code?.image?.image_uri || null,
         };
       } catch (paymentError) {
