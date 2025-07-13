@@ -29,9 +29,13 @@ function Page() {
     }, [orderId, chargeId]);
 
     const handlePayment = (async () => {
+        setIsLoading(true);
         try {
             const response = await api.get(`/order/omise/complete?charge_id=${chargeId}&orderId=${orderId}`);
             const { status, redirectUrl, message } = response.data;
+            console.log('Status: ', status);
+            console.log('Redirect URL: ', redirectUrl);
+            console.log('Message: ', message);
             alert(`${message}`)
 
             if (status === 'paid') {
@@ -40,6 +44,7 @@ function Page() {
         } catch (error: unknown) {
             if (typeof error === 'object' && error !== null && 'response' in error) {
                 const err = error as { response: { status: number; data?: { message?: string } } };
+                console.error('Error: ', err.response.data?.message)
                 if (!errorRef.current) {
                     errorRef.current = true;
                     alert(err.response.data?.message);
@@ -50,6 +55,8 @@ function Page() {
                     alert('พบข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
                 }
             }
+        } finally {
+            setIsLoading(false);
         }
     })
 
@@ -92,6 +99,7 @@ function Page() {
                     size="full"
                     onClick={() => handlePayment()}
                     className="mt-10"
+                    disabled={isLoading}
                 >
                     ชำระเงินแล้ว
                 </Button>
