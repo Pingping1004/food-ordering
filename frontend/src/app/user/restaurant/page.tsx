@@ -42,14 +42,10 @@ export default function UserHomePage() {
                             key={restaurant.restaurantId}
                             name={restaurant.name}
                             categories={restaurant.categories}
-                            // openTime={restaurant.openTime}
-                            // closeTime={restaurant.closeTime}
                             restaurantId={restaurant.restaurantId}
                             restaurantImg={restaurant.restaurantImg}
-                            // isOpen={restaurant.isActuallyOpen}
-                            isOpen={true}
-                            // variant={restaurant.isActuallyOpen ? "isOpen" : "isClose"}
-                            variant="isOpen"
+                            isOpen={restaurant.isActuallyOpen}
+                            variant={restaurant.isActuallyOpen ? "isOpen" : "isClose"}
                         />
                     );
                 })}
