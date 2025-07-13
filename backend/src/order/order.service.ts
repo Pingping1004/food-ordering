@@ -16,6 +16,7 @@ import { PaymentService } from 'src/payment/payment.service';
 import { PayoutService } from 'src/payout/payout.service';
 import { calculateWeeklyInterval } from 'src/payout/payout-calculator';
 import { numberRound } from '../utils/round-number';
+import Decimal from 'decimal.js';
 
 @Injectable()
 export class OrderService {
@@ -24,7 +25,7 @@ export class OrderService {
     private readonly paymentService: PaymentService,
     @Inject(forwardRef(() => PayoutService))
     private readonly payoutService: PayoutService,
-  ) {}
+  ) { }
 
   private readonly logger = new Logger('OrderService');
 
@@ -143,7 +144,7 @@ export class OrderService {
               unitPrice: item.unitPrice,
               menuImg: item.menuImg,
               details: item.details,
-              totalPrice: item.unitPrice * item.quantity,
+              totalPrice: new Decimal(item.unitPrice * item.quantity),
               menu: { connect: { menuId: item.menuId } },
             })),
           },
@@ -187,10 +188,11 @@ export class OrderService {
         return {
           orderId: order.orderId,
           chargeId: charge.id,
-          authorizeUri: charge.authorize_uri,
+          authorizeUri: charge.authorize_uri || null,
           status: charge.status,
           qrDownloadUri:
             charge.source?.scannable_code?.image?.download_uri || null,
+          qrImageUri: charge.source?.scannable_code?.image?.image_uri || null,
         };
       } catch (paymentError) {
         this.logger.error(

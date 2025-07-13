@@ -52,6 +52,7 @@ export class OrderController {
         authorizeUri: result.authorizeUri,
         status: result.status,
         qrDownloadUri: result.qrDownloadUri,
+        qrImageUri: result.qrImageUri,
       };
     } catch (error) {
       this.logger.error(
@@ -74,6 +75,11 @@ export class OrderController {
       return res.redirect(
         `${process.env.FRONTEND_BASE_URL}/user/order/failed/${orderId}`,
       );
+    }
+
+    if (!orderId) {
+      this.logger.error(`Not found userId in handle payment status return`);
+      return res.redirect(`${process.env.FRONTEND_BASE_URL}/user/order/failed/${orderId}`);
     }
 
     const omise = Omise({

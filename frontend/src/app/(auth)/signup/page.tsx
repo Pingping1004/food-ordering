@@ -9,6 +9,7 @@ import Link from "next/link";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { api } from "@/lib/api";
+import { useAuth } from "@/context/Authcontext";
 
 export default function SignupPage() {
     const {
@@ -20,6 +21,7 @@ export default function SignupPage() {
     });
 
     const router = useRouter();
+    const { login } = useAuth();
     const [, setIsLoading] = useState(false);
     const [, setErrorMessage] = useState<string | null>(null);
 
@@ -31,6 +33,7 @@ export default function SignupPage() {
         try {
             await api.post(`/auth/signup`, signupData);
             alert(`ลงทะเบียนใช้งานสำเร็จ!`);
+            await login(signupData.email, signupData.password);
             router.push("/user/restaurant"); // Navigate to the home page
         } catch (error: unknown) {
             if (typeof error === 'object' && error !== null && 'response' in error) {

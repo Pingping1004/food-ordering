@@ -11,6 +11,7 @@ import { api } from '@/lib/api';
 import { useForm, Controller } from 'react-hook-form';
 import { createOrderSchema, CreateOrderSchemaType } from '@/schemas/addOrderSchema';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useRouter } from 'next/navigation';
 
 const now = new Date();
 
@@ -24,6 +25,7 @@ const getBufferTime = (bufferMins: number = 0): string => {
 function OrderConfirmContext() {
     const { restaurant } = useMenu();
     const { cart } = useCart();
+    const router = useRouter();
     const {
         control,
         handleSubmit,
@@ -62,19 +64,22 @@ function OrderConfirmContext() {
                 paymentMethod: data.paymentMethod,
                 deliverAt: data.deliverAt?.toISOString(),
             };
-            
+
             if (!cart || cart.length === 0) {
                 alert('ตะกร้าสินค้าว่างเปล่า กรุณาเพิ่มรายการอาหาร');
                 return; // Prevent submission
             }
-            
+
             if (new Date(getBufferTime(4)) > new Date(orderPayload.deliverAt)) {
                 alert('เวลารับอาหารต้องอยู่หลังจากเวลาปัจจุบันอย่างน้อย 5นาที');
                 return;
             }
-            
+
             const response = await api.post(`/order/omise`, orderPayload);
-            alert(`สั่งอาหารออเดอร์: ${response.data.orderId}`)
+            alert(`สั่งอาหารออเดอร์: ${response.data.orderId}`);
+            const { orderId, chargeId, qrImageUri } = response.data;
+            router.push(`/order/payment/checkout?orderId=${orderId}&chargeId=${chargeId}&qrImageUri=${encodeURIComponent(qrImageUri)}`);
+
         } catch (error: unknown) {
             if (typeof error === 'object' && error !== null && 'response' in error) {
                 const err = error as { response: { status: number; data?: { message?: string } } };

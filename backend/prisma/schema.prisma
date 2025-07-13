@@ -92,7 +92,7 @@ model OrderMenu {
   menuName    String
   menuImg     String?
   unitPrice   Float
-  totalPrice  Float?
+  totalPrice  Decimal
   orderId     String
   menuId      String
   menu        Menu    @relation("menuToOrderMenus", fields: [menuId], references: [menuId], onDelete: Cascade)
@@ -109,7 +109,7 @@ model Order {
   deliverAt            DateTime
   isPaid               IsPaid      @default(unpaid)
   isDelay              Boolean     @default(false)
-  totalAmount          Int
+  totalAmount          Decimal
   paidAt               DateTime?
   omiseChargeId        String?     @unique @map("omise_charge_id")
   paymentMethodType    String?     @map("payment_method_type")

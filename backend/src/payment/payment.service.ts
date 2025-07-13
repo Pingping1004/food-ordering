@@ -34,17 +34,15 @@ export class PaymentService {
         typeof this.omiseClient.charges.create
       >[0];
       const amountInStang = amount * 100;
-      const markupPrice = Number(process.env.SELL_PRICE_MARKUP_RATE);
 
       const expirationTime = moment.utc().add(10, 'minutes').toISOString();
       const chargeOptions: ChargeCreateOptions = {
-        amount: Math.floor(amountInStang * (1 + markupPrice)),
+        amount: (amountInStang),
         currency: 'THB',
         return_uri: returnUri,
         metadata: {
           order_id: orderId,
         },
-        webhook_endpoints: [`${process.env.WEBHOOK_ENDPOINT}`],
         expires_at: expirationTime,
       };
 
