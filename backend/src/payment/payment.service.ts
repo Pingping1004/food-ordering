@@ -63,6 +63,7 @@ export class PaymentService {
       }
 
       const charge = await this.omiseClient.charges.create(chargeOptions);
+      this.logger.log('Charge object: ', charge);
       return charge;
     } catch (error) {
       this.logger.error('Failed to create Payment charge: ', error.message);

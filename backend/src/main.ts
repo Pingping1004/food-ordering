@@ -77,13 +77,6 @@ async function bootstrap() {
 
   app.use('/api/webhooks/omise', express.raw({ type: 'application/json' }));
 
-  app.use((req, res, next) => {
-    logger.log('Origin:', req.headers.origin);
-    logger.log('Cookies:', req.headers.cookie);
-    logger.log('CSRF Header:', req.headers['X-Csrf-Token']);
-    next();
-  });
-
   app.use(cookieParser());
   app.set('trust proxy', 1);
   app.enableShutdownHooks();
