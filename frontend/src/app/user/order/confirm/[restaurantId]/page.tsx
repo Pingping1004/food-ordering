@@ -48,31 +48,41 @@ function OrderConfirmContext() {
     console.log('Form error: ', errors);
 
     const submitOrder = async (data: CreateOrderSchemaType) => {
-        const orderPayload = {
-            restaurantId: restaurant?.restaurantId,
-            orderMenus: cart.map((item) => ({
-                menuId: item.menuId,
-                menuName: item.menuName,
-                quantity: item.quantity,
-                unitPrice: item.unitPrice,
-                menuImg: item.menuImg,
-            })),
-            paymentMethod: data.paymentMethod,
-            deliverAt: data.deliverAt?.toISOString(),
-        };
+        try {
 
-        if (!cart || cart.length === 0) {
-            alert('ตะกร้าสินค้าว่างเปล่า กรุณาเพิ่มรายการอาหาร');
-            return; // Prevent submission
+            const orderPayload = {
+                restaurantId: restaurant?.restaurantId,
+                orderMenus: cart.map((item) => ({
+                    menuId: item.menuId,
+                    menuName: item.menuName,
+                    quantity: item.quantity,
+                    unitPrice: item.unitPrice,
+                    menuImg: item.menuImg,
+                })),
+                paymentMethod: data.paymentMethod,
+                deliverAt: data.deliverAt?.toISOString(),
+            };
+            
+            if (!cart || cart.length === 0) {
+                alert('ตะกร้าสินค้าว่างเปล่า กรุณาเพิ่มรายการอาหาร');
+                return; // Prevent submission
+            }
+            
+            if (new Date(getBufferTime(4)) > new Date(orderPayload.deliverAt)) {
+                alert('เวลารับอาหารต้องอยู่หลังจากเวลาปัจจุบันอย่างน้อย 5นาที');
+                return;
+            }
+            
+            const response = await api.post(`/order/omise`, orderPayload);
+            alert(`สั่งอาหารออเดอร์: ${response.data.orderId}`)
+        } catch (error: unknown) {
+            if (typeof error === 'object' && error !== null && 'response' in error) {
+                const err = error as { response: { status: number; data?: { message?: string } } };
+
+                alert(err.response.data?.message);
+                console.error('Failed to create order: ', err.response.data);
+            }
         }
-
-        if (new Date(getBufferTime(4)) > new Date(orderPayload.deliverAt)) {
-            alert('เวลารับอาหารต้องอยู่หลังจากเวลาปัจจุบันอย่างน้อย 5นาที');
-            return;
-        }
-
-        const response = await api.post(`/order/omise`, orderPayload);
-        alert(`สั่งอาหารออเดอร์: ${response.data.orderId}`)
     }
 
     return (
