@@ -237,13 +237,15 @@ export class OrderService {
       newIsPaidStatus = order.isPaid;
     }
 
-    await this.prisma.order.update({
+    const updateOrder = await this.prisma.order.update({
       where: { orderId: order.orderId },
       data: {
         paymentGatewayStatus: omiseStatus, // Update with the status directly from Omise
         isPaid: newIsPaidStatus, // Update your internal simplified status
       },
     });
+
+    this.logger.log('Updated payment status: ', updateOrder.isPaid);
   }
 
   async findRestaurantOrders(restaurantId: string) {
