@@ -1,6 +1,26 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Req, UseGuards, UploadedFile, UploadedFiles, BadRequestException, UseInterceptors, NotFoundException, Query, Logger } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Req,
+  UseGuards,
+  UploadedFile,
+  UploadedFiles,
+  BadRequestException,
+  UseInterceptors,
+  NotFoundException,
+  Query,
+  Logger,
+} from '@nestjs/common';
 import { MenuService, MenusWithDisplayPrices } from './menu.service';
-import { CreateBulkMenusJsonPayload, CreateMenuDto } from './dto/create-menu.dto';
+import {
+  CreateBulkMenusJsonPayload,
+  CreateMenuDto,
+} from './dto/create-menu.dto';
 import { UpdateMenuDto } from './dto/update-menu.dto';
 import * as fs from 'fs/promises';
 import { Public } from '../decorators/public.decorator';
@@ -17,11 +37,9 @@ import { Roles } from 'src/decorators/role.decorator';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles([Role.admin, Role.cooker])
 export class MenuController {
-  constructor(
-    private readonly menuService: MenuService
-  ) { }
+  constructor(private readonly menuService: MenuService) {}
 
-  private readonly logger = new Logger('MenuService')
+  private readonly logger = new Logger('MenuService');
 
   @Post('single')
   @UseInterceptors(
@@ -31,15 +49,17 @@ export class MenuController {
         filename: editFileName,
       }),
       fileFilter: imageFileFilter,
-    }
-    ))
-
+    }),
+  )
   async createSingleMenu(
     @Req() req: any,
     @Body() createMenuDto: CreateMenuDto,
-    @UploadedFile() file?: Express.Multer.File
+    @UploadedFile() file?: Express.Multer.File,
   ) {
-    if (!createMenuDto.restaurantId) throw new NotFoundException('RestaurantId not found in create mneu controller');
+    if (!createMenuDto.restaurantId)
+      throw new NotFoundException(
+        'RestaurantId not found in create mneu controller',
+      );
 
     let uploadedFilePath: string | undefined;
 
@@ -56,7 +76,10 @@ export class MenuController {
         try {
           await fs.unlink(uploadedFilePath);
         } catch (fileDeleteError) {
-          this.logger.error(`Controller: Failed to delete uploaded file ${uploadedFilePath}:`, fileDeleteError)
+          this.logger.error(
+            `Controller: Failed to delete uploaded file ${uploadedFilePath}:`,
+            fileDeleteError,
+          );
         }
       }
 
@@ -66,12 +89,15 @@ export class MenuController {
   }
 
   @Post('bulk')
-  async createBulkMenus(
-    @Body() payload: CreateBulkMenusJsonPayload,
-  ) {
-
-    if (!payload.createMenuDto || !Array.isArray(payload.createMenuDto) || payload.createMenuDto.length === 0) {
-      throw new BadRequestException('The request body must contain a non-empty "createMenuDto" array.');
+  async createBulkMenus(@Body() payload: CreateBulkMenusJsonPayload) {
+    if (
+      !payload.createMenuDto ||
+      !Array.isArray(payload.createMenuDto) ||
+      payload.createMenuDto.length === 0
+    ) {
+      throw new BadRequestException(
+        'The request body must contain a non-empty "createMenuDto" array.',
+      );
     }
 
     try {
@@ -94,7 +120,9 @@ export class MenuController {
 
   @Public()
   @Get(':restaurantId')
-  async getRestaurantMenus(@Param('restaurantId') restaurantId: string): Promise<MenusWithDisplayPrices[]> {
+  async getRestaurantMenus(
+    @Param('restaurantId') restaurantId: string,
+  ): Promise<MenusWithDisplayPrices[]> {
     const menuList = this.menuService.getRestaurantMenusDisplay(restaurantId);
     return menuList;
   }
@@ -113,37 +141,39 @@ export class MenuController {
         filename: editFileName,
       }),
       fileFilter: imageFileFilter,
-    })
+    }),
   )
-
   async updateSingleMenu(
     @Param('menuId') menuId: string,
     @Body() updateMenuDto: UpdateMenuDto,
-    @UploadedFile() file?: Express.Multer.File
+    @UploadedFile() file?: Express.Multer.File,
   ) {
-
     const restaurantId = updateMenuDto.restaurantId;
     const existingMenu = await this.findMenu(menuId);
-    if (!restaurantId) throw new NotFoundException('RestaurantId not found in update menu controller');
+    if (!restaurantId)
+      throw new NotFoundException(
+        'RestaurantId not found in update menu controller',
+      );
 
     let uploadedFilePath: string | undefined;
     try {
-      if (!menuId) throw new BadRequestException('Menu ID is required in URL params');
+      if (!menuId)
+        throw new BadRequestException('Menu ID is required in URL params');
 
       const menuData: UpdateMenuDto = { ...updateMenuDto };
 
       if (file) {
         menuData.menuImg = `uploads/menus/${file.filename}`;
-      } else if (updateMenuDto.menuImg === 'undefined' || typeof updateMenuDto.menuImg === 'string') {
+      } else if (
+        updateMenuDto.menuImg === 'undefined' ||
+        typeof updateMenuDto.menuImg === 'string'
+      ) {
         menuData.menuImg = existingMenu.menuImg;
       } else {
         menuData.menuImg = null;
       }
 
-      const result = await this.menuService.updateMenu(
-        [menuId],
-        [menuData],
-      );
+      const result = await this.menuService.updateMenu([menuId], [menuData]);
 
       return result;
     } catch (error) {
@@ -152,7 +182,10 @@ export class MenuController {
         try {
           await fs.unlink(uploadedFilePath);
         } catch (fileDeleteError) {
-          this.logger.error(`Controller: Failed to delete uploaded file ${uploadedFilePath}:`, fileDeleteError);
+          this.logger.error(
+            `Controller: Failed to delete uploaded file ${uploadedFilePath}:`,
+            fileDeleteError,
+          );
         }
       }
       throw error;
@@ -167,32 +200,38 @@ export class MenuController {
         filename: editFileName,
       }),
       fileFilter: imageFileFilter,
-    })
+    }),
   )
   async bulkUpdateMenus(
     @Req() req: any,
     @Query('menuIds') menuIds: string[],
     @Body() updateMenuDto: string,
-    @UploadedFiles() files?: Express.Multer.File[]
+    @UploadedFiles() files?: Express.Multer.File[],
   ) {
-
     let parsedUpdateMenuDtos: UpdateMenuDto[];
-    let uploadedFilePaths: string[] = [];
+    const uploadedFilePaths: string[] = [];
     try {
       try {
         parsedUpdateMenuDtos = JSON.parse(updateMenuDto);
         if (!Array.isArray(parsedUpdateMenuDtos)) {
-          throw new BadRequestException('UpdateMenuDto field must be a JSON array');
+          throw new BadRequestException(
+            'UpdateMenuDto field must be a JSON array',
+          );
         }
       } catch (parseError) {
         this.logger.error('Failed to parse updateMenuDto:', parseError);
-        throw new BadRequestException('Invalida JSON format for updateMenuDto field');
+        throw new BadRequestException(
+          'Invalida JSON format for updateMenuDto field',
+        );
       }
 
       parsedUpdateMenuDtos.forEach((dto, index) => {
         const file = files?.[index];
         const restaurantId = dto.restaurantId;
-        if (!restaurantId) throw new NotFoundException('RestaurantId is missing in the update payload');
+        if (!restaurantId)
+          throw new NotFoundException(
+            'RestaurantId is missing in the update payload',
+          );
 
         if (file) {
           dto.menuImg = `uploads/menus/${file.filename}`;
@@ -209,13 +248,18 @@ export class MenuController {
       return result;
     } catch (error) {
       this.logger.error('Bulk menu update failed in controller: ', error);
-      await Promise.all(uploadedFilePaths.map(async (filePath) => {
-        try {
-          await fs.unlink(filePath);
-        } catch (fileDeleteError) {
-          this.logger.error(`Controller: Failed to delete uploaded file ${filePath}:`, fileDeleteError);
-        }
-      }));
+      await Promise.all(
+        uploadedFilePaths.map(async (filePath) => {
+          try {
+            await fs.unlink(filePath);
+          } catch (fileDeleteError) {
+            this.logger.error(
+              `Controller: Failed to delete uploaded file ${filePath}:`,
+              fileDeleteError,
+            );
+          }
+        }),
+      );
       throw error;
     }
   }
@@ -225,7 +269,10 @@ export class MenuController {
     @Param('menuId') menuId: string,
     @Body() updateMenuDto: UpdateMenuDto,
   ) {
-    const updateAvailability = await this.menuService.updateIsAvailable(menuId, updateMenuDto);
+    const updateAvailability = await this.menuService.updateIsAvailable(
+      menuId,
+      updateMenuDto,
+    );
     return updateAvailability;
   }
 

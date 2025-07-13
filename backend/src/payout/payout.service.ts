@@ -12,7 +12,7 @@ export class PayoutService {
     private readonly prisma: PrismaService,
     @Inject(forwardRef(() => OrderService))
     private readonly orderService: OrderService,
-  ) { }
+  ) {}
 
   async createPayout(orderId: string) {
     const order = await this.orderService.findOneOrder(orderId);
@@ -39,13 +39,16 @@ export class PayoutService {
     return result;
   }
 
-  async findWeeklyPayout(date?: string, restaurantId?: string): Promise<Payout[]> {
+  async findWeeklyPayout(
+    date?: string,
+    restaurantId?: string,
+  ): Promise<Payout[]> {
     const { startDate, endDate } = calculateWeeklyInterval(date);
 
     const payouts = await this.prisma.payout.findMany({
       where: {
-        ...( restaurantId && {restaurantId }),
-        startDate: { gte: startDate ,},
+        ...(restaurantId && { restaurantId }),
+        startDate: { gte: startDate },
         endDate: { lte: endDate },
       },
       include: {
@@ -53,7 +56,7 @@ export class PayoutService {
       },
       orderBy: {
         startDate: 'desc',
-      }
+      },
     });
 
     return payouts;
@@ -71,7 +74,7 @@ export class PayoutService {
     const payout = await this.prisma.payout.findMany({
       orderBy: {
         createdAt: 'desc',
-      }
+      },
     });
 
     return payout;
@@ -80,11 +83,11 @@ export class PayoutService {
   async findAllPayoutFromRestaurant(restaurantId: string): Promise<Payout[]> {
     const payouts = await this.prisma.payout.findMany({
       where: {
-        restaurantId
+        restaurantId,
       },
       orderBy: {
         startDate: 'desc',
-      }
+      },
     });
 
     return payouts;
@@ -92,7 +95,10 @@ export class PayoutService {
 
   private async getAllRevenue() {
     const payouts = await this.prisma.payout.findMany();
-    const allRevenue = payouts.reduce((total, store) => total + store.platformFee, 0);
+    const allRevenue = payouts.reduce(
+      (total, store) => total + store.platformFee,
+      0,
+    );
     return allRevenue;
   }
 

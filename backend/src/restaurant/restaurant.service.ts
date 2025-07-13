@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
@@ -12,18 +18,24 @@ export class RestaurantService {
     private readonly prisma: PrismaService,
     private readonly orderService: OrderService,
     private readonly userService: UserService,
-  ) { }
+  ) {}
 
   private readonly logger = new Logger('RestaurantService');
 
   async createRestaurant(
     createRestaurantDto: CreateRestaurantDto,
     userId: string,
-    file?: Express.Multer.File) {
+    file?: Express.Multer.File,
+  ) {
     try {
       const existingRestaurant = await this.findExistingRestaurant(userId);
-      if (existingRestaurant) throw new ConflictException(`User already register as restaurant: ${existingRestaurant.name}`)
-      const restaurantImgUrl = file ? `uploads/restaurants/${file.filename}` : createRestaurantDto.restaurantImg;
+      if (existingRestaurant)
+        throw new ConflictException(
+          `User already register as restaurant: ${existingRestaurant.name}`,
+        );
+      const restaurantImgUrl = file
+        ? `uploads/restaurants/${file.filename}`
+        : createRestaurantDto.restaurantImg;
 
       let openTime: string = '';
       let closeTime: string = '';
@@ -37,7 +49,9 @@ export class RestaurantService {
       if (typeof createRestaurantDto.closeTime === 'string') {
         closeTime = createRestaurantDto.closeTime;
       } else if (createRestaurantDto.closeTime instanceof Date) {
-        closeTime = createRestaurantDto.closeTime.toISOString().substring(11, 16);
+        closeTime = createRestaurantDto.closeTime
+          .toISOString()
+          .substring(11, 16);
       }
 
       const newRestaurant = {
@@ -54,7 +68,7 @@ export class RestaurantService {
         adminSurname: createRestaurantDto.adminSurname,
         adminTel: createRestaurantDto.adminTel,
         adminEmail: createRestaurantDto.adminEmail,
-      }
+      };
 
       const result = await this.prisma.restaurant.create({
         data: newRestaurant,
@@ -93,9 +107,7 @@ export class RestaurantService {
       });
 
       if (!restaurant) {
-        throw new NotFoundException(
-          `ไม่พบร้านอาหารที่มีID: ${restaurantId}`,
-        );
+        throw new NotFoundException(`ไม่พบร้านอาหารที่มีID: ${restaurantId}`);
       }
 
       const isScheduledOpenDay = this.isTodayOpen(restaurant.openDate);
@@ -114,9 +126,7 @@ export class RestaurantService {
       // Wrap Prisma errors or other errors if needed
       if (error.code === 'P2025') {
         // Prisma "Record not found"
-        throw new NotFoundException(
-          `ไม่พบร้านอาหารที่มีID: ${restaurantId}`,
-        );
+        throw new NotFoundException(`ไม่พบร้านอาหารที่มีID: ${restaurantId}`);
       }
       // Rethrow any other unexpected errors
       throw error;
@@ -164,7 +174,7 @@ export class RestaurantService {
       const isScheduledOpenTime = this.isTimeBetween(
         currentTimeString,
         restaurant.openTime,
-        restaurant.closeTime
+        restaurant.closeTime,
       );
       const isOpen = isScheduledOpenDay && isScheduledOpenTime;
       const isManuallyClosed = restaurant.isTemporarilyClosed;
@@ -184,11 +194,15 @@ export class RestaurantService {
   async updateRestaurant(
     restaurantId: string,
     updateRestaurantDto: UpdateRestaurantDto,
-    file?: Express.Multer.File
+    file?: Express.Multer.File,
   ) {
     try {
-      const restaurantImgUrl = file ? `uploads/restaurants/${file.filename}` : updateRestaurantDto.restaurantImg;
-      const dataToUpdate: Partial<UpdateRestaurantDto> = { ...updateRestaurantDto };
+      const restaurantImgUrl = file
+        ? `uploads/restaurants/${file.filename}`
+        : updateRestaurantDto.restaurantImg;
+      const dataToUpdate: Partial<UpdateRestaurantDto> = {
+        ...updateRestaurantDto,
+      };
 
       if (file) {
         dataToUpdate.restaurantImg = restaurantImgUrl;
@@ -208,16 +222,24 @@ export class RestaurantService {
       return result;
     } catch (error) {
       if (error.code === 'P2025') {
-        throw new NotFoundException(`ไม่สามารถแก้ไขข้อมูลได้ เนื่องจากไม่พบร้านอาหารที่มีID: ${restaurantId}`);
+        throw new NotFoundException(
+          `ไม่สามารถแก้ไขข้อมูลได้ เนื่องจากไม่พบร้านอาหารที่มีID: ${restaurantId}`,
+        );
       }
-      if (error.code === 'P2002') { // Unique constraint failed
-        throw new BadRequestException('ชื่อร้านอาหารนี้ถูกใช้ไปแล้ว โปรดใช้ชื่อใหม่');
+      if (error.code === 'P2002') {
+        // Unique constraint failed
+        throw new BadRequestException(
+          'ชื่อร้านอาหารนี้ถูกใช้ไปแล้ว โปรดใช้ชื่อใหม่',
+        );
       }
       throw error;
     }
   }
 
-  async updateIsTemporailyClose(restaurantId: string, updateRestaurantDto: UpdateRestaurantDto) {
+  async updateIsTemporailyClose(
+    restaurantId: string,
+    updateRestaurantDto: UpdateRestaurantDto,
+  ) {
     try {
       await this.findRestaurant(restaurantId);
 
@@ -226,9 +248,16 @@ export class RestaurantService {
         data: { isTemporarilyClosed: updateRestaurantDto.isTemporarilyClosed },
       });
 
-      return { result, message: `Successfully update temporarilyClose status of restaurant ${result.name} to be ${result.isTemporarilyClosed}` };
+      return {
+        result,
+        message: `Successfully update temporarilyClose status of restaurant ${result.name} to be ${result.isTemporarilyClosed}`,
+      };
     } catch (error) {
-      this.logger.error('Failed to update temporary close status of restaurant', error.message, error.stack);
+      this.logger.error(
+        'Failed to update temporary close status of restaurant',
+        error.message,
+        error.stack,
+      );
     }
   }
 
@@ -238,17 +267,20 @@ export class RestaurantService {
       select: { orderId: true, status: true },
     });
 
-    const allOrderDone = orders.every(order => order.status === 'done');
-    if (!allOrderDone) throw new BadRequestException('ไม่สามารถลบร้านอาหารในขณะที่ยังมีออเดอร์ค้างอยู่');
+    const allOrderDone = orders.every((order) => order.status === 'done');
+    if (!allOrderDone)
+      throw new BadRequestException(
+        'ไม่สามารถลบร้านอาหารในขณะที่ยังมีออเดอร์ค้างอยู่',
+      );
 
-    const orderIds = orders.map(order => order.orderId);
+    const orderIds = orders.map((order) => order.orderId);
 
     return this.prisma.$transaction(async (tx) => {
       await tx.orderMenu.deleteMany({
         where: {
           orderId: { in: orderIds },
-        }
-      })
+        },
+      });
 
       await tx.order.deleteMany({
         where: {

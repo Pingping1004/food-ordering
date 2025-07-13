@@ -1,6 +1,10 @@
-import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { PaymentMethodType } from '@prisma/client';
-import * as  crypto from 'crypto'
+import * as crypto from 'crypto';
 import Omise from 'omise';
 import type { Charges } from 'omise';
 import { ConfigService } from '@nestjs/config';
@@ -10,9 +14,7 @@ export class PaymentService {
   private readonly logger = new Logger(PaymentService.name);
   private readonly omiseClient: Omise.IOmise;
 
-  constructor(
-    private readonly configService: ConfigService,
-  ) {
+  constructor(private readonly configService: ConfigService) {
     const omiseConfig = this.configService.get('omise');
     this.omiseClient = Omise({
       publicKey: omiseConfig.publicKey,
@@ -28,20 +30,22 @@ export class PaymentService {
     orderId: string,
   ): Promise<Charges.ICharge> {
     try {
-      type ChargeCreateOptions = Parameters<typeof this.omiseClient.charges.create>[0];
+      type ChargeCreateOptions = Parameters<
+        typeof this.omiseClient.charges.create
+      >[0];
       const amountInStang = amount * 100;
       const markupPrice = Number(process.env.SELL_PRICE_MARKUP_RATE);
 
       const expirationTime = moment.utc().add(10, 'minutes').toISOString();
       const chargeOptions: ChargeCreateOptions = {
-          amount: Math.floor(amountInStang * (1 + markupPrice)),
-          currency: 'THB',
-          return_uri: returnUri,
-          metadata: {
-            order_id: orderId,
-          },
-          webhook_endpoints: [`${process.env.WEBHOOK_ENDPOINT}`],
-          expires_at: expirationTime,
+        amount: Math.floor(amountInStang * (1 + markupPrice)),
+        currency: 'THB',
+        return_uri: returnUri,
+        metadata: {
+          order_id: orderId,
+        },
+        webhook_endpoints: [`${process.env.WEBHOOK_ENDPOINT}`],
+        expires_at: expirationTime,
       };
 
       if (paymentMethodType === 'promptpay') {
@@ -70,7 +74,9 @@ export class PaymentService {
     const webhookSecret = this.configService.get('omise').webhookSecret;
 
     if (!webhookSecret) {
-      this.logger.error('OMISE_WEBHOOK_SECRET is not set in environment variables!')
+      this.logger.error(
+        'OMISE_WEBHOOK_SECRET is not set in environment variables!',
+      );
       return false;
     }
 
@@ -93,7 +99,10 @@ export class PaymentService {
 
     const signedPayload = `${timestamp}.${payload}`;
 
-    const expectedSignature = crypto.createHmac('sha256', webhookSecret).update(signedPayload).digest('hex');
+    const expectedSignature = crypto
+      .createHmac('sha256', webhookSecret)
+      .update(signedPayload)
+      .digest('hex');
 
     if (expectedSignature === omiseSignature) {
       return true;
@@ -107,8 +116,12 @@ export class PaymentService {
     try {
       return await this.omiseClient.charges.retrieve(chargeId);
     } catch (error) {
-      this.logger.error(`Omise Retrieve Charge Error for ${chargeId}: ${error.message || error}`);
-      throw new InternalServerErrorException('Failed to retrieve charge details.')
+      this.logger.error(
+        `Omise Retrieve Charge Error for ${chargeId}: ${error.message || error}`,
+      );
+      throw new InternalServerErrorException(
+        'Failed to retrieve charge details.',
+      );
     }
   }
 }

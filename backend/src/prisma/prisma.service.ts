@@ -1,4 +1,3 @@
-
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 
@@ -18,7 +17,9 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
         break;
       } catch {
         attempt++;
-        this.logger.error(`🔁 Prisma connect attempt ${attempt} failed. Retrying...`);
+        this.logger.error(
+          `🔁 Prisma connect attempt ${attempt} failed. Retrying...`,
+        );
         await new Promise((res) => setTimeout(res, 2000)); // wait 2s
       }
     }

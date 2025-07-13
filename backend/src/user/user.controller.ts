@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Req, UseGuards, Header } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Req,
+  UseGuards,
+  Header,
+} from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -11,7 +22,7 @@ import { Roles } from 'src/decorators/role.decorator';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles([Role.user, Role.admin, Role.cooker])
 export class UserController {
-  constructor(private readonly userService: UserService) { }
+  constructor(private readonly userService: UserService) {}
 
   @Post()
   createUser(@Body() createUserDto: CreateUserDto) {
@@ -34,9 +45,12 @@ export class UserController {
   @Post('request-role')
   async createRoleRequest(@Req() req, @Body('role') requestRole: Role) {
     const userId = req.user.userId;
-    
+
     await this.userService.createRoleRequest(userId, requestRole);
-    return { message: 'Your role upgrade request has been submitted for admin approval.' };
+    return {
+      message:
+        'Your role upgrade request has been submitted for admin approval.',
+    };
   }
 
   @Get(':userId')

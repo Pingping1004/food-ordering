@@ -4,7 +4,7 @@ import { CsrfTokenService } from './csrf.service';
 
 @Module({
   controllers: [CsrfController],
-  providers: [CsrfTokenService], 
+  providers: [CsrfTokenService],
   exports: [CsrfTokenService],
 })
 export class CsrfModule {}

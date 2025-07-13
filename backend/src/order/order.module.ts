@@ -8,10 +8,7 @@ import { PayoutModule } from 'src/payout/payout.module';
 import { CsrfModule } from 'src/csrf/csrf.module';
 
 @Module({
-  imports: [
-    forwardRef(() => PayoutModule),
-    CsrfModule,
-  ],
+  imports: [forwardRef(() => PayoutModule), CsrfModule],
   controllers: [OrderController],
   providers: [OrderService, PrismaService, PaymentService, ConfigService],
   exports: [OrderService],

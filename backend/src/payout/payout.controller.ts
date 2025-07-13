@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Query,
+} from '@nestjs/common';
 import { PayoutService } from './payout.service';
 import { UpdatePayoutDto } from './dto/update-payout.dto';
 import { calculatePayout } from './payout-calculator';
@@ -26,9 +35,7 @@ export class PayoutController {
   }
 
   @Get()
-  calculatePayout(
-    @Query('amount') amount: number,
-  ) {
+  calculatePayout(@Query('amount') amount: number) {
     return calculatePayout(amount);
   }
 

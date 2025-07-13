@@ -1,5 +1,11 @@
-import { IsString, IsOptional, IsArray, IsEnum, IsBoolean } from 'class-validator';
-import {RestaurantCategory } from '@prisma/client';
+import {
+  IsString,
+  IsOptional,
+  IsArray,
+  IsEnum,
+  IsBoolean,
+} from 'class-validator';
+import { RestaurantCategory } from '@prisma/client';
 
 export enum Role {
   admin = 'admin',

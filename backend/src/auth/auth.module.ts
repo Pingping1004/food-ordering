@@ -33,4 +33,4 @@ import { CsrfModule } from 'src/csrf/csrf.module';
   providers: [AuthService, PrismaService, LocalStrategy, JwtStrategy],
   exports: [AuthService, JwtModule],
 })
-export class AuthModule { }
+export class AuthModule {}

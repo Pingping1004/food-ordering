@@ -1,4 +1,4 @@
-import { Type } from "class-transformer";
+import { Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
@@ -12,12 +12,12 @@ import {
   Min,
   ValidateNested,
   ArrayMinSize,
-  ArrayMaxSize
-} from "class-validator";
-import { PaymentMethodType, OrderStatus } from "@prisma/client";
-import { CreatePaymentDto } from "src/payment/dto/create-payment.dto";
-import { CreateOrderDto, CreateOrderMenusDto } from "./create-order.dto";
-import { PartialType } from "@nestjs/swagger";
+  ArrayMaxSize,
+} from 'class-validator';
+import { PaymentMethodType, OrderStatus } from '@prisma/client';
+import { CreatePaymentDto } from 'src/payment/dto/create-payment.dto';
+import { CreateOrderDto, CreateOrderMenusDto } from './create-order.dto';
+import { PartialType } from '@nestjs/swagger';
 
 export class UpdateOrderMenusDto extends PartialType(CreateOrderMenusDto) {
   @IsUUID('4', { message: 'menuId must be a valida UUID' })
@@ -75,7 +75,9 @@ export class UpdateOrderDto extends PartialType(CreateOrderDto) {
   @IsArray()
   @IsOptional({ message: 'Order must contain at least one menu item' })
   @ArrayMinSize(1, { message: 'Order must contain at least one menu item' })
-  @ArrayMaxSize(10, { message: 'Order cannot contain more than 10 different items' })
+  @ArrayMaxSize(10, {
+    message: 'Order cannot contain more than 10 different items',
+  })
   @ValidateNested({ each: true })
   @Type(() => UpdateOrderMenusDto)
   orderMenus?: UpdateOrderMenusDto[];

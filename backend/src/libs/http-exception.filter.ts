@@ -28,13 +28,19 @@ export class HttpExceptionFilter implements ExceptionFilter {
       process.env.FRONTEND_BASE_URL,
       process.env.NEXT_PUBLIC_BACKEND_API_URL,
       process.env.WEBHOOK_ENDPOINT,
-    ].map(origin => origin?.replace(/\/$/, ''));
+    ].map((origin) => origin?.replace(/\/$/, ''));
 
     if (origin && allowedOrigins.includes(origin.replace(/\$/, ''))) {
       response.header('Access-Control-Allow-Origin', origin);
       response.header('Access-Control-Allow-Credentials', 'true');
-      response.header('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization, X-CSRF-Token, x-csrf-token, XSRF-TOKEN, x-xsrf-token');
-      response.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+      response.header(
+        'Access-Control-Allow-Headers',
+        'Content-Type, Accept, Authorization, X-CSRF-Token, x-csrf-token, XSRF-TOKEN, x-xsrf-token',
+      );
+      response.header(
+        'Access-Control-Allow-Methods',
+        'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+      );
       response.header('Access-Control-Expose-Headers', 'Set-Cookie');
     }
 
@@ -47,7 +53,11 @@ export class HttpExceptionFilter implements ExceptionFilter {
       this.logger.error(`Exception Response:`, exceptionResponse);
 
       // Handle ValidationPipe's BadRequestException format (often an array of strings)
-      if (typeof exceptionResponse === 'object' && exceptionResponse !== null && 'message' in exceptionResponse) {
+      if (
+        typeof exceptionResponse === 'object' &&
+        exceptionResponse !== null &&
+        'message' in exceptionResponse
+      ) {
         const msg = (exceptionResponse as any).message;
         if (Array.isArray(msg)) {
           message = 'Validation Failed'; // General message
@@ -62,7 +72,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
       }
     } else if (exception instanceof Error) {
       // Catch generic JavaScript Errors (e.g., TypeError, ReferenceError)
-      this.logger.error('Unhandled JavaScript Error Caught by Filter:', exception);
+      this.logger.error(
+        'Unhandled JavaScript Error Caught by Filter:',
+        exception,
+      );
       message = exception.message || 'An unexpected error occurred.';
       errors = [message];
       status = HttpStatus.INTERNAL_SERVER_ERROR; // Default to 500 for generic errors

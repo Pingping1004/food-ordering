@@ -27,4 +27,4 @@ import { UploadModule } from 'src/upload/upload.module';
   providers: [MenuService, PrismaService],
   exports: [MenuService],
 })
-export class MenuModule { }
+export class MenuModule {}

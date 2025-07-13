@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -9,7 +14,7 @@ export type UserWithRestaurant = Prisma.UserGetPayload<{
   select: {
     userId: true;
     email: true;
-    profileImg: true,
+    profileImg: true;
     name: true;
     role: true;
     createdAt: true;
@@ -20,17 +25,19 @@ export type UserWithRestaurant = Prisma.UserGetPayload<{
   };
 }>;
 
-export type UserWithRestaurantWithoutPassword = Omit<UserWithRestaurant, 'password'>;
+export type UserWithRestaurantWithoutPassword = Omit<
+  UserWithRestaurant,
+  'password'
+>;
 
 @Injectable()
 export class UserService {
-  constructor(
-    private readonly prisma: PrismaService,
-  ) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   async createUser(createUserDto: CreateUserDto) {
     const existingUser = await this.findOneByEmail(createUserDto.email);
-    if (existingUser) throw new ConflictException('User with this email already exists.');
+    if (existingUser)
+      throw new ConflictException('User with this email already exists.');
 
     const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
     const newUser = {
@@ -40,7 +47,7 @@ export class UserService {
     };
 
     const result = await this.prisma.user.create({
-      data: newUser
+      data: newUser,
     });
 
     return result;
@@ -62,7 +69,9 @@ export class UserService {
     return user;
   }
 
-  async findOneUser(userId: string): Promise<UserWithRestaurantWithoutPassword> {
+  async findOneUser(
+    userId: string,
+  ): Promise<UserWithRestaurantWithoutPassword> {
     const user = await this.prisma.user.findUnique({
       where: { userId },
       select: {
@@ -74,8 +83,8 @@ export class UserService {
         createdAt: true,
         updatedAt: true,
         restaurant: {
-          select: { restaurantId: true }
-        }
+          select: { restaurantId: true },
+        },
       },
     });
 
@@ -104,7 +113,9 @@ export class UserService {
     });
 
     if (existingPendingRequest) {
-      throw new BadRequestException('Your request already sent, admin is processing');
+      throw new BadRequestException(
+        'Your request already sent, admin is processing',
+      );
     }
 
     const result = await this.prisma.roleRequest.create({
@@ -112,7 +123,7 @@ export class UserService {
         userId,
         requestRole,
         status: RoleRequestStatus.pending,
-      }
+      },
     });
 
     return result;
@@ -120,7 +131,7 @@ export class UserService {
 
   async removeUser(userId: string) {
     const user = await this.prisma.user.delete({
-      where: { userId }
+      where: { userId },
     });
 
     return user;

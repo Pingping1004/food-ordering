@@ -7,6 +7,6 @@ export class AppService {
   }
 
   uploadFile(file?: Express.Multer.File) {
-    return { message: 'File uploaded successfully', filePath: file?.path }
+    return { message: 'File uploaded successfully', filePath: file?.path };
   }
 }

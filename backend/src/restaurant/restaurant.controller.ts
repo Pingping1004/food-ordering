@@ -1,6 +1,9 @@
 import {
   Controller,
-  Post, Delete, Get, Patch,
+  Post,
+  Delete,
+  Get,
+  Patch,
   Body,
   Param,
   UseInterceptors,
@@ -28,27 +31,35 @@ import { CsrfGuard } from 'src/guards/csrf.guard';
 @Roles([Role.user, Role.admin, Role.cooker])
 @Controller('restaurant')
 export class RestaurantController {
-  constructor(private readonly restaurantService: RestaurantService) { }
+  constructor(private readonly restaurantService: RestaurantService) {}
 
-  private readonly logger = new Logger('RestaurantController'); 
+  private readonly logger = new Logger('RestaurantController');
   @Post()
-  @UseInterceptors(FileInterceptor('restaurantImg', {
-    storage: diskStorage({
-      destination: './uploads/restaurants',
-      filename: editFileName,
+  @UseInterceptors(
+    FileInterceptor('restaurantImg', {
+      storage: diskStorage({
+        destination: './uploads/restaurants',
+        filename: editFileName,
+      }),
+      fileFilter: imageFileFilter,
     }),
-    fileFilter: imageFileFilter,
-  }))
+  )
   async createRestaurant(
     @Req() req: any,
     @Body() createRestaurantDto: CreateRestaurantDto,
-    @UploadedFile(new ParseFilePipe({
-      fileIsRequired: false,
-    }),
-    ) file?: Express.Multer.File
+    @UploadedFile(
+      new ParseFilePipe({
+        fileIsRequired: false,
+      }),
+    )
+    file?: Express.Multer.File,
   ) {
     const userId = req.user.userId;
-    return this.restaurantService.createRestaurant(createRestaurantDto, userId, file);
+    return this.restaurantService.createRestaurant(
+      createRestaurantDto,
+      userId,
+      file,
+    );
   }
 
   // @Public()
@@ -73,15 +84,14 @@ export class RestaurantController {
         filename: editFileName,
       }),
       fileFilter: imageFileFilter,
-    })
+    }),
   )
   async updateRestaurant(
     @Req() req: any,
     @Param('restaurantId') restaurantId: string,
     @Body() updateRestaurantDto: UpdateRestaurantDto,
-    @UploadedFile() file?: Express.Multer.File
+    @UploadedFile() file?: Express.Multer.File,
   ) {
-
     let uploadedFilePath: string | undefined;
     try {
       const dataToUpdate: UpdateRestaurantDto = { ...updateRestaurantDto };
@@ -89,16 +99,25 @@ export class RestaurantController {
       if (file) {
         dataToUpdate.restaurantImg = `uploads/restaurants/${file.filename}`;
       }
-      return await this.restaurantService.updateRestaurant(restaurantId, dataToUpdate);
+      return await this.restaurantService.updateRestaurant(
+        restaurantId,
+        dataToUpdate,
+      );
     } catch (error) {
-      this.logger.error(`Failed to update restaurant ${restaurantId} in controller:`, error);
+      this.logger.error(
+        `Failed to update restaurant ${restaurantId} in controller:`,
+        error,
+      );
 
       // --- 4. Clean up Uploaded File on Error ---
       if (uploadedFilePath) {
         try {
           await fs.unlink(uploadedFilePath);
         } catch (fileDeleteError) {
-          this.logger.error(`Controller: Failed to delete uploaded file ${uploadedFilePath}:`, fileDeleteError);
+          this.logger.error(
+            `Controller: Failed to delete uploaded file ${uploadedFilePath}:`,
+            fileDeleteError,
+          );
         }
       }
       // Re-throw the error so NestJS's global exception filters can handle it
@@ -110,8 +129,12 @@ export class RestaurantController {
   @Patch('temporarily-close/:restaurantId')
   async updateIsTemporarilyClose(
     @Param('restaurantId') restaurantId: string,
-    @Body() updateRestaurantDto: UpdateRestaurantDto) {
-    const updateData = await this.restaurantService.updateIsTemporailyClose(restaurantId, updateRestaurantDto);
+    @Body() updateRestaurantDto: UpdateRestaurantDto,
+  ) {
+    const updateData = await this.restaurantService.updateIsTemporailyClose(
+      restaurantId,
+      updateRestaurantDto,
+    );
     return updateData;
   }
 

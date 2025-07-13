@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-floating-promises */
 import {
   BadRequestException,
   Injectable,
@@ -16,7 +15,7 @@ import { IsPaid, OrderStatus, PaymentMethodType } from '@prisma/client';
 import { PaymentService } from 'src/payment/payment.service';
 import { PayoutService } from 'src/payout/payout.service';
 import { calculateWeeklyInterval } from 'src/payout/payout-calculator';
-import { numberRound } from '../../src/utils/round-number';
+import { numberRound } from '../utils/round-number';
 
 @Injectable()
 export class OrderService {
@@ -25,7 +24,7 @@ export class OrderService {
     private readonly paymentService: PaymentService,
     @Inject(forwardRef(() => PayoutService))
     private readonly payoutService: PayoutService,
-  ) { }
+  ) {}
 
   private readonly logger = new Logger('OrderService');
 
@@ -66,7 +65,10 @@ export class OrderService {
     );
   }
 
-  async validateOrderMenus(orderMenus: CreateOrderMenusDto[], restaurantId: string): Promise<number> {
+  async validateOrderMenus(
+    orderMenus: CreateOrderMenusDto[],
+    restaurantId: string,
+  ): Promise<number> {
     let calculatedTotalAmount = 0;
     const markupRate: number = 1 + Number(process.env.SELL_PRICE_MARKUP_RATE);
 
@@ -74,24 +76,32 @@ export class OrderService {
       const existingMenu = await this.prisma.menu.findUnique({
         where: { menuId: item.menuId },
       });
-      
+
       if (!existingMenu) {
-        throw new NotFoundException(`Menu item with ID ${item.menuName} not found.`);
+        throw new NotFoundException(
+          `Menu item with ID ${item.menuName} not found.`,
+        );
       }
-      
+
       if (existingMenu.restaurantId !== restaurantId) {
-        throw new BadRequestException(`Menu item ${item.menuName} does not belong to the selected restaurant.`);
+        throw new BadRequestException(
+          `Menu item ${item.menuName} does not belong to the selected restaurant.`,
+        );
       }
-      
+
       const markupPrice = numberRound(markupRate * existingMenu?.price);
       if (markupPrice !== numberRound(item.unitPrice)) {
-        this.logger.log('Markup price: ', markupRate * (existingMenu.price));
+        this.logger.log('Markup price: ', markupRate * existingMenu.price);
         this.logger.log('Unitprice: ', item.unitPrice);
-        throw new BadRequestException(`Mismatched price for menu ${item.menuName}. Expected ${existingMenu.price}, got ${item.unitPrice}`)
+        throw new BadRequestException(
+          `Mismatched price for menu ${item.menuName}. Expected ${existingMenu.price}, got ${item.unitPrice}`,
+        );
       }
 
       if (existingMenu.name !== item.menuName) {
-        throw new NotFoundException(`Name ${item.menuName} not found in the menu.`);
+        throw new NotFoundException(
+          `Name ${item.menuName} not found in the menu.`,
+        );
       }
 
       calculatedTotalAmount += item.unitPrice * item.quantity;
@@ -100,13 +110,20 @@ export class OrderService {
   }
 
   async createOrderWithPayment(createOrderDto: CreateOrderDto, userId: string) {
-    const calculatedTotalAmount = await this.validateOrderMenus(createOrderDto.orderMenus, createOrderDto.restaurantId);
+    const calculatedTotalAmount = await this.validateOrderMenus(
+      createOrderDto.orderMenus,
+      createOrderDto.restaurantId,
+    );
 
-    const providedTotalAmount = createOrderDto.orderMenus
-      .reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
+    const providedTotalAmount = createOrderDto.orderMenus.reduce(
+      (sum, item) => sum + item.unitPrice * item.quantity,
+      0,
+    );
 
     if (calculatedTotalAmount !== providedTotalAmount) {
-      throw new InternalServerErrorException('Calculated amount does not match provided amount.');
+      throw new InternalServerErrorException(
+        'Calculated amount does not match provided amount.',
+      );
     }
 
     return await this.prisma.$transaction(async (tx) => {
@@ -119,7 +136,7 @@ export class OrderService {
           paymentGatewayStatus: 'pending',
           totalAmount: calculatedTotalAmount,
           orderMenus: {
-            create: createOrderDto.orderMenus.map(item => ({
+            create: createOrderDto.orderMenus.map((item) => ({
               quantity: item.quantity,
               menuName: item.menuName,
               unitPrice: item.unitPrice,
@@ -131,8 +148,8 @@ export class OrderService {
           },
         },
         include: {
-          orderMenus: true
-        }
+          orderMenus: true,
+        },
       });
 
       // Validate deliver time with 10 mins time buffer
@@ -141,7 +158,9 @@ export class OrderService {
       const minimumAllowedDeliveTime = new Date(now.getTime() + 5 * 60 * 1000);
 
       if (deliverAtDate < minimumAllowedDeliveTime) {
-        throw new BadRequestException('Delivery time must be at least 5 minutes from the current time.');
+        throw new BadRequestException(
+          'Delivery time must be at least 5 minutes from the current time.',
+        );
       }
 
       let charge;
@@ -169,28 +188,34 @@ export class OrderService {
           chargeId: charge.id,
           authorizeUri: charge.authorize_uri,
           status: charge.status,
-          qrDownloadUri: charge.source?.scannable_code?.image?.download_uri || null,
+          qrDownloadUri:
+            charge.source?.scannable_code?.image?.download_uri || null,
         };
       } catch (paymentError) {
-        this.logger.error('Error initiating payment with Omise: ', paymentError.message, paymentError.stack);
+        this.logger.error(
+          'Error initiating payment with Omise: ',
+          paymentError.message,
+          paymentError.stack,
+        );
 
         await tx.order.update({
           where: { orderId: order.orderId },
           data: {
             paymentGatewayStatus: 'failed_initiation',
             omiseChargeId: null,
-
           },
         });
 
-        throw new InternalServerErrorException('Payment initiation failed. Please try again.');
+        throw new InternalServerErrorException(
+          'Payment initiation failed. Please try again.',
+        );
       }
     });
   }
 
   async handleWebhookUpdate(omiseChargeId: string, omiseStatus: string) {
     const order = await this.prisma.order.findUnique({
-      where: { omiseChargeId: omiseChargeId }
+      where: { omiseChargeId: omiseChargeId },
     });
 
     if (!order) return;
@@ -243,7 +268,7 @@ export class OrderService {
           menuName: menu.menuName,
           unitPrice: menu.unitPrice,
           totalPrice: menu.totalPrice,
-          menuImg: menu.menuImg || "",
+          menuImg: menu.menuImg || '',
         })),
       });
 
@@ -263,25 +288,36 @@ export class OrderService {
     const { startDate, endDate } = calculateWeeklyInterval(now);
     try {
       const orders = await this.prisma.order.findMany({
-        where: { 
+        where: {
           restaurantId,
           deliverAt: {
             gte: startDate,
             lte: endDate,
           },
-         },
+        },
         orderBy: {
           deliverAt: 'desc',
         },
         select: {
-          orderId: true, totalAmount:  true, isPaid: true, orderAt: true, deliverAt: true, status: true,
-        }
+          orderId: true,
+          totalAmount: true,
+          isPaid: true,
+          orderAt: true,
+          deliverAt: true,
+          status: true,
+        },
       });
 
       return orders;
     } catch (error) {
-      this.logger.error('Error finding weekly orders: ', error.message, error.stack);
-      throw new InternalServerErrorException('Finding weekly orders failed. Please try again.');
+      this.logger.error(
+        'Error finding weekly orders: ',
+        error.message,
+        error.stack,
+      );
+      throw new InternalServerErrorException(
+        'Finding weekly orders failed. Please try again.',
+      );
     }
   }
 
@@ -289,10 +325,15 @@ export class OrderService {
     const order = await this.findOneOrder(orderId);
 
     if (order.restaurantId !== updateOrderDto.restaurantId) {
-      throw new ForbiddenException('You do not have permission to update this order.');
+      throw new ForbiddenException(
+        'You do not have permission to update this order.',
+      );
     }
 
-    if (updateOrderDto.status && !Object.values(OrderStatus).includes(updateOrderDto.status)) {
+    if (
+      updateOrderDto.status &&
+      !Object.values(OrderStatus).includes(updateOrderDto.status)
+    ) {
       throw new BadRequestException('Invalid order status');
     }
 
@@ -309,7 +350,7 @@ export class OrderService {
   async updateDelay(orderId: string, updateOrderDto: UpdateOrderDto) {
     const order = await this.findOneOrder(orderId);
 
-    let updatedDeliverAt = order.deliverAt;
+    const updatedDeliverAt = order.deliverAt;
     updatedDeliverAt.setMinutes(updatedDeliverAt.getMinutes() + 10);
 
     const result = await this.prisma.order.update({
@@ -320,7 +361,7 @@ export class OrderService {
       },
     });
 
-    return { result, message: `Successfully update delay status for 10 mins` }
+    return { result, message: `Successfully update delay status for 10 mins` };
   }
 
   async updateOrderStatus(orderId: string) {
@@ -335,14 +376,19 @@ export class OrderService {
       select: { orderId: true, status: true, deliverAt: true },
     });
 
-    return { result, message: `Successfully update order status to ${result.status} ` };
+    return {
+      result,
+      message: `Successfully update order status to ${result.status} `,
+    };
   }
 
   async removeOrder(orderId: string) {
     const order = await this.findOneOrder(orderId);
 
     if (order.status !== OrderStatus.done) {
-      throw new BadRequestException('สามารถลบได้เฉพาะออเดอร์ที่มีสถ่านะเสร็จสมบูรณ์เรียบร้อยแล้วเท่านั้น')
+      throw new BadRequestException(
+        'สามารถลบได้เฉพาะออเดอร์ที่มีสถ่านะเสร็จสมบูรณ์เรียบร้อยแล้วเท่านั้น',
+      );
     }
 
     return this.prisma.order.delete({

@@ -1,8 +1,19 @@
-import { IsBoolean, IsArray, ValidateNested, IsNotEmpty, Min, IsNumber, IsOptional, IsPositive, IsString } from 'class-validator'
+import {
+  IsBoolean,
+  IsArray,
+  ValidateNested,
+  IsNotEmpty,
+  Min,
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  IsString,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 // import { CsvMenuItemData } from '../menu.service';
 
-export class CsvMenuItemData { // <-- Change 'interface' to 'class'
+export class CsvMenuItemData {
+  // <-- Change 'interface' to 'class'
   @IsString()
   @IsNotEmpty()
   name: string;
@@ -39,40 +50,40 @@ export class CsvMenuItemData { // <-- Change 'interface' to 'class'
 }
 
 export class CreateMenuDto {
-    @IsString()
-    @IsNotEmpty()
-    restaurantId: string;
+  @IsString()
+  @IsNotEmpty()
+  restaurantId: string;
 
-    @IsString()
-    @IsNotEmpty()
-    name: string;
+  @IsString()
+  @IsNotEmpty()
+  name: string;
 
-    @IsOptional()
-    @IsString()
-    menuImg?: string | null;
+  @IsOptional()
+  @IsString()
+  menuImg?: string | null;
 
-    @IsNotEmpty()
-    @IsPositive()
-    @IsNumber()
-    @Type(() => Number)
-    maxDaily: number;
+  @IsNotEmpty()
+  @IsPositive()
+  @IsNumber()
+  @Type(() => Number)
+  maxDaily: number;
 
-    @IsNotEmpty()
-    @IsNumber()
-    @IsPositive()
-    @Type(() => Number)
-    cookingTime: number;
+  @IsNotEmpty()
+  @IsNumber()
+  @IsPositive()
+  @Type(() => Number)
+  cookingTime: number;
 
-    @IsNotEmpty()
-    @IsNumber({}, { message: 'Price must be a number' })
-    @IsPositive()
-    @Type(() => Number)
-    price: number;
+  @IsNotEmpty()
+  @IsNumber({}, { message: 'Price must be a number' })
+  @IsPositive()
+  @Type(() => Number)
+  price: number;
 
-    @IsBoolean()
-    @IsOptional()
-    @Type(() => Boolean)
-    isAvailable?: boolean;
+  @IsBoolean()
+  @IsOptional()
+  @Type(() => Boolean)
+  isAvailable?: boolean;
 }
 
 export class CreateBulkMenusJsonPayload {

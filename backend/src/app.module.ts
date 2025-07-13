@@ -1,4 +1,9 @@
-import { Module, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
+import {
+  Module,
+  NestModule,
+  MiddlewareConsumer,
+  RequestMethod,
+} from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { HttpExceptionFilter } from './libs/http-exception.filter';
 import { CatchEverythingFilter } from './libs/catch-everything.filter';
@@ -75,7 +80,15 @@ import { ThrottlerModule } from '@nestjs/throttler';
     UserModule,
     AdminModule,
   ],
-  controllers: [AppController, RestaurantController, MenuController, OrderController, PaymentController, PayoutController, UploadController],
+  controllers: [
+    AppController,
+    RestaurantController,
+    MenuController,
+    OrderController,
+    PaymentController,
+    PayoutController,
+    UploadController,
+  ],
   providers: [
     {
       provide: APP_FILTER,
@@ -96,15 +109,12 @@ import { ThrottlerModule } from '@nestjs/throttler';
     RefreshTokenService,
   ],
 })
-
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer
-      .apply(RequestLoggerMiddleware)
-      .forRoutes({
-        path: '*',
-        method: RequestMethod.ALL,
-      });
-      // consumer.apply(CorsHeadersMiddleware).forRoutes('*');
+    consumer.apply(RequestLoggerMiddleware).forRoutes({
+      path: '*',
+      method: RequestMethod.ALL,
+    });
+    // consumer.apply(CorsHeadersMiddleware).forRoutes('*');
   }
 }

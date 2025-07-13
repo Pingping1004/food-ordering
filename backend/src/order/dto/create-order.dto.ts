@@ -1,4 +1,4 @@
-import { Type } from "class-transformer";
+import { Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
@@ -13,10 +13,10 @@ import {
   Min,
   ValidateNested,
   ArrayMinSize,
-  ArrayMaxSize
-} from "class-validator";
-import { PaymentMethodType } from "@prisma/client";
-import { CreatePaymentDto } from "src/payment/dto/create-payment.dto";
+  ArrayMaxSize,
+} from 'class-validator';
+import { PaymentMethodType } from '@prisma/client';
+import { CreatePaymentDto } from 'src/payment/dto/create-payment.dto';
 
 export class CreateOrderMenusDto {
   @IsUUID('4', { message: 'menuId must be a valida UUID' })
@@ -73,7 +73,9 @@ export class CreateOrderDto {
   @IsArray()
   @IsNotEmpty({ message: 'Order must contain at least one menu item' })
   @ArrayMinSize(1, { message: 'Order must contain at least one menu item' })
-  @ArrayMaxSize(10, { message: 'Order cannot contain more than 10 different items' })
+  @ArrayMaxSize(10, {
+    message: 'Order cannot contain more than 10 different items',
+  })
   @ValidateNested({ each: true })
   @Type(() => CreateOrderMenusDto)
   orderMenus: CreateOrderMenusDto[];

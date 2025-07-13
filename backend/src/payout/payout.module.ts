@@ -5,9 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { OrderModule } from 'src/order/order.module';
 
 @Module({
-  imports: [
-    forwardRef(() => OrderModule),
-  ],
+  imports: [forwardRef(() => OrderModule)],
   controllers: [PayoutController],
   providers: [PayoutService, PrismaService],
   exports: [PayoutService],

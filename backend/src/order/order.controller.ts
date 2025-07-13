@@ -1,4 +1,17 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, Res, Req, Logger } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Query,
+  Res,
+  Req,
+  Logger,
+} from '@nestjs/common';
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
@@ -14,18 +27,23 @@ import { CsrfGuard } from 'src/guards/csrf.guard';
 @UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
 @Roles([Role.user, Role.admin, Role.cooker])
 export class OrderController {
-  constructor(private readonly orderService: OrderService) { }
+  constructor(private readonly orderService: OrderService) {}
 
-  private readonly logger = new Logger('OrderController')
+  private readonly logger = new Logger('OrderController');
 
   @Post('omise')
-  async createOrder(@Body() createOrderDto: CreateOrderDto, @Req() req: Request & { user: User}) {
+  async createOrder(
+    @Body() createOrderDto: CreateOrderDto,
+    @Req() req: Request & { user: User },
+  ) {
     try {
-
       const userId = req.user.userId;
       if (!userId) throw new Error('User ID is required to create an order');
 
-      const result = await this.orderService.createOrderWithPayment(createOrderDto, userId);
+      const result = await this.orderService.createOrderWithPayment(
+        createOrderDto,
+        userId,
+      );
 
       return {
         message: 'Order created and payment initiated successfully',
@@ -36,7 +54,11 @@ export class OrderController {
         qrDownloadUri: result.qrDownloadUri,
       };
     } catch (error) {
-      this.logger.error('Error in createOrder controller function: ', error.message, error.stack);
+      this.logger.error(
+        'Error in createOrder controller function: ',
+        error.message,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -45,11 +67,13 @@ export class OrderController {
   async handleOmiseReturn(
     @Query('charge_id') chargeId: string,
     @Query('orderId') orderId: string,
-    @Res() res: Response
+    @Res() res: Response,
   ) {
     if (!chargeId) {
       this.logger.error('Omise return_uri called without charge_id');
-      return res.redirect(`${process.env.FRONTEND_BASE_URL}/user/order/failed/${orderId}`);
+      return res.redirect(
+        `${process.env.FRONTEND_BASE_URL}/user/order/failed/${orderId}`,
+      );
     }
 
     const omise = Omise({
@@ -61,15 +85,25 @@ export class OrderController {
       const retrievedCharge = await omise.charges.retrieve(chargeId);
 
       if (retrievedCharge.paid) {
-        this.logger.log(`Omise charge ${chargeId} for order ${orderId} is paid successfully.`);
-        res.redirect(`${process.env.FRONTEND_BASE_URL}/user/order/done/${orderId}`)
+        this.logger.log(
+          `Omise charge ${chargeId} for order ${orderId} is paid successfully.`,
+        );
+        res.redirect(
+          `${process.env.FRONTEND_BASE_URL}/user/order/done/${orderId}`,
+        );
       } else {
-        this.logger.log(`Omise charge ${chargeId} not paid. Status: ${retrievedCharge.status}. Failure: ${retrievedCharge.failure_message}`);
-        res.redirect(`${process.env.FRONTEND_BASE_URL}/user/order/failed/${orderId}`);
+        this.logger.log(
+          `Omise charge ${chargeId} not paid. Status: ${retrievedCharge.status}. Failure: ${retrievedCharge.failure_message}`,
+        );
+        res.redirect(
+          `${process.env.FRONTEND_BASE_URL}/user/order/failed/${orderId}`,
+        );
       }
     } catch (error) {
       this.logger.error('Error handling Omise return: ', error);
-      res.redirect(`${process.env.FRONTEND_BASE_URL}/user/order/failed/${orderId}`);
+      res.redirect(
+        `${process.env.FRONTEND_BASE_URL}/user/order/failed/${orderId}`,
+      );
     }
   }
 
@@ -84,17 +118,25 @@ export class OrderController {
   }
 
   @Get('weekly/:restaurantId')
-  async findWeeklyOrdersForRestaurant(@Param('restaurantId') restaurantId: string) {
+  async findWeeklyOrdersForRestaurant(
+    @Param('restaurantId') restaurantId: string,
+  ) {
     return this.orderService.findWeeklyOrderForRestaurant(restaurantId);
   }
 
   @Patch(':orderId')
-  async updateOrder(@Param('orderId') orderId: string, @Body() updateOrderDto: UpdateOrderDto) {
+  async updateOrder(
+    @Param('orderId') orderId: string,
+    @Body() updateOrderDto: UpdateOrderDto,
+  ) {
     return this.orderService.updateOrder(orderId, updateOrderDto);
   }
 
   @Patch('delay/:orderId')
-  async updateDelay(@Param('orderId') orderId: string, @Body() updateOrderDto: UpdateOrderDto) {
+  async updateDelay(
+    @Param('orderId') orderId: string,
+    @Body() updateOrderDto: UpdateOrderDto,
+  ) {
     return this.orderService.updateDelay(orderId, updateOrderDto);
   }
 

@@ -1,6 +1,11 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe, BadRequestException, HttpStatus, Logger } from '@nestjs/common';
+import {
+  ValidationPipe,
+  BadRequestException,
+  HttpStatus,
+  Logger,
+} from '@nestjs/common';
 import { HttpExceptionFilter } from './libs/http-exception.filter';
 import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
@@ -8,11 +13,11 @@ import * as express from 'express';
 import { json, Request, Response } from 'express';
 import cookieParser from 'cookie-parser';
 import * as dotenv from 'dotenv';
-import helmet from 'helmet'
+import helmet from 'helmet';
 import cors from 'cors';
 import compression from 'compression';
 
-dotenv.config()
+dotenv.config();
 declare global {
   namespace Express {
     interface Request {
@@ -33,7 +38,7 @@ async function bootstrap() {
     process.env.FRONTEND_BASE_URL,
     process.env.NEXT_PUBLIC_BACKEND_API_URL,
     process.env.WEBHOOK_ENDPOINT,
-  ].map(origin => origin?.replace(/\/$/, ''));
+  ].map((origin) => origin?.replace(/\/$/, ''));
 
   app.enableCors({
     origin: (origin, callback) => {
@@ -56,7 +61,7 @@ async function bootstrap() {
       'x-csrf-token',
       'X-Csrf-Token',
       'x-xsrf-token',
-      'Authorization'
+      'Authorization',
     ],
     exposedHeaders: ['Set-Cookie'],
   });
@@ -67,13 +72,10 @@ async function bootstrap() {
       origin: true,
       method: ['POST'],
       allowedHeaders: ['Content-Type'],
-    })
+    }),
   );
 
-  app.use(
-    '/api/webhooks/omise',
-    express.raw({ type: 'application/json' })
-  );
+  app.use('/api/webhooks/omise', express.raw({ type: 'application/json' }));
 
   app.use((req, res, next) => {
     logger.log('Origin:', req.headers.origin);
@@ -102,7 +104,8 @@ async function bootstrap() {
 
   const APP_GLOBAL_SECRET = assertEnvVar('APP_GLOBAL_SECRET');
   if (!APP_GLOBAL_SECRET) {
-    const errorMessage = '❌ CRITICAL: APP_GLOBAL_SECRET is missing. Cannot start the server.';
+    const errorMessage =
+      '❌ CRITICAL: APP_GLOBAL_SECRET is missing. Cannot start the server.';
     logger.error(errorMessage);
 
     setTimeout(() => {
@@ -127,7 +130,7 @@ async function bootstrap() {
       exceptionFactory: (errors) => {
         // This helper function recursively formats validation errors
         const formatErrors = (validationErrors: any[]) => {
-          return validationErrors.map(error => {
+          return validationErrors.map((error) => {
             if (error.children && error.children.length > 0) {
               // If there are nested errors (like for orderMenus), recurse into them
               return {
@@ -139,7 +142,9 @@ async function bootstrap() {
             return {
               property: error.property,
               constraints: error.constraints, // Keep the original constraints object for debugging
-              messages: error.constraints ? Object.values(error.constraints) : [], // Get just the string messages
+              messages: error.constraints
+                ? Object.values(error.constraints)
+                : [], // Get just the string messages
             };
           });
         };
