@@ -5,9 +5,11 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { api } from "@/lib/api";
 import { Button } from "@/components/Button";
+import { useRouter } from "next/router";
 
 function Page() {
     const searchParams = useSearchParams();
+    const router = useRouter();
 
     const orderId = searchParams.get('orderId');
     const chargeId = searchParams.get('chargeId');
@@ -29,8 +31,13 @@ function Page() {
 
     const handlePayment = (async () => {
         try {
-            await api.get(`/order/omise/complete?charge_id=${chargeId}&orderId=${orderId}`);
-            alert(`กรุณาอย่ารีเฟรช กดย้อนกลับ หรือปิดเว็บไซต์จนกว่าจะได้รับสถานะชำระเงินสำเร็จ`)
+            const response = await api.get(`/order/omise/complete?charge_id=${chargeId}&orderId=${orderId}`);
+            const { status, redirectUrl, message } = response.data;
+            alert(`${message}`)
+
+            if (status === 'paid') {
+                router.push(`${redirectUrl}`)
+            }
         } catch (error: unknown) {
             if (typeof error === 'object' && error !== null && 'response' in error) {
                 const err = error as { response: { status: number; data?: { message?: string } } };
@@ -53,9 +60,13 @@ function Page() {
     return (
         <main className="min-h-screen flex flex-col items-center justify-center px-4 py-10 bg-gray-50">
             <div className="bg-white p-6 rounded-2xl shadow-lg max-w-md w-full text-center">
-                <h1 className="text-xl font-semibold text-gray-800 mb-2">ชำระเงินด้วย PromptPay</h1>
-                <p className="text-sm text-gray-500 mb-4">
-                    สั่งซื้อหมายเลข: <span className="font-medium text-black">{orderId}</span>
+                <h1 
+                    className="noto-sans-regular text-xl text-red-500"
+                >กรุณาอย่ารีเฟรช กดย้อนกลับ หรือปิดเว็บไซต์จนกว่าจะได้รับสถานะชำระเงินสำเร็จ
+                </h1>
+                <h1 className="text-2xl text-primary noto-sans-bold mb-2">ชำระเงินด้วย PromptPay</h1>
+                <p className="text-base text-light mb-4">
+                    สั่งซื้อหมายเลข: <span className="noto-sans-regular text-base text-light">{orderId?.substring(0, 4)}</span>
                 </p>
 
                 {qrUrl ? (
@@ -69,13 +80,13 @@ function Page() {
                                 className="rounded-lg"
                             />
                         </div>
-                        <p className="text-sm text-gray-600 mb-2">
+                        <p className="text-base text-secondary mb-2">
                             กรุณาสแกน QR นี้ด้วยแอป Mobile Banking เพื่อชำระเงิน
                         </p>
-                        <p className="text-xs text-gray-400">ระบบจะตรวจสอบการชำระเงินโดยอัตโนมัติ</p>
+                        <p className="text-sm text-light">ระบบจะตรวจสอบการชำระเงินโดยอัตโนมัติ</p>
                     </>
                 ) : (
-                    <p className="text-red-500">ไม่สามารถโหลด QR ได้ กรุณาลองใหม่อีกครั้ง</p>
+                    <p className="text-red-500 text-xl">ไม่สามารถโหลด QR ได้ กรุณาลองใหม่อีกครั้ง</p>
                 )}
                 <Button
                     type="button"
