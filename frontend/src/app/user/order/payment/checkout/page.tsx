@@ -29,6 +29,7 @@ function Page() {
         setIsLoading(true);
         // const url = `/api/order/omise/complete?charge_id=${chargeId}&orderId=${orderId}`;
         const response = await api.get(`/order/omise/complete?charge_id=${chargeId}&orderId=${orderId}`);
+        console.log('Payment response: ', response.data)
 
         if (response.data.status === 200) {
             alert(`ขำระเงินสำเร็จ`);
