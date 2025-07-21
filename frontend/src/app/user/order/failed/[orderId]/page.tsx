@@ -1,14 +1,13 @@
 "use client";
 
 import React, { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import Image from 'next/image';
-import { getParamId } from '@/util/param';
 
 export default function FailedOrderPage() {
-    const params = useParams();
-    const orderId = getParamId(params.orderId);
+    const searchParams = useSearchParams();
+    const orderId = searchParams.get('orderId');
 
     const [restaurantName, setRestaurantName] = useState<string | null>(null);
     const [, setRestaurantId] = useState<string | null>(null);
