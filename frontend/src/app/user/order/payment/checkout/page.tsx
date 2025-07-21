@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/Button";
+import { api } from "@/lib/api";
 
 function Page() {
     const searchParams = useSearchParams();
@@ -26,9 +27,15 @@ function Page() {
 
     const handlePayment = (async () => {
         setIsLoading(true);
-        const url = `/api/order/omise/complete?charge_id=${chargeId}&orderId=${orderId}`;
-        console.log('Redirecting to: ', url);
-        window.location.href = url;
+        // const url = `/api/order/omise/complete?charge_id=${chargeId}&orderId=${orderId}`;
+        const response = await api.get(`/order/omise/complete?charge_id=${chargeId}&orderId=${orderId}`);
+
+        if (response.data.status === 200) {
+            alert(`ขำระเงินสำเร็จ`);
+            window.location.href = response.data.redirectUrl;
+        } else if (response.data.status === 400) {
+            alert(`ขำระเงินล้มเหลว`);
+        }
         setIsLoading(false);
     });
 
