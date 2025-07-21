@@ -89,20 +89,33 @@ export class OrderController {
     try {
       const retrievedCharge = await omise.charges.retrieve(chargeId);
 
+      const successRedirectUrl = `${process.env.FRONTEND_BASE_URL}/user/order/done/${orderId}`;
+      const failedRedirectUrl = `${process.env.FRONTEND_BASE_URL}/user/order/failed/${orderId}`;
+
       if (retrievedCharge.paid) {
         this.logger.log(
           `Omise charge ${chargeId} for order ${orderId} is paid successfully.`,
         );
-        return res.redirect(`${process.env.FRONTEND_BASE_URL}/user/order/done/${orderId}`);
+
+        return res.status(200).json({
+          message: 'Payment successful',
+          redirectUrl: successRedirectUrl,
+        });
       } else {
         this.logger.log(
           `Omise charge ${chargeId} not paid. Status: ${retrievedCharge.status}. Failure: ${retrievedCharge.failure_message}`,
         );
-        return res.redirect(`${process.env.FRONTEND_BASE_URL}/user/order/failed/${orderId}`);
+        return res.status(400).json({
+          message: 'User hasn not paid for the order',
+          // redirectUrl: successRedirectUrl,
+        });
       }
     } catch (error) {
       this.logger.error('Error handling Omise return: ', error);
-      return res.redirect(`${process.env.FRONTEND_BASE_URL}/user/order/failed/${orderId}`);
+      return res.status(400).json({
+        message: 'Payment failed',
+        // redirectUrl: successRedirectUrl,
+      });
     }
   }
 
