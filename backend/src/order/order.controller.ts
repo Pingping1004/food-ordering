@@ -93,28 +93,16 @@ export class OrderController {
         this.logger.log(
           `Omise charge ${chargeId} for order ${orderId} is paid successfully.`,
         );
-        return {
-          status: 'paid',
-          redirectUrl: `${process.env.FRONTEND_BASE_URL}/user/order/done/${orderId}`,
-          message: `Purchasement successfully`,
-        }
+        return res.redirect(`${process.env.FRONTEND_BASE_URL}/user/order/done/${orderId}`);
       } else {
         this.logger.log(
           `Omise charge ${chargeId} not paid. Status: ${retrievedCharge.status}. Failure: ${retrievedCharge.failure_message}`,
         );
-        return {
-          status: 'unpaid',
-          redirectUrl: `${process.env.FRONTEND_BASE_URL}/user/order/failed/${orderId}`,
-          message: `You haven't paid for the order`
-        }
+        return res.redirect(`${process.env.FRONTEND_BASE_URL}/user/order/failed/${orderId}`);
       }
     } catch (error) {
       this.logger.error('Error handling Omise return: ', error);
-      return {
-        status: 'rejected',
-        redirectUrl: `${process.env.FRONTEND_BASE_URL}/user/order/failed/${orderId}`,
-        message: `You haven't paid for the order`
-      }
+      return res.redirect(`${process.env.FRONTEND_BASE_URL}/user/order/failed/${orderId}`);
     }
   }
 
