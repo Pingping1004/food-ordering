@@ -26,7 +26,9 @@ function Page() {
 
     const handlePayment = (async () => {
         setIsLoading(true);
-        window.location.href = `/api/order/omise/complete?charge_id=${chargeId}&orderId=${orderId}`;
+        const url = `/api/order/omise/complete?charge_id=${chargeId}&orderId=${orderId}`;
+        console.log('Redirecting to: ', url);
+        window.location.href = url;
         setIsLoading(false);
     });
 
