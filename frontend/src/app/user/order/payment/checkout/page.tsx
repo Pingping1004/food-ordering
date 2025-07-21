@@ -31,10 +31,10 @@ function Page() {
         const response = await api.get(`/order/omise/complete?charge_id=${chargeId}&orderId=${orderId}`);
         console.log('Payment response: ', response.data)
 
-        if (response.data.status === 200) {
+        if (response.data.success) {
             alert(`ขำระเงินสำเร็จ`);
             window.location.href = response.data.redirectUrl;
-        } else if (response.data.status === 400) {
+        } else {
             alert(`ขำระเงินล้มเหลว`);
         }
         setIsLoading(false);
