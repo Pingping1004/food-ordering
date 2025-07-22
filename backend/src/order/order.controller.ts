@@ -21,7 +21,7 @@ import Omise from 'omise';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from '../decorators/role.decorator';
 import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
-import { Role, User } from '@prisma/client';
+import { IsPaid, Role, User } from '@prisma/client';
 import { CsrfGuard } from 'src/guards/csrf.guard';
 
 @Controller('order')
@@ -96,6 +96,7 @@ export class OrderController {
           `Omise charge ${chargeId} for order ${orderId} is paid successfully.`,
         );
 
+        await this.orderService.updateOrderPaymentStatus(orderId, IsPaid.paid);
         return res.status(200).json({
           message: 'Payment successful',
           redirectUrl: successRedirectUrl,
@@ -104,6 +105,8 @@ export class OrderController {
         this.logger.log(
           `Omise charge ${chargeId} not paid. Status: ${retrievedCharge.status}. Failure: ${retrievedCharge.failure_message}`,
         );
+
+        await this.orderService.updateOrderPaymentStatus(orderId, IsPaid.unpaid);
         return res.status(400).json({
           message: 'User hasn not paid for the order',
           // redirectUrl: successRedirectUrl,

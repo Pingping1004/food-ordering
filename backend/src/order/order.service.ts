@@ -390,6 +390,25 @@ export class OrderService {
     return { result, message: `Successfully update delay status for 10 mins` };
   }
 
+  async updateOrderPaymentStatus(orderId: string, status: IsPaid) {
+    const order = await this.findOneOrder(orderId);
+    if (order.isPaid === status) return;
+
+    try {
+      this.logger.log(`Update order payment status function is activated!`);
+      const updatePaymentOrder = await this.prisma.order.update({
+        where: { orderId },
+        data: {
+          isPaid: { set: status },
+        },
+      });
+
+      return updatePaymentOrder;
+    } catch (err) {
+      this.logger.log(`Failed to update order payment status ${err}`);
+    }
+  }
+
   async updateOrderStatus(orderId: string) {
     const order = await this.findOneOrder(orderId);
     const nextStatus = this.statusTransitions[order.status];
