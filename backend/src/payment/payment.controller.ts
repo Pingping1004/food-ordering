@@ -23,6 +23,8 @@ export class PaymentController {
   @Public()
   @Post('omise')
   async handleOmiseWebhook(@Body() event: any, @Res() res: Response) {
+    this.logger.log('Webhook received and processed');
+    
     if (!event || typeof event !== 'object') {
       this.logger.error(
         'Webhook event body is missing or not an object:',
@@ -35,8 +37,19 @@ export class PaymentController {
       if (event.data?.object === 'charge') {
         // Check if the event is about a charge
         const omiseChargeId = event.data.id;
-        const retrievedCharge = await this.paymentService.retrieveCharge(omiseChargeId);
-        this.logger.log('Payment status: ', retrievedCharge.status);
+        this.logger.log('Omise chargeId: ', omiseChargeId);
+
+        let retrievedCharge;
+        try {
+          retrievedCharge = await this.paymentService.retrieveCharge(omiseChargeId);
+          this.logger.log('Payment status: ', retrievedCharge.status);
+        } catch (err) {
+          this.logger.error('Failed to retrieve charge: ', err);
+          return res.status(500).send('Failed to retrieve Omise charge');
+        }
+
+        this.logger.log('Webhook event key: ', event.key);
+        this.logger.log('Received full webhook payload: ', JSON.stringify(event));
 
         if (event.key === 'charge.complete') {
           await this.orderService.handleWebhookUpdate(

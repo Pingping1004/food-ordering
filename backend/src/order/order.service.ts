@@ -218,14 +218,20 @@ export class OrderService {
   }
 
   async handleWebhookUpdate(omiseChargeId: string, omiseStatus: string) {
+    this.logger.log(`Updating order with chargeId: ${omiseChargeId} to status: ${omiseStatus}`);
     const order = await this.prisma.order.findUnique({
       where: { omiseChargeId: omiseChargeId },
     });
 
-    if (!order) return;
+    if (!order) {
+      this.logger.warn('No order found with omise chargeId: ', omiseChargeId);
+      return;
+    }
+
     this.logger.log('Order payment status: ', order.isPaid);
 
     let newIsPaidStatus: IsPaid;
+    console.log('Omise charge status: ', omiseStatus);
 
     if (omiseStatus === 'successful') {
       newIsPaidStatus = IsPaid.paid;
