@@ -245,23 +245,16 @@ export class OrderService {
       if (omiseStatus === 'successful') {
         newIsPaidStatus = IsPaid.paid;
         await this.payoutService.createPayout(order.orderId);
+        await this.updateOrderPaymentStatus(order.orderId, newIsPaidStatus);
         this.logger.log(`New isPaid status to update: ${newIsPaidStatus}`);
       } else if (omiseStatus === 'failed' || omiseStatus === 'expired') {
         newIsPaidStatus = IsPaid.rejected;
+        await this.updateOrderPaymentStatus(order.orderId, newIsPaidStatus);
         this.logger.log(`New isPaid status to update: ${newIsPaidStatus}`);
       } else {
         this.logger.warn(`Unhandled Omise status: ${omiseStatus}`);
         return;
       }
-
-      const updateOrder = await this.prisma.order.update({
-        where: { orderId: order.orderId },
-        data: {
-          paymentGatewayStatus: omiseStatus, // Update with the status directly from Omise
-          isPaid: { set: newIsPaidStatus }, // Update your internal simplified status
-        },
-      });
-      this.logger.log(`Update webhook on order: ${JSON.stringify(updateOrder)}`);
     } catch (err) {
       this.logger.error(`Webhook update failed: ${err}`);
     }
