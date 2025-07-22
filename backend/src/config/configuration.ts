@@ -1,7 +1,7 @@
 export default () => ({
   port: parseInt(process.env.PORT || '4000', 10),
   frontendBaseUrl:
-    process.env.FRONTEND_BASE_URL || 'https://food-orderingV1.vercel.app', // Example
+    process.env.FRONTEND_BASE_URL || 'https://food-ordering.online', // Example
 
   omise: {
     publicKey: process.env.OMISE_PUBLIC_KEY,
