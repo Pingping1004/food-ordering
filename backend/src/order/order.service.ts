@@ -230,6 +230,11 @@ export class OrderService {
       return;
     }
 
+    if (!Object.values(IsPaid).includes(order.isPaid)) {
+      this.logger.error(`Invalid isPaid enum value: ${order.isPaid}`);
+      return;
+    }
+
     this.logger.log(`Order payment status: ${order.isPaid}`);
 
     try {
@@ -239,19 +244,21 @@ export class OrderService {
 
       if (omiseStatus === 'successful') {
         newIsPaidStatus = IsPaid.paid;
-
         await this.payoutService.createPayout(order.orderId);
+        this.logger.log(`New isPaid status to update: ${newIsPaidStatus}`);
       } else if (omiseStatus === 'failed' || omiseStatus === 'expired') {
         newIsPaidStatus = IsPaid.rejected;
+        this.logger.log(`New isPaid status to update: ${newIsPaidStatus}`);
       } else {
-        newIsPaidStatus = order.isPaid;
+        this.logger.warn(`Unhandled Omise status: ${omiseStatus}`);
+        return;
       }
 
       const updateOrder = await this.prisma.order.update({
         where: { orderId: order.orderId },
         data: {
           paymentGatewayStatus: omiseStatus, // Update with the status directly from Omise
-          isPaid: newIsPaidStatus, // Update your internal simplified status
+          isPaid: { set: newIsPaidStatus }, // Update your internal simplified status
         },
       });
       this.logger.log(`Update webhook on order: ${JSON.stringify(updateOrder)}`);

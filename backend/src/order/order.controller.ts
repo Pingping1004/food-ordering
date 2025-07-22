@@ -90,7 +90,6 @@ export class OrderController {
       const retrievedCharge = await omise.charges.retrieve(chargeId);
 
       const successRedirectUrl = `${process.env.FRONTEND_BASE_URL}/user/order/done/${orderId}`;
-      const failedRedirectUrl = `${process.env.FRONTEND_BASE_URL}/user/order/failed/${orderId}`;
 
       if (retrievedCharge.paid) {
         this.logger.log(
