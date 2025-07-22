@@ -314,9 +314,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                         await logout(false);
                         if (!alertShowRef.current) {
                             alert('เซสชันหมดอายุ กรุณาล็อกอินใหม่อีกครั้ง');
-                            router.push('/login');
                             alertShowRef.current = true;
                         }
+
+                        router.push('/login');
+                        return;
                     }
 
                     alert('เกิดข้อผิดพลาด กรุณาลองใหม่');
