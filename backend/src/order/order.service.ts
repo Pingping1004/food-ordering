@@ -90,14 +90,18 @@ export class OrderService {
         );
       }
 
-      this.logger.log(`Existing menu price: ${existingMenu.price}`);
-      const markupPrice = numberRound(markupRate * existingMenu?.price);
-      const roundedUnitPrice = numberRound(item.unitPrice);
-      if (!markupPrice.equals(roundedUnitPrice)) {
-        this.logger.log('Markup price: ', markupPrice);
-        this.logger.log('Unitprice: ', roundedUnitPrice);
+      const markupUnitPrice = (markupRate * existingMenu.price); // Calculated Price from backend
+      const actualTotalPrice = numberRound(markupUnitPrice * item.quantity); // Backend total price
+      const orderTotalPrice = numberRound(item.unitPrice * item.quantity); // Total price from user input
+
+      if (!orderTotalPrice.equals(actualTotalPrice)) {
+        this.logger.log(`Markup unit price: ${markupUnitPrice}`);
+        this.logger.log(`Unitprice: ${markupUnitPrice}`);
+
+        this.logger.log(`Order total price: ${orderTotalPrice}`);
+        this.logger.log(`Actual total price: ${actualTotalPrice}`);
         throw new BadRequestException(
-          `Mismatched price for menu ${item.menuName}. Expected ${markupPrice}, got ${roundedUnitPrice}`,
+          `Mismatched price for menu ${item.menuName}. Expected ${actualTotalPrice}, got ${orderTotalPrice}`,
         );
       }
 
