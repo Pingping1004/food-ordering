@@ -10,7 +10,6 @@ import { PaymentService } from './payment.service';
 import { OrderService } from 'src/order/order.service';
 import { Response } from 'express';
 import { Public } from 'src/decorators/public.decorator';
-import { IsPaid } from '@prisma/client';
 
 @Controller('webhooks')
 export class PaymentController {
@@ -53,11 +52,11 @@ export class PaymentController {
                 this.logger.log(`Received full webhook payload: ${JSON.stringify(event)}`);
 
                 if (event.key === 'charge.complete') {
-                    await this.orderService.handleWebhookUpdate(retrievedCharge.id, IsPaid.paid);
+                    await this.orderService.handleWebhookUpdate(retrievedCharge.id, retrievedCharge.status);
                 } else if (event.key === 'charge.failure') {
-                    await this.orderService.handleWebhookUpdate(retrievedCharge.id, IsPaid.rejected);
+                    await this.orderService.handleWebhookUpdate(retrievedCharge.id, 'failed');
                 } else if (event.key === 'charge.expire') {
-                    await this.orderService.handleWebhookUpdate(retrievedCharge.id, IsPaid.unpaid);
+                    await this.orderService.handleWebhookUpdate(retrievedCharge.id, 'expired');
                 }
             }
 
