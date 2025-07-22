@@ -90,6 +90,7 @@ export class OrderService {
         );
       }
 
+      this.logger.log(`Existing menu price: ${existingMenu.price}`);
       const markupPrice = numberRound(markupRate * existingMenu?.price);
       const roundedUnitPrice = numberRound(item.unitPrice);
       if (!markupPrice.equals(roundedUnitPrice)) {
