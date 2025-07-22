@@ -401,6 +401,7 @@ export class OrderService {
         },
       });
 
+      this.logger.log(`Update payment status too: ${updatePaymentOrder.isPaid}`);
       return updatePaymentOrder;
     } catch (err) {
       this.logger.log(`Failed to update order payment status ${err}`);
