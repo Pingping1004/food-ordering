@@ -34,7 +34,7 @@ function Page() {
         if (response.status === 200) {
             alert(`ขำระเงินสำเร็จ`);
             router.push(response.data.redirectUrl);
-        } else if (response.status === 400) {
+        } else if (response.status === 400 || response.data.status === 400) {
             alert(`ขำระเงินล้มเหลว`);
         } else {
             alert('เกิดข้อผิดพลาดบางอย่าง กรุณาลองใหม่');
