@@ -53,7 +53,7 @@ function Page() {
             <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full text-center">
                 <h1
                     className="noto-sans-bold text-xl text-red-500 mb-6"
-                >กรุณาอย่ารีเฟรช กดย้อนกลับ หรือปิดเว็บไซต์จนกว่าจะได้รับสถานะชำระเงินสำเร็จ
+                >กรุณาอย่ากดย้อนกลับ และออกหรือปิดเว็บไซต์จนกว่าจะได้รับสถานะชำระเงินสำเร็จ
                 </h1>
                 <h1 className="text-2xl text-primary noto-sans-bold mb-2">ชำระเงินด้วย PromptPay</h1>
                 <p className="text-base text-light mb-4">
