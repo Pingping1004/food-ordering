@@ -29,17 +29,23 @@ function Page() {
     const handlePayment = (async () => {
         setIsLoading(true);
         const response = await api.get(`/order/omise/complete?charge_id=${chargeId}&orderId=${orderId}`);
-        console.log('Payment response: ', response.data)
+        console.log('Payment response: ', response.data);
 
-        if (response.status === 200) {
-            alert(`ขำระเงินสำเร็จ`);
-            router.push(response.data.redirectUrl);
-        } else if (response.status === 400 || response.data.status === 400) {
-            alert(`ขำระเงินล้มเหลว`);
-        } else {
-            alert('เกิดข้อผิดพลาดบางอย่าง กรุณาลองใหม่');
+        try {
+            if (response.status === 200) {
+                alert(`ขำระเงินสำเร็จ`);
+                router.push(response.data.redirectUrl);
+            } else {
+                alert('เกิดข้อผิดพลาดบางอย่าง กรุณาลองใหม่');
+            }
+        } catch {
+            if (response.status === 400 || response.data.status === 400) {
+                alert(`ขำระเงินล้มเหลว`);
+            }
+            alert(`ขำระเงินล้มเหลว กรุณาตรวจสอบการชำระเงินและกดยืนยันใหม่`)
+        } finally {
+            setIsLoading(false);
         }
-        setIsLoading(false);
     });
 
     if (isLoading) return <p className="text-gray-500">กำลังโหลด QR...</p>;
