@@ -1,12 +1,13 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/Button";
 import { api } from "@/lib/api";
 
 function Page() {
+    const router = useRouter();
     const searchParams = useSearchParams();
     const orderId = searchParams.get('orderId');
     const chargeId = searchParams.get('chargeId');
@@ -27,15 +28,16 @@ function Page() {
 
     const handlePayment = (async () => {
         setIsLoading(true);
-        // const url = `/api/order/omise/complete?charge_id=${chargeId}&orderId=${orderId}`;
         const response = await api.get(`/order/omise/complete?charge_id=${chargeId}&orderId=${orderId}`);
         console.log('Payment response: ', response.data)
 
-        if (response.data.success) {
+        if (response.status === 200) {
             alert(`ขำระเงินสำเร็จ`);
-            window.location.href = response.data.redirectUrl;
-        } else {
+            router.push(response.data.redirectUrl);
+        } else if (response.status === 400) {
             alert(`ขำระเงินล้มเหลว`);
+        } else {
+            alert('เกิดข้อผิดพลาดบางอย่าง กรุณาลองใหม่');
         }
         setIsLoading(false);
     });
