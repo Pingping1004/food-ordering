@@ -223,35 +223,41 @@ export class OrderService {
       where: { omiseChargeId: omiseChargeId },
     });
 
+    this.logger.log(`Update webhook on order: ${JSON.stringify(order)}`);
+
     if (!order) {
-      this.logger.warn('No order found with omise chargeId: ', omiseChargeId);
+      this.logger.warn(`No order found with omise chargeId: ${omiseChargeId}`);
       return;
     }
 
-    this.logger.log('Order payment status: ', order.isPaid);
+    this.logger.log(`Order payment status: ${order.isPaid}`);
 
-    let newIsPaidStatus: IsPaid;
-    console.log('Omise charge status: ', omiseStatus);
+    try {
 
-    if (omiseStatus === 'successful') {
-      newIsPaidStatus = IsPaid.paid;
+      let newIsPaidStatus: IsPaid;
+      this.logger.log(`Omise charge status: ${omiseStatus}`);
 
-      await this.payoutService.createPayout(order.orderId);
-    } else if (omiseStatus === 'failed' || omiseStatus === 'expired') {
-      newIsPaidStatus = IsPaid.rejected;
-    } else {
-      newIsPaidStatus = order.isPaid;
+      if (omiseStatus === 'successful') {
+        newIsPaidStatus = IsPaid.paid;
+
+        await this.payoutService.createPayout(order.orderId);
+      } else if (omiseStatus === 'failed' || omiseStatus === 'expired') {
+        newIsPaidStatus = IsPaid.rejected;
+      } else {
+        newIsPaidStatus = order.isPaid;
+      }
+
+      const updateOrder = await this.prisma.order.update({
+        where: { orderId: order.orderId },
+        data: {
+          paymentGatewayStatus: omiseStatus, // Update with the status directly from Omise
+          isPaid: newIsPaidStatus, // Update your internal simplified status
+        },
+      });
+      this.logger.log(`Update webhook on order: ${JSON.stringify(updateOrder)}`);
+    } catch (err) {
+      this.logger.error(`Webhook update failed: ${err}`);
     }
-
-    const updateOrder = await this.prisma.order.update({
-      where: { orderId: order.orderId },
-      data: {
-        paymentGatewayStatus: omiseStatus, // Update with the status directly from Omise
-        isPaid: newIsPaidStatus, // Update your internal simplified status
-      },
-    });
-
-    this.logger.log('Updated payment status: ', updateOrder.isPaid);
   }
 
   async findRestaurantOrders(restaurantId: string) {
