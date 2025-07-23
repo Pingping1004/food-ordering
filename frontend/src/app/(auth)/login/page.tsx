@@ -55,8 +55,8 @@ export default function LoginPage() {
 
                             <Input
                                 type="email"
-                                label="Email"
-                                placeholder="Email"
+                                label="อีเมล"
+                                placeholder="อีเมล"
                                 // register={register}
                                 {...register('email')}
                                 variant={errors.email ? "error" : "primary"}
@@ -65,8 +65,8 @@ export default function LoginPage() {
 
                             <Input
                                 type="password"
-                                label="Password"
-                                placeholder="Password"
+                                label="รหัสผ่าน"
+                                placeholder="รหัสผ่าน"
                                 // register={register}
                                 {...register('password')}
                                 variant={errors.password ? "error" : "primary"}
@@ -86,7 +86,7 @@ export default function LoginPage() {
                                 </Button>
                             </div>
                             <p className="text-sm leading-relaxed text-gray-900">
-                                บังไม่เคยลงทะเบียน?{" "}
+                                ยังไม่เคยลงทะเบียน?{" "}
                                 <Link
                                     href="/signup"
                                     className="font-[700] text-blue-400 transition duration-500 hover:text-blue-600"

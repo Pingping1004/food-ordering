@@ -76,8 +76,8 @@ export default function SignupPage() {
 
                             <Input
                                 type="email"
-                                placeholder="Email"
-                                label="Email"
+                                placeholder="อีเมล"
+                                label="อีเมล"
                                 // name="email"
                                 // register={register}
                                 {...register('email')}
@@ -87,8 +87,8 @@ export default function SignupPage() {
 
                             <Input
                                 type="password"
-                                placeholder="Password"
-                                label="Password"
+                                placeholder="รหัสผ่าน"
+                                label="รหัสผ่าน"
                                 // name="password"
                                 // register={register}
                                 {...register('password')}
