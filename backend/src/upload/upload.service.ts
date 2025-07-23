@@ -1,114 +1,96 @@
-import {
-  Injectable,
-  InternalServerErrorException,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
-import { v4 as uuidv4 } from 'uuid';
-import * as path from 'path';
-import * as fs from 'fs/promises';
-import * as fsSync from 'fs';
-
-const uploadDir = path.join(process.cwd(), 'uploads');
-const tempDir = path.join(uploadDir, 'temp');
-const permanentDir = path.join(uploadDir, 'menus');
-const logger = new Logger('UploadService');
-
-(async () => {
-  try {
-    if (!fsSync.existsSync(tempDir)) {
-      await fs.mkdir(tempDir, { recursive: true });
-    }
-
-    if (!fsSync.existsSync(permanentDir)) {
-      await fs.mkdir(permanentDir, { recursive: true });
-    }
-  } catch (error) {
-    logger.error(
-      `Failed to ensure upload directoires exist: ${error.message}`,
-      error.stack,
-    );
-  }
-})();
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import { S3Service } from '../s3/s3.service';
 
 export interface UploadImageInfo {
-  originalName: string;
-  tempId: string;
-  tempUrl: string;
+    originalName: string;
+    key: string;
+    url: string;
 }
 
 @Injectable()
 export class UploadService {
-  async saveTempImages(
-    files: Express.Multer.File[],
-  ): Promise<UploadImageInfo[]> {
-    const uploadedInfos: UploadImageInfo[] = [];
+    private readonly logger = new Logger('UploadService');
 
-    for (const file of files) {
-      const uniqueId = uuidv4();
-      const fileExtension = path.extname(file.originalname).toLowerCase();
-      const tempFileName = `${uniqueId}${fileExtension}`;
-      const tempFilePath = path.join(tempDir, tempFileName);
-      const tempFileUrl = `/temp/${tempFileName}`;
+    constructor(private readonly s3Service: S3Service) { }
 
-      try {
-        await fs.writeFile(tempFilePath, file.buffer);
-        uploadedInfos.push({
-          originalName: file.originalname,
-          tempId: tempFileName,
-          tempUrl: tempFileUrl,
+    async saveImage(file: Express.Multer.File): Promise<UploadImageInfo> {
+        try {
+            const { fileName, url } = await this.s3Service.uploadFile(file);
+            const uploadedInfo = {
+                originalName: file.originalname,
+                key: fileName,
+                url: url,
+            };
+
+            return uploadedInfo;
+        } catch (error) {
+            this.logger.error(`Error uploading image ${file.originalname}: ${error.message}`, error.stack);
+            throw new InternalServerErrorException(`Failed to upload image ${file.originalname}`);
+        }
+    }
+
+    async saveBulkImages(files: Express.Multer.File[]): Promise<UploadImageInfo[]> {
+        const uplaodPromises = files.map((file) => this.saveImage(file));
+
+        try {
+            return await Promise.all(uplaodPromises);
+        } catch (error) {
+            this.logger.error(`Failed to upload bulk images`);
+            throw error;
+        }
+    }
+
+    async saveOptionalBulkImages(files?: Express.Multer.File[]): Promise<UploadImageInfo[]> {
+        if (!files || files.length === 0) {
+            this.logger.log('No files provided for otional bulk upload');
+            return [];
+        }
+
+        const uploadImagesUrl = files?.map(async (file) => {
+            const { fileName, url } = await this.s3Service.uploadFile(file);
+
+            return {
+                originalName: file.originalname,
+                key: fileName,
+                url,
+            } as UploadImageInfo;
         });
-      } catch (error) {
-        logger.error(
-          `Error saving temporary image ${file.originalname}: ${error.message}`,
-        );
-        throw new InternalServerErrorException(
-          `Failed to save temporary image ${file.originalname}.`,
-        );
-      }
+
+        try {
+            const results = await Promise.all(uploadImagesUrl);
+            return results;
+        } catch (error) {
+            this.logger.log(`Failed to save optional bulk images: ${error}`);
+            throw new InternalServerErrorException('Failed to save optional bulk images');
+        }
     }
-    return uploadedInfos;
-  }
 
-  async moveTempImageToPermanent(tempId: string): Promise<string> {
-    const tempFilePath = path.join(tempDir, tempId);
-    const fileExtension = path.extname(tempId).toLowerCase();
-    const permanentFileName = `${uuidv4()}${fileExtension}}`;
-    const permanentFilePath = path.join(permanentDir, permanentFileName);
-    const permanentFileUrl = `/uploads/menus/${permanentFileName}`;
+    extractKeyFromUrl(url: string): string | null {
+        if (!url) return null;
 
-    try {
-      try {
-        await fs.access(tempFilePath, fsSync.constants.F_OK); // Check if file exist
-      } catch (accessError) {
-        throw new NotFoundException(
-          `Temporary image file with ID ${tempId} not found`,
-          accessError,
-        );
-      }
+        try {
+            const urlObj = new URL(url);
 
-      await fs.rename(tempFilePath, permanentFilePath);
-      return permanentFileUrl;
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error; // Re-throw the specific NotFoundException
-      }
-      logger.error(
-        `Error moving temp image ${tempId} to permanent: ${error.message}`,
-        error.stack,
-      );
-      throw new InternalServerErrorException(
-        `Failed to finalize image storage for ID ${tempId}.`,
-      );
+            // The pathname property gives you the path with a leading slash.
+            // We remove the leading slash with substring(1).
+            const key = urlObj.pathname.substring(1);
+            return key || null;
+        } catch (error) {
+            this.logger.error(`Failed to parse URL to extract R2 key: ${url}`, error);
+            return null;
+        }
     }
-  }
 
-  async cleanupTempImage(tempId: string): Promise<void> {
-    const tempFilePath = path.join(tempDir, tempId);
-    try {
-      await fs.unlink(tempFilePath);
-    } catch (error) {
-      logger.error(`Error cleaning up temp image ${tempId}: ${error.message}`);
+    async cleanupImage(key: string): Promise<void> {
+        try {
+            await this.s3Service.deleteFile(key);
+            this.logger.log(`Image with key ${key} successfully deleted from R2.`);
+        } catch (error) {
+            this.logger.error(
+                `Error deleting image with key ${key} from R2: ${error.message}`,
+                error.stack,
+            );
+            throw new InternalServerErrorException(`Failed to delete image with key ${key}.`);
+        }
     }
-  }
 }

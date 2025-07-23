@@ -10,19 +10,17 @@ import {
   IsString,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-// import { CsvMenuItemData } from '../menu.service';
 
 export class CsvMenuItemData {
-  // <-- Change 'interface' to 'class'
   @IsString()
   @IsNotEmpty()
   name: string;
 
   @IsNumber()
-  @Min(0) // Assuming price cannot be negative
+  @Min(0)
   price: number;
 
-  @IsOptional() // Make sure optional fields are explicitly marked as such
+  @IsOptional()
   @IsNumber()
   @Min(0)
   maxDaily?: number;
@@ -37,12 +35,8 @@ export class CsvMenuItemData {
   isAvailable?: boolean;
 
   @IsOptional()
-  @IsString() // imageFileName is a string (the temp ID UUID.ext)
-  imageFileName?: string;
-
-  @IsOptional()
   @IsString()
-  originalFileName?: string; // For backend reference
+  originalFileName?: string;
 
   @IsOptional()
   @IsString()

@@ -8,7 +8,6 @@ import { APP_FILTER } from '@nestjs/core';
 import { HttpExceptionFilter } from './libs/http-exception.filter';
 import { CatchEverythingFilter } from './libs/catch-everything.filter';
 import { RequestLoggerMiddleware } from 'src/logger.middleware';
-import { MulterModule } from '@nestjs/platform-express';
 import configuration from './config/configuration';
 
 // Service and controller
@@ -40,9 +39,10 @@ import { UploadController } from './upload/upload.controller';
 import { RefreshTokenModule } from './refreshToken/refresh-token.module';
 import { CsrfTokenService } from './csrf/csrf.service';
 import { CsrfModule } from './csrf/csrf.module';
-import { memoryStorage } from 'multer';
 import { RefreshTokenService } from './refreshToken/refresh-token.service';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { S3Module } from './s3/s3.module';
+import { S3Service } from './s3/s3.service';
 
 @Module({
   imports: [
@@ -54,6 +54,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
     UploadModule,
     CsrfModule,
     RefreshTokenModule,
+    S3Module,
     ThrottlerModule.forRoot({
       throttlers: [
         {
@@ -67,14 +68,6 @@ import { ThrottlerModule } from '@nestjs/throttler';
       load: [configuration],
       envFilePath: '.env',
     }),
-
-    MulterModule.registerAsync({
-      useFactory: () => ({
-        storage: memoryStorage(),
-        limits: { fileSize: 30 * 1024 * 1024 },
-      }),
-    }),
-
     PayoutModule,
     AuthModule,
     UserModule,
@@ -107,6 +100,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
     PaymentService,
     PayoutService,
     RefreshTokenService,
+    S3Service,
   ],
 })
 export class AppModule implements NestModule {

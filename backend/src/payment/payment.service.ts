@@ -116,7 +116,7 @@ export class PaymentService {
   async retrieveCharge(chargeId: string): Promise<Omise.Charges.ICharge> {
     try {
       const result = await this.omiseClient.charges.retrieve(chargeId);
-      console.log('Retrieve charge result: ', result);
+      this.logger.log('Retrieve charge result: ', result);
       return result;
     } catch (error) {
       this.logger.error(

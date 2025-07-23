@@ -23,6 +23,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.850.0",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.1",
@@ -53,7 +54,7 @@
     "helmet": "^8.1.0",
     "moment": "^2.30.1",
     "moment-timezone": "^0.6.0",
-    "multer": "^2.0.1",
+    "multer": "^2.0.2",
     "omise": "^1.0.0",
     "papaparse": "^5.5.3",
     "passport": "^0.7.0",

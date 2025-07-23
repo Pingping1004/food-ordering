@@ -8,16 +8,16 @@ import {
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
-import { OrderService } from 'src/order/order.service';
 import { UserService } from 'src/user/user.service';
 import { UpdateUserDto } from 'src/user/dto/update-user.dto';
 import moment from 'moment-timezone';
+import { UploadService } from 'src/upload/upload.service';
 
 @Injectable()
 export class RestaurantService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly orderService: OrderService,
+    private readonly uploadService: UploadService,
     private readonly userService: UserService,
   ) { }
 
@@ -34,9 +34,10 @@ export class RestaurantService {
         throw new ConflictException(
           `User already register as restaurant: ${existingRestaurant.name}`,
         );
+
       const restaurantImgUrl = file
-        ? `uploads/restaurants/${file.filename}`
-        : createRestaurantDto.restaurantImg;
+        ? (await this.uploadService.saveImage(file)).url
+        : null;
 
       let openTime: string = '';
       let closeTime: string = '';
@@ -78,7 +79,7 @@ export class RestaurantService {
       const updateDto: UpdateUserDto = { role: 'cooker' };
       await this.userService.updateUser(userId, updateDto);
 
-      return { message: 'File uploaded successfully', result, fileInfo: file };
+      return { message: 'File uploaded successfully', result, imageUrl: restaurantImgUrl };
     } catch (error) {
       this.logger.error('Failed to create restaurant service: ', error);
       throw error;
@@ -222,17 +223,23 @@ export class RestaurantService {
     file?: Express.Multer.File,
   ) {
     try {
-      const restaurantImgUrl = file
-        ? `uploads/restaurants/${file.filename}`
-        : updateRestaurantDto.restaurantImg;
       const dataToUpdate: Partial<UpdateRestaurantDto> = {
         ...updateRestaurantDto,
       };
+      const existingRestaurant = await this.findRestaurant(restaurantId);
 
       if (file) {
-        dataToUpdate.restaurantImg = restaurantImgUrl;
-      } else if (file === undefined) {
-        dataToUpdate.restaurantImg = updateRestaurantDto.restaurantImg;
+        const { url } = await this.uploadService.saveImage(file);
+        dataToUpdate.restaurantImg = url;
+
+        if (existingRestaurant.restaurantImg) {
+          const oldR2Key = this.uploadService.extractKeyFromUrl(existingRestaurant.restaurantImg);
+          if (oldR2Key) {
+            await this.uploadService.cleanupImage(oldR2Key);
+          }
+        }
+      } else if (updateRestaurantDto.restaurantImg === undefined) {
+        dataToUpdate.restaurantImg = undefined;
       }
 
       if (Object.keys(dataToUpdate).length === 0) {

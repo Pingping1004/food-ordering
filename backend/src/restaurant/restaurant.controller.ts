@@ -12,11 +12,10 @@ import {
   Req,
   UseGuards,
   Logger,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer'; // Import diskStorage
-import { imageFileFilter, editFileName } from '../utils/file-upload.utils'; // Your utility functions
-import * as fs from 'fs/promises';
+import { imageFileFilter } from '../utils/file-upload.utils'
 
 import { RestaurantService } from './restaurant.service';
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
@@ -37,10 +36,7 @@ export class RestaurantController {
   @Post()
   @UseInterceptors(
     FileInterceptor('restaurantImg', {
-      storage: diskStorage({
-        destination: './uploads/restaurants',
-        filename: editFileName,
-      }),
+      storage: null,
       fileFilter: imageFileFilter,
     }),
   )
@@ -79,29 +75,22 @@ export class RestaurantController {
   @Patch(':restaurantId')
   @UseInterceptors(
     FileInterceptor('restaurantImg', {
-      storage: diskStorage({
-        destination: './uploads/restaurants',
-        filename: editFileName,
-      }),
+      storage: null,
       fileFilter: imageFileFilter,
     }),
   )
   async updateRestaurant(
-    @Req() req: any,
     @Param('restaurantId') restaurantId: string,
     @Body() updateRestaurantDto: UpdateRestaurantDto,
     @UploadedFile() file?: Express.Multer.File,
   ) {
-    let uploadedFilePath: string | undefined;
     try {
       const dataToUpdate: UpdateRestaurantDto = { ...updateRestaurantDto };
 
-      if (file) {
-        dataToUpdate.restaurantImg = `uploads/restaurants/${file.filename}`;
-      }
       return await this.restaurantService.updateRestaurant(
         restaurantId,
         dataToUpdate,
+        file,
       );
     } catch (error) {
       this.logger.error(
@@ -109,19 +98,7 @@ export class RestaurantController {
         error,
       );
 
-      // --- 4. Clean up Uploaded File on Error ---
-      if (uploadedFilePath) {
-        try {
-          await fs.unlink(uploadedFilePath);
-        } catch (fileDeleteError) {
-          this.logger.error(
-            `Controller: Failed to delete uploaded file ${uploadedFilePath}:`,
-            fileDeleteError,
-          );
-        }
-      }
-      // Re-throw the error so NestJS's global exception filters can handle it
-      throw error;
+      throw new InternalServerErrorException('Failed to update restaurant');
     }
   }
 

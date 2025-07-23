@@ -106,9 +106,6 @@ async function bootstrap() {
   }
   app.set('secret', APP_GLOBAL_SECRET);
 
-  const uploadsDir = join(process.cwd(), 'uploads');
-  app.use('/uploads', express.static(uploadsDir));
-
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
