@@ -25,7 +25,7 @@ const nextConfig: NextConfig = {
         remotePatterns: [
             {
                 protocol: 'https',
-                hostname: 'foodapp-images.8eec31b924d323318e591622bd030d1c.r2.cloudflarestorage.com',
+                hostname: 'images.food-ordering.online',
                 pathname: '/**',
             }
         ],
