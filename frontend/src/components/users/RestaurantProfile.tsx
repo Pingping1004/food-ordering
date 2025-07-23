@@ -50,8 +50,7 @@ export const RestaurantProfile: React.FC<RestaurantProfileProps> = ({
     ...props
 
 }: RestaurantProfileProps) => {
-    const baseURL = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://food-ordering-mvp.onrender.com';
-    const src = restaurantImg ? `${baseURL}/${restaurantImg}` : `/picture.svg`;
+    const src = restaurantImg ? `${restaurantImg}` : `/picture.svg`;
 
     const content = (
         <div className={clsx(

@@ -7,7 +7,6 @@ import { Button } from "../Button";
 import Image from "next/image";
 import { Toggle } from "../Toggle";
 import { useRouter } from "next/navigation";
-import { getFullImageUrl } from "@/util/url";
 
 const menuVariants = cva("", {
     variants: {
@@ -58,8 +57,6 @@ export const Menu = ({
 
 
     const router = useRouter();
-    const baseUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://food-ordering-mvp.onrender.com';
-    // const src = menuImg ? `${baseUrl}/${menuImg}` : `/picture.svg`;
     const src = menuImg ?? '/picture.svg';
 
     const handleToggleClick = useCallback((checked: boolean) => {
@@ -84,7 +81,7 @@ export const Menu = ({
         >
             <header className="flex items-center">
                 <Image 
-                    src={`${getFullImageUrl(src, baseUrl)}`} 
+                    src={src} 
                     alt={name} 
                     width={96} 
                     height={96} 

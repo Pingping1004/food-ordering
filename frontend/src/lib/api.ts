@@ -2,11 +2,11 @@ import axios, { AxiosRequestConfig, AxiosError, InternalAxiosRequestConfig, Axio
 import { setAccessToken, getRefreshToken, setRefreshToken, clearTokens } from "./token";
 import Cookies from 'js-cookie';
 
-const baseUrl = `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/api`;
+const baseBackendUrl = `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/api`;
 // const baseUrl = '/api';
 
 export const api = axios.create({
-    baseURL: baseUrl,
+    baseURL: baseBackendUrl,
     withCredentials: true,
 });
 
@@ -90,14 +90,21 @@ async function handleTokenRefresh(originalRequest: CustomAxiosRequestConfig): Pr
         if (err && typeof err === 'object' && (err as AxiosError).isAxiosError) {
             processQueue(err as AxiosError); // safe cast
         } else {
-            processQueue(null); // or handle differently
+            processQueue(null);
         }
 
-        return Promise.reject(
-            err instanceof Error
-                ? err
-                : new Error(typeof err === 'string' ? err : JSON.stringify(err))
-        );
+        let rejectionError;
+
+        if (err instanceof Error) {
+            rejectionError = err;
+        } else if (typeof err === 'string') {
+            rejectionError = new Error(err);
+        } else {
+            // A fallback for other error types, like plain objects
+            rejectionError = new Error(JSON.stringify(err));
+        }
+
+        return Promise.reject(rejectionError);
     } finally {
         isRefreshing = false;
     }

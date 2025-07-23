@@ -13,7 +13,6 @@ import { Menu } from "@/context/MenuContext";
 import { getParamId } from "@/util/param";
 
 export default function EditMenuPage() {
-    const imageBaseUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL;
     const [menu, setMenu] = useState<Menu>();
     const router = useRouter();
     const [restaurantId, setRestaurantId] = useState<string | undefined>(undefined);
@@ -71,9 +70,9 @@ export default function EditMenuPage() {
             currentPreviewUrl = url;
             createdObjectURL = url;
         } else if (typeof watchedMenuImgFile === 'string' && watchedMenuImgFile) {
-            currentPreviewUrl = `${imageBaseUrl}${watchedMenuImgFile}`;
+            currentPreviewUrl = watchedMenuImgFile;
         } else if (menu?.menuImg) {
-            currentPreviewUrl = `${imageBaseUrl}${menu.menuImg}`;
+            currentPreviewUrl = menu.menuImg;
         }
 
         setImagePreviewUrl(currentPreviewUrl);

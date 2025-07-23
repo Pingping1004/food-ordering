@@ -4,7 +4,6 @@ import { cva, VariantProps } from "class-variance-authority";
 import Image from "next/image";
 import { useCart } from "@/context/CartContext";
 import { Button } from "../Button";
-import { getFullImageUrl } from "@/util/url";
 
 const menuProfileVariant = cva("", {
     variants: {
@@ -48,8 +47,7 @@ export default function MenuProfile({
     ...props
 }: MenuProfileProps) {
     const { getQuantity, addToCart, removeFromCart } = useCart();
-    const baseUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://food-ordering-mvp.onrender.com';
-    const src = menuImg ? `${baseUrl}${menuImg}` : `/picture.svg`;
+    const src = menuImg ? `${menuImg}` : `/picture.svg`;
     const quantity = getQuantity(menuId) > 0 ? `${getQuantity(menuId)}` : '';
 
     return (
@@ -66,7 +64,7 @@ export default function MenuProfile({
                 <Image
                     width={163}
                     height={163}
-                    src={`${getFullImageUrl(src, baseUrl)}`}
+                    src={src}
                     alt="Menu profile"
                     className="rounded-lg object-cover w-full h-full"
                 />

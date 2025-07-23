@@ -12,8 +12,7 @@ interface RestaurantHeaderType {
 }
 
 export default function RestaurantHeader({ name, restaurantImg, openTime, closeTime }: Readonly<RestaurantHeaderType>) {
-    const baseURL = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://food-ordering-mvp.onrender.com';
-    const src = restaurantImg ? `${baseURL}/${restaurantImg}` : `/picture.svg`;
+    const src = restaurantImg ? `${restaurantImg}` : `/picture.svg`;
 
     return (
         <div className="flex w-full gap-x-4 px-6 py-4 border-1 border-color rounded-lg">

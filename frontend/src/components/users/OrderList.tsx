@@ -33,8 +33,7 @@ export default function OrderList({ items }: Readonly<CartListProps>) {
     return (
         <div>
             {items.map((menu) => {
-                const baseUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://food-ordering-mvp.onrender.com';
-                const src = menu.menuImg ? `${baseUrl}${menu.menuImg}` : '/picture.svg';
+                const src = menu.menuImg ? `${menu.menuImg}` : '/picture.svg';
 
                 return (
                     <div
