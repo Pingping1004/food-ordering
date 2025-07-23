@@ -111,6 +111,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             await api.post('/auth/logout');
         } catch {
             console.error('Logout failed');
+            throw new Error('Logout failed');
         } finally {
             handleLogoutSideEffects();
             setLoading(false);
@@ -154,7 +155,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             alert(err.response?.data?.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่');
         } else {
             alert('เกิดข้อผิดพลาดที่ไม่รู้จัก กรุณาลองใหม่');
-            console.error('Unexpected login error:', err);
         }
     }
 

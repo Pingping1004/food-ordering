@@ -59,8 +59,6 @@ export default function BulkAddMenuPage() {
     } = useForm<BulkUploadFormValues>({
         resolver: zodResolver(bulkUploadFormSchema),
         defaultValues: {
-            // menuImgs: new DataTransfer().files, // Will only run in the browser
-            // csvFile: new DataTransfer().files,   // Will only run in the browser
             restaurantId: restaurantId,
         }
     });

@@ -47,7 +47,6 @@ function OrderConfirmContext() {
 
         alert(`กรุณากรอกข้อมูลให้ถูกต้อง:\n\n${messages}`);
     };
-    console.log('Form error: ', errors);
 
     const submitOrder = async (data: CreateOrderSchemaType) => {
         try {
@@ -77,8 +76,7 @@ function OrderConfirmContext() {
 
             const response = await api.post(`/order/omise`, orderPayload);
             alert(`สั่งอาหารออเดอร์: ${response.data.orderId}`);
-            const { orderId, chargeId, qrDownloaduri, qrImageUri } = response.data;
-            console.log('QR Image Url: ', qrImageUri);
+            const { orderId, chargeId, qrDownloaduri } = response.data;
             router.push(`/user/order/payment/checkout?orderId=${orderId}&chargeId=${chargeId}&qrImageUri=${encodeURIComponent(qrDownloaduri)}`);
 
         } catch (error: unknown) {
@@ -86,7 +84,6 @@ function OrderConfirmContext() {
                 const err = error as { response: { status: number; data?: { message?: string } } };
 
                 alert(err.response.data?.message);
-                console.error('Failed to create order: ', err.response.data);
             }
         }
     }

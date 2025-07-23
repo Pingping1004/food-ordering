@@ -10,7 +10,6 @@ export function getFullImageUrl(relativePath: string | undefined, baseUrl: strin
         return relativePath;
     }
 
-    // Scenario 2: It's a relative path from the backend (e.g., 'uploads/menus/...' or '/uploads/menus/...')
     if (!baseUrl) return null;
 
     // Normalize the base URL: ensure it *doesn't* end with a slash for concatenation
@@ -19,7 +18,6 @@ export function getFullImageUrl(relativePath: string | undefined, baseUrl: strin
     // Normalize the relative path: ensure it *starts* with a slash
     const normalizedRelativePath = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
 
-    // Now, combine them with exactly one slash in between
     const fullUrl = `${normalizedBaseUrl}${normalizedRelativePath}`;
     return fullUrl;
 }

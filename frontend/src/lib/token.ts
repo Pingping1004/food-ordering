@@ -28,7 +28,6 @@ export const getRefreshToken = (): string | null => {
 }
 
 export const getCsrfToken = (): string | null => {
-    console.log('Cookie from getCsrfToken: ', Cookies.get('XSRF-TOKEN'));
     return Cookies.get('XSRF-TOKEN') || null;
 }
 

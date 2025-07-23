@@ -8,7 +8,6 @@ import UserHeader from "@/components/users/Header";
 
 export default function UserHomePage() {
     const [data, setData] = useState<Restaurant[] | null>(null);
-    console.log('Restaurant data: ', data);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 

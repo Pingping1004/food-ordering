@@ -16,9 +16,6 @@ function Page() {
     const [qrUrl, setQrUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    console.log('Qr URL: ', qrUrl);
-    console.log('qrImageUri: ', qrImageUri);
-
     useEffect(() => {
         if (orderId && chargeId) {
             setQrUrl(qrImageUri);
@@ -30,7 +27,6 @@ function Page() {
         setIsLoading(true);
         try {
             const response = await api.get(`/order/omise/complete?charge_id=${chargeId}&orderId=${orderId}`);
-            console.log('Payment response: ', response.data);
 
             if (response.status === 200) {
                 alert(`ชำระเงินสำเร็จ`);

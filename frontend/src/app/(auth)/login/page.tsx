@@ -29,7 +29,6 @@ export default function LoginPage() {
 
     const submitForm = async (loginData: loginSchemaType) => {
         const user = await login(loginData.email, loginData.password);
-        console.log('Login response: ', user);
 
         if (user.role === "user") {
             router.push('/user/restaurant');
@@ -37,8 +36,6 @@ export default function LoginPage() {
             router.push(`/cooker/${user.restaurant?.restaurantId}`)
         }
     };
-
-    console.log('Login form error: ', errors);
 
     return (
         <div className="container flex items-center justify-center min-w-screen min-h-screen">
