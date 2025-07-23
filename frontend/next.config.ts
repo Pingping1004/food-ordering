@@ -25,8 +25,8 @@ const nextConfig: NextConfig = {
         remotePatterns: [
             {
                 protocol: 'https',
-                hostname: 'food-orderingV1.vercel.app',
-                pathname: '/uploads/**',
+                hostname: 'foodapp-images.8eec31b924d323318e591622bd030d1c.r2.cloudflarestorage.com',
+                pathname: '/**',
             }
         ],
     },
