@@ -32,6 +32,7 @@ async function bootstrap() {
 
   const allowedOrigins = [
     'https://food-ordering.online',
+    'https://api.food-ordering.online',
     'https://food-ordering-mvp.onrender.com',
     process.env.FRONTEND_BASE_URL,
     process.env.NEXT_PUBLIC_BACKEND_API_URL,
