@@ -7,7 +7,6 @@ import {
   Logger,
 } from '@nestjs/common';
 import { HttpExceptionFilter } from './libs/http-exception.filter';
-import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import * as express from 'express';
 import { json, Request, Response } from 'express';

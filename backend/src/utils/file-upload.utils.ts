@@ -1,4 +1,3 @@
-import { extname } from 'path';
 import { BadRequestException } from '@nestjs/common';
 
 export const imageFileFilter = (req, file, callback) => {
