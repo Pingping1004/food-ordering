@@ -6,9 +6,11 @@ import { OrderModule } from 'src/order/order.module';
 import { UserModule } from 'src/user/user.module';
 import { CsrfModule } from 'src/csrf/csrf.module';
 import { S3Module } from 'src/s3/s3.module';
+import { UploadModule } from 'src/upload/upload.module';
 
 @Module({
   imports: [
+    UploadModule,
     OrderModule,
     UserModule,
     CsrfModule,
