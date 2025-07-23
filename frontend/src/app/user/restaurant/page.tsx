@@ -11,6 +11,8 @@ export default function UserHomePage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
+    console.log('Restaurant Data: ', data);
+
     useEffect(() => {
         const fetchData = async () => {
             try {

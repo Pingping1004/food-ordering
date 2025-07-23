@@ -149,7 +149,7 @@ function OrderConfirmContext() {
                         />
                     )}
                 />
-                {errors.paymentMethod && <p className="text-red-500 text-sm">{errors.paymentMethod.message}</p>}
+                {errors.paymentMethod && <p className="text-red-500 text-base">กรุณาเลือกเวลาจัดส่งหลัง {getBufferTime(5)}</p>}
             </div>
 
             <div className=" w-full px-6 z-50 flex">

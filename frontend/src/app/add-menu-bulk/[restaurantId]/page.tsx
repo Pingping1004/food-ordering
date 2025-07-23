@@ -357,7 +357,7 @@ export default function BulkAddMenuPage() {
                                         src={url}
                                         alt={`Menu Image Preview`}
                                         fill // Use fill for responsive images
-                                        className="object-contain rounded-lg border border-gray-200"
+                                        className="object-cover rounded-lg border border-gray-200"
                                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                                     />
                                 </div>
