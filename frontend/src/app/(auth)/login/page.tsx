@@ -47,10 +47,10 @@ export default function LoginPage() {
                             className="flex flex-col w-full h-full p-20 text-center bg-white rounded-3xl"
                         >
                             <h3 className="mb-3 text-4xl font-extrabold text-gray-900">
-                                Already Have an Account?
+                                มีบัญชีอยู่แล้ว?
                             </h3>
                             <p className="mb-16 text-gray-700">
-                                Enter your email and password
+                                ใส่อีเมลและรหัสผ่านของคุณ
                             </p>
 
                             <Input
@@ -82,16 +82,16 @@ export default function LoginPage() {
                                     type="submit"
                                     disabled={isSubmitting}
                                 >
-                                    Login to Account
+                                    เข้าสู่ระบบ
                                 </Button>
                             </div>
                             <p className="text-sm leading-relaxed text-gray-900">
-                                Not Register Yet?{" "}
+                                บังไม่เคยลงทะเบียน?{" "}
                                 <Link
                                     href="/signup"
                                     className="font-[700] text-blue-400 transition duration-500 hover:text-blue-600"
                                 >
-                                    Signup
+                                    สร้างบัญชีผู้ใช้
                                 </Link>
                             </p>
                         </form>

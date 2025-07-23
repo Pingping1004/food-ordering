@@ -6,11 +6,11 @@ import { Button } from "../Button";
 import Profile from "../Profile";
 
 export interface Restaurant {
-  restaurantId: string;
-  name: string;
-  location?: string;
-  openTime: string;
-  closeTime: string;
+    restaurantId: string;
+    name: string;
+    location?: string;
+    openTime: string;
+    closeTime: string;
 }
 
 export default function CookerHeader({
@@ -34,7 +34,7 @@ export default function CookerHeader({
                             size="md"
                             onClick={() => router.push(`/managed-menu/${restaurantId}`)}
                         >
-                จัดการเมนู
+                            จัดการเมนู
                         </Button>
                     )}
                     {pathname !== `/cooker/${restaurantId}` && (
@@ -62,7 +62,7 @@ export default function CookerHeader({
                                     variant="secondaryDanger"
                                     onClick={() => router.push(`/restaurant/profile/${restaurantId}`)}
                                 >
-                    Logout
+                                    ล็อกเอาท์
                                 </Button>
                             )}
                         </div>

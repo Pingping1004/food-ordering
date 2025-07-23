@@ -72,7 +72,7 @@ export const RestaurantProfile: React.FC<RestaurantProfileProps> = ({
 
             <div className="flex flex-col gap-y-2">
                 <h3 className="noto-sans-bold text-sm text-primary">{name.substring(0, 15)}</h3>
-                <p className="noto-sans-regular text-xs text-light">{categories.join(', ')}</p>
+                <p className="noto-sans-regular text-xs text-light">{categories.slice(0, 2).join(', ')}</p>
             </div>
         </div>
     );

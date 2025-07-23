@@ -44,6 +44,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [isAuth, setIsAuth] = useState<boolean>(false);
+    const [initialCheckDone, setInitialCheckDone] = useState(false);
     const [accessTokenValue, setAccessTokenValue] = useState<string | null>(null);
     const router = useRouter();
 
@@ -94,7 +95,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     useEffect(() => {
-        if (!loading && !user && isAuth === false) {
+        if (!loading && !initialCheckDone) {
+            setInitialCheckDone(true);
+            return;
+        }
+        if (!loading && initialCheckDone && !user && isAuth === false) {
             if (!alertShowRef.current) {
                 alert('เซสชันหมดอายุ กรุณาล็อกอินใหม่อีกครั้ง');
                 router.push('/login');
@@ -227,47 +232,64 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         );
 
         // Response Interceptor: Handle 401 for token refresh
+        const handleRefreshToken = async (originalRequest: any) => {
+            try {
+                const refreshResponse = await api.post('/auth/refresh');
+                const newAccessToken = refreshResponse.data.accessToken;
+
+                setAccessToken(newAccessToken);
+                setAccessTokenValue(newAccessToken);
+
+                processQueue(null, newAccessToken);
+                originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+
+                return api(originalRequest);
+            } catch (refreshError: unknown) {
+                const err = refreshError instanceof Error
+                    ? refreshError
+                    : new Error(typeof refreshError === 'string' ? refreshError : JSON.stringify(refreshError));
+
+                processQueue(err);
+                await logout();
+                throw err;
+            } finally {
+                isRefreshing.current = false;
+            }
+        };
+
+        const queueRequest = (originalRequest: any) => {
+            return new Promise((resolve, reject) => {
+                failedQueue.current.push({ resolve, reject, config: originalRequest });
+            });
+        };
+
+        const onResponseError = async (error: any) => {
+            const originalRequest = error.config;
+
+            const isUnauthorized = error.response?.status === 401;
+            const canRetry = originalRequest && !originalRequest._retry;
+
+            if (isUnauthorized && canRetry) {
+                originalRequest._retry = true;
+
+                if (!isRefreshing.current) {
+                    isRefreshing.current = true;
+                    return handleRefreshToken(originalRequest);
+                } else {
+                    return queueRequest(originalRequest);
+                }
+            }
+
+            const normalizedError = error instanceof Error
+                ? error
+                : new Error(JSON.stringify(error));
+
+            return Promise.reject(normalizedError);
+        };
+
         const responseInterceptor = api.interceptors.response.use(
             (response) => response,
-            async (error) => {
-                const originalRequest = error.config;
-                if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
-                    originalRequest._retry = true;
-
-                    if (!isRefreshing.current) {
-                        isRefreshing.current = true;
-                        try {
-                            const refreshResponse = await api.post('/auth/refresh');
-                            const newAccessToken = refreshResponse.data.accessToken;
-
-                            setAccessToken(newAccessToken);
-                            setAccessTokenValue(newAccessToken);
-
-                            isRefreshing.current = false;
-                            processQueue(null, newAccessToken);
-
-                            originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-                            return api(originalRequest);
-                        } catch (refreshError: unknown) {
-                            isRefreshing.current = false;
-
-                            const error =
-                                refreshError instanceof Error
-                                    ? refreshError
-                                    : new Error(typeof refreshError === 'string' ? refreshError : JSON.stringify(refreshError));
-
-                            processQueue(error);
-                            await logout();
-                            return Promise.reject(error);
-                        }
-                    } else {
-                        return new Promise((resolve, reject) => {
-                            failedQueue.current.push({ resolve, reject, config: originalRequest });
-                        });
-                    }
-                }
-                return Promise.reject(error instanceof Error ? error : new Error(JSON.stringify(error)))
-            }
+            onResponseError
         );
 
         return () => {

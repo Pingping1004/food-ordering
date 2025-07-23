@@ -30,7 +30,7 @@ export default function UserHeader() {
                         variant="secondaryDanger"
                         onClick={() => logout()}
                     >
-                        Logout
+                        ล็อกเอาท์
                     </Button>
                 </div>
             ) : (
