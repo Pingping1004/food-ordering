@@ -32,6 +32,11 @@ interface AuthContextType {
     logout: () => Promise<void>;
 }
 
+// Extend the config type
+interface CustomAxiosRequestConfig extends AxiosRequestConfig {
+  _retry?: boolean;
+}
+
 type FailedRequest = {
     resolve: (value: AxiosResponse | PromiseLike<AxiosResponse>) => void;
     reject: (reason?: unknown) => void;
@@ -108,7 +113,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         } else {
             alertShowRef.current = false;
         }
-    }, [loading, user, router, isAuth]);
+    }, [loading, user, router, isAuth, initialCheckDone]);
 
     const logout = useCallback(async (redirectImmediately: boolean = true) => {
         setLoading(true);
@@ -202,7 +207,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         } finally {
             setLoading(false);
         }
-    }, [router, getProfile, logout]);
+    }, [router, getProfile, logout, fetchCsrfToken]);
 
     useEffect(() => {
         const requestInterceptor = api.interceptors.request.use(
@@ -232,7 +237,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         );
 
         // Response Interceptor: Handle 401 for token refresh
-        const handleRefreshToken = async (originalRequest: any) => {
+        const handleRefreshToken = async (originalRequest: AxiosRequestConfig) => {
             try {
                 const refreshResponse = await api.post('/auth/refresh');
                 const newAccessToken = refreshResponse.data.accessToken;
@@ -241,33 +246,40 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 setAccessTokenValue(newAccessToken);
 
                 processQueue(null, newAccessToken);
+
+                if (!originalRequest.headers) originalRequest.headers = {};
                 originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
 
                 return api(originalRequest);
-            } catch (refreshError: unknown) {
-                const err = refreshError instanceof Error
-                    ? refreshError
-                    : new Error(typeof refreshError === 'string' ? refreshError : JSON.stringify(refreshError));
+            } catch (refreshError) {
+                const normalizedError =
+                    refreshError instanceof Error
+                        ? refreshError
+                        : new Error(typeof refreshError === 'string'
+                            ? refreshError
+                            : JSON.stringify(refreshError));
 
-                processQueue(err);
+                processQueue(normalizedError);
                 await logout();
-                throw err;
+                throw normalizedError;
             } finally {
                 isRefreshing.current = false;
             }
         };
 
-        const queueRequest = (originalRequest: any) => {
-            return new Promise((resolve, reject) => {
+        const queueRequest = (originalRequest: AxiosRequestConfig) =>
+            new Promise((resolve, reject) => {
                 failedQueue.current.push({ resolve, reject, config: originalRequest });
             });
-        };
 
-        const onResponseError = async (error: any) => {
-            const originalRequest = error.config;
+        const onResponseError = async (error: unknown) => {
+            if (!axios.isAxiosError(error) || !error.config) {
+                return Promise.reject(new Error('Unknown error'));
+            }
 
+            const originalRequest = error.config as CustomAxiosRequestConfig;
             const isUnauthorized = error.response?.status === 401;
-            const canRetry = originalRequest && !originalRequest._retry;
+            const canRetry = !originalRequest._retry;
 
             if (isUnauthorized && canRetry) {
                 originalRequest._retry = true;
@@ -280,17 +292,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 }
             }
 
-            const normalizedError = error instanceof Error
-                ? error
-                : new Error(JSON.stringify(error));
-
-            return Promise.reject(normalizedError);
+            return Promise.reject(
+                error instanceof Error ? error : new Error(JSON.stringify(error))
+            );
         };
 
         const responseInterceptor = api.interceptors.response.use(
             (response) => response,
             onResponseError
         );
+
+        return () => {
+            api.interceptors.request.eject(requestInterceptor);
+            api.interceptors.response.eject(responseInterceptor);
+        };
 
         return () => {
             api.interceptors.request.eject(requestInterceptor);
@@ -351,7 +366,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             }
         };
         initializeAuthAndProfile();
-    }, []);
+    }, [isAuth, logout, router]);
 
     const contextValue = React.useMemo(() => ({
         user,
