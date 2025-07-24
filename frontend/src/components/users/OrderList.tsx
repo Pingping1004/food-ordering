@@ -2,10 +2,11 @@ import React from 'react'
 import Image from 'next/image'
 import { CartItem, useCart } from '@/context/CartContext';
 import { Button } from '../Button';
+import { OrderStatus } from '../cookers/OrderNavbar';
 
 export interface OrderType {
   orderId: string
-  status: 'receive' | 'cooking' | 'ready' | 'done';
+  status: OrderStatus;
   details?: string;
   isPaid: 'paid' | 'unpaid' | 'processing' | 'rejected';
   isDelay: boolean;
