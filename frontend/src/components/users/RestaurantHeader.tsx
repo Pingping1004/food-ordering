@@ -22,7 +22,7 @@ export default function RestaurantHeader({ name, restaurantImg, openTime, closeT
                 height={74}
                 alt="restaurant profile"
                 priority={true}
-                // className="w-auto h-auto"
+                className="w-auto h-auto object-cover"
             />
             <div className="flex flex-col gap-y-2">
                 <h3 className="noto-sans-bold text-lg text-primary">{name}</h3>

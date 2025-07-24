@@ -106,7 +106,7 @@ export default function SignupPage() {
                                 มีบัญชีอยู่แล้ว?{" "}
                                 <Link
                                     href="/login"
-                                    className="font-[700] text-blue-400 transition duration-500 hover:text-blue-600"
+                                    className="font-[700] text-base text-blue-400 transition duration-500 hover:text-blue-600"
                                 >
                                     เข้าสู่ระบบ
                                 </Link>

@@ -42,8 +42,7 @@ function OrderConfirmContext() {
 
     const onError = (formErrors: typeof errors) => {
         const messages = Object.entries(formErrors)
-            .map(([field, error]) => `${field}: ${error?.message}`)
-            .join('\n');
+            .map(([field, error]) => `${field}: ${error?.message ?? `เกิดข้อผิดพลาด`}`).join('\n');
 
         alert(`กรุณากรอกข้อมูลให้ถูกต้อง:\n\n${messages}`);
     };
@@ -129,7 +128,7 @@ function OrderConfirmContext() {
                     )}
                 />
                 {errors.deliverAt && (
-                    <p className="text-red-500 text-sm z-50">{errors.deliverAt.message}</p>
+                    <p className="text-red-500 text-sm z-50">กรุณาเลือกเวลาจัดส่งหลัง {getBufferTime(5)}</p>
                 )}
             </div>
 
@@ -149,7 +148,7 @@ function OrderConfirmContext() {
                         />
                     )}
                 />
-                {errors.paymentMethod && <p className="text-red-500 text-base">กรุณาเลือกเวลาจัดส่งหลัง {getBufferTime(5)}</p>}
+                {errors.paymentMethod && <p className="text-red-500 text-base">{errors.paymentMethod.message}</p>}
             </div>
 
             <div className=" w-full px-6 z-50 flex">
