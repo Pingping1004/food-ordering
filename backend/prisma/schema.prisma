@@ -31,8 +31,8 @@ model RefreshToken {
 
 model Payout {
   payoutId          String     @id @default(uuid())
-  restaurantRevenue Decimal
-  platformFee       Decimal
+  restaurantRevenue Decimal    @db.Decimal(10, 2)
+  platformFee       Decimal    @db.Decimal(10, 2)
   isPaid            Boolean    @default(false)
   startDate         DateTime
   endDate           DateTime
@@ -93,7 +93,7 @@ model OrderMenu {
   menuName    String
   menuImg     String?
   unitPrice   Float
-  totalPrice  Decimal
+  totalPrice  Decimal   @db.Decimal(10, 2)
   orderId     String
   menuId      String
   menu        Menu    @relation("menuToOrderMenus", fields: [menuId], references: [menuId], onDelete: Cascade)
@@ -110,7 +110,7 @@ model Order {
   deliverAt            DateTime
   isPaid               IsPaid      @default(unpaid)
   isDelay              Boolean     @default(false)
-  totalAmount          Decimal
+  totalAmount          Decimal    @db.Decimal(10, 2)
   paidAt               DateTime?
   omiseChargeId        String?     @unique @map("omise_charge_id")
   paymentMethodType    String?     @map("payment_method_type")

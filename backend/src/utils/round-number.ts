@@ -5,5 +5,8 @@ export function numberRound(num: Decimal | number): Decimal {
   const fractionalPart = input.minus(input.floor());
   const threshold = new Decimal('0.4');
 
-  return fractionalPart.greaterThan(threshold) ? input.ceil() : input.floor();
+  const rounded = fractionalPart.greaterThan(threshold)
+    ? input.ceil()
+    : input.toDecimalPlaces(2, Decimal.ROUND_DOWN);
+  return new Decimal(rounded).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
 }
