@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import Image from 'next/image';
 import { getParamId } from '@/util/param';
 import { OrderMenuType } from '@/components/users/OrderList';
 import { OrderStatus } from '@/components/cookers/OrderNavbar';
+import { Button } from '@/components/Button';
 
 interface Order {
     orderMenu: OrderMenuType[];
@@ -17,6 +18,7 @@ interface Order {
 
 export default function DoneOrderPage() {
     const params = useParams();
+    const router = useRouter();
     const orderId = getParamId(params.orderId);
 
     const [restaurantName, setRestaurantName] = useState<string | null>(null);
@@ -59,6 +61,7 @@ export default function DoneOrderPage() {
     return (
         <div className="flex flex-col py-10 px-6 gap-y-10">
             <h1 className="flex justify-center noto-sans-bold text-primary text-2xl">{restaurantName}</h1>
+            <p className="noto-sans-regular text-red text-xl">การบันทึกภาพจากหน้านี้ สามารถช่วยระบุตัวตนตอนรับออเดอร์</p>
 
             <main className="flex flex-col justify-center items-center gap-y-10 mt-10">
                 <Image
@@ -86,7 +89,7 @@ export default function DoneOrderPage() {
                 </div>
             </section>
 
-            <footer className="flex flex-col gap-y-6">
+            <section className="flex flex-col gap-y-6">
                 <p className="noto-sans-bold text-base text-primary">รายละเอียดออเดอร์</p>
                 <div>
                     {order.orderMenu.map((orderMenu) => {
@@ -98,7 +101,14 @@ export default function DoneOrderPage() {
                         );
                     })}
                 </div>
-            </footer>
+            </section>
+
+            <Button 
+                type="button"
+                onClick={() => router.push('/user/restuarant')}
+            >
+                กลับสู่หน้าหลัก
+            </Button>
         </div>
     )
 }
