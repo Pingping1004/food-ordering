@@ -128,8 +128,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             if (user && isAuth) {
                 alertShowRef.current = false;
             }
-
-            if (!isAuth) await logout();
         }
 
         handleSession();
