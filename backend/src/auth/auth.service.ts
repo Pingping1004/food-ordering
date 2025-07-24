@@ -115,6 +115,10 @@ export class AuthService {
         email: user.email,
         name: user.name,
         role: user.role,
+        restaurant: {
+          restaurantId: existingUser.restaurant?.restaurantId,
+          isApproved: existingUser.restaurant?.isApproved,
+        }
       },
     };
   }
@@ -173,7 +177,7 @@ export class AuthService {
           name: user.name,
           role: user.role,
           restaurant: user.restaurant
-            ? { restaurantId: user.restaurant.restaurantId }
+            ? { restaurantId: user.restaurant.restaurantId, isApproved: user.restaurant.isApproved }
             : null,
           profileImg: user.profileImg,
         },

@@ -20,7 +20,7 @@ export type UserWithRestaurant = Prisma.UserGetPayload<{
     createdAt: true;
     updatedAt: true;
     restaurant: {
-      select: { restaurantId: true };
+      select: { restaurantId: true, isApproved: true };
     };
   };
 }>;
