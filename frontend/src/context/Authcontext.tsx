@@ -26,7 +26,6 @@ interface User {
 
 interface AuthContextType {
     user: User | null;
-    accessTokenValue: string | null;
     isAuth: boolean;
     loading: boolean;
     login: (email: string, password: string) => Promise<User>;
@@ -50,7 +49,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [isAuth, setIsAuth] = useState<boolean>(false);
-    const [accessTokenValue, setAccessTokenValue] = useState<string | null>(null);
+    // const [accessTokenValue, setAccessTokenValue] = useState<string | null>(null);
     const router = useRouter();
 
     const isRefreshing = useRef(false);
@@ -114,7 +113,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const handleLogoutSideEffects = () => {
         setUser(null);
         setIsAuth(false);
-        setAccessTokenValue(null);
+        localStorage.removeItemm('accessToken');
         clearTokens();
         localStorage.removeItem('accessToken');
     };
@@ -193,7 +192,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             }
 
             setAccessToken(newAccessToken);
-            setAccessTokenValue(newAccessToken)
+            localStorage.setItem('accessToken', newAccessToken)
             localStorage.setItem('accessToken', newAccessToken);
 
             setIsAuth(true);
@@ -214,8 +213,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             async (config) => {
                 if (config.headers?.skipAuth === 'true') return config;
 
-                if (accessTokenValue && config.headers && !config.headers.Authorization) {
-                    config.headers.Authorization = `Bearer ${accessTokenValue}`;
+                const token = localStorage.getItem('accessToken');
+                if (token && config.headers && !config.headers.Authorization) {
+                    config.headers.Authorization = `Bearer ${token}`;
                 }
 
                 const currentCsrfToken = getCsrfToken();
@@ -245,7 +245,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 const newAccessToken = refreshResponse.data.accessToken;
 
                 setAccessToken(newAccessToken);
-                setAccessTokenValue(newAccessToken);
+                localStorage.setItem('accessToken', newAccessToken);
 
                 const user = await getProfile();
                 setUser(user);
@@ -319,16 +319,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             api.interceptors.request.eject(requestInterceptor);
             api.interceptors.response.eject(responseInterceptor);
         };
-    }, [accessTokenValue, processQueue, logout, getProfile]);
+    }, []);
 
     useEffect(() => {
         const initializeAuthAndProfile = async () => {
             setLoading(true);
             try {
                 const accessToken = localStorage.getItem('accessToken');
-                if (!accessToken) throw new Error('Access token missing');
+                if (!accessToken) {
+                    alert('ไม่มีโทเคน กรุณาล็อกอินใหม่');
+                    await logout(true);
+                    return;
+                }
 
-                setAccessTokenValue(accessToken);
+                localStorage.setItem('accessToken', accessToken);
 
                 const profileUser = await getProfile();
 
@@ -372,7 +376,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 setLoading(false);
             }
         };
-        
+
         initializeAuthAndProfile();
     }, [logout, router, getProfile]);
 
@@ -387,12 +391,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const contextValue = useMemo(() => ({
         user,
-        accessTokenValue,
         isAuth: !!user,
         loading,
         login,
         logout,
-    }), [user, accessTokenValue, isAuth, loading, login, logout]);
+    }), [user, isAuth, loading, login, logout]);
     return (
         <AuthContext.Provider
             value={contextValue}
