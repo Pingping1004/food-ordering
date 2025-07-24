@@ -27,7 +27,7 @@ function Page() {
     }, [weeklyOrders]);
 
     const weeklySales = useMemo(() => {
-        return weeklyOrders.reduce((total, order) => total += order.totalAmount, 0);
+        return weeklyOrders.reduce((total, order) => total + order.totalAmount, 0);
     }, [weeklyOrders]);
 
     const handleOrderUpdate = (updatedOrder: OrderProps) => {

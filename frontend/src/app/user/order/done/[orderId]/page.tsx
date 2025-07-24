@@ -10,7 +10,7 @@ import { OrderStatus } from '@/components/cookers/OrderNavbar';
 import { Button } from '@/components/Button';
 
 interface Order {
-    orderMenu: OrderMenuType[];
+    orderMenus: OrderMenuType[];
     orderStatus: OrderStatus;
     orderAt: string;
     deliverAt: string;
@@ -24,10 +24,9 @@ export default function DoneOrderPage() {
     const [restaurantName, setRestaurantName] = useState<string | null>(null);
     const [, setRestaurantId] = useState<string | null>(null);
     const [order, setOrder] = useState<Order>();
+    const { orderMenus = [] } = order || {};
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-
-    console.log('Order in done page: ', order);
 
     useEffect(() => {
         if (!orderId) {
@@ -58,7 +57,9 @@ export default function DoneOrderPage() {
 
     if (loading) return <div>Loading...</div>;
     if (!order) return <div>ไม่พบออเดอร์ของคุณ</div>;
-    if (!Array.isArray(order.orderMenu)) return <div>ไม่พบข้อมูลเมนู</div>;
+    if (orderMenus.length === 0) {
+        return <div>ไม่พบข้อมูลเมนู</div>;
+    }
     if (error) return <div>{error}</div>;
 
     return (
@@ -95,7 +96,7 @@ export default function DoneOrderPage() {
             <section className="flex flex-col gap-y-6">
                 <p className="noto-sans-bold text-base text-primary">รายละเอียดออเดอร์</p>
                 <div>
-                    {order.orderMenu.map((item) => (
+                    {order.orderMenus.map((item) => (
                         <div key={item.menuName} className="flex flex-col gap-y-2">
                             <p className="noto-sans-regular text-base text-primary">{item.quantity}x{' '}{item.menuName}</p>
                             <p className="noto-sans-bold text-xl text-primary">{item.unitPrice}</p>
