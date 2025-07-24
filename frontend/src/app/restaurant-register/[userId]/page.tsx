@@ -119,9 +119,8 @@ export default function RestaurantRegisterPage() {
                 }
             });
 
-            const restaurantName = response.data.result.name;
             const restaurantId = response.data.result.restaurantId
-            alert(`ลงทะเบียนร้าน ${restaurantName} สำเร็จ`);
+            alert(`ส่งคำขอเปิดร้านอาหารสำเร็จ ระบบกำลังตรวจสอบและจะทำการอนุมัติสถานะร้านอาหาร`);
             router.push(`/cooker/${restaurantId}`)
         } catch (error: unknown) {
             if (typeof error === 'object' && error !== null && 'response' in error) {

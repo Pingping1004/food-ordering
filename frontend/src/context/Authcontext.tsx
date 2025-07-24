@@ -111,6 +111,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
     }, [router]);
 
+    const handleLogoutSideEffects = () => {
+        setUser(null);
+        setIsAuth(false);
+        setAccessTokenValue(null);
+        clearTokens();
+        localStorage.removeItem('accessToken');
+    };
+
     useEffect(() => {
         if (loading) return;
         const handleSession = async () => {
@@ -133,26 +141,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         handleSession();
     }, [loading, user, router, isAuth, logout]);
 
-    const getProfile = useCallback(async (): Promise<User | null> => {
-        try {
-            const response = await api.get('/user/profile');
-            return response.data as User;
-        } catch (error) {
-            if (axios.isAxiosError(error) && error?.response?.status === 401) {
-                await logout();
-            }
-            return null;
-        }
-    }, [logout]);
-
-    const handleLogoutSideEffects = () => {
-        setUser(null);
-        setIsAuth(false);
-        setAccessTokenValue(null);
-        clearTokens();
-        localStorage.removeItem('accessToken');
-    };
-
+    const getProfile = useCallback(async (): Promise<User> => {
+        const response = await api.get('/user/profile');
+        return response.data as User;
+    }, []);
 
     function handleLoginError(err: unknown): void {
         if (axios.isAxiosError(err)) {
@@ -333,17 +325,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 const profileUser = await getProfile();
                 if (!profileUser && isAuth) throw new Error("Failed to fetch profile");
 
-                if (profileUser) {
-                    setUser(profileUser);
-                    alertShowRef.current = false;
-                    const routePath = profileUser.role === UserRole.cooker ? (`cooker/${profileUser.restaurant?.restaurantId}`) : 'user/restaurant';
-                    router.push(`/${routePath}`);
-                    return profileUser;
-                }
-
                 setUser(profileUser);
                 setIsAuth(true);
                 alertShowRef.current = false;
+
+                const routePath = profileUser.role === UserRole.cooker
+                    ? `cooker/${profileUser.restaurant?.restaurantId}`
+                    : 'user/restaurant';
+                router.push(`/${routePath}`);
             } catch (err: unknown) {
                 setUser(null);
                 setIsAuth(false);
@@ -352,25 +341,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     const status = err.response?.status;
 
                     if (status === 401) {
-                        alert('รเซสชันหมดอายุ กรุณาล็อกอินใหม่อีกครั้ง');
-                    } else if (status === 404) {
+                        alert('เซสชันหมดอายุ กรุณาล็อกอินใหม่อีกครั้ง');
+                        await logout(true);
+                        return;
+                    }
+
+                    if (status === 404) {
                         alert('ไม่พบบัญชีผู้ใช้นี้');
                         return;
-                    } else if (status === 403) {
-                        alert('ไม่มีสิทธิ์เข้าใช้งานหน้านี้');
-                    } else {
-                        alert('เกิดข้อผิดพลาด กรุณาลองใหม่');
+
                     }
+                    if (status === 403) {
+                        alert('ไม่มีสิทธิ์เข้าใช้งานหน้านี้');
+                        return;
+                    }
+
+                    alert('เกิดข้อผิดพลาด กรุณาลองใหม่');
                     alertShowRef.current = true;
                 }
-
-                await logout(false);
             } finally {
                 setLoading(false);
             }
         };
         initializeAuthAndProfile();
-    }, [isAuth, logout, router, getProfile]);
+    }, [logout, router, getProfile]);
 
     useEffect(() => {
         if (alertShowRef.current) {
