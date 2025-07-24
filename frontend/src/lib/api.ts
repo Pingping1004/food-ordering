@@ -1,10 +1,8 @@
 import axios, { AxiosRequestConfig, AxiosError, InternalAxiosRequestConfig, AxiosResponse, AxiosHeaders } from "axios";
 import { setAccessToken, getRefreshToken, setRefreshToken, clearTokens } from "./token";
 import Cookies from 'js-cookie';
-import { useAuth } from "@/context/Authcontext";
 
 const baseBackendUrl = `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/api`;
-const { logout } = useAuth();
 
 export const api = axios.create({
     baseURL: baseBackendUrl,
@@ -17,6 +15,12 @@ let failedQueue: {
     reject: (reason?: unknown) => void;
     config: AxiosRequestConfig;
 }[] = [];
+
+const forcedLogout = () => {
+    localStorage.removeItem('accessToken');
+    clearTokens();
+    window.location.href = "/login";
+}
 
 // Function to process the queue of failed requests
 const processQueue = (error: AxiosError | null, token: string | null = null) => {
@@ -53,9 +57,9 @@ api.interceptors.request.use(
 
         return config;
     },
-    async (error) => {
+    (error) => {
         if (error.response?.status === 401) {
-            await logout();
+            forcedLogout();
         }
         return Promise.reject(error instanceof Error ? error : new Error(JSON.stringify(error)))
     }
