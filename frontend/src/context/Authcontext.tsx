@@ -142,8 +142,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }, [loading, user, router, isAuth, logout]);
 
     const getProfile = useCallback(async (): Promise<User> => {
-        const response = await api.get('/user/profile');
-        return response.data as User;
+        try {
+            const response = await api.get('/user/profile');
+            return response.data as User;
+        } catch (err) {
+            if (axios.isAxiosError(err) && err.response?.status === 401) {
+                throw new Error("Unauthorized");
+            }
+            throw err;
+        }
     }, []);
 
     function handleLoginError(err: unknown): void {
@@ -320,10 +327,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             try {
                 const accessToken = localStorage.getItem('accessToken');
                 if (!accessToken) throw new Error('Access token missing');
+
                 setAccessTokenValue(accessToken);
 
                 const profileUser = await getProfile();
-                if (!profileUser && isAuth) throw new Error("Failed to fetch profile");
 
                 setUser(profileUser);
                 setIsAuth(true);
@@ -358,11 +365,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
                     alert('เกิดข้อผิดพลาด กรุณาลองใหม่');
                     alertShowRef.current = true;
+                } else {
+                    console.error('Unexpected error: ', err);
                 }
             } finally {
                 setLoading(false);
             }
         };
+        
         initializeAuthAndProfile();
     }, [logout, router, getProfile]);
 
