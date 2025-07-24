@@ -85,7 +85,7 @@ export default function LoginPage() {
                                     เข้าสู่ระบบ
                                 </Button>
                             </div>
-                            <p className="text-sm leading-relaxed text-gray-900">
+                            <p className="mt-6 text-sm leading-relaxed text-gray-900">
                                 ยังไม่เคยลงทะเบียน?{" "}
                                 <Link
                                     href="/signup"

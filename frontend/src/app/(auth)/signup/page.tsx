@@ -102,7 +102,7 @@ export default function SignupPage() {
                                     สร้างบัญชีผู้ใช้
                                 </Button>
                             </div>
-                            <p className="text-sm leading-relaxed text-gray-900">
+                            <p className="mt-6 text-base leading-relaxed text-gray-900">
                                 มีบัญชีอยู่แล้ว?{" "}
                                 <Link
                                     href="/login"

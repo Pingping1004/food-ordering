@@ -34,7 +34,7 @@ interface AuthContextType {
 
 // Extend the config type
 interface CustomAxiosRequestConfig extends AxiosRequestConfig {
-  _retry?: boolean;
+    _retry?: boolean;
 }
 
 type FailedRequest = {
@@ -86,6 +86,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setCsrfToken(csrfTokenValue);
             return csrfTokenValue;
         } catch (error) {
+            if (axios.isAxiosError(error)) {
+                const message = error.response?.data?.message || error.response?.statusText || 'Failed to fetch CSRF token';
+                throw new Error(message);
+            }
             throw error;
         }
     }, []);
@@ -95,7 +99,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             const response = await api.get('/user/profile');
             return response.data as User;
         } catch (error) {
-            throw error;
+            if (axios.isAxiosError(error) && error?.response?.status === 401) {
+                return null; // session expired or unauthorized
+            }
+            return null;
         }
     };
 
@@ -245,19 +252,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 setAccessToken(newAccessToken);
                 setAccessTokenValue(newAccessToken);
 
+                const user = await getProfile();
+                setUser(user);
+                setIsAuth(true);
+
                 processQueue(null, newAccessToken);
 
-                if (!originalRequest.headers) originalRequest.headers = {};
+                originalRequest.headers ??= {};
                 originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
 
                 return api(originalRequest);
             } catch (refreshError) {
-                const normalizedError =
-                    refreshError instanceof Error
-                        ? refreshError
-                        : new Error(typeof refreshError === 'string'
-                            ? refreshError
-                            : JSON.stringify(refreshError));
+                let normalizedError: Error;
+
+                if (refreshError instanceof Error) {
+                    normalizedError = refreshError;
+                } else if (typeof refreshError === 'string') {
+                    normalizedError = new Error(refreshError);
+                } else {
+                    try {
+                        normalizedError = new Error(JSON.stringify(refreshError));
+                    } catch {
+                        normalizedError = new Error('Unknown error during token refresh');
+                    }
+                }
 
                 processQueue(normalizedError);
                 await logout();
@@ -301,11 +319,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             (response) => response,
             onResponseError
         );
-
-        return () => {
-            api.interceptors.request.eject(requestInterceptor);
-            api.interceptors.response.eject(responseInterceptor);
-        };
 
         return () => {
             api.interceptors.request.eject(requestInterceptor);
