@@ -31,8 +31,12 @@ export default function UserHeader() {
                         type="button"
                         variant="tertiary"
                         onClick={() => {
-                            isApprovedRestaurant ? router.push(routing) : 
-                            alert('ตอนนี้ทางแอดมินกำลังดำเนินพิจารณาการอนุมัติเปิดร้านอาหาร')}}
+                            if (isApprovedRestaurant) {
+                                router.push(routing);
+                            } else {
+                                alert('ตอนนี้ทางแอดมินกำลังดำเนินพิจารณาการอนุมัติเปิดร้านอาหาร');
+                            }
+                        }}
                     >
                         สมัครร้านอาหาร?
                     </Button>

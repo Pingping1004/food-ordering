@@ -21,7 +21,7 @@ function Page() {
             setQrUrl(qrImageUri);
             setIsLoading(false);
         }
-    }, [orderId, chargeId]);
+    }, [orderId, chargeId, qrImageUri]);
 
     const handlePayment = async () => {
         setIsLoading(true);
