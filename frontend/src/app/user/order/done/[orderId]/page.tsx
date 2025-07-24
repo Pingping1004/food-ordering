@@ -27,6 +27,8 @@ export default function DoneOrderPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    console.log('Order in done page: ', order);
+
     useEffect(() => {
         if (!orderId) {
             setLoading(false);
