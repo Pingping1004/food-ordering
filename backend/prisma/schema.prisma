@@ -54,6 +54,7 @@ model Restaurant {
   openTime            String
   closeTime           String
   avgCookingTime      Int
+  isApproved          Boolean             @default(false)
   adminName           String
   adminSurname        String
   adminTel            String

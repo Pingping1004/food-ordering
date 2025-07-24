@@ -66,6 +66,7 @@ export class RestaurantService {
         openDate: createRestaurantDto.openDate,
         openTime: openTime,
         closeTime: closeTime,
+        isApproved: false,
         adminName: createRestaurantDto.adminName,
         adminSurname: createRestaurantDto.adminSurname,
         adminTel: createRestaurantDto.adminTel,
@@ -87,7 +88,9 @@ export class RestaurantService {
   }
 
   async findAllRestaurant() {
-    return this.prisma.restaurant.findMany();
+    return this.prisma.restaurant.findMany({
+      where: { isApproved: true },
+    });
   }
 
   async findExistingRestaurant(userId: string) {

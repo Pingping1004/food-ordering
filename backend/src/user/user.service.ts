@@ -83,7 +83,10 @@ export class UserService {
         createdAt: true,
         updatedAt: true,
         restaurant: {
-          select: { restaurantId: true },
+          select: { 
+            restaurantId: true,
+            isApproved: true,
+          },
         },
       },
     });
