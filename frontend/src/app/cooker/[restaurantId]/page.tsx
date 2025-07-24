@@ -43,6 +43,14 @@ function Page() {
         return orders.filter(order => order.status === navbarStatus);
     }, [navbarStatus, orders]);
 
+    if (!cooker.isApproved) {
+        return (
+            <div className="flex w-full h-full justify-center items-center gap-y-15">
+                <p className="noto-sans-bold text-primary text-2xl">ตอนนี้ทางแอดมินกำลังดำเนินพิจารณาการอนุมัติเปิดร้านอาหาร</p>
+            </div>
+        )
+    }
+
     return (
         <div className="flex flex-col gap-y-10 py-10 px-6">
             <CookerHeader

@@ -18,6 +18,7 @@ interface User {
     name?: string;
     restaurant?: {
         restaurantId: string;
+        isApproved: boolean;
     };
     profileImg?: string;
     role: UserRole.admin | UserRole.cooker | UserRole.user;
@@ -127,6 +128,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             if (user && isAuth) {
                 alertShowRef.current = false;
             }
+
+            if (!isAuth) await logout();
         }
 
         handleSession();

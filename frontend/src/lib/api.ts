@@ -1,9 +1,10 @@
 import axios, { AxiosRequestConfig, AxiosError, InternalAxiosRequestConfig, AxiosResponse, AxiosHeaders } from "axios";
 import { setAccessToken, getRefreshToken, setRefreshToken, clearTokens } from "./token";
 import Cookies from 'js-cookie';
+import { useAuth } from "@/context/Authcontext";
 
 const baseBackendUrl = `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/api`;
-// const baseUrl = '/api';
+const { logout } = useAuth();
 
 export const api = axios.create({
     baseURL: baseBackendUrl,
@@ -52,7 +53,10 @@ api.interceptors.request.use(
 
         return config;
     },
-    (error) => {
+    async (error) => {
+        if (error.response?.status === 401) {
+            await logout();
+        }
         return Promise.reject(error instanceof Error ? error : new Error(JSON.stringify(error)))
     }
 );

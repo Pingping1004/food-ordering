@@ -8,7 +8,17 @@ import { useAuth } from "@/context/Authcontext";
 export default function UserHeader() {
     const router = useRouter();
     const { user, logout } = useAuth();
+
     const userId = user?.userId;
+    const restaurantId = user?.restaurant?.restaurantId;
+    const isApprovedRestaurant = user?.restaurant?.isApproved;
+    let routing: string;
+
+    if (userId && !restaurantId) {
+        routing = `/restaurant-register/${userId}`;
+    } else if (userId && restaurantId && !isApprovedRestaurant) {
+        routing = `restaurant/waiting-approved`;
+    }
 
     return (
         <header className="flex justify-between items-center">
@@ -20,7 +30,9 @@ export default function UserHeader() {
                         size="md"
                         type="button"
                         variant="tertiary"
-                        onClick={() => router.push(`/restaurant-register/${userId}`)}
+                        onClick={() => {
+                            isApprovedRestaurant ? router.push(routing) : 
+                            alert('ตอนนี้ทางแอดมินกำลังดำเนินพิจารณาการอนุมัติเปิดร้านอาหาร')}}
                     >
                         สมัครร้านอาหาร?
                     </Button>
