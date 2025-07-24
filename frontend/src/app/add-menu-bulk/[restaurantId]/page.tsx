@@ -381,10 +381,11 @@ export default function BulkAddMenuPage() {
                 {/* --- Step 2: Upload Filled CSV --- */}
                 <div className="bg-white p-6 rounded-lg shadow-md border border-green-200">
                     <h2 className="text-2xl noto-sans-bold mb-4 text-green-700">ขั้นตอนที่ 2: อัปโหลดไฟล์ CSV ที่กรอกแล้ว</h2>
-                    <p className="text-gray-700 mb-4">
-                        ดาวน์โหลดไฟล์ตัวอย่าง แล้วกรอกข้อมูลให้ครบ จากนั้นอัปโหลดกลับเข้ามาที่นี่ <br />
+                    <p className="text-gray-700 mb-4 noto-sans-regular">
+                        ดาวน์โหลดไฟล์ด้านบน แล้วกรอกข้อมูลให้ครบ จากนั้นอัปโหลดาที่นี่ <br />
                         กรุณาตรวจสอบให้แน่ใจว่าชื่อเมนูตรงกับชื่อไฟล์รูปภาพ เพื่อให้ระบบเชื่อมโยงได้ถูกต้อง
                     </p>
+                    <p className="text-red-500 text-base">(ไม่ต้องรวมชื่อตาราง และExport เป็นไฟล์ .CSVเท่านั้น)</p>
 
                     <input
                         type="file"
