@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useCallback, useState, useEffect, useRef } from "react";
 import { api } from "@/lib/api";
-import axios, { AxiosResponse, AxiosRequestConfig } from "axios";
+import axios, { AxiosResponse, AxiosRequestConfig, isAxiosError } from "axios";
 import { useRouter } from "next/navigation";
 import { getCsrfToken, setAccessToken, setCsrfToken, clearTokens } from "@/lib/token";
 
@@ -340,17 +340,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 setIsAuth(true);
                 alertShowRef.current = false;
             } catch (err: unknown) {
-                if (
-                    typeof err === 'object' &&
-                    err !== null &&
-                    'response' in err &&
-                    err.response !== null &&
-                    typeof err.response === 'object' &&
-                    'status' in err.response
-                ) {
-                    const status = (err.response as { status?: number }).status;
+                if (isAxiosError(err)) {
+                    const status = err.response?.status;
+
                     if (status === 401) {
-                        alert('รหัสผ่านหรืออีเมลไม่ถูกต้อง');
+                        if (!alertShowRef.current) {
+                            alert('รหัสผ่านหรืออีเมลไม่ถูกต้อง');
+                            alertShowRef.current = true;
+                        }
+
+                        await logout();
                         return;
                     }
 
@@ -362,7 +361,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     if (status === 403) {
                         await logout(false);
                         if (!alertShowRef.current) {
-                            alert('เซสชันหมดอายุ กรุณาล็อกอินใหม่อีกครั้ง');
+                            alert('ไม่มีสิทธิ์เข้าใช้งานหน้านี้');
                             alertShowRef.current = true;
                         }
 
