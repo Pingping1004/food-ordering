@@ -35,7 +35,7 @@ export class PaymentService {
         typeof this.omiseClient.charges.create
       >[0];
       const decimalAmount = amount instanceof Decimal ? amount : new Decimal(amount);
-      const amountInStang = decimalAmount.mul(100).toNumber();
+      const amountInStang = Math.round(decimalAmount.mul(100).toNumber());
 
       const expirationTime = moment.utc().add(10, 'minutes').toISOString();
       const chargeOptions: ChargeCreateOptions = {
