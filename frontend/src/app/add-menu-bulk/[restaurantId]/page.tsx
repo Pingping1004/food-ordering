@@ -317,22 +317,23 @@ export default function BulkAddMenuPage() {
 
     return (
         <div className="container mx-auto p-4 md:p-8 space-y-8">
-            <h1 className="text-3xl font-bold mb-6 text-gray-800">Bulk Add Menu Items</h1>
+            <h1 className="text-3xl font-bold mb-6 text-gray-800">เพิ่มเมนูหลายรายการพร้อมกัน</h1>
 
             {pageError && <p className="text-red-600 font-medium text-center">{pageError}</p>}
             {successMessage && <p className="text-green-600 font-medium text-center">{successMessage}</p>}
-            {isSubmitting && <p className="text-blue-600 font-medium text-center">Submitting form...</p>}
+            {isSubmitting && <p className="text-blue-600 font-medium text-center">กำลังส่งข้อมูล...</p>}
 
 
             <form onSubmit={handleSubmit(onSubmit, onError)} className="space-y-8">
                 {/* --- Step 1: Upload Images --- */}
                 <div className="bg-white p-6 rounded-lg shadow-md border border-blue-200">
-                    <h2 className="text-2xl font-semibold mb-4 text-blue-700">Step 1: Upload Menu Images</h2>
+                    <h2 className="text-2xl font-semibold mb-4 text-blue-700">ขั้นตอนที่ 1: อัปโหลดรูปภาพเมนู</h2>
                     <p className="text-gray-700 mb-4">
-                        Select all your menu image files (PNG, JPEG, WebP, max 5MB each). These images will be linked to your menu items in the CSV.
+                        กรุณาเลือกรูปเมนูทั้งหมด (รองรับ PNG, JPEG, WebP ขนาดไม่เกิน 5MB ต่อรูป) <br />
+                        ระบบจะเชื่อมรูปเข้ากับชื่อเมนูในไฟล์ CSV อัตโนมัติ
                     </p>
                     <label htmlFor="nativeMenuImgs" className="block text-lg font-semibold mb-2">
-                        Upload Menu Images (Native Input)
+                        เลือกรูปเมนู
                     </label>
                     <input
                         type="file"
@@ -355,7 +356,7 @@ export default function BulkAddMenuPage() {
                                 <div key={url} className="relative aspect-video w-full">
                                     <Image
                                         src={url}
-                                        alt={`Menu Image Preview`}
+                                        alt={`ดูรูปเมนู`}
                                         fill // Use fill for responsive images
                                         className="object-cover rounded-lg border border-gray-200"
                                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -370,18 +371,19 @@ export default function BulkAddMenuPage() {
                         // disabled={loading || watchedMenuImageFiles.length === 0 || Object.keys(errors).length > 0}
                         className="w-full mt-6 bg-purple-600 hover:bg-purple-700 text-white"
                     >
-                        Generate CSV Template
+                        สร้างไฟล์ CSV สำหรับกรอกข้อมูล
                     </Button>
                     <p className="text-sm text-gray-500 mt-2 text-center">
-                        (The template will pre-fill the `originalImageFileNameCsv` column based on your uploaded images.)
+                        (ระบบจะใส่ชื่อไฟล์รูปลงในคอลัมน์ `originalImageFileNameCsv` ให้อัตโนมัติ)
                     </p>
                 </div>
 
                 {/* --- Step 2: Upload Filled CSV --- */}
                 <div className="bg-white p-6 rounded-lg shadow-md border border-green-200">
-                    <h2 className="text-2xl font-semibold mb-4 text-green-700">Step 2: Upload Filled CSV</h2>
+                    <h2 className="text-2xl noto-sans-bold mb-4 text-green-700">ขั้นตอนที่ 2: อัปโหลดไฟล์ CSV ที่กรอกแล้ว</h2>
                     <p className="text-gray-700 mb-4">
-                        Download, fill, and then upload the CSV template here. Ensure menu names in the CSV match exactly any image filenames if you plan to link them.
+                        ดาวน์โหลดไฟล์ตัวอย่าง แล้วกรอกข้อมูลให้ครบ จากนั้นอัปโหลดกลับเข้ามาที่นี่ <br />
+                        กรุณาตรวจสอบให้แน่ใจว่าชื่อเมนูตรงกับชื่อไฟล์รูปภาพ เพื่อให้ระบบเชื่อมโยงได้ถูกต้อง
                     </p>
 
                     <input
@@ -403,19 +405,19 @@ export default function BulkAddMenuPage() {
 
                     {csvParseError && (
                         <div className="mt-4 p-3 bg-red-100 text-red-700 rounded-md text-sm whitespace-pre-wrap overflow-auto max-h-60">
-                            <h3 className="font-semibold mb-1">CSV Parsing Errors:</h3>
+                            <h3 className="font-semibold mb-1">พบข้อผิดพลาดในไฟล์ CSV:</h3>
                             <p>{csvParseError}</p>
                         </div>
                     )}
 
                     {parsedCsvData && parsedCsvData.length > 0 && !csvParseError && (
                         <div className="mt-4 p-3 bg-green-50 text-green-700 rounded-md text-sm">
-                            Successfully parsed {parsedCsvData.length} rows from CSV.
+                            อัปโหลดข้อมูลสำเร็จ {parsedCsvData.length} รายการ
                             <details className="mt-2">
                                 <summary className="cursor-pointer text-blue-600 hover:underline font-medium">View Parsed Data (First 5 rows)</summary>
                                 <pre className="mt-2 p-2 bg-gray-50 rounded text-xs overflow-auto max-h-40">
                                     {JSON.stringify(parsedCsvData.slice(0, 5), null, 2)}
-                                    {parsedCsvData.length > 5 && "\n... (truncated)"}
+                                    {parsedCsvData.length > 5 && "\n... (ตัดตอน)"}
                                 </pre>
                             </details>
                         </div>
@@ -428,7 +430,7 @@ export default function BulkAddMenuPage() {
                     disabled={isFinalSubmitDisabled}
                     className="w-full bg-green-600 hover:bg-green-700 text-white py-3 text-lg"
                 >
-                    {isSubmitting ? 'Processing Bulk Upload...' : 'Submit Bulk Menu Data'}
+                    {isSubmitting ? 'กำลังประมวลผลข้อมูลเมนู...' : 'ส่งข้อมูลเมนูทั้งหมด'}
                 </Button>
             </form>
         </div>

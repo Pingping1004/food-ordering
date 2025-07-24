@@ -45,7 +45,7 @@ function Page() {
 
     if (!cooker.isApproved) {
         return (
-            <div className="flex w-full h-full justify-center items-center gap-y-15">
+            <div className="flex flex-col justify-center text-center items-center gap-y-15">
                 <p className="noto-sans-bold text-primary text-2xl">ตอนนี้ทางแอดมินกำลังดำเนินพิจารณาการอนุมัติเปิดร้านอาหาร</p>
             </div>
         )

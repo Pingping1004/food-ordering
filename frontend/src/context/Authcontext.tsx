@@ -103,10 +103,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             handleLogoutSideEffects();
             setLoading(false);
             alertShowRef.current = false;
-
-            if (redirectImmediately) {
-                router.push('/login');
-            }
+            router.push('/login');
         }
     }, [router]);
 
