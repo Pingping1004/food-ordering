@@ -121,7 +121,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             if (!alertShowRef.current && shouldLogout && !isPublicRoute) {
                 alertShowRef.current = true;
                 alert('เซสชันหมดอายุ กรุณาล็อกอินใหม่อีกครั้ง');
-                await logout();
+                await logout(true);
             }
 
             if (user && isAuth) {
