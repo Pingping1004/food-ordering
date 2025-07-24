@@ -19,7 +19,6 @@ export default function UserHeader() {
     } else if (userId && restaurantId && !isApprovedRestaurant) {
         routing = `restaurant/waiting-approved`;
     }
-
     return (
         <header className="flex justify-between items-center">
             <h1 className="noto-sans-bold text-xl">วันนี้กินอะไรดี?</h1>
@@ -30,13 +29,7 @@ export default function UserHeader() {
                         size="md"
                         type="button"
                         variant="tertiary"
-                        onClick={() => {
-                            if (isApprovedRestaurant) {
-                                router.push(routing);
-                            } else {
-                                alert('ตอนนี้ทางแอดมินกำลังดำเนินพิจารณาการอนุมัติเปิดร้านอาหาร');
-                            }
-                        }}
+                        onClick={() => {router.push(routing)}}
                     >
                         สมัครร้านอาหาร?
                     </Button>

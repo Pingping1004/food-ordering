@@ -8,10 +8,11 @@ import { getParamId } from '@/util/param';
 import { OrderMenuType } from '@/components/users/OrderList';
 import { OrderStatus } from '@/components/cookers/OrderNavbar';
 import { Button } from '@/components/Button';
+import { getTimeFormat } from '@/util/time';
 
 interface Order {
     orderMenus: OrderMenuType[];
-    orderStatus: OrderStatus;
+    status: OrderStatus;
     orderAt: string;
     deliverAt: string;
 }
@@ -65,9 +66,9 @@ export default function DoneOrderPage() {
     return (
         <div className="flex flex-col py-10 px-6 gap-y-10">
             <h1 className="flex justify-center noto-sans-bold text-primary text-2xl">{restaurantName}</h1>
-            <p className="noto-sans-regular text-red text-xl">การบันทึกภาพจากหน้านี้ สามารถช่วยระบุตัวตนตอนรับออเดอร์</p>
+            <p className="noto-sans-regular text-center text-red text-xl">การบันทึกภาพจากหน้านี้ สามารถช่วยระบุตัวตนตอนรับออเดอร์</p>
 
-            <main className="flex flex-col justify-center items-center gap-y-10 mt-10">
+            <main className="flex flex-col justify-center items-center gap-y-10">
                 <Image
                     src="/success.svg"
                     width={120}
@@ -82,18 +83,18 @@ export default function DoneOrderPage() {
 
 
             <section className="flex justify-between mt-0">
-                <div className="flex flex-col border-r-[#B6B6B6] text-start">
-                    <p>สั่งเมื่อ: {order.orderAt}</p>
-                    <p>พร้อมเสิร์ฟ: {order.deliverAt}</p>
+                <div className="flex flex-col gap-y-4 border-r-[#B6B6B6] text-start text-lg">
+                    <p>สั่งเมื่อ: {getTimeFormat(order.orderAt)}</p>
+                    <p>พร้อมเสิร์ฟ: {getTimeFormat(order.deliverAt)}</p>
                 </div>
 
-                <div className="text-start">
-                    <p>สถานะ:</p>
-                    <p>{order.orderStatus}</p>
+                <div className="flex flex-col gap-y-4 text-start text-lg">
+                    <p className="text-xl noto-sans-bold">สถานะ</p>
+                    <p>{order.status}</p>
                 </div>
             </section>
 
-            <section className="flex flex-col gap-y-6">
+            <section className="flex justify-between gap-y-6">
                 <p className="noto-sans-bold text-base text-primary">รายละเอียดออเดอร์</p>
                 <div>
                     {order.orderMenus.map((item) => (
