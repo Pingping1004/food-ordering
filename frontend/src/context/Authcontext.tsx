@@ -93,7 +93,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
     }, []);
 
-    const logout = useCallback(async (redirectImmediately: boolean = true) => {
+    const logout = useCallback(async () => {
         setLoading(true);
         try {
             await api.post('/auth/logout', undefined, { headers: { skipAuth: 'true' } });
@@ -126,7 +126,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             if (!alertShowRef.current && shouldLogout && !isPublicRoute) {
                 alertShowRef.current = true;
                 alert('เซสชันหมดอายุ กรุณาล็อกอินใหม่อีกครั้ง');
-                await logout(true);
+                await logout();
             }
 
             if (user && isAuth) {
@@ -325,7 +325,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 const accessToken = localStorage.getItem('accessToken');
                 if (!accessToken) {
                     alert('ไม่มีโทเคน กรุณาล็อกอินใหม่');
-                    await logout(true);
+                    await logout();
                     return;
                 }
 
@@ -350,7 +350,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
                     if (status === 401) {
                         alert('เซสชันหมดอายุ กรุณาล็อกอินใหม่อีกครั้ง');
-                        await logout(true);
+                        await logout();
                         return;
                     }
 
