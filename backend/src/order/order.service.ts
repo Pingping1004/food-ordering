@@ -116,7 +116,7 @@ export class OrderService {
     return calculatedTotalAmount;
   }
 
-  async createOrderWithPayment(createOrderDto: CreateOrderDto, userId: string) {
+  async createOrderWithPayment(createOrderDto: CreateOrderDto) {
     const calculatedTotalAmount = await this.validateOrderMenus(
       createOrderDto.orderMenus,
       createOrderDto.restaurantId,
@@ -159,14 +159,13 @@ export class OrderService {
         },
       });
 
-      // Validate deliver time with 10 mins time buffer
       const now = new Date();
       const deliverAtDate = new Date(order.deliverAt);
       const minimumAllowedDeliveTime = new Date(now.getTime() + 5 * 60 * 1000);
 
       if (deliverAtDate < minimumAllowedDeliveTime) {
         throw new BadRequestException(
-          'Delivery time must be at least 5 minutes from the current time.',
+          'เวลารับอาหารต้องอยู่หลังจากเวลาปัจจุบัน 5นาที',
         );
       }
 
@@ -202,9 +201,8 @@ export class OrderService {
         };
       } catch (paymentError) {
         this.logger.error(
-          'Error initiating payment with Omise: ',
-          paymentError.message,
-          paymentError.stack,
+          'Error initiating payment with Omise:',
+          JSON.stringify(paymentError, Object.getOwnPropertyNames(paymentError), 2)
         );
 
         await tx.order.update({

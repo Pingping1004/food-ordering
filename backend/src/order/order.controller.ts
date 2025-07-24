@@ -43,7 +43,6 @@ export class OrderController {
 
       const result = await this.orderService.createOrderWithPayment(
         createOrderDto,
-        userId,
       );
 
       return {
