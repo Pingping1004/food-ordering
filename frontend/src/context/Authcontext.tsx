@@ -101,18 +101,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             throw new Error('Logout failed');
         } finally {
             handleLogoutSideEffects();
-            setLoading(false);
             alertShowRef.current = false;
-            router.push('/login');
+            setLoading(false);
         }
     }, [router]);
 
     const handleLogoutSideEffects = () => {
-        setUser(null);
-        setIsAuth(false);
-        localStorage.removeItemm('accessToken');
-        clearTokens();
         localStorage.removeItem('accessToken');
+        setIsAuth(false);
+        setUser(null);
+        clearTokens();
+        router.push('/login');
     };
 
     useEffect(() => {
