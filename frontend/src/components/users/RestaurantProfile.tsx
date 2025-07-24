@@ -66,7 +66,7 @@ export const RestaurantProfile: React.FC<RestaurantProfileProps> = ({
                     height={163}
                     src={src}
                     alt='Restaurant Profile'
-                    className="rounded-lg object-cover w-full h-full"
+                    className="rounded-lg object-contain w-full h-full"
                 />
             </div>
 

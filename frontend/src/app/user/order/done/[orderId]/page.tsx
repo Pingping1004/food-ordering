@@ -58,6 +58,7 @@ export default function DoneOrderPage() {
 
     if (loading) return <div>Loading...</div>;
     if (!order) return <div>ไม่พบออเดอร์ของคุณ</div>;
+    if (!Array.isArray(order.orderMenu)) return <div>ไม่พบข้อมูลเมนู</div>;
     if (error) return <div>{error}</div>;
 
     return (
@@ -94,18 +95,16 @@ export default function DoneOrderPage() {
             <section className="flex flex-col gap-y-6">
                 <p className="noto-sans-bold text-base text-primary">รายละเอียดออเดอร์</p>
                 <div>
-                    {order.orderMenu.map((orderMenu) => {
-                        return (
-                            <div key={orderMenu.menuName} className="flex flex-col gap-y-2">
-                                <p className="noto-sans-regular text-base text-primary">{orderMenu.quantity}x{' '}{orderMenu.menuName}</p>
-                                <p className="noto-sans-bold text-xl text-primary">{orderMenu.unitPrice}</p>
-                            </div>
-                        );
-                    })}
+                    {order.orderMenu.map((item) => (
+                        <div key={item.menuName} className="flex flex-col gap-y-2">
+                            <p className="noto-sans-regular text-base text-primary">{item.quantity}x{' '}{item.menuName}</p>
+                            <p className="noto-sans-bold text-xl text-primary">{item.unitPrice}</p>
+                        </div>
+                    ))}
                 </div>
             </section>
 
-            <Button 
+            <Button
                 type="button"
                 onClick={() => router.push('/user/restuarant')}
             >
