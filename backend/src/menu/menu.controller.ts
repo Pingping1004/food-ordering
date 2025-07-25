@@ -75,7 +75,6 @@ export class MenuController {
 
   @Post('bulk')
   async createBulkMenus(@Body() payload: CreateBulkMenusJsonPayload) {
-    console.log('Incoming payload:', JSON.stringify(payload, null, 2));
     this.logger.log(`Req body for bulk menus: `, payload);
 
     if (
