@@ -7,7 +7,7 @@ import {
   IsNotEmpty,
   IsUUID,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 
 export class UpdateMenuDto {
   @IsString()
@@ -45,6 +45,7 @@ export class UpdateMenuDto {
   @Type(() => Number)
   price?: number;
 
+  @Transform(({ value }) => value === 'true')
   @IsBoolean()
   isAvailable?: boolean;
 }
