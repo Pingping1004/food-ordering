@@ -19,13 +19,13 @@ import {
 import { useParams, useRouter } from 'next/navigation';
 
 type CsvDummyRow = {
-  name: string;
-  description: string;
-  price: string;
-  maxDaily: string;
-  cookingTime: string;
-  isAvailable: string;
-  originalImageFileNameCsv: string;
+    name: string;
+    description: string;
+    price: string;
+    maxDaily: string;
+    cookingTime: string;
+    isAvailable: string;
+    originalImageFileNameCsv: string;
 };
 
 interface ServerMenuItem extends MenuItem {
@@ -152,28 +152,33 @@ export default function BulkAddMenuPage() {
         setSuccessMessage(null);
 
         try {
-            const files = Array.from(data.menuImgs || []);
+            const files = Array.from(data.menuImgs || []).filter(f => f instanceof File) as File[];
             let uploadedImages: UploadedImageInfo[] = [];
 
+            // Step 1: Upload image files (if any)
             if (files.length > 0) {
                 const formData = new FormData();
-                files.forEach(file => {
-                    if (file instanceof File) {
-                        formData.append('images', file);
-                    }
-                });
+                files.forEach(file => formData.append('images', file));
 
-                const { data: response } = await api.post<UploadedImageInfo[]>('/upload/temp-images', formData);
+                const { data: response } = await api.post<UploadedImageInfo[]>('/menu/bulk', formData);
                 uploadedImages = response;
                 setUploadedImageMetadata(uploadedImages);
             }
 
-            const nameToTempId = new Map(uploadedImages.map(img => [img.originalName.toLowerCase(), img.tempId]));
+            // Step 2: Map original image name to tempId
+            const nameToTempId = new Map(
+                uploadedImages.map(img => [img.originalName.toLowerCase(), img.tempId])
+            );
+
+            // Step 3: Generate final payload
             const finalPayload: FinalBulkMenuPayloadType = parsedCsvData.map(csv => {
-                const tempId = csv.originalImageFileNameCsv ? nameToTempId.get(csv.originalImageFileNameCsv.toLowerCase()) : undefined;
+                const imageFileKey = csv.originalImageFileNameCsv?.toLowerCase() || '';
+                const tempId = nameToTempId.get(imageFileKey);
+
                 if (csv.originalImageFileNameCsv && !tempId) {
                     throw new Error(`Image '${csv.originalImageFileNameCsv}' not matched.`);
                 }
+
                 return {
                     name: csv.name,
                     price: csv.price,
@@ -185,15 +190,19 @@ export default function BulkAddMenuPage() {
                 };
             });
 
+            // Step 4: Send final payload to create menu items
             const { data: result } = await api.post<BulkCreateMenuResult>('/menu/bulk', {
                 restaurantId,
                 createMenuDto: finalPayload,
             });
 
+            // Step 5: Update local states and redirect
             setMenuLists(prev => [...prev, ...result.createdMenus]);
             setSuccessMessage(`Created ${result.totalCreated} menu items.`);
             alert('Bulk upload successful');
             router.push(`/managed-menu/${restaurantId}`);
+
+            // Step 6: Reset form and clean up states
             reset();
             setParsedCsvData(null);
             setMenuImagePreviewUrls([]);
