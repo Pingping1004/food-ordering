@@ -160,7 +160,7 @@ export default function BulkAddMenuPage() {
                 const formData = new FormData();
                 files.forEach(file => formData.append('images', file));
 
-                const { data: response } = await api.post<UploadedImageInfo[]>('/menu/bulk', formData);
+                const { data: response } = await api.post<UploadedImageInfo[]>('/menu/bulk-images', formData);
                 uploadedImages = response;
                 setUploadedImageMetadata(uploadedImages);
             }
