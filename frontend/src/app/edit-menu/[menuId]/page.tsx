@@ -36,6 +36,7 @@ export default function EditMenuPage() {
             price: menu?.price ?? undefined,
             maxDaily: menu?.maxDaily ?? undefined,
             cookingTime: menu?.cookingTime ?? undefined,
+            isAvailable: menu?.isAvailable ?? undefined,
         }
     });
 
@@ -210,7 +211,7 @@ export default function EditMenuPage() {
                 </div>
 
                 <Button size="lg" type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? 'กำลังเเก้ไขเมนู...' : 'เพิ่มเมนู'}
+                    {isSubmitting ? 'กำลังเเก้ไขเมนู...' : 'เรียบร้อย'}
                 </Button>
             </form>
         </div>
