@@ -93,6 +93,7 @@ export default function EditMenuPage() {
         if (data.price !== undefined) formData.append('price', data.price.toString());
         if (data.maxDaily !== undefined) formData.append('maxDaily', data.maxDaily.toString());
         if (data.cookingTime !== undefined) formData.append('cookingTime', data.cookingTime.toString());
+        if (data.isAvailable !== undefined) formData.append('isAvailable', data.isAvailable.toString());
 
         if (data.menuImg && data.menuImg.length > 0 && !(typeof data.menuImg === 'string' && data.menuImg === '/')) {
             formData.append('menuImg', data.menuImg[0]);

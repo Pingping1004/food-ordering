@@ -125,7 +125,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
             if (!alertShowRef.current && shouldLogout && !isPublicRoute) {
                 alertShowRef.current = true;
-                alert('เซสชันหมดอายุ กรุณาล็อกอินใหม่อีกครั้ง');
+                // alert('เซสชันหมดอายุ กรุณาล็อกอินใหม่อีกครั้ง');
                 await logout();
             }
 
@@ -349,7 +349,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     const status = err.response?.status;
 
                     if (status === 401) {
-                        alert('เซสชันหมดอายุ กรุณาล็อกอินใหม่อีกครั้ง');
+                        // alert('เซสชันหมดอายุ กรุณาล็อกอินใหม่อีกครั้ง');
                         await logout();
                         return;
                     }
