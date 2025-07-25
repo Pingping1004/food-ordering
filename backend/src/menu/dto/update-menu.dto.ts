@@ -1,5 +1,3 @@
-import { PartialType } from '@nestjs/mapped-types';
-import { CreateMenuDto } from './create-menu.dto';
 import {
   IsOptional,
   IsNumber,
@@ -11,7 +9,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
-export class UpdateMenuDto extends PartialType(CreateMenuDto) {
+export class UpdateMenuDto {
   @IsString()
   @IsNotEmpty()
   @IsUUID()
