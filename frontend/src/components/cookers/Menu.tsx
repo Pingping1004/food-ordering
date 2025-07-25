@@ -26,19 +26,19 @@ const menuVariants = cva("", {
 });
 
 type MenuProps = React.HtmlHTMLAttributes<HTMLDivElement> &
-  VariantProps<typeof menuVariants> & {
-    restaurantId: string;
-    menuId: string;
-    name: string;
-    menuImg?: string;
-    maxDaily: number;
-    cookingTime: number;
-    createdAt: Date | string | number;
-    price: number;
-    isAvailable: boolean;
-    onAvailabilityChanged: (menuId: string, newAvailability: boolean) => void;
-    onDelete: (menuId: string) => void;
-  };
+    VariantProps<typeof menuVariants> & {
+        restaurantId: string;
+        menuId: string;
+        name: string;
+        menuImg?: string;
+        maxDaily: number;
+        cookingTime: number;
+        createdAt: Date | string | number;
+        price: number;
+        isAvailable: boolean;
+        onAvailabilityChanged: (menuId: string, newAvailability: boolean) => void;
+        onDelete: (menuId: string) => void;
+    };
 
 export const Menu = ({
     className,
@@ -60,13 +60,13 @@ export const Menu = ({
     const src = menuImg ?? '/picture.svg';
 
     const handleToggleClick = useCallback((checked: boolean) => {
-    // Pass the new checked state directly to the parent
+        // Pass the new checked state directly to the parent
         onAvailabilityChanged(menuId, checked);
     }, [menuId, onAvailabilityChanged]);
 
     const handleDelete = () => {
-    // Call the parent's onDelete function immediately with the menuId
-    // The parent function will handle optimistic UI and backend call
+        // Call the parent's onDelete function immediately with the menuId
+        // The parent function will handle optimistic UI and backend call
         onDelete(menuId);
     };
 
@@ -80,14 +80,14 @@ export const Menu = ({
             {...props}
         >
             <header className="flex items-center">
-                <Image 
-                    src={src} 
-                    alt={name} 
-                    width={96} 
-                    height={96} 
-                    className="h-24 w-24 object-cover mr-6 rounded-2xl" 
+                <Image
+                    src={src}
+                    alt={name}
+                    width={96}
+                    height={96}
+                    className="h-24 w-24 object-cover mr-6 rounded-2xl"
                 />
-                <div className="flex flex-col gap-y-2">
+                <div className="flex w-full flex-col gap-y-2">
                     <div className="flex items-start gap-x-1">
                         <h3 className="w-[140px] noto-sans-bold text-md text-primary">{name}</h3>
                         <div className="flex flex-col">
@@ -98,10 +98,10 @@ export const Menu = ({
 
                     <div>
                         <p className="text-secondary text-xs">
-              เวลาในการปรุง: {cookingTime}
+                            เวลาในการปรุง: {cookingTime}
                         </p>
                         <p className="text-secondary text-xs">
-              จำนวนมากสุดต่อจาน: {maxDaily}
+                            จำนวนมากสุดต่อจาน: {maxDaily}
                         </p>
                     </div>
                 </div>
@@ -114,7 +114,7 @@ export const Menu = ({
                     type="button"
                     onClick={() => router.push(`/edit-menu/${menuId}`)}
                 >
-          แก้ไขเมนู
+                    แก้ไขเมนู
                 </Button>
 
                 <Button
@@ -124,9 +124,9 @@ export const Menu = ({
                     type="button"
                     onClick={handleDelete}
                 >
-          ลบเมนู
+                    ลบเมนู
                 </Button>
-        
+
                 <Toggle
                     id={menuId}
                     label="เปิดขาย"

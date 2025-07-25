@@ -99,10 +99,6 @@ export default function EditMenuPage() {
             formData.append('menuImg', data.menuImg[0]);
         }
 
-        for (const [key, value] of formData.entries()) {
-            console.log(`${key}:`, value);
-        }
-
         const response = await api.patch<singleEditMenuSchemaType>(`menu/single/${menuId}`, formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',

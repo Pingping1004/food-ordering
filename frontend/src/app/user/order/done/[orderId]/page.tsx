@@ -98,7 +98,7 @@ export default function DoneOrderPage() {
                 <p className="noto-sans-bold text-base text-primary">รายละเอียดออเดอร์</p>
                 <div>
                     {order.orderMenus.map((item) => (
-                        <div key={item.menuName} className="flex flex-col gap-y-2">
+                        <div key={item.menuName} className="flex justify-between gap-y-2">
                             <p className="noto-sans-regular text-base text-primary">{item.quantity}x{' '}{item.menuName}</p>
                             <p className="noto-sans-bold text-xl text-primary">{item.unitPrice}</p>
                         </div>
