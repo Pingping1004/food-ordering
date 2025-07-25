@@ -38,7 +38,7 @@ import { Roles } from 'src/decorators/role.decorator';
 export class MenuController {
   constructor(
     private readonly menuService: MenuService,
-  ) {}
+  ) { }
 
   private readonly logger = new Logger('MenuService');
 
@@ -67,8 +67,14 @@ export class MenuController {
     }
   }
 
+  @Post('/bulk-images')
+  @UseInterceptors(FilesInterceptor('images'))
+  uploadMenuImages(@UploadedFiles() files: Express.Multer.File[]) {
+    return this.menuService.uploadTempImages(files);
+  }
+
   @Post('bulk')
-  async createBulkMenus(@Body() payload: CreateBulkMenusJsonPayload, files: Express.Multer.File[]) {
+  async createBulkMenus(@Body() payload: CreateBulkMenusJsonPayload) {
     if (
       !payload.createMenuDto ||
       !Array.isArray(payload.createMenuDto) ||
@@ -83,7 +89,6 @@ export class MenuController {
       const result = await this.menuService.createBulkMenus(
         payload.restaurantId,
         payload.createMenuDto,
-        files,
       );
       return result;
     } catch (error) {
@@ -159,7 +164,7 @@ export class MenuController {
     let parsedUpdateMenuDtos: UpdateMenuDto[];
 
     if (!menuIds || menuIds.length === 0) {
-        throw new BadRequestException('At least one menuId is required for bulk update.');
+      throw new BadRequestException('At least one menuId is required for bulk update.');
     }
 
     try {

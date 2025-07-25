@@ -1,6 +1,7 @@
 import {
     Injectable,
     Inject,
+    OnModuleInit,
     forwardRef,
     NotFoundException,
     ConflictException,
@@ -15,7 +16,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RestaurantService } from 'src/restaurant/restaurant.service';
 import { Menu } from '@prisma/client';
 import Decimal from 'decimal.js';
-import { UploadImageInfo, UploadService } from 'src/upload/upload.service';
+import { UploadService } from 'src/upload/upload.service';
+import { randomUUID } from 'crypto';
 
 export interface MenusWithDisplayPrices {
     menuId: string;
@@ -38,7 +40,7 @@ export interface BulkCreateMenuResult {
 }
 
 @Injectable()
-export class MenuService {
+export class MenuService implements OnModuleInit {
     constructor(
         private readonly prisma: PrismaService,
         @Inject(forwardRef(() => RestaurantService))
@@ -46,7 +48,13 @@ export class MenuService {
         private readonly uploadService: UploadService,
     ) { }
 
+    onModuleInit() {
+        this.scheduleTempImageCleanup();
+        this.logger.log(`Temp image cleanup scheduler initialized`);
+    }
+
     private readonly logger = new Logger('menuService');
+    private readonly tempImageStore = new Map<string, { url: string; createdAt: Date }>();
 
     async createSingleMenu(createMenuDto: CreateMenuDto, file: Express.Multer.File) {
         const existingName = await this.findMenuByName(createMenuDto.name);
@@ -83,19 +91,14 @@ export class MenuService {
     async createBulkMenus(
         restaurantId: string,
         menusData: CsvMenuItemData[],
-        files: Express.Multer.File[],
     ): Promise<BulkCreateMenuResult> {
         try {
             // 1. Validate inputs and check for duplicate names
             const existingRestaurant = await this.validateBulkInput(restaurantId, menusData);
 
-            // 2. Upload all images concurrently
-            const uploadedImages = await this.uploadService.saveBulkImages(files);
-
             // 3. Process each menu item and create database records
             const { createdMenus, failedCreations } = await this.processMenuCreations(
                 menusData,
-                uploadedImages,
                 existingRestaurant.restaurantId,
             );
 
@@ -150,16 +153,47 @@ export class MenuService {
         }
     }
 
+    generateTempId(): string {
+        return `temp_${randomUUID()}`;
+    }
+
+    uploadTempImages(files: Express.Multer.File[]) {
+        return Promise.all(files.map(async (file) => {
+            const tempId = this.generateTempId();
+            const { url } = await this.uploadService.saveImage(file);
+            this.tempImageStore.set(tempId, { url, createdAt: new Date() }); // store for later use
+
+            return { originalName: file.originalname, tempId, url };
+        }));
+    }
+
+    private scheduleTempImageCleanup() {
+        const interval = 1000 * 60 * 2; // cleanup every 2 minutes
+        const maxLifetimeMs = 1000 * 60 * 10; // max 10 mins
+
+        setInterval(() => {
+            const now = Date.now();
+            for (const [tempId, data] of this.tempImageStore.entries()) {
+                if (now - data.createdAt.getTime() > maxLifetimeMs) {
+                    this.tempImageStore.delete(tempId);
+                }
+            }
+        }, interval);
+    }
+
     private async processMenuCreations(
         menusData: CsvMenuItemData[],
-        uploadedImages: UploadImageInfo[],
         restaurantId: string,
     ) {
         const createdMenus: Menu[] = [];
         const failedCreations: { item: CsvMenuItemData; error: string }[] = [];
 
-        for (const [index, dto] of menusData.entries()) {
+        for (const [, dto] of menusData.entries()) {
             try {
+
+                const imageData = this.tempImageStore.get(dto.menuImgTempId);
+                if (!imageData) throw new BadRequestException(`Image not found for tempId: ${dto.menuImgTempId}`);
+
                 const menuDataToCreate = {
                     name: dto.name,
                     description: dto.description,
@@ -167,7 +201,7 @@ export class MenuService {
                     maxDaily: dto.maxDaily,
                     cookingTime: dto.cookingTime ?? 5,
                     isAvailable: dto.isAvailable,
-                    menuImg: uploadedImages[index].url,
+                    menuImg: imageData.url,
                     restaurant: {
                         connect: {
                             restaurantId: restaurantId,
