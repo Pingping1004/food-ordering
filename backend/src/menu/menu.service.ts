@@ -196,7 +196,7 @@ export class MenuService implements OnModuleInit {
 
                 const menuDataToCreate = {
                     name: dto.name,
-                    description: dto.description,
+                    // description: dto.description,
                     price: dto.price,
                     maxDaily: dto.maxDaily,
                     cookingTime: dto.cookingTime ?? 5,

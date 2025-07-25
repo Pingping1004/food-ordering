@@ -42,9 +42,9 @@ export class CsvMenuItemData {
   @IsString()
   originalFileName?: string;
 
-  @IsOptional()
-  @IsString()
-  description?: string;
+  // @IsOptional()
+  // @IsString()
+  // description?: string;
 }
 
 export class CreateMenuDto {
@@ -92,6 +92,6 @@ export class CreateBulkMenusJsonPayload {
   @IsArray()
   @IsNotEmpty()
   @ValidateNested({ each: true })
-  @Type(() => CsvMenuItemData) // Make sure CsvMenuItemData is correctly imported and defined
-  createMenuDto: CsvMenuItemData[]; // <-- THIS IS THE KEY NAME FROM YOUR FRONTEND
+  @Type(() => CsvMenuItemData)
+  createMenuDto: CsvMenuItemData[];
 }
