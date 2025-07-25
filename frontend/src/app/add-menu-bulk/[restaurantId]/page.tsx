@@ -144,6 +144,10 @@ export default function BulkAddMenuPage() {
         });
     }, []);
 
+    const normalizeFileName = (name: string): string => {
+        return name.trim().toLowerCase().replace(/\s+/g, ''); // optionally remove all spaces
+    }
+
     const onSubmit = async (data: BulkUploadFormValues) => {
         if (!parsedCsvData?.length) return setPageError('Please upload and parse CSV first.');
 
@@ -167,13 +171,13 @@ export default function BulkAddMenuPage() {
 
             // Step 2: Map original image name to tempId
             const nameToTempId = new Map(
-                uploadedImages.map(img => [img.originalName.toLowerCase(), img.tempId])
+                uploadedImages.map(img => [normalizeFileName(img.originalName), img.tempId])
             );
 
             // Step 3: Generate final payload
             const finalPayload: FinalBulkMenuPayloadType = parsedCsvData.map(csv => {
-                const imageFileKey = csv.originalImageFileNameCsv?.toLowerCase() || '';
-                const tempId = nameToTempId.get(imageFileKey);
+                const nomalizedKey = normalizeFileName(csv.originalImageFileNameCsv || '');
+                const tempId = nameToTempId.get(nomalizedKey);
 
                 if (csv.originalImageFileNameCsv && !tempId) {
                     throw new Error(`Image '${csv.originalImageFileNameCsv}' not matched.`);
@@ -185,7 +189,7 @@ export default function BulkAddMenuPage() {
                     maxDaily: csv.maxDaily,
                     cookingTime: csv.cookingTime,
                     isAvailable: csv.isAvailable,
-                    imageFileName: tempId,
+                    menuImgTempId: tempId,
                     originalFileName: csv.originalImageFileNameCsv,
                 };
             });
