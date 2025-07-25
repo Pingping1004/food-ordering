@@ -45,7 +45,8 @@ export class UpdateMenuDto {
   @Type(() => Number)
   price?: number;
 
-  @Transform(({ value }) => value === 'true')
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true )
   @IsBoolean()
   isAvailable?: boolean;
 }
