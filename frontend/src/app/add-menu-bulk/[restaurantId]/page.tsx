@@ -20,7 +20,7 @@ import { useParams, useRouter } from 'next/navigation';
 
 type CsvDummyRow = {
     name: string;
-    description: string;
+    description?: string;
     price: string;
     maxDaily: string;
     cookingTime: string;
@@ -198,6 +198,10 @@ export default function BulkAddMenuPage() {
             const { data: result } = await api.post<BulkCreateMenuResult>('/menu/bulk', {
                 restaurantId,
                 createMenuDto: finalPayload,
+            }, {
+                headers: {
+                    "Content-Type": "application/json",
+                }
             });
 
             // Step 5: Update local states and redirect
@@ -224,13 +228,14 @@ export default function BulkAddMenuPage() {
             return;
         }
 
-        const headers = ["name", "description", "price", "maxDaily", "cookingTime", "isAvailable", "originalImageFileNameCsv"];
+        // const headers = ["name", "description", "price", "maxDaily", "cookingTime", "isAvailable", "originalImageFileNameCsv"];
+        const headers = ["name", "price", "maxDaily", "cookingTime", "isAvailable", "originalImageFileNameCsv"];
         const rows = [headers.map(h => `"${h}"`).join(',')];
 
         uploadedImageMetadata.forEach(info => {
             const dummy: CsvDummyRow = {
                 name: "Menu Name",
-                description: "",
+                // description: "",
                 price: "0",
                 maxDaily: "100",
                 cookingTime: "5",
