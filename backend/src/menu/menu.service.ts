@@ -408,6 +408,13 @@ export class MenuService implements OnModuleInit {
         const existingMenu = await this.findMenu(menuId);
         const updateData = this.omitUnchangedFields(existingMenu, updateMenuDto);
 
+        // filter undefined explicitly
+        Object.keys(updateData).forEach((key) => {
+            if (updateData[key] === undefined) {
+                delete updateData[key];
+            }
+        });
+
         if (file) {
             const { url } = await this.uploadService.saveImage(file);
             updateData.menuImg = url;
