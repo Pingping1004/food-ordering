@@ -195,10 +195,6 @@ export default function BulkAddMenuPage() {
             });
 
             // Step 4: Send final payload to create menu items
-            console.log('Payload to backend:', {
-                restaurantId,
-                createMenuDto: finalPayload,
-            });
             const { data: result } = await api.post<BulkCreateMenuResult>('/menu/bulk', {
                 restaurantId,
                 createMenuDto: finalPayload,
