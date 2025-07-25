@@ -67,7 +67,7 @@ export class MenuController {
     }
   }
 
-  @Post('/bulk-images')
+  @Post('bulk-images')
   @UseInterceptors(FilesInterceptor('images'))
   uploadMenuImages(@UploadedFiles() files: Express.Multer.File[]) {
     return this.menuService.uploadTempImages(files);
@@ -75,6 +75,8 @@ export class MenuController {
 
   @Post('bulk')
   async createBulkMenus(@Body() payload: CreateBulkMenusJsonPayload) {
+    this.logger.log(`Req body for bulk menus: `, payload);
+    
     if (
       !payload.createMenuDto ||
       !Array.isArray(payload.createMenuDto) ||
