@@ -95,7 +95,7 @@ export default function EditMenuPage() {
         if (data.cookingTime !== undefined) formData.append('cookingTime', data.cookingTime.toString());
         if (data.isAvailable !== undefined) formData.append('isAvailable', data.isAvailable.toString());
 
-        if (data.menuImg && data.menuImg.length > 0 && !(typeof data.menuImg === 'string' && data.menuImg === '/')) {
+        if (data.menuImg && typeof data.menuImg !== 'string' && data.menuImg[0] instanceof File) {
             formData.append('menuImg', data.menuImg[0]);
         }
 
