@@ -6,6 +6,8 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
+    "dev": "concurrently \"next dev -p 3000\" \"local-ssl-proxy --key localhost-key.pem --cert localhost.pem --source 8000 --target 3000\"",
+    "dev2": "npx local-ssl-proxy --source 3443 --target 3000 --cert localhost.pem --key localhost-key.pem",
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "prisma:generate": "prisma generate --schema=./prisma/schema.prisma",

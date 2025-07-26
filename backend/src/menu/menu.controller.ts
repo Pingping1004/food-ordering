@@ -132,7 +132,6 @@ export class MenuController {
         'RestaurantId not found in update menu controller',
       );
 
-    let uploadedFilePath: string | undefined;
     try {
       if (!menuId)
         throw new BadRequestException('Menu ID is required in URL params');

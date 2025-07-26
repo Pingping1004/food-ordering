@@ -15,6 +15,7 @@ import * as dotenv from 'dotenv';
 import helmet from 'helmet';
 import cors from 'cors';
 import compression from 'compression';
+import * as fs from 'fs';
 
 dotenv.config();
 declare global {
@@ -26,7 +27,12 @@ declare global {
 }
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const httpsOptions = {
+    key: fs.readFileSync('../cert/localhost-key.pem'),
+    cert: fs.readFileSync('../cert/localhost.pem'),
+  };
+
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { httpsOptions });
   app.setGlobalPrefix('api');
   const logger = new Logger('Bootstrap');
 
@@ -34,6 +40,7 @@ async function bootstrap() {
     'https://food-ordering.online',
     'https://api.food-ordering.online',
     'https://food-ordering-mvp.onrender.com',
+    'https://localhost:3000',
     process.env.FRONTEND_BASE_URL,
     process.env.NEXT_PUBLIC_BACKEND_API_URL,
     process.env.WEBHOOK_ENDPOINT,
