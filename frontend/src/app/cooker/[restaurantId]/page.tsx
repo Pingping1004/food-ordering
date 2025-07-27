@@ -3,6 +3,7 @@
 import CookerHeader from "@/components/cookers/Header";
 import { Order, OrderProps } from "@/components/cookers/Order";
 import { OrderNavBar, OrderStatus } from "@/components/cookers/OrderNavbar";
+import LoadingPage from "@/components/LoadingPage";
 import { CookerProvider, useCooker } from "@/context/Cookercontext";
 import { api } from "@/lib/api";
 import { getDateFormat, getTimeFormat } from "@/util/time";
@@ -13,21 +14,27 @@ function Page() {
     const { cooker, fetchOrders, orders } = useCooker();
     const [, setOrder] = useState<OrderProps>();
     const [navbarStatus, setNavbarStatus] = useState<OrderStatus>(OrderStatus.receive);
+    const [isLoading, setIsLoading] = useState<boolean>(true);
     
     useEffect(() => {
         const fetchData = async () => {
-            const response = await api.get(`/order/weekly/${cooker.restaurantId}`);
-            setWeeklyOrders(response.data);
+            try {
+
+                const response = await api.get(`/order/weekly/${cooker.restaurantId}`);
+                setWeeklyOrders(response.data);
+            } finally {
+                setIsLoading(false);
+            }
         }
         fetchData();
     }, [cooker.restaurantId, orders]);
 
     const weeklyDone = useMemo(() => {
-        return weeklyOrders.filter((order) => order.status === OrderStatus.done);
+        return weeklyOrders.filter((order) => order.status === OrderStatus.done).length;
     }, [weeklyOrders]);
 
     const weeklySales = useMemo(() => {
-        return weeklyOrders.reduce((total, order) => total + order.totalAmount, 0);
+        return weeklyOrders.reduce((total, order) => total + Number(order.totalAmount), 0);
     }, [weeklyOrders]);
 
     const handleOrderUpdate = (updatedOrder: OrderProps) => {
@@ -45,11 +52,13 @@ function Page() {
 
     if (!cooker.isApproved) {
         return (
-            <div className="flex flex-col justify-center text-center items-center gap-y-15">
+            <div className="flex flex-col w-full h-screen justify-center text-center items-center gap-y-15">
                 <p className="noto-sans-bold text-primary text-2xl">ตอนนี้ทางแอดมินกำลังดำเนินพิจารณาการอนุมัติเปิดร้านอาหาร</p>
             </div>
         )
     }
+
+    if (isLoading) return <LoadingPage />
 
     return (
         <div className="flex flex-col gap-y-10 py-10 px-6">
@@ -66,11 +75,11 @@ function Page() {
             />
 
             {navbarStatus === OrderStatus.done ? (
-                <section className="flex flex-col gap-y-4">
-                    <h1 className="noto-sans-bold text-xl text-primary">สรุปรายสัปดาห์</h1>
+                <section className="flex flex-col gap-y-6">
+                    <h1 className="noto-sans-bold text-2xl text-primary">สรุปรายสัปดาห์</h1>
                     <div className="flex justify-between items-center">
                         <h2 className="noto-sans-bold text-lg text-primary">ยอดรวม: {weeklySales}</h2>
-                        <p className="text-secondary noto-sans-regular text-lg">จำนวนออเดอร์: {weeklyDone.length}</p>
+                        <p className="text-secondary noto-sans-regular text-lg">ออเดอร์สัปดาห์นี้: {weeklyDone}</p>
                     </div>
                 </section>
             ) : ('')}

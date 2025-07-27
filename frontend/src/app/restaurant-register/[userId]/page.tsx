@@ -152,7 +152,7 @@ export default function RestaurantRegisterPage() {
                             <Image
                                 src={imagePreviewUrl}
                                 alt="Preview menu image"
-                                className="w-48 h-48 object-cover rounded-lg border border-gray-300 shadow-sm"
+                                className="w-48 h-48 object-cover aspect-square rounded-lg border border-gray-300 shadow-sm"
                                 width={192} // Match w-48 (192px)
                                 height={192} // Match h-48 (192px)
                             />

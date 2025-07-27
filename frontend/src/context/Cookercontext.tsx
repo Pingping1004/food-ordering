@@ -5,6 +5,7 @@ import { api } from '@/lib/api';
 import { Restaurant } from './MenuContext';
 import { useParams } from 'next/navigation';
 import { OrderProps } from '@/components/cookers/Order';
+import LoadingPage from '@/components/LoadingPage';
 
 export interface Cooker extends Restaurant {
     email: string;
@@ -75,7 +76,7 @@ export const CookerProvider = ({ children }: { children: React.ReactNode }) => {
         cooker: cooker!, setCooker, orders, setOrders, fetchOrders, loading, error
     }), [cooker, setCooker, orders, setOrders, fetchOrders, loading, error]);
 
-    if (loading) return <div>Loading...</div>;
+    if (loading) return <LoadingPage />
     if (error) return <div>{error}</div>;
     if (!cooker) return <div>No Cooker found</div>
 

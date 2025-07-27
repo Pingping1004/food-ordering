@@ -57,6 +57,21 @@ export type OrderProps = React.HTMLAttributes<HTMLDivElement> &
         onStatusUpdate: (updateStatus: OrderProps) => void;
     };
 
+export const getOrderStatusProps = (currentStatus: OrderStatus) => {
+    switch (currentStatus) {
+        case OrderStatus.receive:
+            return { text: 'เริ่มปรุงอาหาร', nextStatus: OrderStatus.cooking };
+        case OrderStatus.cooking:
+            return { text: 'พร้อมเสิร์ฟ', nextStatus: OrderStatus.ready };
+        case OrderStatus.ready:
+            return { text: 'เสร็จสิ้น', nextStatus: OrderStatus.done }; // Text for marking as done
+        case OrderStatus.done:
+            return { text: 'ออเดอร์เสร็จสิ้น' }; // Text for marking as done
+        default: // Should ideally not be hit
+            return { text: 'สถานะไม่ทราบ', nextStatus: currentStatus };
+    }
+};
+
 export const Order = ({
     orderId,
     variant,
@@ -81,21 +96,6 @@ export const Order = ({
         setCurrentStatus(status);
         setIsDelayed(isDelay);
     }, [status, isDelay]);
-
-    const getNextButtonProps = (currentStatus: OrderStatus) => {
-        switch (currentStatus) {
-        case OrderStatus.receive:
-            return { text: 'เริ่มปรุงอาหาร', nextStatus: OrderStatus.cooking };
-        case OrderStatus.cooking:
-            return { text: 'พร้อมสำหรับจัดส่ง', nextStatus: OrderStatus.ready };
-        case OrderStatus.ready:
-            return { text: 'เสร็จสิ้น', nextStatus: OrderStatus.done }; // Text for marking as done
-        case OrderStatus.done:
-            return { text: 'ออเดอร์เสร็จสิ้น' }; // Text for marking as done
-        default: // Should ideally not be hit
-            return { text: 'สถานะไม่ทราบ', nextStatus: currentStatus };
-        }
-    };
 
     const handleDelayOrder = async () => {
         if (isUpdating) return;
@@ -189,9 +189,9 @@ export const Order = ({
             <main className="flex grid-rows-2 justify-between">
                 <div className="w-1/2 text-base text-secondary">
                     <p className="mb-2 text-primary">รายละเอียดออเดอร์:</p>
-                    {orderMenus.map((item, index) => (
+                    {orderMenus.map((item) => (
                         <p
-                            key={index}
+                            key={item.menuName}
                         >{item.quantity}x - {item.menuName}</p>
                     ))}
                 </div>
@@ -233,7 +233,7 @@ export const Order = ({
                         onClick={() => handleUpdateStatus(orderId)}
                     >
                         <span className="noto-sans-regular">
-                            {getNextButtonProps(status).text}
+                            {getOrderStatusProps(status).text}
                         </span>
                     </Button>
 

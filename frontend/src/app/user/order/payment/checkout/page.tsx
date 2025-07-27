@@ -5,6 +5,7 @@ import { Suspense, useEffect, useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/Button";
 import { api } from "@/lib/api";
+import LoadingPage from "@/components/LoadingPage";
 
 function Page() {
     const router = useRouter();
@@ -30,7 +31,8 @@ function Page() {
 
             if (response.status === 200) {
                 alert(`ชำระเงินสำเร็จ`);
-                router.push(response.data.redirectUrl);
+                // router.push(response.data.redirectUrl);
+                router.push(`https://localhost:8000/user/order/done/${orderId}`)
             } else {
                 alert('เกิดข้อผิดพลาดบางอย่าง กรุณาลองใหม่');
             }
@@ -41,7 +43,7 @@ function Page() {
         }
     };
 
-    if (isLoading) return <p className="text-gray-500">กำลังโหลด QR...</p>;
+    if (isLoading) return <LoadingPage />;
     if (!qrUrl) return <p>ไม่พบ QR สำหรับการชำระเงิน</p>
 
     return (
@@ -49,7 +51,7 @@ function Page() {
             <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full text-center">
                 <h1
                     className="noto-sans-bold text-xl text-red-500 mb-6"
-                >กรุณาอย่ากดย้อนกลับ และออกหรือปิดเว็บไซต์จนกว่าจะได้รับสถานะชำระเงินสำเร็จ
+                >กรุณาอย่ากดย้อนกลับหรือปิดเว็บไซต์ จนกว่าจะได้รับสถานะชำระเงินสำเร็จ
                 </h1>
                 <h1 className="text-2xl text-primary noto-sans-bold mb-2">ชำระเงินด้วย PromptPay</h1>
                 <p className="text-base text-light mb-4">
@@ -60,7 +62,7 @@ function Page() {
                     <>
                         <div className="flex justify-center mb-4">
                             <Image
-                                src={qrUrl}
+                                src={`https://images.food-ordering.online/${qrUrl}`}
                                 alt="PromptPay QR"
                                 width={240}
                                 height={240}

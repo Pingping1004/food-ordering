@@ -2,9 +2,10 @@
 
 import React, { createContext, useContext, useCallback, useState, useEffect, useRef, useMemo } from "react";
 import { api } from "@/lib/api";
-import axios, { AxiosResponse, AxiosRequestConfig, isAxiosError } from "axios";
+import axios, { AxiosResponse, AxiosRequestConfig } from "axios";
 import { useRouter } from "next/navigation";
 import { getCsrfToken, setAccessToken, setCsrfToken, clearTokens } from "@/lib/token";
+import LoadingPage from "@/components/LoadingPage";
 
 export enum UserRole {
     user = 'user',
@@ -57,6 +58,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const alertShowRef = useRef(false);
     const failedQueue = useRef<FailedRequest[]>([]);
 
+    const isInitialLoad = useRef<boolean>(true);
+    const isLoggingOut = useRef<boolean>(false);
+
     const processQueue = useCallback(
         (error: Error | null, token: string | null = null) => {
             failedQueue.current.forEach((prom) => {
@@ -94,26 +98,45 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
     }, []);
 
-    const logout = useCallback(async () => {
-        setLoading(true);
-        try {
-            await api.post('/auth/logout', undefined, { headers: { skipAuth: 'true' } });
-        } catch {
-            throw new Error('Logout failed');
-        } finally {
-            handleLogoutSideEffects();
-            alertShowRef.current = false;
-            setLoading(false);
+    const handleLogoutSideEffects = useCallback((showAlert: boolean = false) => {
+        if (isLoggingOut.current) {
+            return;
         }
-    }, [router]);
 
-    const handleLogoutSideEffects = () => {
+        isLoggingOut.current = true;
+
         localStorage.removeItem('accessToken');
         setIsAuth(false);
         setUser(null);
         clearTokens();
+
+        if (showAlert) {
+            alert('เซสชันหมดอายุ กรุณาล็อกอินใหม่อีกครั้ง');
+        }
+
         router.push('/login');
-    };
+
+        // Reset the flag after navigation
+        setTimeout(() => {
+            isLoggingOut.current = false;
+        }, 1000);
+    }, [router]);
+
+    const logout = useCallback(async (showAlert: boolean = false) => {
+        if (isLoggingOut.current) {
+            return;
+        }
+
+        setLoading(true);
+        try {
+            await api.post('/auth/logout', undefined, { headers: { skipAuth: 'true' } });
+        } catch { }
+        finally {
+            handleLogoutSideEffects(showAlert);
+            alertShowRef.current = false;
+            setLoading(false);
+        }
+    }, [handleLogoutSideEffects]);
 
     useEffect(() => {
         if (loading) return;
@@ -123,10 +146,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             const isPublicRoute = publicRoutes.includes(currentPath);
             const shouldLogout = !user && isAuth === false;
 
-            if (!alertShowRef.current && shouldLogout && !isPublicRoute) {
+            if (!alertShowRef.current && shouldLogout && !isPublicRoute && !loading) {
                 alertShowRef.current = true;
-                // alert('เซสชันหมดอายุ กรุณาล็อกอินใหม่อีกครั้ง');
-                await logout();
+                handleLogoutSideEffects(true);
             }
 
             if (user && isAuth) {
@@ -135,16 +157,52 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
 
         handleSession();
-    }, [loading, user, router, isAuth, logout]);
+    }, [loading, user, isAuth, handleLogoutSideEffects]);
+
+    const checkSessionValidity = useCallback(async (): Promise<boolean> => {
+        try {
+            const token = localStorage.getItem('accessToken');
+            if (!token) return false;
+
+            const response = await api.get(`/user/profile`, {
+                // timeout: 1000,
+            });
+
+            return response.status === 200;
+        } catch (error) {
+            console.error('Session validity check failed:', error);
+            return false;
+        }
+    }, []);
 
     const getProfile = useCallback(async (): Promise<User> => {
         try {
-            const response = await api.get('/user/profile');
+            const response = await api.get('/user/profile', {
+                // timeout: 1000,
+            });
             return response.data as User;
         } catch (err) {
-            if (axios.isAxiosError(err) && err.response?.status === 401) {
-                throw new Error("Unauthorized");
+            if (axios.isAxiosError(err)) {
+                const status = err.response?.status;
+
+                if (status === 401) {
+                    throw new Error("Unauthorized - Token expired");
+                }
+
+                if (status === 403) {
+                    throw new Error("Forbidden - Access denied");
+                }
+
+                if (status === 404) {
+                    throw new Error("User not found");
+                }
+
+                // Network or other errors
+                if (err.code === 'ECONNABORTED') {
+                    throw new Error("Request timeout");
+                }
             }
+
             throw err;
         }
     }, []);
@@ -190,7 +248,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
             setAccessToken(newAccessToken);
             localStorage.setItem('accessToken', newAccessToken)
-            localStorage.setItem('accessToken', newAccessToken);
 
             setIsAuth(true);
             setUser(userData as User);
@@ -270,7 +327,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 }
 
                 processQueue(normalizedError);
-                await logout();
+
+                setUser(null);
+                setIsAuth(false);
+                handleLogoutSideEffects(true);
+
                 throw normalizedError;
             } finally {
                 isRefreshing.current = false;
@@ -289,15 +350,50 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
             const originalRequest = error.config as CustomAxiosRequestConfig;
             const isUnauthorized = error.response?.status === 401;
-            const canRetry = !originalRequest._retry;
 
-            if (isUnauthorized && canRetry) {
+            if (isUnauthorized) {
+                console.log('401 Unauthorized detected:', {
+                    url: originalRequest.url,
+                    method: originalRequest.method,
+                    retry: originalRequest._retry,
+                    isRefreshing: isRefreshing.current
+                });
+
+                // Check if this is a critical endpoint that should immediately force logout
+                const criticalEndpoints = ['/user/profile', '/auth/refresh'];
+                const isCriticalEndpoint = criticalEndpoints.some(endpoint =>
+                    originalRequest.url?.includes(endpoint)
+                );
+
+                // If it's a critical endpoint, force logout immediately
+                if (isCriticalEndpoint) {
+                    console.log('Critical endpoint 401 - forcing immediate logout');
+                    setUser(null);
+                    setIsAuth(false);
+                    handleLogoutSideEffects(true);
+                    return Promise.reject(new Error('Session expired'));
+                }
+
+                const canRetry = !originalRequest._retry;
+
+                // If this is a retry attempt or refresh is already happening, force logout
+                if (!canRetry) {
+                    console.log('401 error on retry attempt - forcing logout');
+                    setUser(null);
+                    setIsAuth(false);
+                    handleLogoutSideEffects(true);
+                    return Promise.reject(new Error('Session expired'));
+                }
+
+                // Mark as retry to prevent infinite loops
                 originalRequest._retry = true;
 
+                // Try token refresh only once
                 if (!isRefreshing.current) {
                     isRefreshing.current = true;
                     return handleRefreshToken(originalRequest);
                 } else {
+                    // If refresh is already in progress, queue the request
                     return queueRequest(originalRequest);
                 }
             }
@@ -312,11 +408,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             onResponseError
         );
 
+        const globalUnauthorizedInterceptor = api.interceptors.response.use(
+            (response) => response,
+            (error) => {
+                if (axios.isAxiosError(error) && error.response?.status === 401) {
+                    // If we get here, it means the first interceptor didn't handle it properly
+                    console.log('Global 401 interceptor - forcing logout');
+
+                    if (!isLoggingOut.current) {
+                        setUser(null);
+                        setIsAuth(false);
+                        handleLogoutSideEffects(true);
+                    }
+                }
+                return Promise.reject(error);
+            }
+        );
+
         return () => {
             api.interceptors.request.eject(requestInterceptor);
             api.interceptors.response.eject(responseInterceptor);
+            api.interceptors.response.eject(globalUnauthorizedInterceptor);
         };
     }, []);
+
 
     useEffect(() => {
         const initializeAuthAndProfile = async () => {
@@ -324,64 +439,63 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             try {
                 const accessToken = localStorage.getItem('accessToken');
                 if (!accessToken) {
-                    alert('ไม่มีโทเคน กรุณาล็อกอินใหม่');
-                    await logout();
+                    await logout(false);
                     return;
                 }
 
-                localStorage.setItem('accessToken', accessToken);
+                const isSessionValid = await checkSessionValidity();
 
-                const profileUser = await getProfile();
+                if (!isSessionValid) {
+                    setUser(null);
+                    setIsAuth(false);
+                    handleLogoutSideEffects(true);
+                    return;
+                }
 
-                setUser(profileUser);
-                setIsAuth(true);
-                alertShowRef.current = false;
+                setAccessToken(accessToken);
 
-                const routePath = profileUser.role === UserRole.cooker
-                    ? `cooker/${profileUser.restaurant?.restaurantId}`
-                    : 'user/restaurant';
-                router.push(`/${routePath}`);
-            } catch (err: unknown) {
+                try {
+                    const profileUser = await getProfile();
+
+                    setUser(profileUser);
+                    setIsAuth(true);
+                    alertShowRef.current = false;
+
+                    const publicRoutes = ['/login', '/signup'];
+                    const currentPath = window.location.pathname;
+                    const isPublicRoute = publicRoutes.includes(currentPath);
+
+                    if (isInitialLoad.current && isPublicRoute) {
+                        const routePath = profileUser.role === UserRole.cooker
+                            ? `cooker/${profileUser.restaurant?.restaurantId}`
+                            : 'user/restaurant';
+                        router.push(`/${routePath}`);
+                    }
+                } catch {
+                    setUser(null);
+                    setIsAuth(false);
+                    handleLogoutSideEffects(true);
+                    return;
+                }
+
+            } catch {
                 setUser(null);
                 setIsAuth(false);
-
-                if (isAxiosError(err)) {
-                    const status = err.response?.status;
-
-                    if (status === 401) {
-                        // alert('เซสชันหมดอายุ กรุณาล็อกอินใหม่อีกครั้ง');
-                        await logout();
-                        return;
-                    }
-
-                    if (status === 404) {
-                        alert('ไม่พบบัญชีผู้ใช้นี้');
-                        return;
-
-                    }
-                    if (status === 403) {
-                        alert('ไม่มีสิทธิ์เข้าใช้งานหน้านี้');
-                        return;
-                    }
-
-                    alert('เกิดข้อผิดพลาด กรุณาลองใหม่');
-                    alertShowRef.current = true;
-                } else {
-                    console.error('Unexpected error: ', err);
-                }
+                handleLogoutSideEffects(false);
             } finally {
                 setLoading(false);
+                isInitialLoad.current = false;
             }
         };
 
         initializeAuthAndProfile();
-    }, [logout, router, getProfile]);
+    }, []);
 
     useEffect(() => {
         if (alertShowRef.current) {
             const timeout = setTimeout(() => {
                 alertShowRef.current = false;
-            }, 3000);
+            }, 1000);
             return () => clearTimeout(timeout);
         }
     }, [alertShowRef]);
@@ -391,8 +505,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         isAuth: !!user,
         loading,
         login,
-        logout,
+        logout: (showAlert: boolean = false) => logout(showAlert),
     }), [user, isAuth, loading, login, logout]);
+    if (loading) return <LoadingPage />
     return (
         <AuthContext.Provider
             value={contextValue}

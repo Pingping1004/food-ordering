@@ -11,11 +11,13 @@ import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Menu } from "@/context/MenuContext";
 import { getParamId } from "@/util/param";
+import LoadingPage from "@/components/LoadingPage";
 
 export default function EditMenuPage() {
     const [menu, setMenu] = useState<Menu>();
     const router = useRouter();
     const [restaurantId, setRestaurantId] = useState<string | undefined>(undefined);
+    const [isLoading, setIsLoading] = useState<boolean>(true);
     const params = useParams();
     const menuId = getParamId(params.menuId);
     const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
@@ -44,23 +46,27 @@ export default function EditMenuPage() {
 
     useEffect(() => {
         const fetchData = async () => {
-            const menuResponse = await api.get<Menu>(`menu/find/${menuId}`);
-            setMenu(menuResponse.data);
-            setRestaurantId(menuResponse.data.restaurantId);
+            try {
 
-            reset({
-                name: menuResponse.data.name || '',
-                price: menuResponse.data.price ?? undefined,
-                maxDaily: menuResponse.data.maxDaily ?? undefined,
-                cookingTime: menuResponse.data.cookingTime ?? undefined,
-                menuImg: (menuResponse.data.menuImg && menuResponse.data.menuImg !== '/') ? menuResponse.data.menuImg : undefined,
-                restaurantId: menuResponse.data.restaurantId, // <--- Set restaurantId here too!
-            });
+                const menuResponse = await api.get<Menu>(`menu/find/${menuId}`);
+                setMenu(menuResponse.data);
+                setRestaurantId(menuResponse.data.restaurantId);
+                
+                reset({
+                    name: menuResponse.data.name || '',
+                    price: menuResponse.data.price ?? undefined,
+                    maxDaily: menuResponse.data.maxDaily ?? undefined,
+                    cookingTime: menuResponse.data.cookingTime ?? undefined,
+                    menuImg: (menuResponse.data.menuImg && menuResponse.data.menuImg !== '/') ? menuResponse.data.menuImg : undefined,
+                    restaurantId: menuResponse.data.restaurantId,
+                });
+            } finally {
+                setIsLoading(false);
+            }
         }
         fetchData();
     }, [menuId, reset]);
 
-    // --- Image Preview Logic ---
     useEffect(() => {
         let currentPreviewUrl: string | null = null;
         let createdObjectURL: string | null = null;
@@ -118,6 +124,8 @@ export default function EditMenuPage() {
         alert(`กรุณากรอกข้อมูลให้ถูกต้อง:\n\n${messages}`);
     };
 
+    if (isLoading) return <LoadingPage />
+
     return (
         <div className="flex flex-col gap-y-10 py-10 px-6">
             <div className="flex justify-between items-center">
@@ -147,7 +155,7 @@ export default function EditMenuPage() {
                                     priority
                                     src={imagePreviewUrl}
                                     alt="Preview menu image"
-                                    className="w-48 h-48 object-cover rounded-lg border border-gray-300 shadow-sm"
+                                    className="w-48 h-48 object-cover aspect-square rounded-lg border border-gray-300 shadow-sm"
                                     width={192}
                                     height={192}
                                 />
@@ -212,7 +220,7 @@ export default function EditMenuPage() {
                 </div>
 
                 <Button size="lg" type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? 'กำลังเเก้ไขเมนู...' : 'เรียบร้อย'}
+                    {isSubmitting ? 'กำลังเเก้ไขเมนู...' : 'ยืนยันการแก้ไข'}
                 </Button>
             </form>
         </div>

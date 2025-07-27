@@ -207,7 +207,7 @@ export default function BulkAddMenuPage() {
             // Step 5: Update local states and redirect
             setMenuLists(prev => [...prev, ...result.createdMenus]);
             setSuccessMessage(`Created ${result.totalCreated} menu items.`);
-            alert('Bulk upload successful');
+            alert('สร้างเมนูสำเร็จ');
             router.push(`/managed-menu/${restaurantId}`);
 
             // Step 6: Reset form and clean up states
@@ -215,8 +215,12 @@ export default function BulkAddMenuPage() {
             setParsedCsvData(null);
             setMenuImagePreviewUrls([]);
             setUploadedImageMetadata([]);
-        } catch {
-            setPageError("Unexpected error during bulk menu upload.");
+        } catch(err) {
+            const error = err as { response: { status: number }}
+            if (error.response?.status === 409) {
+                alert('ชื่อเมนูซ้ำกับเมนูที่มีอยู่แล้ว');
+            }
+            setPageError("พบข้อผิดพลาดในการสร้างเมนู กรุณาลองอีกครั้ง");
         } finally {
             setLoading(false);
         }
@@ -224,7 +228,7 @@ export default function BulkAddMenuPage() {
 
     const handleGenerateCsvTemplate = useCallback(() => {
         if (!uploadedImageMetadata.length) {
-            alert("Upload images first to generate template.");
+            alert("กรุณาอัพโหลดรูปภาพ เพื่อสร้างไฟล์ CSV");
             return;
         }
 
@@ -297,7 +301,7 @@ export default function BulkAddMenuPage() {
                                         src={url}
                                         alt={`ดูรูปเมนู`}
                                         fill // Use fill for responsive images
-                                        className="object-cover rounded-lg border border-gray-200"
+                                        className="object-cover aspect-square rounded-lg border border-gray-200"
                                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                                     />
                                 </div>

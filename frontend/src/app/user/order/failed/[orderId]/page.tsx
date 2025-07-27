@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import Image from 'next/image';
+import LoadingPage from '@/components/LoadingPage';
 
 export default function FailedOrderPage() {
     const searchParams = useSearchParams();
@@ -42,7 +43,7 @@ export default function FailedOrderPage() {
         fetchData();
     }, [orderId]);
 
-    if (loading) return <div>Loading...</div>;
+    if (loading) return <LoadingPage />
     if (error) return <div>{error}</div>;
 
     return (

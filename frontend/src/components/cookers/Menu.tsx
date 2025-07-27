@@ -27,13 +27,12 @@ const menuVariants = cva("", {
 
 type MenuProps = React.HtmlHTMLAttributes<HTMLDivElement> &
     VariantProps<typeof menuVariants> & {
-        restaurantId: string;
+        restaurantid: string;
         menuId: string;
         name: string;
         menuImg?: string;
         maxDaily: number;
         cookingTime: number;
-        createdAt: Date | string | number;
         price: number;
         isAvailable: boolean;
         onAvailabilityChanged: (menuId: string, newAvailability: boolean) => void;
@@ -85,22 +84,22 @@ export const Menu = ({
                     alt={name}
                     width={96}
                     height={96}
-                    className="h-24 w-24 object-cover mr-6 rounded-2xl"
+                    className="h-24 w-24 object-cover aspect-square mr-6 rounded-2xl"
                 />
-                <div className="flex w-full flex-col gap-y-2">
-                    <div className="flex items-start gap-x-1">
-                        <h3 className="w-[140px] noto-sans-bold text-md text-primary">{name}</h3>
-                        <div className="flex flex-col">
-                            <p className="text-md text-light noto-sans-bold">{price}</p>
-                            <p className="text-sm text-light">บาท</p>
+                <div className="flex w-full flex-col justify-between gap-y-2">
+                    <div className="flex items-start justify-between gap-x-1">
+                        <h3 className="w-[140px] noto-sans-bold text-lg text-primary">{name}</h3>
+                        <div className="flex items-center gap-x-2">
+                            <p className="text-base text-light noto-sans-bold">{price}</p>
+                            <p className="text-base text-light">บาท</p>
                         </div>
                     </div>
 
                     <div>
-                        <p className="text-secondary text-xs">
+                        <p className="text-secondary text-sm">
                             เวลาในการปรุง: {cookingTime}
                         </p>
-                        <p className="text-secondary text-xs">
+                        <p className="text-secondary text-sm">
                             จำนวนมากสุดต่อจาน: {maxDaily}
                         </p>
                     </div>

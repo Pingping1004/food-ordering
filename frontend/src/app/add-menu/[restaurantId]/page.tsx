@@ -11,11 +11,11 @@ import { api } from '@/lib/api';
 import { singleCreateMenuSchema, SingleCreateMenuSchemaType } from '@/schemas/addMenuSchema'; // Adjust path
 
 export type MenuItem = Omit<SingleCreateMenuSchemaType, "menuImg"> & {
-  menuId: string;
-  createdAt: Date;
-  isAvailable: boolean;
-  menuImg?: string;
-  price: number;
+    menuId: string;
+    createdAt: Date;
+    isAvailable: boolean;
+    menuImg?: string;
+    price: number;
 };
 
 function getParamId(param: string | string[] | undefined): string | undefined {
@@ -41,6 +41,7 @@ export default function AddMenuPage() {
 
     // State to hold successfully created menu items (if you want to display them locally)
     const [, setCreatedMenusList] = useState<MenuItem[]>([]);
+    
 
     const {
         register,
@@ -54,7 +55,7 @@ export default function AddMenuPage() {
         defaultValues: { // Initialize restaurantId from URL params
             restaurantId: restaurantId,
             name: '',
-            price: 1, // Or whatever your min is
+            price: 50, // Or whatever your min is
             maxDaily: undefined,
             cookingTime: undefined,
         }
@@ -113,13 +114,17 @@ export default function AddMenuPage() {
                 formData.append('menuImg', data.menuImg[0]);
             } else {
                 // Handle case where image is required but not provided
-                setApiError("Please select a menu image.");
+                setApiError("กรุณาเลือกรูปภาพ");
                 setIsApiLoading(false);
                 return;
             }
 
+            for (let [key, value] of formData.entries()) {
+                console.log(`${key}:`, value);
+            }
+
             const response = await api.post<MenuItem>(
-                `/menu/single`, // Your API endpoint
+                `/menu/single`,
                 formData,
                 {
                     headers: {
@@ -138,7 +143,7 @@ export default function AddMenuPage() {
             setImagePreviewUrl(null); // Clear preview image
             router.push(`/managed-menu/${restaurantId}`);
         } catch {
-            setApiError("Failed to create menu. Please try again.");
+            setApiError("สร้างเมนูใหม่ล้มเหลว กรุณาลองใหม่อีกครั้ง");
 
         } finally {
             setIsApiLoading(false);
@@ -154,7 +159,7 @@ export default function AddMenuPage() {
                     variant="secondary"
                     onClick={() => router.push(`/add-menu-bulk/${restaurantId}`)}
                 >
-          เพิ่มหลายเมนูพร้อมกัน
+                    เพิ่มหลายเมนูพร้อมกัน
                 </Button>
             </div>
 
@@ -165,7 +170,7 @@ export default function AddMenuPage() {
                 </div>
             )}
             {apiError && (
-                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+                <div className="bg-red-100 border border-red-400 text-red-500 px-4 py-3 rounded relative">
                     {apiError}
                 </div>
             )}
@@ -180,13 +185,13 @@ export default function AddMenuPage() {
                                 <Image
                                     src={imagePreviewUrl}
                                     alt="Preview menu image"
-                                    className="w-48 h-48 object-cover rounded-lg border border-gray-300 shadow-sm"
-                                    width={192} // Match w-48 (192px)
-                                    height={192} // Match h-48 (192px)
+                                    className="w-48 h-48 object-cover aspect-square rounded-lg border border-gray-300 shadow-sm"
+                                    width={192}
+                                    height={192}
                                 />
                             ) : (
                                 <div className="w-48 h-48 bg-gray-100 flex items-center justify-center rounded-lg border border-gray-300 text-gray-400">
-                  No Image Selected
+                                    No Image Selected
                                 </div>
                             )}
                         </div>
@@ -202,7 +207,7 @@ export default function AddMenuPage() {
                                 multiple={false} // Ensure only one file can be selected
                                 error={errors.menuImg?.message as string | undefined}
                                 {...register('menuImg')}
-                                // Removed onChange directly here as useEffect with watch handles preview
+                            // Removed onChange directly here as useEffect with watch handles preview
                             />
                         </div>
                     </div>

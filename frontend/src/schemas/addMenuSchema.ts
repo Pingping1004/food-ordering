@@ -12,8 +12,7 @@ export const baseCreateMenuSchema = z.object({
                 f === undefined ||
         (f instanceof FileList && (f.length === 0 || f.length === 1)),
             { message: "Invalid file" }
-        )
-        .optional(),
+        ),
     isAvailable: z.boolean().optional(),
 });
 

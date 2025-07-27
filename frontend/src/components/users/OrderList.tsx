@@ -48,7 +48,7 @@ export default function OrderList({ items }: Readonly<CartListProps>) {
                                     height={74}
                                     src={src}
                                     alt={menu.menuName}
-                                    className="rounded-lg object-cover w-full h-full"
+                                    className="rounded-lg object-cover aspect-square w-full h-full"
                                 />
                             </div>
 

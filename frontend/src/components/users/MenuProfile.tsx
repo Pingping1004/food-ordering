@@ -66,7 +66,7 @@ export default function MenuProfile({
                     height={163}
                     src={src}
                     alt="Menu profile"
-                    className="rounded-lg object-cover w-full h-full"
+                    className="rounded-lg object-cover aspect-square w-full h-full"
                 />
             </div>
 

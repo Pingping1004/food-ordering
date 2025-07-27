@@ -109,7 +109,7 @@ function Page() {
             {menus?.map((menu) => {
                 return (
                     <Menu
-                        restaurantId={restaurant.restaurantId}
+                        restaurantid={restaurant.restaurantId}
                         key={menu.menuId}
                         menuId={menu.menuId}
                         menuImg={menu.menuImg}
@@ -117,7 +117,6 @@ function Page() {
                         price={menu.price}
                         maxDaily={menu.maxDaily}
                         cookingTime={menu.cookingTime}
-                        createdAt={menu.createdAt}
                         isAvailable={menu.isAvailable ?? false}
                         onAvailabilityChanged={handleMenuAvailabilityChange}
                         onDelete={handleDeleteMenu}

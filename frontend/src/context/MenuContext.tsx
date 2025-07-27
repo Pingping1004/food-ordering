@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useMemo } from '
 import { useParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { RestaurantCategory } from "@/components/users/RestaurantProfile";
+import LoadingPage from '@/components/LoadingPage';
 
 export interface Restaurant {
     // [x: string]: any;
@@ -30,7 +31,6 @@ export interface Menu {
     cookingTime: number;
     isAvailable: boolean;
     restaurantId: string;
-    createdAt: string;
 }
 
 export interface MenuContextType {
@@ -99,7 +99,7 @@ export const MenuProvider = ({ children }: { children: React.ReactNode }) => {
         fetchData();
     }, [restaurantId]);
 
-    if (loading) return <div>Loading...</div>;
+    if (loading) return <LoadingPage />;
     if (error) return <div>{error}</div>;
     if (!menus) return <div>No Data found</div>
 

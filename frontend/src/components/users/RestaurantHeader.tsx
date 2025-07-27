@@ -15,14 +15,14 @@ export default function RestaurantHeader({ name, restaurantImg, openTime, closeT
     const src = restaurantImg ? `${restaurantImg}` : `/picture.svg`;
 
     return (
-        <div className="flex w-full gap-x-4 px-6 py-4 border-1 border-color rounded-lg">
+        <div className="flex w-full gap-x-6 px-6 py-4 border-1 border-color rounded-lg">
             <Image
                 src={src}
                 width={74}
                 height={74}
                 alt="restaurant profile"
                 priority={true}
-                className="w-auto h-auto object-cover"
+                className=" object-cover aspect-square rounded-lg"
             />
             <div className="flex flex-col gap-y-2">
                 <h3 className="noto-sans-bold text-lg text-primary">{name}</h3>
