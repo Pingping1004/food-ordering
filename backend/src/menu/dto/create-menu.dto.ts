@@ -56,9 +56,9 @@ export class CreateMenuDto {
   @IsNotEmpty()
   name: string;
 
-  @IsNotEmpty()
-  @IsString()
-  menuImg: string;
+  // @IsNotEmpty()
+  // @IsString()
+  // menuImg: string;
 
   @IsNotEmpty()
   @IsPositive()

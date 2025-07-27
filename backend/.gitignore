@@ -73,3 +73,7 @@ prisma/migrations/
 
 dist
 *.tsbuildinfo
+
+cert/
+*.pem
+*.key

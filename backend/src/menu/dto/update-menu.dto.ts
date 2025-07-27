@@ -21,7 +21,7 @@ export class UpdateMenuDto {
 
   @IsOptional()
   @IsString()
-  menuImg?: string | null;
+  menuImg?: string;
 
   @IsOptional()
   @IsString()

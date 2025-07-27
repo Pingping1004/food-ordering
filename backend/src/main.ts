@@ -28,8 +28,8 @@ declare global {
 
 async function bootstrap() {
   const httpsOptions = {
-    key: fs.readFileSync('../cert/localhost-key.pem'),
-    cert: fs.readFileSync('../cert/localhost.pem'),
+    key: fs.readFileSync('./cert/localhost-key.pem'),
+    cert: fs.readFileSync('./cert/localhost.pem'),
   };
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { httpsOptions });
@@ -40,7 +40,7 @@ async function bootstrap() {
     'https://food-ordering.online',
     'https://api.food-ordering.online',
     'https://food-ordering-mvp.onrender.com',
-    'https://localhost:3000',
+    'https://localhost:8000',
     process.env.FRONTEND_BASE_URL,
     process.env.NEXT_PUBLIC_BACKEND_API_URL,
     process.env.WEBHOOK_ENDPOINT,
@@ -184,6 +184,7 @@ async function bootstrap() {
   });
 
   const port = process.env.PORT || 4000;
+  console.log('NESTJS is running on port: ', port);
   await app.listen(port);
 }
 bootstrap();

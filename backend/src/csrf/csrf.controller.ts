@@ -15,6 +15,7 @@ export class CsrfController {
       'https://food-ordering.online',
       'https://api.food-ordering.online',
       'https://food-ordering-mvp.onrender.com',
+      'https://localhost:8000',
       process.env.FRONTEND_BASE_URL,
       process.env.NEXT_PUBLIC_BACKEND_API_URL,
       process.env.WEBHOOK_ENDPOINT,

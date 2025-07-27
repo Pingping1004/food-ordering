@@ -142,17 +142,9 @@ export class RestaurantService {
   }
 
   private isTimeBetween(now: string, open: string, close: string): boolean {
-    this.logger.log('Opentime: ', open);
-    this.logger.log('Closetime: ', close);
-    this.logger.log('Now: ', now);
-
     const nowParts = now.split(':').map(Number);
     const openParts = open.split(':').map(Number);
     const closeParts = close.split(':').map(Number);
-
-    this.logger.log('Opentime min: ', openParts);
-    this.logger.log('Closetime min: ', closeParts);
-    this.logger.log('Now parts: ', nowParts);
 
     const nowMinutes = nowParts[0] * 60 + nowParts[1];
     const openMinutes = openParts[0] * 60 + openParts[1];

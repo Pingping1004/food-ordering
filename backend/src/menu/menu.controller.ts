@@ -45,7 +45,6 @@ export class MenuController {
   @Post('single')
   @UseInterceptors(
     FileInterceptor('menuImg', {
-      storage: null,
       fileFilter: imageFileFilter,
     }),
   )

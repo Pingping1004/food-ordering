@@ -41,7 +41,7 @@ model Payout {
   orderId           String     @unique
   restaurantId      String
   order             Order      @relation("OrderToPayout", fields: [orderId], references: [orderId])
-  restaurant        Restaurant @relation("RestaurantPayment", fields: [restaurantId], references: [restaurantId])
+  restaurant        Restaurant @relation("RestaurantPayment", fields: [restaurantId], references: [restaurantId], onDelete: Cascade)
 }
 
 model Restaurant {
@@ -66,12 +66,15 @@ model Restaurant {
   orders              Order[]              @relation("restaurantToOrder")
   payout              Payout[]             @relation("RestaurantPayment")
   user                User                 @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([restaurantId])
+  @@index([openTime])
 }
 
 model Menu {
   menuId       String      @id @default(uuid())
   name         String      @unique
-  menuImg      String?
+  menuImg      String
   price        Int
   maxDaily     Int         @default(100)
   cookingTime  Int?
@@ -142,6 +145,8 @@ model User {
   RoleRequest   RoleRequest?   @relation("UserToRoleRequest")
 
   @@index([name])
+  @@index([userId])
+  @@index([role])
 }
 
 enum DateWeek {

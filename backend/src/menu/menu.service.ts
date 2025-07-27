@@ -59,13 +59,11 @@ export class MenuService implements OnModuleInit {
     async createSingleMenu(createMenuDto: CreateMenuDto, file: Express.Multer.File) {
         const existingName = await this.findMenuByName(createMenuDto.name);
         if (existingName)
-            throw new BadRequestException(
-                `Menu name ${createMenuDto.name} has already exists`,
-            );
+            throw new BadRequestException(`Menu name ${createMenuDto.name} has already exists`);
 
         const { url: menuImageUrl } = await this.uploadService.saveImage(file);
         try {
-            const newMenu: CreateMenuDto = {
+            const newMenu: CreateMenuDto & { menuImg: string } = {
                 restaurantId: createMenuDto.restaurantId,
                 name: createMenuDto.name,
                 price: createMenuDto.price,
@@ -106,7 +104,9 @@ export class MenuService implements OnModuleInit {
             return this.formatResponse(menusData.length, createdMenus, failedCreations);
         } catch (error: any) {
             this.logger.error(`An unexpected error occurred during bulk menu creation for restaurant ${restaurantId}: `, error);
-            if (error instanceof BadRequestException || error instanceof ConflictException) throw error;
+            if (error instanceof BadRequestException || error instanceof ConflictException) {
+                throw error;
+            }
 
             throw new InternalServerErrorException('Failed to perform bulk menu creation due to an internal server error. Please try again.');
         }
@@ -296,6 +296,8 @@ export class MenuService implements OnModuleInit {
                     price: true,
                     restaurantId: true,
                     isAvailable: true,
+                    cookingTime: true,
+                    maxDaily: true,
                 },
             });
 

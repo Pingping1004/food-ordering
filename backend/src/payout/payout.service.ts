@@ -6,17 +6,20 @@ import { calculatePayout, calculateWeeklyInterval } from './payout-calculator';
 import { OrderService } from 'src/order/order.service';
 import { Payout } from '@prisma/client';
 import Decimal from 'decimal.js';
+import { RestaurantService } from 'src/restaurant/restaurant.service';
 
 @Injectable()
 export class PayoutService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly restaurantService: RestaurantService,
     @Inject(forwardRef(() => OrderService))
     private readonly orderService: OrderService,
   ) {}
 
   async createPayout(orderId: string) {
     const order = await this.orderService.findOneOrder(orderId);
+    const restaurant = await this.restaurantService.findRestaurant(order.restaurantId);
     const markupRate = Number(process.env.SELL_PRICE_MARKUP_RATE);
     const sellingPrice = (Number(order.totalAmount) * (1 + markupRate));
     const { restaurantEarning, platformFee } = calculatePayout(sellingPrice);
@@ -31,6 +34,7 @@ export class PayoutService {
       endDate,
       orderId: order.orderId,
       restaurantId: order.restaurantId,
+      restaurantName: restaurant.name,
     };
 
     const result = await this.prisma.payout.create({

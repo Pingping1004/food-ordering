@@ -15,7 +15,6 @@ import { IsPaid, OrderStatus, PaymentMethodType } from '@prisma/client';
 import { PaymentService } from 'src/payment/payment.service';
 import { PayoutService } from 'src/payout/payout.service';
 import { calculateWeeklyInterval } from 'src/payout/payout-calculator';
-import { numberRound } from '../utils/round-number';
 import Decimal from 'decimal.js';
 
 @Injectable()
@@ -91,10 +90,13 @@ export class OrderService {
       }
 
       const markupUnitPrice = (markupRate * existingMenu.price); // Calculated Price from backend
-      const actualTotalPrice = numberRound(markupUnitPrice * item.quantity); // Backend total price
-      const orderTotalPrice = numberRound(item.unitPrice * item.quantity); // Total price from user input
+      const actualTotalPrice = (markupUnitPrice * item.quantity); // Backend total price
+      const orderTotalPrice = (item.unitPrice * item.quantity); // Total price from user input
 
-      if (!orderTotalPrice.equals(actualTotalPrice)) {
+      const toSatang = (amount: number) => Math.round(amount * 100);
+      const isEqual: boolean = toSatang(actualTotalPrice) === toSatang(orderTotalPrice);
+
+      if (!isEqual) {
         this.logger.log(`Markup unit price: ${markupUnitPrice}`);
         this.logger.log(`Unitprice: ${markupUnitPrice}`);
 
@@ -270,7 +272,7 @@ export class OrderService {
       where: { restaurantId },
       include: { orderMenus: true },
       orderBy: {
-        deliverAt: 'asc',
+        deliverAt: 'desc',
       },
     });
   }

@@ -3,6 +3,7 @@ import {
   IsNotEmpty,
   IsNumber,
   IsOptional,
+  IsString,
   IsUUID,
 } from 'class-validator';
 import Decimal from 'decimal.js';
@@ -35,4 +36,8 @@ export class CreatePayoutDto {
   @IsUUID()
   @IsNotEmpty()
   restaurantId: string;
+
+  @IsString()
+  @IsNotEmpty()
+  restaurantName: string;
 }
