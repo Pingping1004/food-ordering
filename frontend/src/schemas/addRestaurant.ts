@@ -69,18 +69,9 @@ export const createRestaurantSchema = z.object({
         .trim()
         .regex(/^\d{10}$/, { message: 'กรุณาระบุเบอร์โทรที่ถูกต้อง 10 หลัก' }),
     adminEmail: z.string().trim().email('กรุณาระบุอีเมลที่ถูกต้อง').optional().or(z.literal('')),
+    bankAccount: z.string().trim().min(1, { message: 'กรุณาใส่ชื่อธนาคาร' }),
+    accountNumber: z.string().trim().min(1, { message: 'กรุณาใส่เลขบัญชีธนาคาร'}),
+    accountHolderFullName: z.string().trim().min(1, { message: 'กรุณาใส่ชื่อ-นามสกุลของบัญชีธนาคาร' })
 })
-    .refine(
-        (data) => {
-            const { openTime, closeTime } = data;
-            if (openTime && closeTime) {
-                return closeTime > openTime;
-            }
-            return true;
-        },
-        {
-            message: 'เวลาปิดทำการต้องหลังเวลาเปิดทำการ',
-            path: ['closeTime'],
-        });
 
 export type CreateRestaurantSchemaType = z.infer<typeof createRestaurantSchema>

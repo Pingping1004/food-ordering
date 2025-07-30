@@ -73,10 +73,10 @@ function OrderConfirmContext() {
                 return;
             }
 
-            const response = await api.post(`/order/omise`, orderPayload);
+            const response = await api.post(`/order/create`, orderPayload);
             alert(`สั่งอาหารออเดอร์: ${response.data.orderId}`);
-            const { orderId, chargeId, qrDownloaduri } = response.data;
-            router.push(`/user/order/payment/checkout?orderId=${orderId}&chargeId=${chargeId}&qrImageUri=${encodeURIComponent(qrDownloaduri)}`);
+            const { checkoutUrl } = response.data;
+            router.push(checkoutUrl);
 
         } catch (error: unknown) {
             if (typeof error === 'object' && error !== null && 'response' in error) {

@@ -108,6 +108,9 @@ export default function RestaurantRegisterPage() {
             formData.append('adminName', data.adminName);
             formData.append('adminSurname', data.adminSurname);
             formData.append('adminTel', data.adminTel);
+            formData.append('bankAccount', data.bankAccount);
+            formData.append('accountNumber', data.accountNumber);
+            formData.append('accountHolderFullName', data.accountHolderFullName);
 
             if (data.adminEmail !== undefined && data.adminEmail !== null) {
                 formData.append('adminEmail', data.adminEmail);
@@ -267,9 +270,9 @@ export default function RestaurantRegisterPage() {
                     {errors.avgCookingTime && <p className="text-danger-main text-sm">{errors.avgCookingTime.message}</p>}
                 </main>
 
-                <footer className="flex flex-col gap-y-6">
+                <section className="flex flex-col gap-y-6">
                     <h2 className="noto-sans-bold text-base text-primary">ข้อมูลติดต่อผู้ดูแลร้าน</h2>
-                    <div className="flex justify-betwee gap-x-4">
+                    <div className="grid grid-cols-2 gap-x-4">
                         <div>
                             <Input
                                 type="text"
@@ -291,22 +294,53 @@ export default function RestaurantRegisterPage() {
                         </div>
                     </div>
 
+                    <div className="grid grid-cols-2 gap-x-4">
+                        <Input
+                            type="text"
+                            label="เบอร์ติดต่อ"
+                            placeholder="0xxxxxxxxx"
+                            {...register('adminTel')}
+                            error={errors.adminTel?.message}
+                        />
+
+                        <Input
+                            type="email"
+                            label="อีเมล (ไม่บังคับ)"
+                            placeholder="example@gmail.com"
+                            {...register('adminEmail')}
+                            error={errors.adminEmail?.message}
+                        />
+                    </div>
+                </section>
+
+                <section className="flex flex-col gap-y-6">
+                    <h2 className="noto-sans-bold text-base text-primary">ข้อมูลบัญชีรับเงิน</h2>
+                    <div className="grid grid-cols-2 gap-x-4">
+                        <Input
+                            type="text"
+                            label="ธนาคาร"
+                            placeholder="กสิกร, กรุงไทย, ฯลฯ"
+                            {...register('bankAccount')}
+                            error={errors.bankAccount?.message}
+                        />
+
+                        <Input
+                            type="text"
+                            label="เลขบัญชีธนาคาร (ไม่ต้องใส่ขีด)"
+                            placeholder="087-X-XXXXX-X"
+                            {...register('accountNumber')}
+                            error={errors.accountNumber?.message}
+                        />
+
+                    </div>
                     <Input
                         type="text"
-                        label="เบอร์ติดต่อ"
-                        placeholder="0xxxxxxxxx"
-                        {...register('adminTel')}
-                        error={errors.adminTel?.message}
+                        label="ชื่อ-นามสกุลเจ้าของบัญชีธนาคาร"
+                        placeholder="นายสมชาย ใจรัก"
+                        {...register('accountHolderFullName')}
+                        error={errors.accountHolderFullName?.message}
                     />
-
-                    <Input
-                        type="email"
-                        label="อีเมล (ไม่บังคับ)"
-                        placeholder="example@gmail.com"
-                        {...register('adminEmail')}
-                        error={errors.adminEmail?.message}
-                    />
-                </footer>
+                </section>
 
                 <Button
                     type="submit"

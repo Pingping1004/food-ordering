@@ -17,7 +17,7 @@ const nextConfig: NextConfig = {
         return [
             {
                 source: '/api/:path*',
-                // destination: 'https://api.food-ordering.online/api/:path=*',
+                // destination: 'https://api.promptserve.online/api/:path=*',
                 destination: 'https://afbd008e22d3.ngrok-free.app/api/:path*'
             },
         ];
@@ -27,6 +27,11 @@ const nextConfig: NextConfig = {
             {
                 protocol: 'https',
                 hostname: 'images.food-ordering.online',
+                pathname: '/**',
+            },
+            {
+                protocol: 'https',
+                hostname: 'images.promptserve.online',
                 pathname: '/**',
             }
         ],

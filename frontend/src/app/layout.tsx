@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-    title: "Your Food Ordering",
+    title: "Promptserve",
     description: "Have your meal with no deailing with queue",
 };
 
@@ -38,16 +38,21 @@ export default function RootLayout({
 
                 {/* // Noto Sans google font api connected */}
                 <link href='https://fonts.googleapis.com/css?family=Noto Sans Thai' rel='stylesheet'></link>
-            </head>
-            <body
-                className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-            >
-                <AuthProvider>
-                    <CartProvider>
-                        {children}
-                    </CartProvider>
-                </AuthProvider>
-            </body>
-        </html>
-    );
+
+                <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+
+                <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+                <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+                    </head>
+                    <body
+                        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+                    >
+                        <AuthProvider>
+                            <CartProvider>
+                                {children}
+                            </CartProvider>
+                        </AuthProvider>
+                    </body>
+                </html>
+                );
 }

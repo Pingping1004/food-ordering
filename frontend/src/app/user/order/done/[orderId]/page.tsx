@@ -41,6 +41,7 @@ export default function DoneOrderPage() {
     const [restaurantName, setRestaurantName] = useState<string | null>(null);
     const [, setRestaurantId] = useState<string | null>(null);
     const [order, setOrder] = useState<Order>();
+    const [isPaid, setIsPaid] = useState<boolean>(false);
     const { orderMenus = [] } = order || {};
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -56,6 +57,13 @@ export default function DoneOrderPage() {
             try {
                 const orderResponse = await api.get(`order/${orderId}`);
                 setOrder(orderResponse.data);
+                setIsPaid(orderResponse.data.isPaid)
+                console.log('Order response: ', orderResponse.data);
+
+                if (!isPaid) {
+                    // alert('กรุณาชำระเงินก่อน');
+                    // router.back();
+                }
 
                 const newRestaurantId = orderResponse.data.restaurantId;
                 setRestaurantId(newRestaurantId);

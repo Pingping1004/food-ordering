@@ -44,6 +44,12 @@ type FailedRequest = {
     config: AxiosRequestConfig;
 };
 
+interface BackendErrorResponse {
+    statusCode: number;
+    message: string | string[];
+    error: string;
+}
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -207,31 +213,49 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
     }, []);
 
-    function handleLoginError(err: unknown): void {
+    const getFormattedBackendMessage = (message: string | string[] | undefined): string | undefined => {
+        if (!message) {
+            return undefined;
+        }
+        if (typeof message === 'string') {
+            return message;
+        }
+        if (Array.isArray(message)) {
+            return message.join(', ');
+        }
+        return undefined;
+    };
+
+    const handleLoginError = useCallback((err: unknown): void => {
+        let messageToDisplay: string;
+
         if (axios.isAxiosError(err)) {
             const status = err.response?.status;
+            const backendData = err.response?.data as BackendErrorResponse;
+            const backendMessage = getFormattedBackendMessage(backendData?.message);
 
             if (status === 401) {
-                alert('รหัสผ่านหรืออีเมลไม่ถูกต้อง');
-                return;
+                // For 401, prioritize backend's specific message (if any), otherwise use generic for security.
+                messageToDisplay = backendMessage || 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
+            } else if (status === 403) {
+                // HTTP 403 Forbidden (e.g., session expired, access denied)
+                messageToDisplay = 'เซสชันหมดอายุ กรุณาล็อกอินใหม่อีกครั้ง';
+            } else if (status === 404) {
+                messageToDisplay = 'ไม่พบบริการหรือเส้นทางที่ร้องขอ';
+            } else if (backendMessage) {
+                messageToDisplay = backendMessage;
+            } else {
+                messageToDisplay = 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ กรุณาลองใหม่อีกครั้ง';
             }
-
-            if (status === 404) {
-                alert('ไม่พบบัญชีผู้ใช้นี้');
-                return;
-            }
-
-            if (status === 403) {
-                alert('เซสชันหมดอายุ กรุณาล็อกอินใหม่อีกครั้ง');
-                return;
-            }
-
-            // fallback if status doesn't match
-            alert(err.response?.data?.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่');
+        } else if (err instanceof Error) {
+            messageToDisplay = err.message;
         } else {
-            alert('เกิดข้อผิดพลาดที่ไม่รู้จัก กรุณาลองใหม่');
+            messageToDisplay = 'เกิดข้อผิดพลาดที่ไม่รู้จัก กรุณาลองใหม่';
         }
-    }
+
+        alert(messageToDisplay);
+        console.error("Login Error Details:", err);
+    }, []);
 
     const login = useCallback(async (email: string, password: string): Promise<User> => {
         setLoading(true);

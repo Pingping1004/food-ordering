@@ -42,7 +42,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
                         }
                         : item);
             } else {
-                // Assign default price as 0, modify as needed.
+                // Assign default price as 0
                 newCart = [
                     ...prev,
                     { menuId, menuName, unitPrice, menuImg, quantity: 1, totalPrice: unitPrice, restaurantId }

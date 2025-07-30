@@ -7,6 +7,7 @@ import LoadingPage from "@/components/LoadingPage";
 import { CookerProvider, useCooker } from "@/context/Cookercontext";
 import { api } from "@/lib/api";
 import { getDateFormat, getTimeFormat } from "@/util/time";
+import Image from "next/image";
 import { useState, useEffect, useMemo } from "react";
 
 function Page() {
@@ -52,8 +53,15 @@ function Page() {
 
     if (!cooker.isApproved) {
         return (
-            <div className="flex flex-col w-full h-screen justify-center text-center items-center gap-y-15">
-                <p className="noto-sans-bold text-primary text-2xl">ตอนนี้ทางแอดมินกำลังดำเนินพิจารณาการอนุมัติเปิดร้านอาหาร</p>
+            <div className="flex flex-col w-full h-screen justify-center text-center items-center gap-y-10">
+                <Image 
+                    src="/processing.svg"
+                    alt="Processing icon"
+                    priority
+                    width={300}
+                    height={300}
+                />
+                <p className="noto-sans-regular text-secondary text-xl px-10">ทางแอดมินกำลังดำเนินพิจารณาการอนุมัติเปิดร้านอาหาร ใช้เวลา 1-2วัน</p>
             </div>
         )
     }
