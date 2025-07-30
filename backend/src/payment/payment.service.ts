@@ -7,11 +7,12 @@ import {
     NotFoundException,
 } from '@nestjs/common';
 import { PaymentStatus } from '@prisma/client';
-import * as crypto from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
 import { PaymentPayload } from 'src/common/interface/payment-gateway';
 import { OrderService } from 'src/order/order.service';
+import { UserService } from 'src/user/user.service';
+import { PayoutService } from 'src/payout/payout.service';
 
 @Injectable()
 export class PaymentService {
@@ -20,6 +21,8 @@ export class PaymentService {
 
     constructor(
         private readonly configService: ConfigService,
+        private readonly userService: UserService,
+        private readonly payoutService: PayoutService,
         @Inject(forwardRef(() => OrderService)) private readonly orderService: OrderService,
     ) {
 
@@ -34,9 +37,9 @@ export class PaymentService {
     }
 
     async createPaymentCharge(payload: PaymentPayload) {
-        console.log('Payment payload object: ', payload);
         const platformFee = Number(process.env.PLATFORM_COMMISSION_RATE);
         const successUrl = `${process.env.PAYMENT_SUCCESS_URL}/${payload.orderId}`;
+        const { email: userEmail } = await this.userService.findOneUser(payload.userId);
         if (!platformFee) throw new NotFoundException('No value for PLATFORM_COMMISSION_RATE in ENV');
 
         try {
@@ -56,6 +59,7 @@ export class PaymentService {
                 ],
                 mode: 'payment',
                 success_url: successUrl,
+                customer_email: userEmail,
                 metadata: {
                     orderId: payload.orderId,
                     restaurantId: payload.restaurantId,
@@ -94,62 +98,18 @@ export class PaymentService {
     }
 
     async handleWebhook(event: Stripe.Event): Promise<void> {
-        if (event.type === 'payment_intent.succeeded') {
+        if (event.type === 'payment_intent.succeeded' || event.type === 'checkout.session.completed') {
             const paymentIntent = event.data.object;
 
             const orderId = paymentIntent.metadata?.orderId;
             const paymentIntentId = paymentIntent.id;
-
-            console.log('orderId: ', orderId);
-            console.log('paymentIntentId: ', paymentIntentId);
 
             if (!orderId || !paymentIntentId) {
                 throw new Error('Missing metadata in session');
             }
 
             await this.orderService.updateOrderPaymentStatus(orderId, PaymentStatus.paid);
-        }
-    }
-
-    verifyWebhookSignature(signature: string, payload: string): boolean {
-        const webhookSecret = this.configService.get('omise').webhookSecret;
-
-        if (!webhookSecret) {
-            this.logger.error(
-                'OMISE_WEBHOOK_SECRET is not set in environment variables!',
-            );
-            return false;
-        }
-
-        const parts = signature.split(',');
-        let timestamp: string | undefined;
-        let omiseSignature: string | undefined;
-
-        for (const part of parts) {
-            if (part.startsWith('t=')) {
-                timestamp = part.substring(2);
-            } else if (part.startsWith('v1-')) {
-                omiseSignature = part.substring(3);
-            }
-        }
-
-        if (!timestamp || !omiseSignature) {
-            this.logger.warn('Invalid Omise webhook signature format.');
-            return false;
-        }
-
-        const signedPayload = `${timestamp}.${payload}`;
-
-        const expectedSignature = crypto
-            .createHmac('sha256', webhookSecret)
-            .update(signedPayload)
-            .digest('hex');
-
-        if (expectedSignature === omiseSignature) {
-            return true;
-        } else {
-            this.logger.warn('Omise webhook signature verification failed.');
-            return false;
+            await this.payoutService.createPayout(orderId);
         }
     }
 }

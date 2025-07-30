@@ -1,4 +1,4 @@
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { ConflictException, forwardRef, Inject, Injectable } from '@nestjs/common';
 import { CreatePayoutDto } from './dto/create-payout.dto';
 import { UpdatePayoutDto } from './dto/update-payout.dto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -19,10 +19,14 @@ export class PayoutService {
 
   async createPayout(orderId: string) {
     const order = await this.orderService.findOneOrder(orderId);
-    const restaurant = await this.restaurantService.findRestaurant(order.restaurantId);
-    const markupRate = Number(process.env.SELL_PRICE_MARKUP_RATE);
-    const sellingPrice = (Number(order.totalAmount) * (1 + markupRate));
-    const { restaurantEarning, platformFee } = calculatePayout(sellingPrice);
+
+    if (await this.findExistingPayout(orderId)) {
+      throw new ConflictException('Payout of this order is already created');
+    }
+    
+    const { name } = await this.restaurantService.findRestaurant(order.restaurantId);
+    const sellingPrice = order.totalAmount;
+    const { restaurantEarning, platformFee, transactionFee } = calculatePayout(sellingPrice);
 
     const now = new Date();
     const { startDate, endDate } = calculateWeeklyInterval(now);
@@ -30,11 +34,12 @@ export class PayoutService {
     const newPayout: CreatePayoutDto = {
       restaurantRevenue: restaurantEarning,
       platformFee,
+      transactionFee,
       startDate,
       endDate,
       orderId: order.orderId,
       restaurantId: order.restaurantId,
-      restaurantName: restaurant.name,
+      restaurantName: name,
     };
 
     const result = await this.prisma.payout.create({
@@ -67,12 +72,20 @@ export class PayoutService {
     return payouts;
   }
 
-  async findPayout(payoutId?: string) {
+  async findPayout(payoutId: string) {
     const payout = await this.prisma.payout.findUnique({
       where: { payoutId },
     });
 
     return payout;
+  }
+
+  async findExistingPayout(orderId: string): Promise<boolean> {
+    const existingPayout = await this.prisma.payout.findUnique({
+      where: { orderId },
+    });
+
+    return !!existingPayout;
   }
 
   async findAllPayout() {

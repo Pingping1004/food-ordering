@@ -17,6 +17,10 @@ export class CreatePayoutDto {
   @IsNotEmpty()
   platformFee: number | Decimal;
 
+  @IsNumber()
+  @IsNotEmpty()
+  transactionFee: number | Decimal;
+
   @IsDate()
   @IsOptional()
   paidAt?: string;

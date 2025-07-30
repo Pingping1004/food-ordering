@@ -176,7 +176,7 @@ async function bootstrap() {
   });
 
   const port = process.env.PORT || 4000;
-  console.log('NESTJS is running on port: ', port);
+  logger.log('NESTJS is running on port: ', port);
   await app.listen(port);
 }
 bootstrap();

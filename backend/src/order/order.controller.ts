@@ -40,7 +40,7 @@ export class OrderController {
       const userId = req.user.userId;
       if (!userId) throw new Error('User ID is required to create an order');
 
-      const result = await this.orderService.createOrderWithPayment(createOrderDto);
+      const result = await this.orderService.createOrderWithPayment(userId, createOrderDto);
       return result;
     } catch (error) {
       this.logger.error(

@@ -130,7 +130,7 @@ export class OrderService {
     }
   }
 
-  async createOrderWithPayment(createOrderDto: CreateOrderDto) {
+  async createOrderWithPayment(userId: string, createOrderDto: CreateOrderDto) {
     const calculatedTotalAmount = await this.validateOrderMenus(
       createOrderDto.orderMenus,
       createOrderDto.restaurantId,
@@ -139,6 +139,7 @@ export class OrderService {
     return await this.prisma.$transaction(async (tx) => {
       const order = await tx.order.create({
         data: {
+          userId,
           restaurantId: createOrderDto.restaurantId,
           deliverAt: createOrderDto.deliverAt,
           isPaid: PaymentStatus.unpaid,
@@ -166,6 +167,7 @@ export class OrderService {
 
       try {
         const paymentPayload: PaymentPayload = {
+          userId,
           orderId: order.orderId,
           amountInStang: Math.round(Number(order.totalAmount) * 100),
           currency: 'thb',
@@ -204,51 +206,6 @@ export class OrderService {
         throw new InternalServerErrorException(`Payment initiation failed: ${paymentError.message || JSON.stringify(paymentError)}`);
       }
     });
-  }
-
-  async handleWebhookUpdate(paymentGatewayChargeId: string, omiseStatus: string) {
-    this.logger.log(
-      `Updating order with chargeId: ${paymentGatewayChargeId} to status: ${omiseStatus}`,
-    );
-    const order = await this.prisma.order.findUnique({
-      where: { paymentGatewayChargeId: paymentGatewayChargeId },
-    });
-
-    this.logger.log(`Update webhook on order: ${JSON.stringify(order)}`);
-
-    if (!order) {
-      this.logger.warn(`No order found with omise chargeId: ${paymentGatewayChargeId}`);
-      return;
-    }
-
-    if (!Object.values(PaymentStatus).includes(order.isPaid)) {
-      this.logger.error(`Invalid isPaid enum value: ${order.isPaid}`);
-      return;
-    }
-
-    this.logger.log(`Order payment status: ${order.isPaid}`);
-
-    try {
-
-      let newPaymentStatus: PaymentStatus;
-      this.logger.log(`Omise charge status: ${omiseStatus}`);
-
-      if (omiseStatus === 'successful') {
-        newPaymentStatus = PaymentStatus.paid;
-        await this.payoutService.createPayout(order.orderId);
-        await this.updateOrderPaymentStatus(order.orderId, newPaymentStatus);
-        this.logger.log(`New isPaid status to update: ${newPaymentStatus}`);
-      } else if (omiseStatus === 'failed' || omiseStatus === 'expired') {
-        newPaymentStatus = PaymentStatus.rejected;
-        await this.updateOrderPaymentStatus(order.orderId, newPaymentStatus);
-        this.logger.log(`New isPaid status to update: ${newPaymentStatus}`);
-      } else {
-        this.logger.warn(`Unhandled Omise status: ${omiseStatus}`);
-        return;
-      }
-    } catch (err) {
-      this.logger.error(`Webhook update failed: ${err}`);
-    }
   }
 
   async findRestaurantOrders(restaurantId: string) {

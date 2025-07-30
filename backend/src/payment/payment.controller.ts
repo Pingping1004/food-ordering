@@ -26,11 +26,7 @@ export class PaymentController {
         @Headers('stripe-signature') signature: string,
     ) {
         try {
-            console.log('Headers: ', req.headers);
-            console.log('Raw body type:', typeof req.body);
-
             const event = await this.paymentService.verifyWebhook(req.body, signature);
-            console.log('✅ Stripe Webhook verified: ', event.type);
 
             await this.paymentService.handleWebhook(event);
             res.status(200).send('Successfully handle webhook');

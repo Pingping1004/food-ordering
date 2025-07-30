@@ -30,7 +30,7 @@ export class PayoutController {
   }
 
   @Get(':payoutId')
-  findPayout(payoutId?: string) {
+  findPayout(payoutId: string) {
     return this.payoutService.findPayout(payoutId);
   }
 

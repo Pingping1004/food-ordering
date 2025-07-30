@@ -1,6 +1,7 @@
 import { PaymentMethod, PaymentStatus } from "@prisma/client";
 
 export interface PaymentPayload {
+  userId: string;
   orderId: string;
   amountInStang: number;
   currency?: string;

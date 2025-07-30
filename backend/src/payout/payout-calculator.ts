@@ -20,9 +20,9 @@ const APP_TIMEZONE = 'Asia/Bangkok';
 
 export function calculatePayout(totalPrice: number | Decimal): PayoutCalculationType {
   const baseTransactionRate = new Decimal(
-    Number(process.env.OMISE_BASE_TRANSACTION_RATE),
+    Number(process.env.TRANSACTION_RATE),
   );
-  const vatRate = new Decimal(Number(process.env.OMISE_VAT_RATE));
+  const vatRate = new Decimal(Number(process.env.VAT_RATE));
   const platformCommissionRate = new Decimal(
     Number(process.env.PLATFORM_COMMISSION_RATE),
   );

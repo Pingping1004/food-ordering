@@ -6,9 +6,10 @@ import { PaymentService } from 'src/payment/payment.service';
 import { ConfigService } from '@nestjs/config';
 import { PayoutModule } from 'src/payout/payout.module';
 import { CsrfModule } from 'src/csrf/csrf.module';
+import { UserModule } from 'src/user/user.module';
 
 @Module({
-  imports: [forwardRef(() => PayoutModule), CsrfModule],
+  imports: [forwardRef(() => PayoutModule), CsrfModule, UserModule],
   controllers: [OrderController],
   providers: [OrderService, PrismaService, PaymentService, ConfigService],
   exports: [OrderService],

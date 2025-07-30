@@ -33,12 +33,14 @@ model Payout {
   payoutId          String     @id @default(uuid())
   restaurantRevenue Decimal    @db.Decimal(10, 2)
   platformFee       Decimal    @db.Decimal(10, 2)
+  transactionFee    Decimal    @db.Decimal(10, 2)
   isPaid            Boolean    @default(false)
   startDate         DateTime
   endDate           DateTime
   paidAt            DateTime?
   createdAt         DateTime   @default(now())
   orderId           String     @unique
+  restaurantName    String
   restaurantId      String
   order             Order      @relation("OrderToPayout", fields: [orderId], references: [orderId])
   restaurant        Restaurant @relation("RestaurantPayment", fields: [restaurantId], references: [restaurantId], onDelete: Cascade)
@@ -130,6 +132,8 @@ model Order {
   orderMenus           OrderMenu[] @relation("OrderToMenu")
   payoutId            String?
   payout               Payout?     @relation("OrderToPayout")
+  userId              String
+  user                User          @relation("OrderToUser", fields: [userId], references: [userId], onDelete: Cascade)
 
   @@index([restaurantId])
   @@index([status])
@@ -150,6 +154,7 @@ model User {
   refreshTokens RefreshToken[] @relation("UserToRefreshTokens")
   restaurant    Restaurant?
   RoleRequest   RoleRequest?   @relation("UserToRoleRequest")
+  order         Order[]        @relation("OrderToUser")
 
   @@index([name])
   @@index([userId])
