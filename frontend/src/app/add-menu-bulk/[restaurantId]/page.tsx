@@ -269,10 +269,10 @@ export default function BulkAddMenuPage() {
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
                 {/* --- Step 1: Upload Images --- */}
-                <div className="bg-white p-6 rounded-lg shadow-md border border-blue-200">
-                    <h2 className="text-2xl font-semibold mb-4 text-blue-700">ขั้นตอนที่ 1: อัปโหลดรูปภาพเมนู</h2>
+                <div className="bg-white p-6 rounded-lg shadow-md border">
+                    <h2 className="text-2xl font-semibold mb-4 text-primary">ขั้นตอนที่ 1: อัปโหลดรูปภาพเมนู</h2>
                     <p className="text-gray-700 mb-4">
-                        กรุณาเลือกรูปเมนูทั้งหมด (รองรับ PNG, JPEG, WebP ขนาดไม่เกิน 5MB ต่อรูป) <br />
+                        กรุณาเลือกรูปเมนูทั้งหมด
                         ระบบจะเชื่อมรูปเข้ากับชื่อเมนูในไฟล์ CSV อัตโนมัติ
                     </p>
                     <label htmlFor="nativeMenuImgs" className="block text-lg font-semibold mb-2">
@@ -283,7 +283,7 @@ export default function BulkAddMenuPage() {
                         id="nativeMenuImgs"
                         accept="image/png, image/jpeg"
                         multiple
-                        className="p-2 border rounded-md w-full bg-green-100 text-green-800" // Added some simple styles
+                        className="p-2 border rounded-md w-full bg-primary-light text-primary-main" // Added some simple styles
                         {...register("menuImgs")} // Still register it
                         onChange={(e) => { // Manually merge RHF's onChange with your custom one
                             handleMenuImageFilesChange(e);
@@ -312,7 +312,7 @@ export default function BulkAddMenuPage() {
                         type="button"
                         onClick={handleGenerateCsvTemplate}
                         // disabled={loading || watchedMenuImageFiles.length === 0 || Object.keys(errors).length > 0}
-                        className="w-full mt-6 bg-purple-600 hover:bg-purple-700 text-white"
+                        className="w-full mt-6 text-white"
                     >
                         สร้างไฟล์ CSV สำหรับกรอกข้อมูล
                     </Button>
@@ -322,13 +322,14 @@ export default function BulkAddMenuPage() {
                 </div>
 
                 {/* --- Step 2: Upload Filled CSV --- */}
-                <div className="bg-white p-6 rounded-lg shadow-md border border-green-200">
-                    <h2 className="text-2xl noto-sans-bold mb-4 text-green-700">ขั้นตอนที่ 2: อัปโหลดไฟล์ CSV ที่กรอกแล้ว</h2>
+                <div className="bg-white p-6 rounded-lg shadow-md border">
+                    <h2 className="text-2xl noto-sans-bold mb-4 text-primary">ขั้นตอนที่ 2: อัปโหลดไฟล์ CSV ที่กรอกแล้ว</h2>
                     <p className="text-gray-700 mb-4 noto-sans-regular">
-                        ดาวน์โหลดไฟล์ด้านบน แล้วกรอกข้อมูลให้ครบ จากนั้นอัปโหลดาที่นี่ <br />
-                        กรุณาตรวจสอบให้แน่ใจว่าชื่อเมนูตรงกับชื่อไฟล์รูปภาพ เพื่อให้ระบบเชื่อมโยงได้ถูกต้อง
+                        1. ดาวน์โหลดไฟล์ด้านบน จากนั้นอัปโหลดที่นี่<br />
+                        2. กรุณาตรวจสอบให้แชื่อเมนูตรงกับชื่อไฟล์รูปภาพ<br />
+                        3. กรอกแค่ตัวเลขเท่านั้นในช่องpriceกับcookingTime<br />
                     </p>
-                    <p className="text-red-500 text-base">(ไม่ต้องรวมชื่อตาราง และExport เป็นไฟล์ .CSVเท่านั้น)</p>
+                    <p className="text-red-500 text-base noto-sans-bold pb-4">(ไม่ต้องรวมชื่อตาราง และExport เป็นไฟล์ .CSVเท่านั้น)</p>
 
                     <input
                         type="file"
@@ -358,7 +359,7 @@ export default function BulkAddMenuPage() {
                         <div className="mt-4 p-3 bg-green-50 text-green-700 rounded-md text-sm">
                             อัปโหลดข้อมูลสำเร็จ {parsedCsvData.length} รายการ
                             <details className="mt-2">
-                                <summary className="cursor-pointer text-blue-600 hover:underline font-medium">View Parsed Data (First 5 rows)</summary>
+                                <summary className="cursor-pointer text-primary-main hover:underline font-medium">View Parsed Data (First 5 rows)</summary>
                                 <pre className="mt-2 p-2 bg-gray-50 rounded text-xs overflow-auto max-h-40">
                                     {JSON.stringify(parsedCsvData.slice(0, 5), null, 2)}
                                     {parsedCsvData.length > 5 && "\n... (ตัดตอน)"}

@@ -43,7 +43,6 @@ function Page() {
             .filter((order) => order.isPaid === "paid" && order.status === OrderStatus.done)
             .reduce((total, order) => total + Number(order.totalAmount), 0);
     }, [weeklyOrders]);
-    console.log('FIlter: ', weeklySales);
 
     const handleOrderUpdate = (updatedOrder: OrderProps) => {
         setOrder(updatedOrder);
