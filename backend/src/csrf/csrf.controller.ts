@@ -12,9 +12,9 @@ export class CsrfController {
   getCsrfToken(@Req() req: Request, @Res() res: Response) {
     const origin = req.headers.origin;
     const allowedOrigins = [
-      'https://food-ordering.online',
-      'https://api.food-ordering.online',
-      'https://food-ordering-mvp.onrender.com',
+      'https://promptserve.online',
+      'https://api.promptserve.online',
+      'https://promptserve-mvp.onrender.com',
       'https://localhost:8000',
       process.env.FRONTEND_BASE_URL,
       process.env.NEXT_PUBLIC_BACKEND_API_URL,
@@ -44,7 +44,7 @@ export class CsrfController {
       sameSite: 'none',
       path: '/',
       maxAge: 1000 * 60 * 60 * 24, // 1 day
-      domain: '.food-ordering.online',
+      domain: '.promptserve.online',
     });
 
     return res.status(200).json({ csrfToken: token });

@@ -11,11 +11,13 @@ import {
 import { CreateOrderDto, CreateOrderMenusDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { PrismaService } from '../prisma/prisma.service';
-import { IsPaid, OrderStatus, PaymentMethodType } from '@prisma/client';
+import { PaymentStatus, OrderStatus, PaymentMethod } from '@prisma/client';
 import { PaymentService } from 'src/payment/payment.service';
 import { PayoutService } from 'src/payout/payout.service';
 import { calculateWeeklyInterval } from 'src/payout/payout-calculator';
+
 import Decimal from 'decimal.js';
+import { PaymentPayload } from 'src/common/interface/payment-gateway';
 
 @Injectable()
 export class OrderService {
@@ -118,30 +120,29 @@ export class OrderService {
     return calculatedTotalAmount;
   }
 
+  validateDeliveryTime(deliverTime: Date | string, bufferMin: number = 5) {
+    const now = new Date();
+    const deliverAtDate = new Date(deliverTime);
+    const minimumAllowedDeliveTime = new Date(now.getTime() + bufferMin * 60 * 1000);
+
+    if (deliverAtDate < minimumAllowedDeliveTime) {
+      throw new BadRequestException(`เวลารับอาหารต้องอยู่หลังจากเวลาปัจจุบัน ${bufferMin}นาที`);
+    }
+  }
+
   async createOrderWithPayment(createOrderDto: CreateOrderDto) {
     const calculatedTotalAmount = await this.validateOrderMenus(
       createOrderDto.orderMenus,
       createOrderDto.restaurantId,
     );
 
-    const providedTotalAmount = createOrderDto.orderMenus.reduce(
-      (sum, item) => sum + item.unitPrice * item.quantity,
-      0,
-    );
-
-    if (calculatedTotalAmount !== providedTotalAmount) {
-      throw new InternalServerErrorException(
-        'Calculated amount does not match provided amount.',
-      );
-    }
-
     return await this.prisma.$transaction(async (tx) => {
       const order = await tx.order.create({
         data: {
           restaurantId: createOrderDto.restaurantId,
           deliverAt: createOrderDto.deliverAt,
-          isPaid: IsPaid.unpaid,
-          paymentMethodType: createOrderDto.paymentMethod,
+          isPaid: PaymentStatus.unpaid,
+          paymentMethod: createOrderDto.paymentMethod,
           paymentGatewayStatus: 'pending',
           totalAmount: calculatedTotalAmount,
           orderMenus: {
@@ -161,83 +162,66 @@ export class OrderService {
         },
       });
 
-      const now = new Date();
-      const deliverAtDate = new Date(order.deliverAt);
-      const minimumAllowedDeliveTime = new Date(now.getTime() + 5 * 60 * 1000);
-
-      if (deliverAtDate < minimumAllowedDeliveTime) {
-        throw new BadRequestException(
-          'เวลารับอาหารต้องอยู่หลังจากเวลาปัจจุบัน 5นาที',
-        );
-      }
-
-      let charge;
+      this.validateDeliveryTime(order.deliverAt, 5);
 
       try {
-        const frontendReturnUri = `${process.env.FRONTEND_BASE_URL}/order/done/${order.orderId}`;
+        const paymentPayload: PaymentPayload = {
+          orderId: order.orderId,
+          amountInStang: Math.round(Number(order.totalAmount) * 100),
+          currency: 'thb',
+          method: PaymentMethod.promptpay,
+          restaurantId: order.restaurantId,
+        }
 
-        charge = await this.paymentService.createPromptPayCharge(
-          calculatedTotalAmount,
-          createOrderDto.paymentMethod as PaymentMethodType,
-          frontendReturnUri,
-          order.orderId,
-        );
+        const paymentIntent = await this.paymentService.createPaymentCharge(paymentPayload);
 
         await tx.order.update({
           where: { orderId: order.orderId },
           data: {
-            omiseChargeId: charge.id,
-            paymentGatewayStatus: charge.status,
+            paymentGatewayChargeId: paymentIntent.id,
+            paymentGatewayStatus: 'created',
           },
         });
 
-        this.logger.log('QrImageUri: ', charge.source?.scannable_code?.image?.image_uri);
-
         return {
           orderId: order.orderId,
-          chargeId: charge.id,
-          authorizeUri: charge.authorize_uri || null,
-          status: charge.status,
-          qrDownloadUri: charge.source?.scannable_code?.image?.download_uri || null,
-          qrImageUri: charge.source?.scannable_code?.image?.image_uri || null,
+          intentId: paymentIntent.id,
+          checkoutUrl: paymentIntent.url,
+          paymentGatewayIntentId: paymentIntent.payment_intent as string,
+          status: 'pending',
         };
       } catch (paymentError) {
-        this.logger.error(
-          'Error initiating payment with Omise:',
-          JSON.stringify(paymentError, Object.getOwnPropertyNames(paymentError), 2)
-        );
+        this.logger.error('Error stack:', paymentError.stack);
 
         await tx.order.update({
           where: { orderId: order.orderId },
           data: {
             paymentGatewayStatus: 'failed_initiation',
-            omiseChargeId: null,
+            paymentGatewayChargeId: null,
           },
         });
 
-        throw new InternalServerErrorException(
-          'Payment initiation failed. Please try again.',
-        );
+        throw new InternalServerErrorException(`Payment initiation failed: ${paymentError.message || JSON.stringify(paymentError)}`);
       }
     });
   }
 
-  async handleWebhookUpdate(omiseChargeId: string, omiseStatus: string) {
+  async handleWebhookUpdate(paymentGatewayChargeId: string, omiseStatus: string) {
     this.logger.log(
-      `Updating order with chargeId: ${omiseChargeId} to status: ${omiseStatus}`,
+      `Updating order with chargeId: ${paymentGatewayChargeId} to status: ${omiseStatus}`,
     );
     const order = await this.prisma.order.findUnique({
-      where: { omiseChargeId: omiseChargeId },
+      where: { paymentGatewayChargeId: paymentGatewayChargeId },
     });
 
     this.logger.log(`Update webhook on order: ${JSON.stringify(order)}`);
 
     if (!order) {
-      this.logger.warn(`No order found with omise chargeId: ${omiseChargeId}`);
+      this.logger.warn(`No order found with omise chargeId: ${paymentGatewayChargeId}`);
       return;
     }
 
-    if (!Object.values(IsPaid).includes(order.isPaid)) {
+    if (!Object.values(PaymentStatus).includes(order.isPaid)) {
       this.logger.error(`Invalid isPaid enum value: ${order.isPaid}`);
       return;
     }
@@ -246,18 +230,18 @@ export class OrderService {
 
     try {
 
-      let newIsPaidStatus: IsPaid;
+      let newPaymentStatus: PaymentStatus;
       this.logger.log(`Omise charge status: ${omiseStatus}`);
 
       if (omiseStatus === 'successful') {
-        newIsPaidStatus = IsPaid.paid;
+        newPaymentStatus = PaymentStatus.paid;
         await this.payoutService.createPayout(order.orderId);
-        await this.updateOrderPaymentStatus(order.orderId, newIsPaidStatus);
-        this.logger.log(`New isPaid status to update: ${newIsPaidStatus}`);
+        await this.updateOrderPaymentStatus(order.orderId, newPaymentStatus);
+        this.logger.log(`New isPaid status to update: ${newPaymentStatus}`);
       } else if (omiseStatus === 'failed' || omiseStatus === 'expired') {
-        newIsPaidStatus = IsPaid.rejected;
-        await this.updateOrderPaymentStatus(order.orderId, newIsPaidStatus);
-        this.logger.log(`New isPaid status to update: ${newIsPaidStatus}`);
+        newPaymentStatus = PaymentStatus.rejected;
+        await this.updateOrderPaymentStatus(order.orderId, newPaymentStatus);
+        this.logger.log(`New isPaid status to update: ${newPaymentStatus}`);
       } else {
         this.logger.warn(`Unhandled Omise status: ${omiseStatus}`);
         return;
@@ -390,10 +374,7 @@ export class OrderService {
     return { result, message: `Successfully update delay status for 10 mins` };
   }
 
-  async updateOrderPaymentStatus(orderId: string, status: IsPaid) {
-    const order = await this.findOneOrder(orderId);
-    if (order.isPaid === status) return;
-
+  async updateOrderPaymentStatus(orderId: string, status: PaymentStatus) {
     try {
       this.logger.log(`Update order payment status function is activated!`);
       const updatePaymentOrder = await this.prisma.order.update({

@@ -15,7 +15,7 @@ import {
   ArrayMinSize,
   ArrayMaxSize,
 } from 'class-validator';
-import { PaymentMethodType } from '@prisma/client';
+import { PaymentMethod } from '@prisma/client';
 import { CreatePaymentDto } from 'src/payment/dto/create-payment.dto';
 
 export class CreateOrderMenusDto {
@@ -89,8 +89,8 @@ export class CreateOrderDto {
   omiseChargeId?: string;
 
   @IsOptional()
-  @IsEnum(PaymentMethodType)
-  paymentMethod?: PaymentMethodType;
+  @IsEnum(PaymentMethod)
+  paymentMethod?: PaymentMethod;
 
   @IsOptional() // Could be null if no payment initiated or before first update
   @IsString() // Use string as Omise provides various statuses

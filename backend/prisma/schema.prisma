@@ -59,6 +59,11 @@ model Restaurant {
   adminSurname        String
   adminTel            String
   adminEmail          String
+
+  accountNumber       String?             @default("0000000000")
+  bankAccount         String?             @default("TEST ACCOUNT")
+  accountHolderFullName   String?         @default("TEST BANK")
+
   openDate            DateWeek[]
   userId              String               @unique
   isTemporarilyClosed Boolean              @default(false)
@@ -111,24 +116,26 @@ model Order {
   status               OrderStatus @default(receive)
   orderAt              DateTime    @default(now())
   deliverAt            DateTime
-  isPaid               IsPaid      @default(unpaid)
+  isPaid               PaymentStatus      @default(unpaid)
   isDelay              Boolean     @default(false)
   totalAmount          Decimal    @db.Decimal(10, 2)
   paidAt               DateTime?
-  omiseChargeId        String?     @unique @map("omise_charge_id")
-  paymentMethodType    String?     @map("payment_method_type")
+  paymentGatewayChargeId        String?     @unique @map("omise_charge_id")
+  paymentMethod    String?     @map("payment_method_type")
   paymentCurrency      String?     @map("payment_currency")
   paymentGatewayStatus String?     @map("payment_gateway_status")
   failureReason        String?
   restaurantId         String
   restaurant           Restaurant  @relation("restaurantToOrder", fields: [restaurantId], references: [restaurantId], onDelete: Cascade)
   orderMenus           OrderMenu[] @relation("OrderToMenu")
+  payoutId            String?
   payout               Payout?     @relation("OrderToPayout")
 
   @@index([restaurantId])
   @@index([status])
   @@index([isPaid])
   @@index([orderAt])
+  @@index([payoutId])
 }
 
 model User {
@@ -165,12 +172,10 @@ enum RoleRequestStatus {
   rejected
 }
 
-enum PaymentMethodType {
+enum PaymentMethod {
   promptpay
-  kbank
-  krungsri
-  scb
-  bbl
+  mobileBanking
+  cash
 }
 
 enum OrderStatus {
@@ -188,7 +193,7 @@ enum Role {
   guest
 }
 
-enum IsPaid {
+enum PaymentStatus {
   paid
   unpaid
   processing

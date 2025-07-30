@@ -13,9 +13,9 @@ import { json, Request, Response } from 'express';
 import cookieParser from 'cookie-parser';
 import * as dotenv from 'dotenv';
 import helmet from 'helmet';
-import cors from 'cors';
 import compression from 'compression';
 import * as fs from 'fs';
+import * as bodyParser from 'body-parser';
 
 dotenv.config();
 declare global {
@@ -32,14 +32,16 @@ async function bootstrap() {
     cert: fs.readFileSync('./cert/localhost.pem'),
   };
 
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, { httpsOptions });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { httpsOptions, bodyParser: false });
   app.setGlobalPrefix('api');
   const logger = new Logger('Bootstrap');
 
+  app.use('/api/payment/webhook', express.raw({ type: 'application/json' }));
+
   const allowedOrigins = [
-    'https://food-ordering.online',
-    'https://api.food-ordering.online',
-    'https://food-ordering-mvp.onrender.com',
+    'https://promptserve.online',
+    'https://api.promptserve.online',
+    'https://promptserve-mvp.onrender.com',
     'https://localhost:8000',
     process.env.FRONTEND_BASE_URL,
     process.env.NEXT_PUBLIC_BACKEND_API_URL,
@@ -69,20 +71,10 @@ async function bootstrap() {
       'x-xsrf-token',
       'Authorization',
       'skipauth',
+      'stripe-signature'
     ],
     exposedHeaders: ['Set-Cookie'],
   });
-
-  app.use(
-    '/api/webhooks/omise',
-    cors({
-      origin: true,
-      method: ['POST'],
-      allowedHeaders: ['Content-Type'],
-    }),
-  );
-
-  app.use('/api/webhooks/omise', express.raw({ type: 'application/json' }));
 
   app.use(cookieParser());
   app.set('trust proxy', 1);
@@ -162,7 +154,7 @@ async function bootstrap() {
   app.use(
     json({
       verify: (req: express.Request, res: express.Response, buf: Buffer) => {
-        if (req.originalUrl === process.env.WEBHOOK_PATH) {
+        if (req.originalUrl === process.env.WEBHOOK_ENDPOINT) {
           req.rawBody = buf;
         }
       },

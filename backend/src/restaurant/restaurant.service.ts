@@ -71,6 +71,9 @@ export class RestaurantService {
         adminSurname: createRestaurantDto.adminSurname,
         adminTel: createRestaurantDto.adminTel,
         adminEmail: createRestaurantDto.adminEmail,
+        accountNumber: createRestaurantDto.accountNumber,
+        bankAccount: createRestaurantDto.bankAccount,
+        accountHolderFullName: createRestaurantDto.accountHolderFullName,
       };
 
       const result = await this.prisma.restaurant.create({

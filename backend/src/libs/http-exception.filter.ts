@@ -22,9 +22,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const origin = request.headers.origin;
 
     const allowedOrigins = [
-      'https://food-ordering.online',
-      'https://api.food-ordering.online',
-      'https://food-ordering-mvp.onrender.com',
+      'https://promptserve.online',
+      'https://api.promptserve.online',
+      'https://promptserve-mvp.onrender.com',
       'https://localhost:8000',
       process.env.FRONTEND_BASE_URL,
       process.env.NEXT_PUBLIC_BACKEND_API_URL,

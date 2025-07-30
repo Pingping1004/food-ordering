@@ -32,6 +32,11 @@ interface RefreshResult {
   user: Omit<UserWithRestaurant, 'password' | 'createdAt' | 'updatedAt'>;
 }
 
+interface ValidatedUserResult {
+  user?: Omit<User, 'password'>;
+  errorType?: 'EMAIL_NOT_FOUND' | 'INCORRECT_PASSWORD' | 'UNKNOWN_VALIDATION_ERROR';
+}
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -39,21 +44,33 @@ export class AuthService {
     private readonly userService: UserService,
     private readonly refreshTokenService: RefreshTokenService,
     private readonly csrfTokenService: CsrfTokenService,
-  ) {}
+  ) { }
 
   private readonly logger = new Logger('AuthService');
 
   async validateUser(
     email: string,
-    password: string,
-  ): Promise<Partial<User> | null> {
+    pass: string,
+  ): Promise<ValidatedUserResult | null> {
     const user = await this.userService.findOneByEmail(email);
 
-    if (user && (await bcrypt.compare(password, user.password))) {
-      const { password, ...result } = user;
-      return result;
+    let isPasswordValid = false;
+    if (user) {
+      isPasswordValid = await bcrypt.compare(pass, user.password);
+    } else {
+      // If user DOES NOT exist, *still* perform a time-consuming operation.
+      const dummyHashedPassword = await bcrypt.hash('dummy_password_for_timing', 10); // Hash a dummy pass with a fixed salt rounds
+      await bcrypt.compare(pass, dummyHashedPassword); // This takes roughly the same time as a real comparison.
+      this.logger.warn(`Login attempt for non-existent email: ${email}`);
+      return { errorType: 'EMAIL_NOT_FOUND' };
     }
-    return null;
+
+    if (!isPasswordValid) {
+      return null;
+    }
+
+    const { password, ...result } = user;
+    return { user: result }
   }
 
   private async generateToken(payload: {
@@ -92,17 +109,23 @@ export class AuthService {
 
   async login(loginDto: LoginDto) {
     this.csrfTokenService.generateToken();
-    const user = await this.validateUser(loginDto.email, loginDto.password);
-    if (!user)
-      throw new UnauthorizedException('Email or password is incorrect');
+    const validationResult = await this.validateUser(loginDto.email, loginDto.password);
+    if (!validationResult) throw new NotFoundException('Validation result not found');
 
+    if (validationResult.errorType) {
+      this.logger.log(`Login failed: Email '${loginDto.email}' not found.`);
+      throw new UnauthorizedException('...');
+    }
+
+    const user = validationResult.user;
+
+    if (!user) throw new NotFoundException('User data not found');
     if (!user.userId || !user.email || !user.role) {
-      throw new UnauthorizedException('User data is incomplete.');
+      this.logger.error(`User data is incomplete for user ID: ${user.userId}`);
+      throw new UnauthorizedException('User profile is incomplete. Please contact support.');
     }
 
     const existingUser = await this.userService.findOneUser(user.userId);
-    if (!existingUser)
-      throw new NotFoundException('Not found account with email: ', user.email);
 
     const payload = { sub: user.userId, email: user.email, role: user.role };
     const { accessToken, refreshToken } = await this.generateToken(payload);

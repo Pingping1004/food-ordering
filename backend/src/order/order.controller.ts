@@ -17,11 +17,10 @@ import { OrderService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { Response, Request } from 'express';
-import Omise from 'omise';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from '../decorators/role.decorator';
 import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
-import { IsPaid, Role, User } from '@prisma/client';
+import { PaymentStatus, Role, User } from '@prisma/client';
 import { CsrfGuard } from 'src/guards/csrf.guard';
 
 @Controller('order')
@@ -32,7 +31,7 @@ export class OrderController {
 
   private readonly logger = new Logger('OrderController');
 
-  @Post('omise')
+  @Post('create')
   async createOrder(
     @Body() createOrderDto: CreateOrderDto,
     @Req() req: Request & { user: User },
@@ -41,19 +40,8 @@ export class OrderController {
       const userId = req.user.userId;
       if (!userId) throw new Error('User ID is required to create an order');
 
-      const result = await this.orderService.createOrderWithPayment(
-        createOrderDto,
-      );
-
-      return {
-        message: 'Order created and payment initiated successfully',
-        orderId: result.orderId,
-        chargeId: result.chargeId,
-        authorizeUri: result.authorizeUri,
-        status: result.status,
-        qrDownloadUri: result.qrDownloadUri,
-        qrImageUri: result.qrImageUri,
-      };
+      const result = await this.orderService.createOrderWithPayment(createOrderDto);
+      return result;
     } catch (error) {
       this.logger.error(
         'Error in createOrder controller function: ',
@@ -66,13 +54,13 @@ export class OrderController {
 
   @Get('omise/complete')
   async handleOmiseReturn(
-    @Query('charge_id') chargeId: string,
+    @Query('intentId') intentId: string,
     @Query('orderId') orderId: string,
     @Res() res: Response,
   ) {
-    if (!chargeId) {
-      this.logger.error('Omise return_uri called without charge_id');
-      throw new NotFoundException('Cannot find chargeId');
+    if (!intentId) {
+      this.logger.error('Return_uri called without intentId');
+      throw new NotFoundException('Cannot find intentId');
     }
 
     if (!orderId) {
@@ -80,37 +68,16 @@ export class OrderController {
       throw new NotFoundException('Cannot find orderId');
     }
 
-    const omise = Omise({
-      publicKey: process.env.OMISE_PUBLIC_KEY,
-      secretKey: process.env.OMISE_SECRET_KEY,
-    });
-
     try {
-      const retrievedCharge = await omise.charges.retrieve(chargeId);
+      // const retrievedCharge = await omise.charges.retrieve(chargeId);
 
       const successRedirectUrl = `${process.env.FRONTEND_BASE_URL}/user/order/done/${orderId}`;
 
-      if (retrievedCharge.paid) {
-        this.logger.log(
-          `Omise charge ${chargeId} for order ${orderId} is paid successfully.`,
-        );
-
-        await this.orderService.updateOrderPaymentStatus(orderId, IsPaid.paid);
+        await this.orderService.updateOrderPaymentStatus(orderId, PaymentStatus.paid);
         return res.status(200).json({
           message: 'Payment successful',
           redirectUrl: successRedirectUrl,
         });
-      } else {
-        this.logger.log(
-          `Omise charge ${chargeId} not paid. Status: ${retrievedCharge.status}. Failure: ${retrievedCharge.failure_message}`,
-        );
-
-        await this.orderService.updateOrderPaymentStatus(orderId, IsPaid.unpaid);
-        return res.status(400).json({
-          message: 'User hasn not paid for the order',
-          // redirectUrl: successRedirectUrl,
-        });
-      }
     } catch (error) {
       this.logger.error('Error handling Omise return: ', error);
       return res.status(400).json({

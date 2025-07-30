@@ -1,89 +1,42 @@
 import {
-  Controller,
-  Res,
-  Post,
-  Body,
-  HttpStatus,
-  Logger,
+    Controller,
+    Res,
+    Post,
+    Logger,
+    Req,
+    Headers,
 } from '@nestjs/common';
 import { PaymentService } from './payment.service';
 import { OrderService } from 'src/order/order.service';
-import { Response } from 'express';
-import { Public } from 'src/decorators/public.decorator';
+import { Request, Response } from 'express';
 
-@Controller('webhooks')
+@Controller('payment')
 export class PaymentController {
-  constructor(
-    private readonly paymentService: PaymentService,
-    private readonly orderService: OrderService,
-  ) {}
+    constructor(
+        private readonly paymentService: PaymentService,
+        private readonly orderService: OrderService,
+    ) { }
 
-  private readonly logger = new Logger('PaymentController');
+    private readonly logger = new Logger('PaymentController');
 
-  @Public()
-  @Post('omise')
-  async handleOmiseWebhook(@Body() event: any, @Res() res: Response) {
-    this.logger.log('Webhook received and processed');
-
-    if (!event || typeof event !== 'object') {
-      this.logger.error(
-        'Webhook event body is missing or not an object:',
-        event,
-      );
-      return res.status(HttpStatus.BAD_REQUEST).send('Invalid webhook payload');
-    }
-
-    try {
-      if (event.data?.object === 'charge') {
-        // Check if the event is about a charge
-        const omiseChargeId = event.data.id;
-        this.logger.log(`Omise chargeId: ${omiseChargeId}`);
-
-        let retrievedCharge;
+    @Post('webhook')
+    async handleStripeWebhook(
+        @Req() req: Request,
+        @Res() res: Response,
+        @Headers('stripe-signature') signature: string,
+    ) {
         try {
-          retrievedCharge =
-            await this.paymentService.retrieveCharge(omiseChargeId);
-          this.logger.log(`Payment status: ${retrievedCharge.status}`);
-        } catch (err) {
-          this.logger.error(
-            `Failed to retrieve charge: ${err.message}`,
-            err.stack,
-          );
-          return res.status(500).send('Failed to retrieve Omise charge');
+            console.log('Headers: ', req.headers);
+            console.log('Raw body type:', typeof req.body);
+
+            const event = await this.paymentService.verifyWebhook(req.body, signature);
+            console.log('✅ Stripe Webhook verified: ', event.type);
+
+            await this.paymentService.handleWebhook(event);
+            res.status(200).send('Successfully handle webhook');
+        } catch (error) {
+            this.logger.error(`Stripe webhook error: ${error.message}`);
+            res.status(400).send(`Webhook error: ${error.message}`);
         }
-
-        this.logger.log(`Webhook event key: ${event.key}`);
-        this.logger.log(
-          `Received full webhook payload: ${JSON.stringify(event)}`,
-        );
-
-        if (event.key === 'charge.complete') {
-          await this.orderService.handleWebhookUpdate(
-            retrievedCharge.id,
-            retrievedCharge.status,
-          );
-        } else if (event.key === 'charge.failure') {
-          await this.orderService.handleWebhookUpdate(
-            retrievedCharge.id,
-            'failed',
-          );
-        } else if (event.key === 'charge.expire') {
-          await this.orderService.handleWebhookUpdate(
-            retrievedCharge.id,
-            'expired',
-          );
-        }
-      }
-
-      res.status(HttpStatus.OK).send('Webhook received and processed.');
-    } catch (error) {
-      this.logger.error(
-        `Error processing Omise webhook: ${error.message}`,
-        error.stack,
-      );
-      res
-        .status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .send('Error processing webhook (logged on server).');
     }
-  }
 }

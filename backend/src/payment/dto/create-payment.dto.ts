@@ -1,4 +1,4 @@
-import { PaymentMethodType } from '@prisma/client';
+import { PaymentMethod } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsNotEmpty,
@@ -25,7 +25,7 @@ export class CreatePaymentDto {
   currency?: string;
 
   @IsNotEmpty()
-  @IsEnum(PaymentMethodType)
+  @IsEnum(PaymentMethod)
   paymentMethod: string;
 
   @IsOptional()

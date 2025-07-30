@@ -14,7 +14,7 @@ import {
   ArrayMinSize,
   ArrayMaxSize,
 } from 'class-validator';
-import { PaymentMethodType, OrderStatus } from '@prisma/client';
+import { PaymentMethod, OrderStatus } from '@prisma/client';
 import { CreatePaymentDto } from 'src/payment/dto/create-payment.dto';
 import { CreateOrderDto, CreateOrderMenusDto } from './create-order.dto';
 import { PartialType } from '@nestjs/swagger';
@@ -91,8 +91,8 @@ export class UpdateOrderDto extends PartialType(CreateOrderDto) {
   omiseChargeId?: string;
 
   @IsOptional()
-  @IsEnum(PaymentMethodType)
-  paymentMethod?: PaymentMethodType;
+  @IsEnum(PaymentMethod)
+  paymentMethod?: PaymentMethod;
 
   @IsOptional() // Could be null if no payment initiated or before first update
   @IsString() // Use string as Omise provides various statuses

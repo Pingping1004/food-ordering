@@ -74,4 +74,16 @@ export class CreateRestaurantDto {
   @IsNotEmpty()
   @IsString()
   adminEmail: string;
+
+  @IsNotEmpty()
+  @IsString()
+  accountNumber: string;
+
+  @IsNotEmpty()
+  @IsString()
+  bankAccount: string;
+
+  @IsNotEmpty()
+  @IsString()
+  accountHolderFullName: string;
 }

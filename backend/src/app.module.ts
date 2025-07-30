@@ -109,6 +109,5 @@ export class AppModule implements NestModule {
       path: '*',
       method: RequestMethod.ALL,
     });
-    // consumer.apply(CorsHeadersMiddleware).forRoutes('*');
   }
 }
