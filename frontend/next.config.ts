@@ -26,11 +26,6 @@ const nextConfig: NextConfig = {
         remotePatterns: [
             {
                 protocol: 'https',
-                hostname: 'images.food-ordering.online',
-                pathname: '/**',
-            },
-            {
-                protocol: 'https',
                 hostname: 'images.promptserve.online',
                 pathname: '/**',
             }

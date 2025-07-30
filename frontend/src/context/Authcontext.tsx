@@ -376,13 +376,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             const isUnauthorized = error.response?.status === 401;
 
             if (isUnauthorized) {
-                console.log('401 Unauthorized detected:', {
-                    url: originalRequest.url,
-                    method: originalRequest.method,
-                    retry: originalRequest._retry,
-                    isRefreshing: isRefreshing.current
-                });
-
                 // Check if this is a critical endpoint that should immediately force logout
                 const criticalEndpoints = ['/user/profile', '/auth/refresh'];
                 const isCriticalEndpoint = criticalEndpoints.some(endpoint =>
@@ -391,7 +384,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
                 // If it's a critical endpoint, force logout immediately
                 if (isCriticalEndpoint) {
-                    console.log('Critical endpoint 401 - forcing immediate logout');
                     setUser(null);
                     setIsAuth(false);
                     handleLogoutSideEffects(true);
@@ -402,7 +394,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
                 // If this is a retry attempt or refresh is already happening, force logout
                 if (!canRetry) {
-                    console.log('401 error on retry attempt - forcing logout');
                     setUser(null);
                     setIsAuth(false);
                     handleLogoutSideEffects(true);
@@ -437,7 +428,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             (error) => {
                 if (axios.isAxiosError(error) && error.response?.status === 401) {
                     // If we get here, it means the first interceptor didn't handle it properly
-                    console.log('Global 401 interceptor - forcing logout');
 
                     if (!isLoggingOut.current) {
                         setUser(null);

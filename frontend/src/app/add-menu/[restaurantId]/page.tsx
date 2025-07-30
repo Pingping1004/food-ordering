@@ -118,11 +118,7 @@ export default function AddMenuPage() {
                 setIsApiLoading(false);
                 return;
             }
-
-            for (let [key, value] of formData.entries()) {
-                console.log(`${key}:`, value);
-            }
-
+            
             const response = await api.post<MenuItem>(
                 `/menu/single`,
                 formData,
