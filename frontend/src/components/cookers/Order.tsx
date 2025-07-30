@@ -126,6 +126,13 @@ export const Order = ({
     const handleUpdateStatus = async (orderId: string) => {
         setIsUpdating(true);
         try {
+            const { nextStatus } = getOrderStatusProps(status);
+
+            if (isPaid === 'unpaid' && (status === "ready" || nextStatus === OrderStatus.done)) {
+                alert('ไม่สามารถจบออเดอร์ได้ หากยังไม่ชำระเงิน');
+                return;
+            }
+
             const response = await api.patch(`/order/update-status/${orderId}`);
 
             const updatedOrder = response.data.result;

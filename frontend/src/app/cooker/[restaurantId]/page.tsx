@@ -16,7 +16,7 @@ function Page() {
     const [, setOrder] = useState<OrderProps>();
     const [navbarStatus, setNavbarStatus] = useState<OrderStatus>(OrderStatus.receive);
     const [isLoading, setIsLoading] = useState<boolean>(true);
-    
+
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -30,13 +30,20 @@ function Page() {
         fetchData();
     }, [cooker.restaurantId, orders]);
 
-    const weeklyDone = useMemo(() => {
-        return weeklyOrders.filter((order) => order.status === OrderStatus.done).length;
+    const filterWeeklyOrders = useMemo(() => {
+        return weeklyOrders.filter((order) => order.isPaid === "paid");
     }, [weeklyOrders]);
 
+    const weeklyDone = useMemo(() => {
+        return filterWeeklyOrders.filter((order) => (order.status === OrderStatus.done)).length;
+    }, [filterWeeklyOrders]);
+
     const weeklySales = useMemo(() => {
-        return weeklyOrders.reduce((total, order) => total + Number(order.totalAmount), 0);
+        return weeklyOrders
+            .filter((order) => order.isPaid === "paid" && order.status === OrderStatus.done)
+            .reduce((total, order) => total + Number(order.totalAmount), 0);
     }, [weeklyOrders]);
+    console.log('FIlter: ', weeklySales);
 
     const handleOrderUpdate = (updatedOrder: OrderProps) => {
         setOrder(updatedOrder);
@@ -54,7 +61,7 @@ function Page() {
     if (!cooker.isApproved) {
         return (
             <div className="flex flex-col w-full h-screen justify-center text-center items-center gap-y-10">
-                <Image 
+                <Image
                     src="/processing.svg"
                     alt="Processing icon"
                     priority
