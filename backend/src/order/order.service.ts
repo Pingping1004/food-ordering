@@ -7,6 +7,7 @@ import {
   Inject,
   ForbiddenException,
   Logger,
+  ConflictException,
 } from '@nestjs/common';
 import { CreateOrderDto, CreateOrderMenusDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
@@ -351,6 +352,15 @@ export class OrderService {
   async updateOrderStatus(orderId: string) {
     const order = await this.findOneOrder(orderId);
     const nextStatus = this.statusTransitions[order.status];
+
+    console.log('Update order status: ', order);
+    console.log('Next status: ', nextStatus);
+
+    if (order.isPaid === PaymentStatus.unpaid && 
+      (order.status === OrderStatus.ready || nextStatus === OrderStatus.done)
+    ) {
+      throw new ConflictException('Only paid order can be marked as done');
+    }
 
     const result = await this.prisma.order.update({
       where: { orderId },
