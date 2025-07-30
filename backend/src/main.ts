@@ -15,7 +15,7 @@ import * as dotenv from 'dotenv';
 import helmet from 'helmet';
 import compression from 'compression';
 import * as fs from 'fs';
-import * as bodyParser from 'body-parser';
+import { ConfigModule } from '@nestjs/config';
 
 dotenv.config();
 declare global {
@@ -37,6 +37,11 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
 
   app.use('/api/payment/webhook', express.raw({ type: 'application/json' }));
+
+  ConfigModule.forRoot({
+    isGlobal: true,
+    envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
+  });
 
   const allowedOrigins = [
     'https://promptserve.online',

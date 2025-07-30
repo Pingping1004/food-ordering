@@ -353,9 +353,6 @@ export class OrderService {
     const order = await this.findOneOrder(orderId);
     const nextStatus = this.statusTransitions[order.status];
 
-    console.log('Update order status: ', order);
-    console.log('Next status: ', nextStatus);
-
     if (order.isPaid === PaymentStatus.unpaid && 
       (order.status === OrderStatus.ready || nextStatus === OrderStatus.done)
     ) {

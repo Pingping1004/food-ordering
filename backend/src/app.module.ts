@@ -66,7 +66,8 @@ import { S3Service } from './s3/s3.service';
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
-      envFilePath: '.env',
+      // envFilePath: '.env',
+      envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
     }),
     PayoutModule,
     AuthModule,

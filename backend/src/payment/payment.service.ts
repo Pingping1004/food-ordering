@@ -26,7 +26,8 @@ export class PaymentService {
         @Inject(forwardRef(() => OrderService)) private readonly orderService: OrderService,
     ) {
 
-        const stripeSecret = this.configService.get<string>('STRIPE_SECRET_API_KEY');
+        // const stripeSecret = this.configService.get<string>('STRIPE_SECRET_API_KEY');
+        const stripeSecret = process.env.STRIPE_SECRET_API_KEY;
         if (!stripeSecret) {
             throw new Error('Missing STRIPE_SECRET_API_KEY in env');
         }
@@ -80,7 +81,8 @@ export class PaymentService {
     }
 
     async verifyWebhook(rawBody: Buffer, signature: string): Promise<Stripe.Event> {
-        const webhookSecret = this.configService.get<string>('STRIPE_WEBHOOK_SECRET');
+        // const webhookSecret = this.configService.get<string>('STRIPE_WEBHOOK_SECRET');
+        const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
         if (!webhookSecret) throw new NotFoundException('No value for STRIPE_WEBHOOK_SECRET in ENV');
 
         try {
