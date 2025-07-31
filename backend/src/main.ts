@@ -14,7 +14,7 @@ import cookieParser from 'cookie-parser';
 import * as dotenv from 'dotenv';
 import helmet from 'helmet';
 import compression from 'compression';
-import * as fs from 'fs';
+// import * as fs from 'fs';
 import { ConfigModule } from '@nestjs/config';
 
 dotenv.config();
@@ -27,12 +27,12 @@ declare global {
 }
 
 async function bootstrap() {
-  const httpsOptions = {
-    key: fs.readFileSync('./cert/localhost-key.pem'),
-    cert: fs.readFileSync('./cert/localhost.pem'),
-  };
+  // const httpsOptions = {
+  //   key: fs.readFileSync('./cert/localhost-key.pem'),
+  //   cert: fs.readFileSync('./cert/localhost.pem'),
+  // };
 
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, { httpsOptions, bodyParser: false });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { /*httpsOptions,*/ bodyParser: false });
   app.setGlobalPrefix('api');
   const logger = new Logger('Bootstrap');
 
