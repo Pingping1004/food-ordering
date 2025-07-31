@@ -57,7 +57,7 @@ export type OrderProps = React.HTMLAttributes<HTMLDivElement> &
         onStatusUpdate: (updateStatus: OrderProps) => void;
     };
 
-export const getOrderStatusProps = (currentStatus: OrderStatus) => {
+const getOrderStatusProps = (currentStatus: OrderStatus) => {
     switch (currentStatus) {
         case OrderStatus.receive:
             return { text: 'เริ่มปรุงอาหาร', nextStatus: OrderStatus.cooking };

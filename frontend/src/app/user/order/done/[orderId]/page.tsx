@@ -18,7 +18,7 @@ interface Order {
     deliverAt: string;
 }
 
-export const getOrderStatusProps = (currentStatus: OrderStatus) => {
+const getOrderStatusProps = (currentStatus: OrderStatus) => {
     switch (currentStatus) {
         case OrderStatus.receive:
             return { renderStatus: 'รับออเดอร์', nextStatus: OrderStatus.cooking };
