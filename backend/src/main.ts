@@ -130,7 +130,6 @@ async function bootstrap() {
         const formatErrors = (validationErrors: any[]) => {
           return validationErrors.map((error) => {
             if (error.children && error.children.length > 0) {
-              // If there are nested errors (like for orderMenus), recurse into them
               return {
                 property: error.property,
                 children: formatErrors(error.children), // Recursively call formatErrors for children
@@ -142,17 +141,16 @@ async function bootstrap() {
               constraints: error.constraints, // Keep the original constraints object for debugging
               messages: error.constraints
                 ? Object.values(error.constraints)
-                : [], // Get just the string messages
+                : [],
             };
           });
         };
 
-        const detailedErrors = formatErrors(errors); // Call the recursive formatter
+        const detailedErrors = formatErrors(errors);
 
-        // Return a BadRequestException with the detailed, structured errors
         return new BadRequestException({
           statusCode: HttpStatus.BAD_REQUEST,
-          message: 'Validation failed', // A general message for the client
+          message: 'Validation failed',
           errors: detailedErrors,
         });
       },
@@ -173,10 +171,9 @@ async function bootstrap() {
 
   app.useGlobalFilters(new HttpExceptionFilter());
 
-  // Global unhandled exception/rejection handlers
   process.on('uncaughtException', (err) => {
     logger.error('GLOBAL UNCAUGHT EXCEPTION:', err);
-    process.exit(1); // Exit to prevent process from becoming zombie
+    process.exit(1);
   });
 
   process.on('unhandledRejection', (reason, promise) => {
