@@ -175,8 +175,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             });
 
             return response.status === 200;
-        } catch (error) {
-            console.error('Session validity check failed:', error);
+        } catch {
             return false;
         }
     }, []);
@@ -254,7 +253,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
 
         alert(messageToDisplay);
-        console.error("Login Error Details:", err);
     }, []);
 
     const login = useCallback(async (email: string, password: string): Promise<User> => {

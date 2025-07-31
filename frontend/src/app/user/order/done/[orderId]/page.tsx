@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import Image from 'next/image';
@@ -44,6 +44,7 @@ export default function DoneOrderPage() {
     const { orderMenus = [] } = order || {};
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const hasRedirectedRef = useRef<boolean>(false);
     const { renderStatus } = getOrderStatusProps(order?.status as OrderStatus);
 
     useEffect(() => {
@@ -52,15 +53,19 @@ export default function DoneOrderPage() {
             setError('No Order ID found in URL.');
             return;
         }
+
         const fetchData = async () => {
             try {
                 const orderResponse = await api.get(`order/${orderId}`);
                 setOrder(orderResponse.data);
-                let isPaid: boolean = orderResponse.data.isPaid;
 
-                if (!isPaid) {
-                    // alert('กรุณาชำระเงินก่อน');
-                    // router.back();
+                if (orderResponse.data.isPaid === "unpaid" && !hasRedirectedRef.current) {
+                    hasRedirectedRef.current = true;
+                    alert('กรุณาชำระเงินก่อน');
+                    const createPaymentResponse = await api.post(`/payment/create/${orderId}`);
+                    const { checkoutUrl } = createPaymentResponse.data;
+                    router.push(checkoutUrl);
+                    return;
                 }
 
                 const newRestaurantId = orderResponse.data.restaurantId;
