@@ -45,9 +45,9 @@ async function bootstrap() {
 
   const allowedOrigins = [
     'https://promptserve.online',
-    // 'https://api.promptserve.online',
-    // 'https://promptserve-mvp.onrender.com',
-    // 'https://localhost:8000',
+    'https://api.promptserve.online',
+    'https://promptserve-mvp.onrender.com',
+    'https://localhost:8000',
     process.env.FRONTEND_BASE_URL,
     process.env.NEXT_PUBLIC_BACKEND_API_URL,
     process.env.WEBHOOK_ENDPOINT,
