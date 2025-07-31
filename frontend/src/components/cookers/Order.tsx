@@ -117,7 +117,7 @@ export const Order = ({
             alert(`เลื่อนเวลาจัดส่งออเดอร์ไป10นาทีสำเร็จ!`);
 
         } catch {
-            alert(`Failed to delay order`);
+            alert(`เลื่อนเวลาจัดส่งออเดอร์ล้มเหลว`);
         } finally {
             setIsUpdating(false);
         }
@@ -138,10 +138,8 @@ export const Order = ({
             const updatedOrder = response.data.result;
             setCurrentStatus(updatedOrder.status);
             onStatusUpdate(updatedOrder.status);
-
-            alert(`อัพเดทสถานะออเดอร์เป็น: ${updatedOrder.status}`);
         } catch {
-            alert(`Failed to delay order`);
+            alert(`แจ้งออเกอร์ล่าช้าล้มเหลว`);
         } finally {
             setIsUpdating(false);
         }

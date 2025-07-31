@@ -168,12 +168,12 @@ export default function RestaurantRegisterPage() {
 
                     {/* File Input */}
                     <div className="w-full max-w-xs">
-                        <label htmlFor="restaurantImg" className="block text-sm font-medium text-gray-700 mb-1">รูปภาพเมนู</label>
+                        <label htmlFor="restaurantImg" className="block text-sm font-medium text-gray-700 mb-1">รูปภาพเมนู (รับเฉพาะ JPEG, PNG)</label>
                         <Input
                             type="file"
                             id="restaurantImg"
                             placeholder="รูปโปรไฟล์ร้านอาหาร"
-                            accept="image/*"
+                            accept="image/*,.svg,.svg+xml"
                             multiple={false} // Ensure only one file can be selected
                             error={errors.restaurantImg?.message as string | undefined}
                             {...register('restaurantImg')}

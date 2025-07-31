@@ -86,16 +86,16 @@ function Page() {
             setMenus(originalMenus);
             setError(`Failed to delete menu ${menuIdToDelete}`);
         }
-    }, [setMenus]); 
+    }, [setMenus]);
 
-  return (
-    <div className="flex flex-col gap-y-10 py-10 px-6">
-      <CookerHeader
-        restaurantId={restaurant.restaurantId}
-        name={restaurant.name}
-        openTime={restaurant.openTime}
-        closeTime={restaurant.closeTime}
-      />
+    return (
+        <div className="flex flex-col gap-y-10 py-10 px-6">
+            <CookerHeader
+                restaurantId={restaurant.restaurantId}
+                name={restaurant.name}
+                openTime={restaurant.openTime}
+                closeTime={restaurant.closeTime}
+            />
 
             <Button
                 type="button"
@@ -106,23 +106,26 @@ function Page() {
             </Button>
 
             <h2 className="noto-sans-bold text-lg">จัดการเมนู</h2>
-            {menus?.map((menu) => {
-                return (
-                    <Menu
-                        restaurantid={restaurant.restaurantId}
-                        key={menu.menuId}
-                        menuId={menu.menuId}
-                        menuImg={menu.menuImg}
-                        name={menu.name}
-                        price={menu.price}
-                        maxDaily={menu.maxDaily}
-                        cookingTime={menu.cookingTime}
-                        isAvailable={menu.isAvailable ?? false}
-                        onAvailabilityChanged={handleMenuAvailabilityChange}
-                        onDelete={handleDeleteMenu}
-                    />
-                )
-            })}
+
+            <div className="flex flex-col gap-y-6">
+                {menus?.map((menu) => {
+                    return (
+                        <Menu
+                            restaurantid={restaurant.restaurantId}
+                            key={menu.menuId}
+                            menuId={menu.menuId}
+                            menuImg={menu.menuImg}
+                            name={menu.name}
+                            price={menu.price}
+                            maxDaily={menu.maxDaily}
+                            cookingTime={menu.cookingTime}
+                            isAvailable={menu.isAvailable ?? false}
+                            onAvailabilityChanged={handleMenuAvailabilityChange}
+                            onDelete={handleDeleteMenu}
+                        />
+                    )
+                })}
+            </div>
 
         </div>
     )
