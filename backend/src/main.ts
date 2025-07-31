@@ -58,6 +58,10 @@ async function bootstrap() {
       const cleanOrigin = origin?.replace(/\/$/, '');
       const isAllowed = !origin || allowedOrigins.includes(cleanOrigin);
 
+      logger.log(`CORS request from: ${origin}`);
+      logger.log(`Cleaned origin: ${cleanOrigin}`);
+      logger.log(`Allowed origins:`, allowedOrigins);
+
       if (isAllowed) {
         callback(null, true);
       } else {
