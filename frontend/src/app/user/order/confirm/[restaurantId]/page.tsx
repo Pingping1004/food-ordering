@@ -74,7 +74,8 @@ function OrderConfirmContext() {
             }
 
             const response = await api.post(`/order/create`, orderPayload);
-            alert(`สั่งอาหารออเดอร์: ${(response.data.orderId).substring(0, 4)}`);
+            // alert(`สั่งอาหารออเดอร์: ${(response.data.orderId).substring(0, 4)}`);
+            alert('กำลังนำทางไปหน้าชำระเงิน ห้ามรีเฟรชหรือปิดหน้าQR Code');
             const { checkoutUrl } = response.data;
             router.push(checkoutUrl);
 

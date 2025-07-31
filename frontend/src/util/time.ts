@@ -17,7 +17,7 @@ export const getTimeFormat = (time: string, bufferMins: number = 0): string => {
     const dateObj = new Date(time);
     const bufferTime = new Date(dateObj.getTime() + bufferMins * 60 * 1000);
     const options: Intl.DateTimeFormatOptions = {
-        timeZone: 'UTC',
+        // timeZone: 'UTC',
         hour: '2-digit',
         minute: '2-digit',
         hour12: false,
