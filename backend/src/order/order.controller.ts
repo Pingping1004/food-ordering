@@ -7,20 +7,17 @@ import {
   Param,
   Delete,
   UseGuards,
-  Query,
-  Res,
   Req,
   Logger,
-  NotFoundException,
 } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
-import { Response, Request } from 'express';
+import { Request } from 'express';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from '../decorators/role.decorator';
 import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
-import { PaymentStatus, Role, User } from '@prisma/client';
+import { Role, User } from '@prisma/client';
 import { CsrfGuard } from 'src/guards/csrf.guard';
 
 @Controller('order')
@@ -49,41 +46,6 @@ export class OrderController {
         error.stack,
       );
       throw error;
-    }
-  }
-
-  @Get('omise/complete')
-  async handleOmiseReturn(
-    @Query('intentId') intentId: string,
-    @Query('orderId') orderId: string,
-    @Res() res: Response,
-  ) {
-    if (!intentId) {
-      this.logger.error('Return_uri called without intentId');
-      throw new NotFoundException('Cannot find intentId');
-    }
-
-    if (!orderId) {
-      this.logger.error(`Not found userId in handle payment status return`);
-      throw new NotFoundException('Cannot find orderId');
-    }
-
-    try {
-      // const retrievedCharge = await omise.charges.retrieve(chargeId);
-
-      const successRedirectUrl = `${process.env.FRONTEND_BASE_URL}/user/order/done/${orderId}`;
-
-        await this.orderService.updateOrderPaymentStatus(orderId, PaymentStatus.paid);
-        return res.status(200).json({
-          message: 'Payment successful',
-          redirectUrl: successRedirectUrl,
-        });
-    } catch (error) {
-      this.logger.error('Error handling Omise return: ', error);
-      return res.status(400).json({
-        message: 'Payment failed',
-        // redirectUrl: successRedirectUrl,
-      });
     }
   }
 

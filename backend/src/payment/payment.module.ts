@@ -5,12 +5,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import { OrderModule } from 'src/order/order.module';
 import { UserModule } from 'src/user/user.module';
 import { PayoutModule } from 'src/payout/payout.module';
+import { CsrfModule } from 'src/csrf/csrf.module';
 
 @Module({
   imports: [
     forwardRef(() => OrderModule),
     UserModule,
     PayoutModule,
+    CsrfModule,
   ],
   controllers: [PaymentController],
   providers: [PaymentService, PrismaService],

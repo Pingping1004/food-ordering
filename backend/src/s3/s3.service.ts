@@ -11,14 +11,9 @@ export class S3Service {
     private readonly logger = new Logger('S3Service');
 
     constructor() {
-        console.log('NODE_ENV:', process.env.NODE_ENV);
         const endpointUrl = process.env.S3_ENDPOINT_URL;
         const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
         const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
-
-        console.log('Endpoint: ', endpointUrl);
-        console.log('AccesskeyId: ', accessKeyId);
-        console.log('SecretAccessKey: ', secretAccessKey);
 
         if (!endpointUrl || !accessKeyId || !secretAccessKey) {
             throw new InternalServerErrorException('S3 client configuration is missing. Please check environment variables.');

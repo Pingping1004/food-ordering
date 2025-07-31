@@ -7,7 +7,6 @@ import {
     NotFoundException,
 } from '@nestjs/common';
 import { PaymentStatus } from '@prisma/client';
-import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
 import { PaymentPayload } from 'src/common/interface/payment-gateway';
 import { OrderService } from 'src/order/order.service';
@@ -20,7 +19,6 @@ export class PaymentService {
     private readonly stripe: Stripe;
 
     constructor(
-        private readonly configService: ConfigService,
         private readonly userService: UserService,
         private readonly payoutService: PayoutService,
         @Inject(forwardRef(() => OrderService)) private readonly orderService: OrderService,
@@ -81,7 +79,6 @@ export class PaymentService {
     }
 
     async verifyWebhook(rawBody: Buffer, signature: string): Promise<Stripe.Event> {
-        // const webhookSecret = this.configService.get<string>('STRIPE_WEBHOOK_SECRET');
         const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
         if (!webhookSecret) throw new NotFoundException('No value for STRIPE_WEBHOOK_SECRET in ENV');
 
@@ -100,18 +97,31 @@ export class PaymentService {
     }
 
     async handleWebhook(event: Stripe.Event): Promise<void> {
-        if (event.type === 'payment_intent.succeeded' || event.type === 'checkout.session.completed') {
+        let orderId;
+        if (event.type === 'payment_intent.succeeded') {
             const paymentIntent = event.data.object;
 
-            const orderId = paymentIntent.metadata?.orderId;
+            orderId = paymentIntent.metadata?.orderId;
             const paymentIntentId = paymentIntent.id;
 
             if (!orderId || !paymentIntentId) {
-                throw new Error('Missing metadata in session');
+                throw new Error('Missing metadata in paymentIntent');
             }
+        } else if (event.type === 'checkout.session.completed') {
+            const session = event.data.object;
 
-            await this.orderService.updateOrderPaymentStatus(orderId, PaymentStatus.paid);
-            await this.payoutService.createPayout(orderId);
+            const paymentIntentId = session.payment_intent as string;
+            if (!paymentIntentId) throw new Error('Missing paymentIntent ID in session');
+
+            const paymentIntent = await this.stripe.paymentIntents.retrieve(paymentIntentId);
+
+            orderId = paymentIntent.metadata?.orderId;
+            if (!orderId) throw new Error('Missing orderId in paymentIntent metadata');
+        } else {
+            return;
         }
+
+        await this.orderService.updateOrderPaymentStatus(orderId, PaymentStatus.paid);
+        await this.payoutService.createPayout(orderId);
     }
 }
