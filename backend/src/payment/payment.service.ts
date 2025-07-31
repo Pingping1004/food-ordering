@@ -38,6 +38,7 @@ export class PaymentService {
     async createPaymentCharge(payload: PaymentPayload) {
         const platformFee = Number(process.env.PLATFORM_COMMISSION_RATE);
         const successUrl = `${process.env.PAYMENT_SUCCESS_URL}/${payload.orderId}`;
+        this.logger.log(`Success URL: `, successUrl);
         const { email: userEmail } = await this.userService.findOneUser(payload.userId);
         if (!platformFee) throw new NotFoundException('No value for PLATFORM_COMMISSION_RATE in ENV');
 
