@@ -352,20 +352,41 @@ export class OrderService {
     }
   }
 
+  // async updateOrderStatus(orderId: string) {
+  //   const order = await this.findOneOrder(orderId);
+  //   const nextStatus = this.statusTransitions[order.status];
+
+  //   if (order.isPaid === PaymentStatus.unpaid && 
+  //     (order.status === OrderStatus.ready || nextStatus === OrderStatus.done)
+  //   ) {
+  //     throw new ConflictException('Only paid order can be marked as done');
+  //   }
+
+  //   const result = await this.prisma.order.update({
+  //     where: { orderId },
+  //     data: {
+  //       status: nextStatus,
+  //     },
+  //     select: { orderId: true, status: true, deliverAt: true },
+  //   });
+
+  //   return {
+  //     result,
+  //     message: `Successfully update order status to ${result.status} `,
+  //   };
+  // }
+
   async updateOrderStatus(orderId: string) {
     const order = await this.findOneOrder(orderId);
-    const nextStatus = this.statusTransitions[order.status];
 
-    if (order.isPaid === PaymentStatus.unpaid && 
-      (order.status === OrderStatus.ready || nextStatus === OrderStatus.done)
-    ) {
+    if (order.isPaid === PaymentStatus.unpaid) {
       throw new ConflictException('Only paid order can be marked as done');
     }
 
     const result = await this.prisma.order.update({
       where: { orderId },
       data: {
-        status: nextStatus,
+        status: OrderStatus.done,
       },
       select: { orderId: true, status: true, deliverAt: true },
     });
