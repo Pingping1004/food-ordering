@@ -58,9 +58,9 @@ export class CreateOrderDto {
   @Type(() => Date)
   deliverAt: Date;
 
-  // @IsString()
-  // @IsNotEmpty()
-  // deliverAt: string;
+  @IsString()
+  @IsNotEmpty()
+  userTel: string;
 
   @IsOptional()
   @IsString()

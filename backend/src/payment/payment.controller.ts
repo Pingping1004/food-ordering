@@ -6,7 +6,6 @@ import {
     Req,
     Headers,
     UseGuards,
-    Body,
     Param
 } from '@nestjs/common';
 import { OrderService } from 'src/order/order.service';

@@ -26,7 +26,7 @@ model RefreshToken {
   issuedAt  DateTime @default(now())
   isUsed    Boolean  @default(false)
   isRevoked Boolean  @default(false)
-  user      User     @relation("UserToRefreshTokens", fields: [userId], references: [userId])
+  user      User     @relation("UserToRefreshTokens", fields: [userId], references: [userId], onDelete: Cascade)
 }
 
 model Payout {
@@ -42,7 +42,7 @@ model Payout {
   orderId           String     @unique
   restaurantName    String
   restaurantId      String
-  order             Order      @relation("OrderToPayout", fields: [orderId], references: [orderId])
+  order             Order      @relation("OrderToPayout", fields: [orderId], references: [orderId], onDelete: Cascade)
   restaurant        Restaurant @relation("RestaurantPayment", fields: [restaurantId], references: [restaurantId], onDelete: Cascade)
 }
 
@@ -116,6 +116,7 @@ model OrderMenu {
 model Order {
   orderId              String      @id @default(uuid())
   status               OrderStatus @default(receive)
+  userTel                  String
   orderAt              DateTime    @default(now())
   deliverAt            DateTime
   isPaid               PaymentStatus      @default(unpaid)

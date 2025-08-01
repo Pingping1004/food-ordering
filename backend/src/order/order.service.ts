@@ -121,10 +121,12 @@ export class OrderService {
     return calculatedTotalAmount;
   }
 
-  validateDeliveryTime(deliverTime: Date | string, bufferMin: number = 5) {
+  validateDeliveryTime(deliverTime: Date | string, bufferMin: number = 10) {
     const now = new Date();
     const deliverAtDate = new Date(deliverTime);
-    const minimumAllowedDeliveTime = new Date(now.getTime() + bufferMin * 60 * 1000);
+    const deliverHour = deliverAtDate.getHours();
+    const peakTimeBuffer = (deliverHour === 12) ? 10 : 0;
+    const minimumAllowedDeliveTime = new Date(now.getTime() + (bufferMin + peakTimeBuffer) * 60 * 1000);
 
     if (deliverAtDate < minimumAllowedDeliveTime) {
       throw new BadRequestException(`เวลารับอาหารต้องอยู่หลังจากเวลาปัจจุบัน ${bufferMin}นาที`);
@@ -145,6 +147,7 @@ export class OrderService {
           deliverAt: createOrderDto.deliverAt,
           isPaid: PaymentStatus.unpaid,
           paymentMethod: createOrderDto.paymentMethod,
+          userTel: createOrderDto.userTel,
           paymentGatewayStatus: 'pending',
           totalAmount: calculatedTotalAmount,
           orderMenus: {
