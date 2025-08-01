@@ -147,6 +147,7 @@ function Page() {
                         isPaid={order.isPaid}
                         orderMenus={order.orderMenus}
                         details={order.details}
+                        userTel={order.userTel}
                         className="mb-4"
                         selected="default"
                         onDelayUpdate={handleOrderUpdate}

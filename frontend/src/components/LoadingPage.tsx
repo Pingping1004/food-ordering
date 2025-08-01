@@ -26,7 +26,7 @@ export default function LoadingPage() {
             d="M12 2a10 10 0 0110 10"
           />
         </svg>
-        <p className="mt-6 text-2xl font-semibold text-light">กำลังโหลด...</p>
+        <p className="mt-6 text-xl font-semibold text-light">กำลังโหลด...</p>
       </div>
     </div>
   );

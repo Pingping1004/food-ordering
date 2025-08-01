@@ -19,6 +19,7 @@ export interface Restaurant {
     isActuallyOpen: boolean;
     isTemporarilyClosed: boolean;
     isApproved: boolean;
+    adminTel: string;
 };
 
 export interface Menu {
@@ -68,6 +69,7 @@ export const MenuProvider = ({ children }: { children: React.ReactNode }) => {
         isActuallyOpen: true,
         isTemporarilyClosed: false,
         isApproved: false,
+        adminTel: '',
     });
     const [menus, setMenus] = useState<Menu[] | null>(null);
     const [loading, setLoading] = useState(true);

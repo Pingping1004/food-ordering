@@ -35,6 +35,7 @@ function MenuContext() {
                 restaurantImg={restaurant?.restaurantImg ?? ""}
                 openTime={restaurant?.openTime ?? ""}
                 closeTime={restaurant?.closeTime ?? ""}
+                adminTel={restaurant?.adminTel ?? ""}
             />
 
             <h3 className="noto-sans-bold text-base text-primary">เมนูสำหรับคุณ</h3>

@@ -29,18 +29,23 @@ export const createOrderSchema = z.object({
                 return z.NEVER; // Indicates a transformation failure for Zod
             }
         })
-        .refine(
-            (deliverAtDate) => {
-                const now = new Date();
-                const bufferMinutes = 4;
-                const minimumAllowedDeliverTime = new Date(now.getTime() + bufferMinutes * 60 * 1000); // 10 minutes in milliseconds
-                return deliverAtDate > minimumAllowedDeliverTime;
-            },
-            {
-                message: 'เวลารับอาหารต้องอยู่หลังจากเวลาปัจจุบันอย่างน้อย 5นาที',
-                path: ['deliverAt'],
+        .superRefine((deliverAtDate, ctx) => {
+            const now = new Date();
+            const deliverHour = deliverAtDate.getHours();
+            const timeBuffer = (deliverHour === 12) ? 19 : 9;
+            const minimumAllowedDeliverTime = new Date(now.getTime() + timeBuffer * 60 * 1000);
+
+            if (deliverAtDate < minimumAllowedDeliverTime) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: `เวลารับอาหารต้องอยู่หลังจากเวลาปัจจุบันอย่างน้อย ${timeBuffer} นาที`,
+                    path: ['deliverAt'],
+                });
             }
-        ),
+        }),
+    userTel: z.string()
+        .trim()
+        .regex(/^\d{10}$/, { message: 'กรุณาระบุเบอร์โทรที่ถูกต้อง 10 หลัก' }),
     paymentMethod: z.string().optional(),
 });
 

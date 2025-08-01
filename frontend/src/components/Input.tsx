@@ -29,7 +29,7 @@ const inputVariants = cva(
 
 export type BaseInputProps<TFieldValues extends FieldValues = FieldValues> = Omit<
   React.InputHTMLAttributes<HTMLInputElement | HTMLSelectElement>,
-  "name" | "value" | "onChange" | "onBlur" | "type" | "options" | "accept"
+  "name" | "value" | "onChange" | "onBlur" | "type" | "options" | "accept" | "tel"
 > &
   VariantProps<typeof inputVariants> & {
     label?: string;
@@ -37,7 +37,7 @@ export type BaseInputProps<TFieldValues extends FieldValues = FieldValues> = Omi
     placeholder?: string;
     register?: UseFormRegister<TFieldValues>;
     validation?: object;
-    type?: "text" | "email" | "password" | "select" | "file" | "number"; // Added "file" type
+    type?: "text" | "email" | "password" | "select" | "file" | "number" | "tel"; // Added "file" type
     onChange?: (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
     options?: { key: string; value: string }[];
     error?: string;

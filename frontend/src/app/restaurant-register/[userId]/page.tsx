@@ -58,8 +58,6 @@ export default function RestaurantRegisterPage() {
             const url = URL.createObjectURL(file);
             setImagePreviewUrl(url);
 
-            // Cleanup function to revoke the URL when the component unmounts
-            // or when a new file is selected (watchedMenuImgFile changes)
             return () => URL.revokeObjectURL(url);
         } else {
             setImagePreviewUrl(null); // Clear preview if no file is selected
@@ -296,8 +294,8 @@ export default function RestaurantRegisterPage() {
 
                     <div className="grid grid-cols-2 gap-x-4">
                         <Input
-                            type="text"
-                            label="เบอร์ติดต่อ"
+                            type="tel"
+                            label="เบอร์ติดต่อทางร้าน"
                             placeholder="0xxxxxxxxx"
                             {...register('adminTel')}
                             error={errors.adminTel?.message}

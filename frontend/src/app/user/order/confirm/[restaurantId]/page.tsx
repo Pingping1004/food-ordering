@@ -14,9 +14,18 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 
 const now = new Date();
+const currentHour = new Date().getHours();
 
-const getBufferTime = (bufferMins: number = 0): string => {
-    const minimumAllowedDeliverTime = new Date(now.getTime() + bufferMins * 60 * 1000);
+const getBufferTime = ({
+    deliverHour = new Date().getHours(),
+    bufferMins = 0,
+}: {
+    deliverHour?: number;
+    bufferMins?: number;
+} = {}): string => {
+    const peakTimeBuffer = (currentHour === 12 || deliverHour === 12) ? 10 : 0;
+    const timeBuffer = peakTimeBuffer + bufferMins;
+    const minimumAllowedDeliverTime = new Date(now.getTime() + timeBuffer * 60 * 1000);
     const hours = minimumAllowedDeliverTime.getHours().toString().padStart(2, '0');
     const minutes = minimumAllowedDeliverTime.getMinutes().toString().padStart(2, '0');
     return `${hours}:${minutes}`;
@@ -29,12 +38,13 @@ function OrderConfirmContext() {
     const {
         control,
         handleSubmit,
+        register,
         formState: { errors, isSubmitting }
     } = useForm({
         resolver: zodResolver(createOrderSchema),
         defaultValues: {
             paymentMethod: 'promptpay',
-            deliverAt: getBufferTime(6),
+            deliverAt: getBufferTime({ bufferMins: 10 }),
             restaurantId: restaurant?.restaurantId,
         },
         mode: "onBlur",
@@ -59,6 +69,7 @@ function OrderConfirmContext() {
                     unitPrice: item.unitPrice,
                     menuImg: item.menuImg,
                 })),
+                userTel: data.userTel,
                 paymentMethod: data.paymentMethod,
                 deliverAt: data.deliverAt?.toISOString(),
             };
@@ -68,8 +79,10 @@ function OrderConfirmContext() {
                 return; // Prevent submission
             }
 
-            if (new Date(getBufferTime(4)) > new Date(orderPayload.deliverAt)) {
-                alert('เวลารับอาหารต้องอยู่หลังจากเวลาปัจจุบันอย่างน้อย 5นาที');
+            const deliverHour = new Date(orderPayload.deliverAt).getHours();
+            const timeBuffer = (deliverHour === 12 || currentHour === 12) ? 20 : 10;
+            if (new Date(getBufferTime({ deliverHour, bufferMins: 10 })) > new Date(orderPayload.deliverAt)) {
+                alert(`เวลารับอาหารต้องอยู่หลังจากเวลาปัจจุบันอย่างน้อย ${timeBuffer}นาที`);
                 return;
             }
 
@@ -112,25 +125,38 @@ function OrderConfirmContext() {
                 <h3 className="noto-sans-bold text-xl">{cart.reduce((total, value) => { return total + value.totalPrice }, 0)}</h3>
             </div>
 
+            <div>
+                <Input
+                    type="tel"
+                    label="เบอร์ติดต่อ"
+                    placeholder="0xxxxxxxxx"
+                    {...register('userTel')}
+                    // name="userTel"
+                    error={errors.userTel?.message}
+                />
+            </div>
+
             <div className="flex flex-col gap-y-4">
                 <div className="flex justify-between items-center">
                     <h3 className="noto-sans-bold text-base">เลือกเวลารับอาหาร</h3>
                     <p className="noto-sans-regular text-sm text-danger-main">
-                        ใช้เวลาจัดเตรียมขั้นต่ำ5นาที
+                        ใช้เวลาจัดเตรียมขั้นต่ำ{(currentHour === 12) ? 20 : 10}นาที
                     </p>
                 </div>
+                <div>
                 <Controller
                     name="deliverAt"
                     control={control}
                     render={({ field }) => (
                         <TimePickerInput
-                            {...field} // This correctly passes value, onChange, name, onBlur
+                        {...field} // This correctly passes value, onChange, name, onBlur
                         />
                     )}
-                />
+                    />
                 {errors.deliverAt && (
-                    <p className="text-red-500 text-sm z-50">กรุณาเลือกเวลาจัดส่งหลัง {getBufferTime(5)}</p>
+                    <p className="text-red-500 text-sm z-50">กรุณาเลือกเวลาจัดส่งหลัง {getBufferTime({ bufferMins: 10 })}นาที</p>
                 )}
+                </div>
             </div>
 
             <div className="flex flex-col gap-y-4">

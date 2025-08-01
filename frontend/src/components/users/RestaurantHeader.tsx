@@ -4,14 +4,15 @@ import React from 'react'
 import Image from 'next/image';
 
 interface RestaurantHeaderType {
-  restaurantId: string;
-  name: string;
-  restaurantImg: string;
-  openTime: string;
-  closeTime: string;
+    restaurantId: string;
+    name: string;
+    restaurantImg: string;
+    openTime: string;
+    closeTime: string;
+    adminTel: string;
 }
 
-export default function RestaurantHeader({ name, restaurantImg, openTime, closeTime }: Readonly<RestaurantHeaderType>) {
+export default function RestaurantHeader({ name, restaurantImg, openTime, closeTime, adminTel }: Readonly<RestaurantHeaderType>) {
     const src = restaurantImg ? `${restaurantImg}` : `/picture.svg`;
 
     return (
@@ -27,6 +28,12 @@ export default function RestaurantHeader({ name, restaurantImg, openTime, closeT
             <div className="flex flex-col gap-y-2">
                 <h3 className="noto-sans-bold text-lg text-primary">{name}</h3>
                 <p className="noto-sans-bold text-xs text-secondary">เวลาเปิดขาย: {openTime} - {closeTime}</p>
+                <p className="noto-sans-bold text-xs text-secondary">เบอร์ติดต่อร้าน:{' '}
+                    <a
+                        href={`tel:${adminTel}`}
+                        className="text-info noto-sans-bold text-xs underline hover:text-info"
+                    >{adminTel}</a>
+                </p>
             </div>
         </div>
     )

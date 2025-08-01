@@ -53,6 +53,7 @@ export type OrderProps = React.HTMLAttributes<HTMLDivElement> &
         isDelay: boolean;
         orderMenus: { quantity: number; menuName: string; menuImg?: string }[];
         details?: string;
+        userTel: string;
         onDelayUpdate: (updateOrder: OrderProps) => void;
         onStatusUpdate: (updateStatus: OrderProps) => void;
     };
@@ -77,6 +78,7 @@ export const Order = ({
     variant,
     selected = "default",
     orderAt,
+    userTel,
     status,
     deliverAt,
     totalAmount,
@@ -174,11 +176,24 @@ export const Order = ({
                         />
                     )}
 
-                    <div>
-                        <h3 className="noto-sans-bold text-lg text-primary">
-                            ออเดอร์ {orderId?.substring(0, 4)}
-                        </h3>
-                        <p className="text-light text-sm">สั่งเมื่อ {orderAt}</p>
+                    <div className="flex flex-col gap-y-1">
+                        <div className="flex justify-center gap-x-2">
+                            <h3 className="noto-sans-bold text-lg text-primary">
+                                {orderId?.substring(0, 4)}
+                            </h3>
+
+                            <p className="flex items-center noto-sans-bold text-sm text-secondary">
+                                (<span className="mr-1">เบอร์ติดต่อ:</span>
+                                <a
+                                    href={`tel:${userTel}`}
+                                    className="text-info underline hover:text-info"
+                                >
+                                    {userTel}
+                                </a>
+                                <span>{')'}</span>
+                            </p>
+                        </div>
+                        <p className="noto-sans-regular text-light text-sm">สั่งเมื่อ {orderAt}</p>
                     </div>
                 </div>
 
