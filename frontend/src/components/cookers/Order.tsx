@@ -128,9 +128,9 @@ export const Order = ({
     const handleUpdateStatus = async (orderId: string) => {
         setIsUpdating(true);
         try {
-            const { nextStatus } = getOrderStatusProps(status);
+            // const { nextStatus } = getOrderStatusProps(status);
 
-            if (isPaid === 'unpaid' && (status === "ready" || nextStatus === OrderStatus.done)) {
+            if (isPaid === 'unpaid') {
                 alert('ไม่สามารถจบออเดอร์ได้ หากยังไม่ชำระเงิน');
                 return;
             }
@@ -253,7 +253,8 @@ export const Order = ({
                         onClick={() => handleUpdateStatus(orderId)}
                     >
                         <span className="noto-sans-regular">
-                            {getOrderStatusProps(status).text}
+                            {/* {getOrderStatusProps(status).text} */}
+                            พร้อมเสิร์ฟ
                         </span>
                     </Button>
 
