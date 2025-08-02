@@ -133,7 +133,7 @@ export class OrderService {
     }
   }
 
-  async createOrderWithPayment(userId: string, createOrderDto: CreateOrderDto) {
+  async createOrderWithPayment(createOrderDto: CreateOrderDto, userId?: string) {
     const calculatedTotalAmount = await this.validateOrderMenus(
       createOrderDto.orderMenus,
       createOrderDto.restaurantId,
@@ -142,12 +142,13 @@ export class OrderService {
     return await this.prisma.$transaction(async (tx) => {
       const order = await tx.order.create({
         data: {
-          userId,
+          userId: userId || null,
           restaurantId: createOrderDto.restaurantId,
           deliverAt: createOrderDto.deliverAt,
           isPaid: PaymentStatus.unpaid,
           paymentMethod: createOrderDto.paymentMethod,
           userTel: createOrderDto.userTel,
+          userEmail: createOrderDto.userEmail,
           paymentGatewayStatus: 'pending',
           totalAmount: calculatedTotalAmount,
           orderMenus: {
@@ -171,7 +172,8 @@ export class OrderService {
 
       try {
         const paymentPayload: PaymentPayload = {
-          userId,
+          // userId,
+          userEmail: createOrderDto.userEmail,
           orderId: order.orderId,
           amountInStang: Math.round(Number(order.totalAmount) * 100),
           currency: 'thb',

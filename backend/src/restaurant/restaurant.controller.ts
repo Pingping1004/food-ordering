@@ -25,6 +25,7 @@ import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
 import { Roles } from 'src/decorators/role.decorator';
 import { Role } from '@prisma/client';
 import { CsrfGuard } from 'src/guards/csrf.guard';
+import { Public } from 'src/decorators/public.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
 @Roles([Role.user, Role.admin, Role.cooker])
@@ -58,15 +59,15 @@ export class RestaurantController {
     );
   }
 
-  // @Public()
-  @Roles([Role.user, Role.admin, Role.cooker])
+  @Public()
+  // @Roles([Role.user, Role.admin, Role.cooker])
   @Get()
   async findAllRestaurant() {
     return this.restaurantService.getOpenRestaurants();
   }
 
-  // @Public()
-  @Roles([Role.user, Role.admin, Role.cooker])
+  @Public()
+  // @Roles([Role.user, Role.admin, Role.cooker])
   @Get(':restaurantId')
   async findRestaurant(@Param('restaurantId') restaurantId: string) {
     return this.restaurantService.findRestaurant(restaurantId);

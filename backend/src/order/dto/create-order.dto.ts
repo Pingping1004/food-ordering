@@ -62,6 +62,10 @@ export class CreateOrderDto {
   @IsNotEmpty()
   userTel: string;
 
+  @IsString()
+  @IsNotEmpty()
+  userEmail: string;
+
   @IsOptional()
   @IsString()
   details?: string;

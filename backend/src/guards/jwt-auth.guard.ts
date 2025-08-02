@@ -4,13 +4,35 @@ import {
   ExecutionContext,
   Logger,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
+import { isObservable, lastValueFrom } from 'rxjs';
+import { IS_PUBLIC_KEY } from 'src/decorators/public.decorator';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
   private readonly logger = new Logger('JwtAuthGuard');
-  canActivate(context: ExecutionContext) {
-    return super.canActivate(context);
+
+  constructor(private readonly reflector: Reflector) {
+    super();
+  }
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+
+    if (isPublic) return true;
+
+    const result = super.canActivate(context);
+    if (result instanceof Promise) {
+      return await result;
+    } else if (isObservable(result)) {
+      return await lastValueFrom(result);
+    } else {
+      return result;
+    }
   }
 
   handleRequest(err, user, info) {

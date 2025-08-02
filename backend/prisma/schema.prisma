@@ -116,7 +116,8 @@ model OrderMenu {
 model Order {
   orderId              String      @id @default(uuid())
   status               OrderStatus @default(receive)
-  userTel                  String
+  userTel              String
+  userEmail           String
   orderAt              DateTime    @default(now())
   deliverAt            DateTime
   isPaid               PaymentStatus      @default(unpaid)
@@ -133,14 +134,15 @@ model Order {
   orderMenus           OrderMenu[] @relation("OrderToMenu")
   payoutId            String?
   payout               Payout?     @relation("OrderToPayout")
-  userId              String
-  user                User          @relation("OrderToUser", fields: [userId], references: [userId], onDelete: Cascade)
+  userId              String?
+  user                User?          @relation("OrderToUser", fields: [userId], references: [userId], onDelete: Cascade)
 
   @@index([restaurantId])
   @@index([status])
   @@index([isPaid])
   @@index([orderAt])
   @@index([payoutId])
+  @@index([userTel])
 }
 
 model User {

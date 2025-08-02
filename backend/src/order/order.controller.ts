@@ -19,6 +19,7 @@ import { Roles } from '../decorators/role.decorator';
 import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
 import { Role, User } from '@prisma/client';
 import { CsrfGuard } from 'src/guards/csrf.guard';
+import { Public } from 'src/decorators/public.decorator';
 
 @Controller('order')
 @UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
@@ -28,16 +29,18 @@ export class OrderController {
 
   private readonly logger = new Logger('OrderController');
 
+  @Public()
   @Post('create')
   async createOrder(
     @Body() createOrderDto: CreateOrderDto,
-    @Req() req: Request & { user: User },
+    @Req() req: Request & { user?: User },
   ) {
     try {
-      const userId = req.user.userId;
-      if (!userId) throw new Error('User ID is required to create an order');
+      const userId = req.user?.userId || undefined;
+      if (!userId && !createOrderDto.userEmail) throw new Error('User ID is required to create an order');
 
-      const result = await this.orderService.createOrderWithPayment(userId, createOrderDto);
+      // const result = await this.orderService.createOrderWithPayment(userId, createOrderDto);
+      const result = await this.orderService.createOrderWithPayment(createOrderDto, userId);
       return result;
     } catch (error) {
       this.logger.error(
@@ -54,6 +57,7 @@ export class OrderController {
     return this.orderService.findRestaurantOrders(restaurantId);
   }
 
+  @Public()
   @Get(':orderId')
   async findOneOrder(@Param('orderId') orderId: string) {
     return this.orderService.findOneOrder(orderId);

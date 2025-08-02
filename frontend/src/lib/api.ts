@@ -1,5 +1,5 @@
 import axios, { AxiosRequestConfig, AxiosError, InternalAxiosRequestConfig, AxiosResponse, AxiosHeaders } from "axios";
-import { setAccessToken, getRefreshToken, setRefreshToken, clearTokens } from "./token";
+import { setAccessToken, getRefreshToken, setRefreshToken, clearTokens, removeAccessToken } from "./token";
 import Cookies from 'js-cookie';
 
 const baseBackendUrl = `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/api`;
@@ -17,7 +17,8 @@ let failedQueue: {
 }[] = [];
 
 const forcedLogout = () => {
-    localStorage.removeItem('accessToken');
+    // localStorage.removeItem('accessToken');
+    removeAccessToken();
     clearTokens();
     window.location.href = "/login";
 }
@@ -42,6 +43,20 @@ const processQueue = (error: AxiosError | null, token: string | null = null) => 
 
 api.interceptors.request.use(
     (config) => {
+        if (config.headers?.skipAuth === 'true') {
+            return config;
+        }
+
+        const accessToken = localStorage.getItem('accessToken');
+        if (accessToken && config.headers && !config.headers.Authorization) {
+            if (!config.headers) {
+                config.headers = new axios.AxiosHeaders();
+            } else if (!(config.headers instanceof AxiosHeaders)) {
+                config.headers = AxiosHeaders.from(config.headers);
+            }
+            config.headers['Authorization'] = `Bearer ${accessToken}`;
+        }
+
         const csrfToken = Cookies.get('XSRF-TOKEN');
         if (!config.method) throw Error('Not found config method');
 
@@ -52,9 +67,13 @@ api.interceptors.request.use(
                 config.headers = AxiosHeaders.from(config.headers);
             }
 
-            config.headers['X-CSRF-Token'] = csrfToken;
+            const isCsrfFetchRequest = config.url === '/csrf-token';
+            if (!isCsrfFetchRequest && !config.headers['X-CSRF-TOKEN']) {
+                config.headers['X-CSRF-TOKEN'] = csrfToken;
+            }
         }
 
+        config.withCredentials = true;
         return config;
     },
     (error) => {
@@ -77,7 +96,11 @@ async function handleTokenRefresh(originalRequest: CustomAxiosRequestConfig): Pr
     }
 
     try {
-        const response = await axios.post('/auth/refresh', { refreshToken });
+        const response = await api.post('/auth/refresh', { refreshToken }, {
+            headers: {
+                skipAuth: 'true',
+            }
+        });
         const { accessToken, refreshToken: newRefreshToken } = response.data;
 
         setAccessToken(accessToken);
@@ -124,9 +147,23 @@ api.interceptors.response.use(
 
         const isUnauthorized = error.response?.status === 401;
         const hasNotRetried = originalRequest && !originalRequest._retry;
+        const isNotSkipAuth = originalRequest?.headers?.skipAuth !== 'true';
 
-        if (!isUnauthorized || !hasNotRetried) {
+        if (!isUnauthorized || !hasNotRetried || !isNotSkipAuth) {
+            if (isUnauthorized && !isNotSkipAuth) {
+                forcedLogout();
+            }
             return Promise.reject(error);
+        }
+
+        const criticalEndpoints = ['/user/profile', '/auth/refresh'];
+        const isCriticalEndpointFailure = criticalEndpoints.some(endpoint =>
+            originalRequest.url?.includes(endpoint)
+        );
+
+        if (isCriticalEndpointFailure) {
+            forcedLogout();
+            return Promise.reject(new Error('Session expired'));
         }
 
         originalRequest._retry = true;

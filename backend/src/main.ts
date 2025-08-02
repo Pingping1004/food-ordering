@@ -16,6 +16,12 @@ import helmet from 'helmet';
 import compression from 'compression';
 import * as fs from 'fs';
 import { ConfigModule } from '@nestjs/config';
+import {
+  globalRateLimit,
+  authRateLimit,
+  paymentRateLimit,
+  orderRateLimit,
+} from './rateLimiting.middleware';
 
 dotenv.config();
 declare global {
@@ -88,6 +94,14 @@ async function bootstrap() {
   app.enableShutdownHooks();
   app.use(helmet());
   app.use(compression());
+
+  // Apply global rate limiting
+  app.use(globalRateLimit);
+
+  // Apply specific rate limiting to routes
+  app.use('/api/auth', authRateLimit);
+  app.use('/api/payment', paymentRateLimit);
+  app.use('/api/order/create', orderRateLimit);
 
   app.getHttpAdapter().get('/health', (req: Request, res: Response) => {
     res.send('OK');

@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { useCart } from '@/context/CartContext';
 import { MenuProvider, useMenu } from '@/context/MenuContext';
 import OrderList from '@/components/users/OrderList';
@@ -12,6 +12,8 @@ import { useForm, Controller } from 'react-hook-form';
 import { createOrderSchema, CreateOrderSchemaType } from '@/schemas/addOrderSchema';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import { toastPrimary } from '@/components/ui/Toast';
 
 const now = new Date();
 const currentHour = new Date().getHours();
@@ -35,6 +37,7 @@ function OrderConfirmContext() {
     const { restaurant } = useMenu();
     const { cart } = useCart();
     const router = useRouter();
+    const [click, setClick] = useState<number>(0);
     const {
         control,
         handleSubmit,
@@ -46,16 +49,16 @@ function OrderConfirmContext() {
             paymentMethod: 'promptpay',
             deliverAt: getBufferTime({ bufferMins: 10 }),
             restaurantId: restaurant?.restaurantId,
+            userTel: '',
+            userEmail: ''
         },
         mode: "onBlur",
     });
 
-    const onError = (formErrors: typeof errors) => {
-        const messages = Object.entries(formErrors)
-            .map(([field, error]) => `${field}: ${error?.message ?? `เกิดข้อผิดพลาด`}`).join('\n');
-
-        alert(`กรุณากรอกข้อมูลให้ถูกต้อง:\n\n${messages}`);
-    };
+    // const handleCalculateTimeClick = () => {
+    //     toastPrimary('ยังไม่เปิดใช้งานนะ แต่เดี๋ยวมาแน่นอน');
+    //     setClick(prev => prev + 1);
+    // }
 
     const submitOrder = async (data: CreateOrderSchemaType) => {
         try {
@@ -70,6 +73,7 @@ function OrderConfirmContext() {
                     menuImg: item.menuImg,
                 })),
                 userTel: data.userTel,
+                userEmail: data.userEmail,
                 paymentMethod: data.paymentMethod,
                 deliverAt: data.deliverAt?.toISOString(),
             };
@@ -104,7 +108,7 @@ function OrderConfirmContext() {
     return (
         <form
             className="flex flex-col h-screen gap-y-10 py-10 px-6"
-            onSubmit={handleSubmit(submitOrder, onError)}
+            onSubmit={handleSubmit(submitOrder)}
         >
             <h3
                 className="flex w-full justify-center noto-sans-bold text-primary text-2xl"
@@ -115,7 +119,9 @@ function OrderConfirmContext() {
             <div className="flex flex-col justify-between gap-y-6">
                 <div className="flex justify-between items-center">
                     <p className="text-lg text-primary noto-sans-bold">สรุปออเดอร์</p>
-                    <p className="text-info text-xs  underline">คำนวณเวลาได้รับอาหาร?</p>
+                    {/* <button onClick={handleCalculateTimeClick}>
+                        <p className="text-info text-xs  underline">คำนวณเวลาได้รับอาหาร?</p>
+                    </button> */}
                 </div>
                 <OrderList items={cart} />
             </div>
@@ -125,15 +131,27 @@ function OrderConfirmContext() {
                 <h3 className="noto-sans-bold text-xl">{cart.reduce((total, value) => { return total + value.totalPrice }, 0)}</h3>
             </div>
 
-            <div>
-                <Input
-                    type="tel"
-                    label="เบอร์ติดต่อ"
-                    placeholder="0xxxxxxxxx"
-                    {...register('userTel')}
-                    // name="userTel"
-                    error={errors.userTel?.message}
-                />
+            <div className="flex flex-col gap-y-4">
+                <h2 className="noto-sans-bold text-primary text-base">ข้อมูลติดต่อ</h2>
+                <div className="grid grid-cols-2 gap-x-6">
+                    <Input
+                        type="tel"
+                        label="เบอร์ติดต่อ"
+                        placeholder="0xxxxxxxxx"
+                        {...register('userTel')}
+                        // name="userTel"
+                        error={errors.userTel?.message}
+                    />
+
+                    <Input
+                        type="email"
+                        label="อีเมลลูกค้า"
+                        placeholder="example@gmail.com"
+                        {...register('userEmail')}
+                        // name="userTel"
+                        error={errors.userEmail?.message}
+                    />
+                </div>
             </div>
 
             <div className="flex flex-col gap-y-4">
@@ -144,18 +162,18 @@ function OrderConfirmContext() {
                     </p>
                 </div>
                 <div>
-                <Controller
-                    name="deliverAt"
-                    control={control}
-                    render={({ field }) => (
-                        <TimePickerInput
-                        {...field} // This correctly passes value, onChange, name, onBlur
-                        />
-                    )}
+                    <Controller
+                        name="deliverAt"
+                        control={control}
+                        render={({ field }) => (
+                            <TimePickerInput
+                                {...field} // This correctly passes value, onChange, name, onBlur
+                            />
+                        )}
                     />
-                {errors.deliverAt && (
-                    <p className="text-red-500 text-sm z-50">กรุณาเลือกเวลาจัดส่งหลัง {getBufferTime({ bufferMins: 10 })}นาที</p>
-                )}
+                    {errors.deliverAt && (
+                        <p className="text-red-500 text-sm z-50">กรุณาเลือกเวลาจัดส่งหลัง {getBufferTime({ bufferMins: 10 })}นาที</p>
+                    )}
                 </div>
             </div>
 

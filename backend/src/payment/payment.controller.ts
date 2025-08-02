@@ -5,19 +5,16 @@ import {
     Logger,
     Req,
     Headers,
-    UseGuards,
     Param
 } from '@nestjs/common';
 import { OrderService } from 'src/order/order.service';
 import { PaymentService } from './payment.service';
 import { Request, Response } from 'express';
 import { PaymentPayload } from 'src/common/interface/payment-gateway';
-import { PaymentMethod, Role } from '@prisma/client';
-import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
-import { CsrfGuard } from 'src/guards/csrf.guard';
-import { RolesGuard } from 'src/guards/roles.guard';
-import { Roles } from 'src/decorators/role.decorator';
+import { PaymentMethod } from '@prisma/client';
+import { Public } from 'src/decorators/public.decorator';
 
+@Public()
 @Controller('payment')
 export class PaymentController {
     constructor(
@@ -44,15 +41,14 @@ export class PaymentController {
         }
     }
 
-    @UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
-    @Roles([Role.user, Role.admin, Role.cooker])
     @Post('create/:orderId')
     async createPayment(@Req() req: any, @Param('orderId') orderId: string) {
-        const userId = req.user.userId;
+        const userId = req.user.userId || undefined;
         const order = await this.orderService.findOneOrder(orderId);
 
         const paymentPayload: PaymentPayload = {
             userId,
+            userEmail: order.userEmail,
             orderId,
             amountInStang: Math.round(Number(order.totalAmount) * 100),
             currency: 'thb',

@@ -46,6 +46,7 @@ export const createOrderSchema = z.object({
     userTel: z.string()
         .trim()
         .regex(/^\d{10}$/, { message: 'กรุณาระบุเบอร์โทรที่ถูกต้อง 10 หลัก' }),
+    userEmail: z.string().trim().email('กรุณาระบุอีเมลที่ถูกต้อง').optional().or(z.literal('')),
     paymentMethod: z.string().optional(),
 });
 

@@ -4,13 +4,14 @@ import React, { createContext, useContext, useCallback, useState, useEffect, use
 import { api } from "@/lib/api";
 import axios, { AxiosResponse, AxiosRequestConfig } from "axios";
 import { useRouter } from "next/navigation";
-import { getCsrfToken, setAccessToken, setCsrfToken, clearTokens } from "@/lib/token";
+import { getCsrfToken, setAccessToken, setCsrfToken, clearTokens, removeAccessToken } from "@/lib/token";
 import LoadingPage from "@/components/LoadingPage";
 
 export enum UserRole {
     user = 'user',
     admin = 'admin',
     cooker = 'cooker',
+    guest = 'guest',
 }
 
 interface User {
@@ -63,6 +64,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const isRefreshing = useRef(false);
     const alertShowRef = useRef(false);
     const failedQueue = useRef<FailedRequest[]>([]);
+    const reroutingToLoginRef = useRef<boolean>(false);
 
     const isInitialLoad = useRef<boolean>(true);
     const isLoggingOut = useRef<boolean>(false);
@@ -102,6 +104,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             }
             throw error;
         }
+    }, []);
+
+    const checkRouteAuthRequirement = useCallback((pathname: string, userRole?: UserRole) => {
+        const protectedRoutes = [
+            '/cooker', // All cooker routes require auth
+            '/restaurant',
+            '/managed-menu',
+            '/add-menu',
+            '/add-menu-bulk',
+            '/edit-menu',
+            '/restaurant-register' // User must login before registering restaurant
+        ];
+
+        const requiresAuth = protectedRoutes.some(route => pathname.startsWith(route));
+        const cookerNeedsAuth = protectedRoutes.some(route => pathname.startsWith(route)) &&
+            (!userRole || userRole === UserRole.cooker);
+
+        return { requiresAuth, cookerNeedsAuth };
     }, []);
 
     const handleLogoutSideEffects = useCallback((showAlert: boolean = false) => {
@@ -147,14 +167,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     useEffect(() => {
         if (loading) return;
         const handleSession = async () => {
-            const publicRoutes = ['/login', '/signup'];
             const currentPath = window.location.pathname;
-            const isPublicRoute = publicRoutes.includes(currentPath);
-            const shouldLogout = !user && isAuth === false;
+            const { requiresAuth, cookerNeedsAuth } = checkRouteAuthRequirement(currentPath, user?.role);
+            const shouldLogout = !user && requiresAuth;
 
-            if (!alertShowRef.current && shouldLogout && !isPublicRoute && !loading) {
+            if (!alertShowRef.current && shouldLogout) {
                 alertShowRef.current = true;
                 handleLogoutSideEffects(true);
+                return;
+            }
+
+            if (cookerNeedsAuth && (!user || user.role !== UserRole.cooker)) {
+                if (!reroutingToLoginRef.current) {
+                    reroutingToLoginRef.current = true;
+                    router.push('/login');
+                }
+                return;
             }
 
             if (user && isAuth) {
@@ -163,7 +191,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
 
         handleSession();
-    }, [loading, user, isAuth, handleLogoutSideEffects]);
+    }, [loading, user, isAuth, handleLogoutSideEffects, checkRouteAuthRequirement]);
 
     const checkSessionValidity = useCallback(async (): Promise<boolean> => {
         try {
@@ -182,9 +210,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const getProfile = useCallback(async (): Promise<User> => {
         try {
-            const response = await api.get('/user/profile', {
-                // timeout: 1000,
-            });
+            const response = await api.get('/user/profile');
             return response.data as User;
         } catch (err) {
             if (axios.isAxiosError(err)) {
@@ -450,13 +476,35 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setLoading(true);
             try {
                 const accessToken = localStorage.getItem('accessToken');
+                const currentPath = window.location.pathname;
+                const { requiresAuth } = checkRouteAuthRequirement(window.location.pathname);
+
                 if (!accessToken) {
-                    await logout(false);
+                    if (requiresAuth) {
+                        await logout(false);
+                        return;
+                    } else {
+                        setUser(null);
+                        setIsAuth(false);
+                    }
+                    return;
+                }
+
+                if (!requiresAuth) {
+                    try {
+                        setAccessToken(accessToken);
+                        const profileUser = await getProfile();
+                        setUser(profileUser);
+                        setIsAuth(true);
+                        alertShowRef.current = true;
+                    } catch {
+                        setUser(null);
+                        setIsAuth(false);
+                    }
                     return;
                 }
 
                 const isSessionValid = await checkSessionValidity();
-
                 if (!isSessionValid) {
                     setUser(null);
                     setIsAuth(false);
@@ -464,7 +512,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     return;
                 }
 
-                setAccessToken(accessToken);
+                if (accessToken) setAccessToken(accessToken);
 
                 try {
                     const profileUser = await getProfile();
@@ -474,7 +522,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     alertShowRef.current = false;
 
                     const publicRoutes = ['/login', '/signup'];
-                    const currentPath = window.location.pathname;
                     const isPublicRoute = publicRoutes.includes(currentPath);
 
                     if (isInitialLoad.current && isPublicRoute) {
@@ -486,7 +533,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 } catch {
                     setUser(null);
                     setIsAuth(false);
-                    handleLogoutSideEffects(true);
+
+                    if (requiresAuth) {
+                        handleLogoutSideEffects(true);
+                    } else {
+                        removeAccessToken();
+                        clearTokens();
+                    }
                     return;
                 }
 
