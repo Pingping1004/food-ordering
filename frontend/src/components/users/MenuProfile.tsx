@@ -60,13 +60,13 @@ export default function MenuProfile({
 
             {...props}
         >
-            <div className="relative w-[163px] h-[163px] aspect-square">
+            <div className="relative w-[183px] h-[183px] aspect-square">
                 <Image
-                    width={163}
-                    height={163}
+                    width={183}
+                    height={183}
                     src={src}
                     alt="Menu profile"
-                    className="rounded-lg object-cover aspect-square w-full h-full"
+                    className="rounded-lg object-cover aspect-auto w-full h-full"
                 />
             </div>
 

@@ -74,32 +74,38 @@ export default function SignupPage() {
                                 กรุณาใส่อีเมลและรหัสผ่านของคุณ
                             </p>
 
-                            <Input
-                                type="email"
-                                placeholder="อีเมล"
-                                label="อีเมล"
-                                // name="email"
-                                // register={register}
-                                {...register('email')}
-                                variant={errors.email ? "error" : "primary"}
-                                error={errors.email?.message}
-                            />
+                            <div className="flex flex-col gap-y-4">
+                                <Input
+                                    type="email"
+                                    placeholder="อีเมล"
+                                    label="อีเมล"
+                                    // name="email"
+                                    // register={register}
+                                    {...register('email')}
+                                    variant={errors.email ? "error" : "primary"}
+                                    error={errors.email?.message}
+                                />
 
-                            <Input
-                                type="password"
-                                placeholder="รหัสผ่าน"
-                                label="รหัสผ่าน"
-                                // name="password"
-                                // register={register}
-                                {...register('password')}
-                                variant={errors.password ? "error" : "primary"}
-                                error={errors.password?.message}
-                            />
+                                <Input
+                                    type="password"
+                                    placeholder="รหัสผ่าน"
+                                    label="รหัสผ่าน"
+                                    // name="password"
+                                    // register={register}
+                                    {...register('password')}
+                                    variant={errors.password ? "error" : "primary"}
+                                    error={errors.password?.message}
+                                />
+                            </div>
 
                             <div className="flex flex-row justify-end mb-8"></div>
-                            <div className="flex justify-center">
+                            <div className="flex flex-col justify-center gap-y-4">
                                 <Button variant="primary" size="full" type="submit" disabled={isSubmitting}>
                                     สร้างบัญชีผู้ใช้
+                                </Button>
+                                <p className="text-light noto-sans-regular text-sm">หรือ</p>
+                                <Button type="button" size="full" variant="secondary" onClick={() => router.push('/user/restaurant')}>
+                                    สั่งอาหารเลยโดยไม่ล็อกอิน!
                                 </Button>
                             </div>
                             <p className="mt-6 text-base leading-relaxed text-gray-900">

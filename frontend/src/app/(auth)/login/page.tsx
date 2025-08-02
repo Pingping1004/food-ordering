@@ -53,29 +53,31 @@ export default function LoginPage() {
                                 ใส่อีเมลและรหัสผ่านของคุณ
                             </p>
 
-                            <Input
-                                type="email"
-                                label="อีเมล"
-                                placeholder="อีเมล"
-                                // register={register}
-                                {...register('email')}
-                                variant={errors.email ? "error" : "primary"}
-                                error={errors.email?.message}
-                            />
+                            <div className="flex flex-col gap-y-4">
+                                <Input
+                                    type="email"
+                                    label="อีเมล"
+                                    placeholder="อีเมล"
+                                    // register={register}
+                                    {...register('email')}
+                                    variant={errors.email ? "error" : "primary"}
+                                    error={errors.email?.message}
+                                />
 
-                            <Input
-                                type="password"
-                                label="รหัสผ่าน"
-                                placeholder="รหัสผ่าน"
-                                // register={register}
-                                {...register('password')}
-                                variant={errors.password ? "error" : "primary"}
-                                error={errors.password?.message}
-                            />
+                                <Input
+                                    type="password"
+                                    label="รหัสผ่าน"
+                                    placeholder="รหัสผ่าน"
+                                    // register={register}
+                                    {...register('password')}
+                                    variant={errors.password ? "error" : "primary"}
+                                    error={errors.password?.message}
+                                />
+                            </div>
 
                             <div className="flex flex-row justify-end mb-8">
                             </div>
-                            <div className="flex justify-center">
+                            <div className="flex flex-col justify-center gap-y-4">
                                 <Button
                                     variant="primary"
                                     size="full"
@@ -83,6 +85,10 @@ export default function LoginPage() {
                                     disabled={isSubmitting}
                                 >
                                     เข้าสู่ระบบ
+                                </Button>
+                                <p className="text-light noto-sans-regular text-sm">หรือ</p>
+                                <Button type="button" size="full" variant="secondary" onClick={() => router.push('/user/restaurant')}>
+                                    สั่งอาหารเลยโดยไม่ล็อกอิน!
                                 </Button>
                             </div>
                             <p className="mt-6 text-base leading-relaxed text-gray-900">
