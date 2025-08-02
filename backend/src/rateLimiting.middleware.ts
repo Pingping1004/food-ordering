@@ -2,7 +2,7 @@ import rateLimit from 'express-rate-limit';
 
 export const globalRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  max: 1000, // Limit each IP to 100 requests per windowMs
   message: {
     error: 'Too many requests from this IP, please try again later.',
     retryAfter: '15 minutes'
@@ -32,7 +32,7 @@ export const authRateLimit = rateLimit({
 // Payment endpoints rate limiting
 export const paymentRateLimit = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 3, // Only 3 payment attempts per 5 minutes
+  max: 5, // Only 3 payment attempts per 5 minutes
   message: {
     error: 'Too many payment attempts',
     retryAfter: '5 minutes'

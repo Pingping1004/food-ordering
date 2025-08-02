@@ -31,9 +31,10 @@ import { Express } from 'express';
 import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
 import { Role } from '@prisma/client';
 import { Roles } from 'src/decorators/role.decorator';
+import { CsrfGuard } from 'src/guards/csrf.guard';
 
 @Controller('menu')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
 @Roles([Role.admin, Role.cooker])
 export class MenuController {
   constructor(

@@ -44,6 +44,8 @@ model Payout {
   restaurantId      String
   order             Order      @relation("OrderToPayout", fields: [orderId], references: [orderId], onDelete: Cascade)
   restaurant        Restaurant @relation("RestaurantPayment", fields: [restaurantId], references: [restaurantId], onDelete: Cascade)
+
+  @@index([isPaid, endDate])
 }
 
 model Restaurant {
@@ -126,16 +128,14 @@ model Order {
   paidAt               DateTime?
   paymentGatewayChargeId        String?     @unique @map("omise_charge_id")
   paymentMethod    String?     @map("payment_method_type")
-  paymentCurrency      String?     @map("payment_currency")
   paymentGatewayStatus String?     @map("payment_gateway_status")
-  failureReason        String?
   restaurantId         String
   restaurant           Restaurant  @relation("restaurantToOrder", fields: [restaurantId], references: [restaurantId], onDelete: Cascade)
   orderMenus           OrderMenu[] @relation("OrderToMenu")
-  payoutId            String?
+  payoutId             String?
   payout               Payout?     @relation("OrderToPayout")
-  userId              String?
-  user                User?          @relation("OrderToUser", fields: [userId], references: [userId], onDelete: Cascade)
+  userId               String?
+  user                 User?          @relation("OrderToUser", fields: [userId], references: [userId], onDelete: Cascade)
 
   @@index([restaurantId])
   @@index([status])

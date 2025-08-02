@@ -57,7 +57,7 @@ export class MenuService implements OnModuleInit {
     private readonly tempImageStore = new Map<string, { url: string; createdAt: Date }>();
 
     async createSingleMenu(createMenuDto: CreateMenuDto, file: Express.Multer.File) {
-        const existingName = await this.findMenuByName(createMenuDto.name);
+        const existingName = await this.checkDuplicateMenuNameInRestaurant(createMenuDto.name, createMenuDto.restaurantId);
         if (existingName)
             throw new BadRequestException(`Menu name ${createMenuDto.name} has already exists`);
 
@@ -248,10 +248,14 @@ export class MenuService implements OnModuleInit {
         };
     }
 
-    async findMenuByName(name: string) {
-        const menu = await this.prisma.menu.findUnique({
+    async checkDuplicateMenuNameInRestaurant(name: string, restaurantId: string) {
+        const menu = await this.prisma.menu.findFirst({
             where: {
-                name,
+                name: {
+                    equals: name,
+                    mode: 'insensitive',
+                },
+                restaurantId,
             },
         });
 

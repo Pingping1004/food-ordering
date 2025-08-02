@@ -3,8 +3,6 @@ import {
   Injectable,
   NotFoundException,
   InternalServerErrorException,
-  forwardRef,
-  Inject,
   ForbiddenException,
   Logger,
   ConflictException,
@@ -14,7 +12,6 @@ import { UpdateOrderDto } from './dto/update-order.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentStatus, OrderStatus, PaymentMethod } from '@prisma/client';
 import { PaymentService } from 'src/payment/payment.service';
-import { PayoutService } from 'src/payout/payout.service';
 import { calculateWeeklyInterval } from 'src/payout/payout-calculator';
 
 import Decimal from 'decimal.js';
@@ -25,8 +22,6 @@ export class OrderService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly paymentService: PaymentService,
-    @Inject(forwardRef(() => PayoutService))
-    private readonly payoutService: PayoutService,
   ) { }
 
   private readonly logger = new Logger('OrderService');

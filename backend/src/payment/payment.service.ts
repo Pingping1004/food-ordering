@@ -10,7 +10,6 @@ import { PaymentStatus } from '@prisma/client';
 import Stripe from 'stripe';
 import { PaymentPayload } from 'src/common/interface/payment-gateway';
 import { OrderService } from 'src/order/order.service';
-import { UserService } from 'src/user/user.service';
 import { PayoutService } from 'src/payout/payout.service';
 
 @Injectable()
@@ -19,7 +18,6 @@ export class PaymentService {
     private readonly stripe: Stripe;
 
     constructor(
-        private readonly userService: UserService,
         private readonly payoutService: PayoutService,
         @Inject(forwardRef(() => OrderService)) private readonly orderService: OrderService,
     ) {
