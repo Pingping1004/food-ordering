@@ -441,20 +441,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     return;
                 }
 
-                if (!requiresAuth) {
-                    try {
-                        setAccessToken(accessToken);
-                        const profileUser = await getProfile();
-                        setUser(profileUser);
-                        setIsAuth(true);
-                        alertShowRef.current = true;
-                    } catch {
-                        setUser(null);
-                        setIsAuth(false);
-                    }
-                    return;
-                }
-
                 const isSessionValid = await checkSessionValidity();
                 if (!isSessionValid) {
                     setUser(null);
