@@ -62,32 +62,3 @@ export function MultiDatePicker({ value, onDatesChange }: MultiDatePickerProps) 
         </Popover>
     );
 }
-
-// const toggleButtonState = (index: number) => {
-//     setVariants((prev) => {
-//       // Count how many are currently selected
-//       const selectedCount = prev.filter((v) => v === 'primary').length;
-//       const isSelected = prev[index] === 'primary';
-
-//       // If already selected, allow deselecting
-//       if (!isSelected && selectedCount >= 3) {
-//         alert('สามารถเลือกได้สูงสุด3หมวดหมู่เท่านั้น');
-//         return prev;
-//       }
-
-//       return prev.map((state, i) =>
-//         i === index ? (state === 'primary' ? 'tertiary' : 'primary') : state
-//       );
-//     });
-
-//     setCategories((prev) => {
-//       const label = buttonLabels[index].value;
-//       const isSelected = variants[index] === 'primary';
-//       if (isSelected) {
-//         return prev.filter((category) => category !== label);
-//       } else {
-//         if (prev.length >= 3) return prev;
-//         return [...prev, label];
-//       }
-//     });
-//   };

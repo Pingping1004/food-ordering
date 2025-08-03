@@ -9,6 +9,7 @@ import Link from "next/link";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { useAuth } from "@/context/Authcontext";
+import { toastDanger } from "@/components/ui/Toast";
 
 export default function LoginPage() {
     const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<loginSchemaType>({
@@ -24,7 +25,7 @@ export default function LoginPage() {
             .map(([field, error]) => `${field}: ${error?.message}`)
             .join('\n');
 
-        alert(`กรุณากรอกข้อมูลให้ถูกต้อง:\n\n${messages}`);
+        toastDanger(`กรุณากรอกข้อมูลให้ถูกต้อง:\n\n${messages}`);
     };
 
     const submitForm = async (loginData: loginSchemaType) => {
