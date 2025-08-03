@@ -17,8 +17,8 @@ const nextConfig: NextConfig = {
         return [
             {
                 source: '/api/:path*',
-                // destination: 'https://api.promptserve.online/api/:path*',
-                destination: 'https://afbd008e22d3.ngrok-free.app/api/:path*'
+                destination: 'https://api.promptserve.online/api/:path*',
+                // destination: 'https://afbd008e22d3.ngrok-free.app/api/:path*'
             },
         ];
     },
