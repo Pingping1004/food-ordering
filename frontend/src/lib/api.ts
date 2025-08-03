@@ -4,14 +4,6 @@ import Cookies from 'js-cookie';
 
 const baseBackendUrl = `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/api`;
 
-interface ApiErrorResponse {
-    message: string;
-    error: string;
-    statusCode: number;
-    timestamp?: string;
-    path?: string;
-}
-
 export const api = axios.create({
     baseURL: baseBackendUrl,
     withCredentials: true,
