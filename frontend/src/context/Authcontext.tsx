@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useCallback, useState, useEffect, useRef, useMemo } from "react";
-import { api } from "@/lib/api";
+import { api, handleTokenRefresh, normalizeError } from "@/lib/api";
 import axios, { AxiosResponse, AxiosRequestConfig } from "axios";
 import { useRouter } from "next/navigation";
 import { getCsrfToken, setAccessToken, setCsrfToken, clearTokens, removeAccessToken } from "@/lib/token";
@@ -69,28 +69,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const isInitialLoad = useRef<boolean>(true);
     const isLoggingOut = useRef<boolean>(false);
 
-    const processQueue = useCallback(
-        (error: Error | null, token: string | null = null) => {
-            failedQueue.current.forEach((prom) => {
-                if (error) {
-                    prom.reject(error);
-                } else if (token) {
-                    // Ensure headers exist and are mutable
-                    prom.config.headers = {
-                        ...(prom.config.headers || {}),
-                        Authorization: `Bearer ${token}`,
-                    };
-
-                    prom.resolve(api(prom.config));
-                }
-            });
-
-            // Clear the queue
-            failedQueue.current = [];
-        },
-        []
-    );
-
     const fetchCsrfToken = useCallback(async () => {
         try {
             const result = await api.get('/csrf-token');
@@ -148,16 +126,34 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }, 1000);
     }, [router]);
 
+
+    let refreshTimer: NodeJS.Timeout | null = null;
+    const scheduleRefresh = () => {
+        if (refreshTimer) clearTimeout(refreshTimer);
+
+        refreshTimer = setTimeout(async () => {
+            try {
+                await handleTokenRefresh();
+                scheduleRefresh();
+            } catch {
+                handleLogoutSideEffects();
+            }
+        }, 25 * 60 * 1000);
+    };
+
+    const clearRefresh = () => {
+        if (refreshTimer) clearTimeout(refreshTimer);
+        refreshTimer = null;
+    };
+
     const logout = useCallback(async (showAlert: boolean = false) => {
-        if (isLoggingOut.current) {
-            return;
-        }
+        if (isLoggingOut.current) return
 
         setLoading(true);
         try {
             await api.post('/auth/logout', undefined, { headers: { skipAuth: 'true' } });
-        } catch { }
-        finally {
+        } finally {
+            clearRefresh();
             handleLogoutSideEffects(showAlert);
             alertShowRef.current = false;
             setLoading(false);
@@ -299,6 +295,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
             setIsAuth(true);
             setUser(userData as User);
+            scheduleRefresh();
 
             await fetchCsrfToken();
             return userData as User;
@@ -339,52 +336,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 return Promise.reject(error instanceof Error ? error : new Error(JSON.stringify(error)))
             }
         );
-
-        // Response Interceptor: Handle 401 for token refresh
-        const handleRefreshToken = async (originalRequest: AxiosRequestConfig) => {
-            try {
-                const refreshResponse = await api.post('/auth/refresh');
-                const newAccessToken = refreshResponse.data.accessToken;
-
-                setAccessToken(newAccessToken);
-                localStorage.setItem('accessToken', newAccessToken);
-
-                const user = await getProfile();
-                setUser(user);
-                setIsAuth(true);
-
-                processQueue(null, newAccessToken);
-
-                originalRequest.headers ??= {};
-                originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-
-                return api(originalRequest);
-            } catch (refreshError) {
-                let normalizedError: Error;
-
-                if (refreshError instanceof Error) {
-                    normalizedError = refreshError;
-                } else if (typeof refreshError === 'string') {
-                    normalizedError = new Error(refreshError);
-                } else {
-                    try {
-                        normalizedError = new Error(JSON.stringify(refreshError));
-                    } catch {
-                        normalizedError = new Error('Unknown error during token refresh');
-                    }
-                }
-
-                processQueue(normalizedError);
-
-                setUser(null);
-                setIsAuth(false);
-                handleLogoutSideEffects(true);
-
-                throw normalizedError;
-            } finally {
-                isRefreshing.current = false;
-            }
-        };
 
         const queueRequest = (originalRequest: AxiosRequestConfig) =>
             new Promise((resolve, reject) => {
@@ -430,7 +381,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 // Try token refresh only once
                 if (!isRefreshing.current) {
                     isRefreshing.current = true;
-                    return handleRefreshToken(originalRequest);
+                    return handleTokenRefresh(originalRequest);
                 } else {
                     // If refresh is already in progress, queue the request
                     return queueRequest(originalRequest);
@@ -459,7 +410,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                         handleLogoutSideEffects(true);
                     }
                 }
-                return Promise.reject(error);
+                return Promise.reject(normalizeError(error));
             }
         );
 

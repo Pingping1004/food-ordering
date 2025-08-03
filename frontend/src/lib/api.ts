@@ -1,4 +1,4 @@
-import axios, { AxiosRequestConfig, AxiosError, InternalAxiosRequestConfig, AxiosResponse, AxiosHeaders } from "axios";
+import axios, { AxiosRequestConfig, AxiosError, AxiosHeaders } from "axios";
 import { setAccessToken, getRefreshToken, setRefreshToken, clearTokens, removeAccessToken } from "./token";
 import Cookies from 'js-cookie';
 
@@ -25,21 +25,27 @@ const forcedLogout = () => {
 
 // Function to process the queue of failed requests
 const processQueue = (error: AxiosError | null, token: string | null = null) => {
-    failedQueue.forEach(prom => {
+    failedQueue.forEach(({ resolve, reject, config }) => {
         if (error) {
-            prom.reject(error);
+            reject(error);
         } else if (token) {
-            if (!prom.config.headers) {
-                prom.config.headers = new axios.AxiosHeaders();
-            } else if (!(prom.config.headers instanceof axios.AxiosHeaders)) {
-                prom.config.headers = axios.AxiosHeaders.from({ ...(prom.config.headers as object) });
+            if (!config.headers) {
+                config.headers = new axios.AxiosHeaders();
+            } else if (!(config.headers instanceof axios.AxiosHeaders)) {
+                config.headers = axios.AxiosHeaders.from({ ...(config.headers as object) });
             }
-            prom.config.headers['Authorization'] = `Bearer ${token}`;
-            prom.resolve(api(prom.config)); // Re-send the original request
+            config.headers['Authorization'] = `Bearer ${token}`;
+            resolve(api(config));
         }
     });
     failedQueue = [];
 };
+
+export function normalizeError(err: unknown): Error {
+    if (err instanceof Error) return err;
+    if (typeof err === 'string') return new Error(err);
+    return new Error(JSON.stringify(err));
+}
 
 api.interceptors.request.use(
     (config) => {
@@ -80,15 +86,15 @@ api.interceptors.request.use(
         if (error.response?.status === 401) {
             forcedLogout();
         }
-        return Promise.reject(error instanceof Error ? error : new Error(JSON.stringify(error)))
+        return Promise.reject(normalizeError(error))
     }
 );
 
-interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
+interface CustomAxiosRequestConfig extends AxiosRequestConfig {
     _retry?: boolean;
 }
 
-async function handleTokenRefresh(originalRequest: CustomAxiosRequestConfig): Promise<AxiosResponse> {
+export async function handleTokenRefresh(originalRequest?: CustomAxiosRequestConfig): Promise<{ accessToken: string }> {
     const refreshToken = getRefreshToken();
     if (!refreshToken) {
         clearTokens();
@@ -101,45 +107,27 @@ async function handleTokenRefresh(originalRequest: CustomAxiosRequestConfig): Pr
                 skipAuth: 'true',
             }
         });
-        const { accessToken, refreshToken: newRefreshToken } = response.data;
 
+        const { accessToken, refreshToken: newRefreshToken } = response.data;
         setAccessToken(accessToken);
         setRefreshToken(newRefreshToken);
-        processQueue(null, accessToken);
 
-        if (!originalRequest.headers) {
-            originalRequest.headers = new axios.AxiosHeaders();
-        } else if (!(originalRequest.headers instanceof axios.AxiosHeaders)) {
-            originalRequest.headers = axios.AxiosHeaders.from(originalRequest.headers);
-        }
-
-        originalRequest.headers['Authorization'] = `Bearer ${accessToken}`;
-        return api(originalRequest);
+        return accessToken;
     } catch (err: unknown) {
         clearTokens();
 
-        if (err && typeof err === 'object' && (err as AxiosError).isAxiosError) {
-            processQueue(err as AxiosError); // safe cast
-        } else {
-            processQueue(null);
-        }
+        let error: Error;
 
-        let rejectionError;
+        if (err instanceof Error) error = err;
+        else if (typeof err === 'string') error = new Error(err);
+        else error = new Error(JSON.stringify(err));
 
-        if (err instanceof Error) {
-            rejectionError = err;
-        } else if (typeof err === 'string') {
-            rejectionError = new Error(err);
-        } else {
-            // A fallback for other error types, like plain objects
-            rejectionError = new Error(JSON.stringify(err));
-        }
-
-        return Promise.reject(rejectionError);
+        return Promise.reject(normalizeError(error));
     } finally {
         isRefreshing = false;
     }
 }
+
 api.interceptors.response.use(
     (res) => res,
     async (error: AxiosError) => {
@@ -153,7 +141,7 @@ api.interceptors.response.use(
             if (isUnauthorized && !isNotSkipAuth) {
                 forcedLogout();
             }
-            return Promise.reject(error);
+            return Promise.reject(normalizeError(error));
         }
 
         const criticalEndpoints = ['/user/profile', '/auth/refresh'];
@@ -175,7 +163,30 @@ api.interceptors.response.use(
         }
 
         isRefreshing = true;
-        return handleTokenRefresh(originalRequest);
+
+        try {
+            const { accessToken: newAccessToken } = await handleTokenRefresh(originalRequest);
+            processQueue(null, newAccessToken);
+
+            if (originalRequest.headers instanceof axios.AxiosHeaders) {
+                originalRequest.headers.set('Authorization', `Bearer ${newAccessToken}`);
+            } else if (originalRequest.headers) {
+                originalRequest.headers = {
+                    ...(originalRequest.headers as Record<string,string>),
+                    Authorization: `Bearer ${newAccessToken}`,
+                };
+            } else {
+                originalRequest.headers = new axios.AxiosHeaders({ Authorization: `Bearer ${newAccessToken}` });
+            }
+
+            return api(originalRequest);
+        } catch (error) {
+            processQueue(error as AxiosError, null);
+            forcedLogout();
+            return Promise.reject(normalizeError(error));
+        } finally {
+            isRefreshing = false;
+        }
     }
 );
 

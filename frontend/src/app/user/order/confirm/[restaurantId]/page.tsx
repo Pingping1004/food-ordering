@@ -1,6 +1,5 @@
 "use client";
 
-import React, { useEffect, useState } from 'react'
 import { useCart } from '@/context/CartContext';
 import { MenuProvider, useMenu } from '@/context/MenuContext';
 import OrderList from '@/components/users/OrderList';
@@ -12,8 +11,8 @@ import { useForm, Controller } from 'react-hook-form';
 import { createOrderSchema, CreateOrderSchemaType } from '@/schemas/addOrderSchema';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
-import { toastPrimary } from '@/components/ui/Toast';
+// import { toast } from 'sonner';
+// import { toastPrimary } from '@/components/ui/Toast';
 
 const now = new Date();
 const currentHour = new Date().getHours();
@@ -37,7 +36,7 @@ function OrderConfirmContext() {
     const { restaurant } = useMenu();
     const { cart } = useCart();
     const router = useRouter();
-    const [click, setClick] = useState<number>(0);
+    // const [click, setClick] = useState<number>(0);
     const {
         control,
         handleSubmit,

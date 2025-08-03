@@ -57,13 +57,13 @@ export const OrderNavBar = ({
                 onClick={() => handleClick(OrderStatus.receive)}
                 className={
                     state === OrderStatus.receive
-                        ? "w-1/4 text-primary p-2 border-b-2 border-primary-main"
-                        : "w-1/4 p-2"
+                        ? "w-1/2 text-primary p-2 border-b-2 border-primary-main"
+                        : "w-1/2 p-2"
                 }
             >
         ออเดอร์ใหม่
             </button>
-            <button
+            {/* <button
                 onClick={() => handleClick(OrderStatus.cooking)}
                 className={
                     state === OrderStatus.cooking
@@ -72,23 +72,23 @@ export const OrderNavBar = ({
                 }
             >
         กำลังปรุง
-            </button>
-            <button
+            </button> */}
+            {/* <button
                 onClick={() => handleClick(OrderStatus.ready)}
                 className={
                     state === OrderStatus.ready
-                        ? "w-1/4 text-primary p-2 border-b-2 border-primary-main"
-                        : "w-1/4 p-2"
+                        ? "w-1/2 text-primary p-2 border-b-2 border-primary-main"
+                        : "w-1/2 p-2"
                 }
             >
         พร้อมเสิร์ฟ
-            </button>
+            </button> */}
             <button
                 onClick={() => handleClick(OrderStatus.done)}
                 className={
                     state === OrderStatus.done
-                        ? "w-1/4 text-primary p-2 border-b-2 border-primary-main"
-                        : "w-1/4 p-2"
+                        ? "w-1/2 text-primary p-2 border-b-2 border-primary-main"
+                        : "w-1/2 p-2"
                 }
             >
         เสร็จ
