@@ -114,7 +114,7 @@ export class AuthService {
 
     if (validationResult.errorType) {
       this.logger.log(`Login failed: Email '${loginDto.email}' not found.`);
-      throw new UnauthorizedException('...');
+      throw new UnauthorizedException(`ไม่พบอีเมล '${loginDto.email}'`);
     }
 
     const user = validationResult.user;
@@ -167,17 +167,6 @@ export class AuthService {
 
       const newExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
       await this.refreshTokenService.updateTokenExpiry(payload.jti, newExpiry);
-
-      // if (storedToken.isUsed) {
-      //   await this.refreshTokenService.invalidateAllUserRefreshTokens(
-      //     payload.sub,
-      //   );
-      //   throw new UnauthorizedException(
-      //     'Compromised token detected. Please log in again.',
-      //   );
-      // }
-
-      // await this.refreshTokenService.markTokenAsUsed(payload.jti);
 
       const user = await this.userService.findOneUser(payload.sub);
       if (!user) {
