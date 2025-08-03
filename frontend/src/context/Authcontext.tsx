@@ -35,22 +35,11 @@ interface AuthContextType {
     logout: () => Promise<void>;
 }
 
-// Extend the config type
-interface CustomAxiosRequestConfig extends AxiosRequestConfig {
-    _retry?: boolean;
-}
-
 type FailedRequest = {
     resolve: (value: AxiosResponse | PromiseLike<AxiosResponse>) => void;
     reject: (reason?: unknown) => void;
     config: AxiosRequestConfig;
 };
-
-interface BackendErrorResponse {
-    statusCode: number;
-    message: string | string[];
-    error: string;
-}
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
