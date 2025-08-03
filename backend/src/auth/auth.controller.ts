@@ -115,7 +115,7 @@ export class AuthController {
         process.env.NODE_ENV === 'production' ||
         process.env.NODE_ENV === 'development_https',
       sameSite: 'lax',
-      expires: new Date(Date.now() + 15 * 60 * 1000),
+      expires: new Date(Date.now() + 30 * 60 * 1000),
       path: '/',
     });
     res.cookie('refresh_token', result.refreshToken, {

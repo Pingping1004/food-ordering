@@ -8,7 +8,6 @@ import { APP_FILTER } from '@nestjs/core';
 import { HttpExceptionFilter } from './libs/http-exception.filter';
 import { CatchEverythingFilter } from './libs/catch-everything.filter';
 import { RequestLoggerMiddleware } from 'src/logger.middleware';
-import configuration from './config/configuration';
 
 // Service and controller
 import { AppController } from './app.controller';
@@ -27,7 +26,6 @@ import { OrderController } from './order/order.controller';
 import { PaymentModule } from './payment/payment.module';
 import { PaymentService } from './payment/payment.service';
 import { PaymentController } from './payment/payment.controller';
-import { ConfigModule } from '@nestjs/config';
 import { PayoutModule } from './payout/payout.module';
 import { PayoutController } from './payout/payout.controller';
 import { PayoutService } from './payout/payout.service';
@@ -43,6 +41,8 @@ import { RefreshTokenService } from './refreshToken/refresh-token.service';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { S3Module } from './s3/s3.module';
 import { S3Service } from './s3/s3.service';
+import { ConfigModule } from '@nestjs/config';
+import configuration from './config/configuration';
 
 @Module({
   imports: [
@@ -63,12 +63,11 @@ import { S3Service } from './s3/s3.service';
         },
       ],
     }),
-    // ConfigModule.forRoot({
-    //   isGlobal: true,
-    //   load: [configuration],
-    //   // envFilePath: '.env',
-    //   envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
-    // }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [configuration],
+      envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
+    }),
     PayoutModule,
     AuthModule,
     UserModule,

@@ -9,19 +9,20 @@ import {
 import { HttpExceptionFilter } from './libs/http-exception.filter';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import * as express from 'express';
-import { json, Request, Response } from 'express';
+import { Request, Response } from 'express';
 import cookieParser from 'cookie-parser';
 import * as dotenv from 'dotenv';
 import helmet from 'helmet';
 import compression from 'compression';
 import * as fs from 'fs';
-import { ConfigModule } from '@nestjs/config';
+import * as bodyParser from 'body-parser';
 import {
   globalRateLimit,
   authRateLimit,
   paymentRateLimit,
   orderRateLimit,
 } from './rateLimiting.middleware';
+import './auth/jobs/tokenClean.job';
 
 dotenv.config();
 declare global {
@@ -44,12 +45,16 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
   const logger = new Logger('Bootstrap');
 
-  app.use('/api/payment/webhook', express.raw({ type: 'application/json' }));
+  app.use(
+    '/api/payment/webhook',
+    bodyParser.raw({ type: 'application/json' })
+  );
 
-  ConfigModule.forRoot({
-    isGlobal: true,
-    envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
-  });
+  app.use(
+    express.json({
+      limit: '10mb',
+    })
+  );
 
   const allowedOrigins = [
     'https://promptserve.online',
@@ -89,16 +94,15 @@ async function bootstrap() {
     exposedHeaders: ['Set-Cookie'],
   });
 
+  logger.log('Webhook endpoint: ', process.env.WEBHOOK_ENDPOINT);
+
   app.use(cookieParser());
   app.set('trust proxy', 1);
   app.enableShutdownHooks();
   app.use(helmet());
   app.use(compression());
-
-  // Apply global rate limiting
+  
   app.use(globalRateLimit);
-
-  // Apply specific rate limiting to routes
   app.use('/api/auth', authRateLimit);
   app.use('/api/payment', paymentRateLimit);
   app.use('/api/order/create', orderRateLimit);
@@ -166,18 +170,6 @@ async function bootstrap() {
           errors: detailedErrors,
         });
       },
-    }),
-  );
-
-  // IMPORTANT for webhooks: Configure body parser to get raw body
-  app.use(
-    json({
-      verify: (req: express.Request, res: express.Response, buf: Buffer) => {
-        if (req.originalUrl === process.env.WEBHOOK_ENDPOINT) {
-          req.rawBody = buf;
-        }
-      },
-      limit: '10mb',
     }),
   );
 

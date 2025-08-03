@@ -5,7 +5,10 @@ import {
     Logger,
     Req,
     Headers,
-    Param
+    Param,
+    ForbiddenException,
+    InternalServerErrorException,
+    Body
 } from '@nestjs/common';
 import { OrderService } from 'src/order/order.service';
 import { PaymentService } from './payment.service';
@@ -42,28 +45,37 @@ export class PaymentController {
     }
 
     @Post('create/:orderId')
-    async createPayment(@Req() req: any, @Param('orderId') orderId: string) {
-        const userId = req.user.userId || undefined;
+    async createPayment(@Req() req: any, @Param('orderId') orderId: string, @Body() body: unknown) {
+        const userId = req.user?.userId;
         const order = await this.orderService.findOneOrder(orderId);
 
-        const paymentPayload: PaymentPayload = {
-            userId,
-            userEmail: order.userEmail,
-            orderId,
-            amountInStang: Math.round(Number(order.totalAmount) * 100),
-            currency: 'thb',
-            method: PaymentMethod.promptpay,
-            restaurantId: order.restaurantId,
-        };
+        if (userId && order.userId !== userId) {
+            throw new ForbiddenException('You do not own this order');
+        }
 
-        const paymentIntent = await this.paymentService.createPaymentCharge(paymentPayload);
+        try {
+            const paymentPayload: PaymentPayload = {
+                userId,
+                userEmail: order.userEmail,
+                orderId,
+                amountInStang: Math.round(Number(order.totalAmount.toFixed(2)) * 100),
+                currency: 'thb',
+                method: PaymentMethod.promptpay,
+                restaurantId: order.restaurantId,
+            };
 
-        return {
-            orderId: order.orderId,
-            intentId: paymentIntent.id,
-            checkoutUrl: paymentIntent.url,
-            paymentGatewayIntentId: paymentIntent.payment_intent as string,
-            status: 'pending',
+            const paymentIntent = await this.paymentService.createPaymentCharge(paymentPayload);
+
+            return {
+                orderId: order.orderId,
+                intentId: paymentIntent.id,
+                checkoutUrl: paymentIntent.url,
+                paymentGatewayIntentId: paymentIntent.payment_intent as string,
+                status: 'pending',
+            }
+        } catch (error) {
+            this.logger.error(`Failed to create payment for order: ${orderId}: ${error.message}`);
+            throw new InternalServerErrorException('Failed to create payment session');
         }
     }
 }

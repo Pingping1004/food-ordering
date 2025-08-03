@@ -156,23 +156,28 @@ export class AuthService {
         );
       }
 
-      const storedToken = await this.refreshTokenService.findTokenByJti(
-        payload.jti,
-      );
+      const storedToken = await this.refreshTokenService.findTokenByJti(payload.jti);
       if (!storedToken || storedToken.isRevoked) {
         throw new UnauthorizedException('Invalid or revoked refresh token');
       }
 
-      if (storedToken.isUsed) {
-        await this.refreshTokenService.invalidateAllUserRefreshTokens(
-          payload.sub,
-        );
-        throw new UnauthorizedException(
-          'Compromised token detected. Please log in again.',
-        );
+      if (storedToken.expiresAt < new Date()) {
+        throw new UnauthorizedException('Refresh token expired');
       }
 
-      await this.refreshTokenService.markTokenAsUsed(payload.jti);
+      const newExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      await this.refreshTokenService.updateTokenExpiry(payload.jti, newExpiry);
+
+      // if (storedToken.isUsed) {
+      //   await this.refreshTokenService.invalidateAllUserRefreshTokens(
+      //     payload.sub,
+      //   );
+      //   throw new UnauthorizedException(
+      //     'Compromised token detected. Please log in again.',
+      //   );
+      // }
+
+      // await this.refreshTokenService.markTokenAsUsed(payload.jti);
 
       const user = await this.userService.findOneUser(payload.sub);
       if (!user) {
@@ -188,8 +193,7 @@ export class AuthService {
         role: user.role,
       };
 
-      const { accessToken, refreshToken: newRefreshToken } =
-        await this.generateToken(newAccessTokenPayload);
+      const { accessToken, refreshToken: newRefreshToken } = await this.generateToken(newAccessTokenPayload);
 
       return {
         accessToken,

@@ -90,15 +90,11 @@ export class CreateOrderDto {
 
   @IsOptional() // Could be null if no payment initiated or failed initiation
   @IsString()
-  omiseChargeId?: string;
+  paymentGatewayChargeId?: string;
 
   @IsOptional()
   @IsEnum(PaymentMethod)
   paymentMethod?: PaymentMethod;
-
-  @IsNotEmpty()
-  @IsNumber()
-  calculateTimeClick: number;
 
   @IsOptional() // Could be null if no payment initiated or before first update
   @IsString() // Use string as Omise provides various statuses

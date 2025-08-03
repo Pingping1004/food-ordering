@@ -34,9 +34,13 @@ export class PaymentService {
     }
 
     async createPaymentCharge(payload: PaymentPayload) {
-        console.log('Platform fee: ', process.env.PLATFORM_COMMISSION_RATE);
-        const platformFee = Number(process.env.PLATFORM_COMMISSION_RATE);    const successUrl = `${process.env.PAYMENT_SUCCESS_URL}/${payload.orderId}`;
-        if (platformFee === undefined) throw new NotFoundException('No value for PLATFORM_COMMISSION_RATE in ENV');
+        const platformFeeRaw = process.env.PLATFORM_COMMISSION_RATE;
+        const platformFee = Number(platformFeeRaw);
+        const successUrl = `${process.env.PAYMENT_SUCCESS_URL}/${payload.orderId}`;
+
+        if (!platformFeeRaw || isNaN(platformFee)) {
+            throw new NotFoundException('Invalid or missing PLATFORM_COMMISSION_RATE in ENV');
+        }
 
         try {
             const paymentSession = await this.stripe.checkout.sessions.create({
@@ -111,9 +115,10 @@ export class PaymentService {
             if (!paymentIntentId) throw new Error('Missing paymentIntent ID in session');
 
             const paymentIntent = await this.stripe.paymentIntents.retrieve(paymentIntentId);
-
             orderId = paymentIntent.metadata?.orderId;
-            if (!orderId) throw new Error('Missing orderId in paymentIntent metadata');
+            if (!paymentIntent.metadata?.orderId) {
+                throw new Error('Missing orderId in metadata');
+            }
         } else {
             return;
         }

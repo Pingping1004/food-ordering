@@ -4,7 +4,7 @@ import { RefreshToken } from '@prisma/client';
 
 @Injectable()
 export class RefreshTokenService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async createRefreshtToken(data: {
     token: string;
@@ -23,7 +23,7 @@ export class RefreshTokenService {
     const token = await this.prisma.refreshToken.findUnique({
       where: {
         jti,
-        isRevoked: false,
+        // isRevoked: false,
       },
     });
     return token ?? undefined;
@@ -46,10 +46,37 @@ export class RefreshTokenService {
     });
   }
 
+  async updateTokenExpiry(jti: string, newExpiry: Date): Promise<void> {
+    await this.prisma.refreshToken.update({
+      where: { jti },
+      data: { expiresAt: newExpiry },
+    });
+  }
+
   async revokeToken(jti: string): Promise<void> {
     await this.prisma.refreshToken.update({
       where: { jti },
       data: { isRevoked: true },
     });
+  }
+
+  async revokeAllUserToken(userId: string): Promise<void> {
+    await this.prisma.refreshToken.updateMany({
+      where: { userId, isRevoked: false },
+      data: { isRevoked: true },
+    });
+  }
+
+  async deleteExpiredTokens(): Promise<number> {
+    const result = await this.prisma.refreshToken.deleteMany({
+      where: {
+        OR: [
+          { isRevoked: true },
+          { expiresAt: { lt: new Date() } },
+        ],
+      },
+    });
+
+    return result.count;
   }
 }

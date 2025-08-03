@@ -56,6 +56,7 @@
     "moment": "^2.30.1",
     "moment-timezone": "^0.6.0",
     "multer": "^2.0.2",
+    "node-cron": "^4.2.1",
     "omise": "^1.0.0",
     "papaparse": "^5.5.3",
     "passport": "^0.7.0",
