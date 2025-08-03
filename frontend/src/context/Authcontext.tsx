@@ -1,11 +1,12 @@
 "use client";
 
 import React, { createContext, useContext, useCallback, useState, useEffect, useRef, useMemo } from "react";
-import { api, handleTokenRefresh, normalizeError } from "@/lib/api";
-import axios, { AxiosResponse, AxiosRequestConfig } from "axios";
+import { api, handleTokenRefresh } from "@/lib/api";
+import axios, { AxiosResponse, AxiosRequestConfig, AxiosError } from "axios";
 import { useRouter } from "next/navigation";
-import { getCsrfToken, setAccessToken, setCsrfToken, clearTokens, removeAccessToken } from "@/lib/token";
+import { setAccessToken, setCsrfToken, clearTokens, removeAccessToken } from "@/lib/token";
 import LoadingPage from "@/components/LoadingPage";
+import { toastDanger } from "@/components/ui/Toast";
 
 export enum UserRole {
     user = 'user',
@@ -57,13 +58,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [isAuth, setIsAuth] = useState<boolean>(false);
-    // const isInitialLoad = useRef<boolean>(true);
-    // const [accessTokenValue, setAccessTokenValue] = useState<string | null>(null);
     const router = useRouter();
 
-    const isRefreshing = useRef(false);
     const alertShowRef = useRef(false);
-    const failedQueue = useRef<FailedRequest[]>([]);
     const reroutingToLoginRef = useRef<boolean>(false);
 
     const isInitialLoad = useRef<boolean>(true);
@@ -115,7 +112,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         clearTokens();
 
         if (showAlert) {
-            alert('เซสชันหมดอายุ กรุณาล็อกอินใหม่อีกครั้ง');
+            toastDanger('เซสชันหมดอายุ กรุณาล็อกอินใหม่อีกครั้ง');
         }
 
         router.push('/login');
@@ -250,16 +247,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const handleLoginError = useCallback((err: unknown): void => {
         let messageToDisplay: string;
 
-        if (axios.isAxiosError(err)) {
-            const status = err.response?.status;
-            const backendData = err.response?.data as BackendErrorResponse;
-            const backendMessage = getFormattedBackendMessage(backendData?.message);
+        if (typeof err === 'object' && err !== null && 'response' in err) {
+            const error = err as AxiosError<{ message: string }>;
+            const status = error.response?.status;
+            const backendMessage = getFormattedBackendMessage(error.response?.data.message);
 
             if (status === 401) {
-                // For 401, prioritize backend's specific message (if any), otherwise use generic for security.
                 messageToDisplay = backendMessage || 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
             } else if (status === 403) {
-                // HTTP 403 Forbidden (e.g., session expired, access denied)
                 messageToDisplay = 'เซสชันหมดอายุ กรุณาล็อกอินใหม่อีกครั้ง';
             } else if (status === 404) {
                 messageToDisplay = 'ไม่พบบริการหรือเส้นทางที่ร้องขอ';
@@ -274,7 +269,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             messageToDisplay = 'เกิดข้อผิดพลาดที่ไม่รู้จัก กรุณาลองใหม่';
         }
 
-        alert(messageToDisplay);
+        toastDanger(messageToDisplay);
     }, []);
 
     const login = useCallback(async (email: string, password: string): Promise<User> => {
@@ -300,127 +295,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             await fetchCsrfToken();
             return userData as User;
         } catch (err: unknown) {
-            handleLoginError(err);
+            setTimeout(() => handleLoginError(err), 100);
             throw err;
         } finally {
             setLoading(false);
         }
     }, [fetchCsrfToken]);
-
-    useEffect(() => {
-        const requestInterceptor = api.interceptors.request.use(
-            async (config) => {
-                if (config.headers?.skipAuth === 'true') return config;
-
-                const token = localStorage.getItem('accessToken');
-                if (token && config.headers && !config.headers.Authorization) {
-                    config.headers.Authorization = `Bearer ${token}`;
-                }
-
-                const currentCsrfToken = getCsrfToken();
-                if (currentCsrfToken && config.headers) {
-                    const isCsrfFetchRequest = config.url === '/csrf-token';
-                    const isMutatingMethod = ['post', 'put', 'delete', 'patch'].includes(config.method?.toLowerCase() || '');
-
-                    if (!isCsrfFetchRequest && isMutatingMethod) {
-                        if (!config.headers['X-CSRF-TOKEN']) {
-                            config.headers['X-CSRF-TOKEN'] = currentCsrfToken;
-                        }
-                    }
-                }
-
-                config.withCredentials = true;
-                return config;
-            },
-            (error) => {
-                return Promise.reject(error instanceof Error ? error : new Error(JSON.stringify(error)))
-            }
-        );
-
-        const queueRequest = (originalRequest: AxiosRequestConfig) =>
-            new Promise((resolve, reject) => {
-                failedQueue.current.push({ resolve, reject, config: originalRequest });
-            });
-
-        const onResponseError = async (error: unknown) => {
-            if (!axios.isAxiosError(error) || !error.config) {
-                return Promise.reject(new Error('Unknown error'));
-            }
-
-            const originalRequest = error.config as CustomAxiosRequestConfig;
-            const isUnauthorized = error.response?.status === 401;
-
-            if (isUnauthorized) {
-                // Check if this is a critical endpoint that should immediately force logout
-                const criticalEndpoints = ['/user/profile', '/auth/refresh'];
-                const isCriticalEndpoint = criticalEndpoints.some(endpoint =>
-                    originalRequest.url?.includes(endpoint)
-                );
-
-                // If it's a critical endpoint, force logout immediately
-                if (isCriticalEndpoint) {
-                    setUser(null);
-                    setIsAuth(false);
-                    handleLogoutSideEffects(true);
-                    return Promise.reject(new Error('Session expired'));
-                }
-
-                const canRetry = !originalRequest._retry;
-
-                // If this is a retry attempt or refresh is already happening, force logout
-                if (!canRetry) {
-                    setUser(null);
-                    setIsAuth(false);
-                    handleLogoutSideEffects(true);
-                    return Promise.reject(new Error('Session expired'));
-                }
-
-                // Mark as retry to prevent infinite loops
-                originalRequest._retry = true;
-
-                // Try token refresh only once
-                if (!isRefreshing.current) {
-                    isRefreshing.current = true;
-                    return handleTokenRefresh();
-                } else {
-                    // If refresh is already in progress, queue the request
-                    return queueRequest(originalRequest);
-                }
-            }
-
-            return Promise.reject(
-                error instanceof Error ? error : new Error(JSON.stringify(error))
-            );
-        };
-
-        const responseInterceptor = api.interceptors.response.use(
-            (response) => response,
-            onResponseError
-        );
-
-        const globalUnauthorizedInterceptor = api.interceptors.response.use(
-            (response) => response,
-            (error) => {
-                if (axios.isAxiosError(error) && error.response?.status === 401) {
-                    // If we get here, it means the first interceptor didn't handle it properly
-
-                    if (!isLoggingOut.current) {
-                        setUser(null);
-                        setIsAuth(false);
-                        handleLogoutSideEffects(true);
-                    }
-                }
-                return Promise.reject(normalizeError(error));
-            }
-        );
-
-        return () => {
-            api.interceptors.request.eject(requestInterceptor);
-            api.interceptors.response.eject(responseInterceptor);
-            api.interceptors.response.eject(globalUnauthorizedInterceptor);
-        };
-    }, []);
-
 
     useEffect(() => {
         const initializeAuthAndProfile = async () => {

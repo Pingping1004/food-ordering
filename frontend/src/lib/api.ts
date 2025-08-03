@@ -4,6 +4,14 @@ import Cookies from 'js-cookie';
 
 const baseBackendUrl = `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/api`;
 
+interface ApiErrorResponse {
+    message: string;
+    error: string;
+    statusCode: number;
+    timestamp?: string;
+    path?: string;
+}
+
 export const api = axios.create({
     baseURL: baseBackendUrl,
     withCredentials: true,
@@ -47,7 +55,7 @@ export function normalizeError(err: unknown): Error {
     return new Error(JSON.stringify(err));
 }
 
-api.interceptors.request.use(
+export const requestInterceptor = api.interceptors.request.use(
     (config) => {
         if (config.headers?.skipAuth === 'true') {
             return config;
@@ -66,15 +74,15 @@ api.interceptors.request.use(
         const csrfToken = Cookies.get('XSRF-TOKEN');
         if (!config.method) throw Error('Not found config method');
 
-        if (csrfToken && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(config.method.toUpperCase())) {
-            if (!config.headers) {
-                config.headers = new axios.AxiosHeaders();
-            } else if (!(config.headers instanceof AxiosHeaders)) {
+        const isMutating = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(config.method.toUpperCase());
+        const isCsrfFetchRequest = config.url === '/csrf-token';
+
+        if (csrfToken && isMutating && !isCsrfFetchRequest) {
+            if (!config.headers) config.headers = new axios.AxiosHeaders();
+            else if (!(config.headers instanceof AxiosHeaders)) {
                 config.headers = AxiosHeaders.from(config.headers);
             }
-
-            const isCsrfFetchRequest = config.url === '/csrf-token';
-            if (!isCsrfFetchRequest && !config.headers['X-CSRF-TOKEN']) {
+            if (!config.headers['X-CSRF-TOKEN']) {
                 config.headers['X-CSRF-TOKEN'] = csrfToken;
             }
         }
@@ -83,9 +91,6 @@ api.interceptors.request.use(
         return config;
     },
     (error) => {
-        if (error.response?.status === 401) {
-            forcedLogout();
-        }
         return Promise.reject(normalizeError(error))
     }
 );
@@ -128,65 +133,92 @@ export async function handleTokenRefresh(): Promise<{ accessToken: string }> {
     }
 }
 
+function updateAuthHeader(request: CustomAxiosRequestConfig, token: string) {
+    if (request.headers instanceof axios.AxiosHeaders) {
+        request.headers.set('Authorization', `Bearer ${token}`);
+    } else if (request.headers) {
+        request.headers = {
+            ...(request.headers as Record<string, string>),
+            Authorization: `Bearer ${token}`,
+        };
+    } else {
+        request.headers = new axios.AxiosHeaders({
+            Authorization: `Bearer ${token}`
+        });
+    }
+}
+
+async function handleTokenRefresh401(originalRequest: CustomAxiosRequestConfig) {
+    originalRequest._retry = true;
+
+    if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+            failedQueue.push({ resolve, reject, config: originalRequest });
+        });
+    }
+
+    isRefreshing = true;
+
+    try {
+        // Attempt token refresh
+        const { accessToken: newAccessToken } = await handleTokenRefresh();
+
+        // Process queued requests
+        processQueue(null, newAccessToken);
+
+        // Update request headers with new token
+        updateAuthHeader(originalRequest, newAccessToken);
+
+        // Retry the original request
+        return api(originalRequest);
+
+    } catch (refreshError) {
+        // Refresh failed - logout and reject all queued requests
+        processQueue(refreshError as AxiosError, null);
+        forcedLogout();
+        return Promise.reject(normalizeError(refreshError));
+
+    } finally {
+        isRefreshing = false;
+    }
+}
+
 api.interceptors.response.use(
-    (res) => res,
+    (response) => response,
     async (error: AxiosError) => {
         const originalRequest = error.config as CustomAxiosRequestConfig;
+        const status = error.response?.status;
+        const isUnauthorized = status === 401;
+        const isLoginRequest = originalRequest?.url?.includes('/auth/login');
+        const isRefreshRequest = originalRequest?.url?.includes('/auth/refresh');
+        const hasSkipAuth = originalRequest?.headers?.skipAuth === 'true';
+        const hasRetried = originalRequest?._retry === true;
 
-        const isUnauthorized = error.response?.status === 401;
-        const hasNotRetried = originalRequest && !originalRequest._retry;
-        const isNotSkipAuth = originalRequest?.headers?.skipAuth !== 'true';
-
-        if (!isUnauthorized || !hasNotRetried || !isNotSkipAuth) {
-            if (isUnauthorized && !isNotSkipAuth) {
-                forcedLogout();
-            }
+        if (isLoginRequest) {
             return Promise.reject(normalizeError(error));
         }
 
-        const criticalEndpoints = ['/user/profile', '/auth/refresh'];
-        const isCriticalEndpointFailure = criticalEndpoints.some(endpoint =>
-            originalRequest.url?.includes(endpoint)
-        );
+        if (!isUnauthorized) {
+            return Promise.reject(normalizeError(error));
+        }
 
-        if (isCriticalEndpointFailure) {
+        if (hasSkipAuth) {
+            forcedLogout();
+            return Promise.reject(normalizeError(error));
+        }
+
+        if (isRefreshRequest) {
             forcedLogout();
             return Promise.reject(new Error('Session expired'));
         }
 
-        originalRequest._retry = true;
-
-        if (isRefreshing) {
-            return new Promise((resolve, reject) => {
-                failedQueue.push({ resolve, reject, config: originalRequest });
-            });
-        }
-
-        isRefreshing = true;
-
-        try {
-            const { accessToken: newAccessToken } = await handleTokenRefresh();
-            processQueue(null, newAccessToken);
-
-            if (originalRequest.headers instanceof axios.AxiosHeaders) {
-                originalRequest.headers.set('Authorization', `Bearer ${newAccessToken}`);
-            } else if (originalRequest.headers) {
-                originalRequest.headers = {
-                    ...(originalRequest.headers as Record<string,string>),
-                    Authorization: `Bearer ${newAccessToken}`,
-                };
-            } else {
-                originalRequest.headers = new axios.AxiosHeaders({ Authorization: `Bearer ${newAccessToken}` });
-            }
-
-            return api(originalRequest);
-        } catch (error) {
-            processQueue(error as AxiosError, null);
+        // Already retried: avoid infinite loops
+        if (hasRetried) {
             forcedLogout();
             return Promise.reject(normalizeError(error));
-        } finally {
-            isRefreshing = false;
         }
+
+        return handleTokenRefresh401(originalRequest);
     }
 );
 
