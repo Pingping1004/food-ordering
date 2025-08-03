@@ -94,7 +94,7 @@ interface CustomAxiosRequestConfig extends AxiosRequestConfig {
     _retry?: boolean;
 }
 
-export async function handleTokenRefresh(originalRequest?: CustomAxiosRequestConfig): Promise<{ accessToken: string }> {
+export async function handleTokenRefresh(): Promise<{ accessToken: string }> {
     const refreshToken = getRefreshToken();
     if (!refreshToken) {
         clearTokens();
@@ -165,7 +165,7 @@ api.interceptors.response.use(
         isRefreshing = true;
 
         try {
-            const { accessToken: newAccessToken } = await handleTokenRefresh(originalRequest);
+            const { accessToken: newAccessToken } = await handleTokenRefresh();
             processQueue(null, newAccessToken);
 
             if (originalRequest.headers instanceof axios.AxiosHeaders) {

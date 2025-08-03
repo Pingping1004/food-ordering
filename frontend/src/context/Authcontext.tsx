@@ -381,7 +381,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 // Try token refresh only once
                 if (!isRefreshing.current) {
                     isRefreshing.current = true;
-                    return handleTokenRefresh(originalRequest);
+                    return handleTokenRefresh();
                 } else {
                     // If refresh is already in progress, queue the request
                     return queueRequest(originalRequest);

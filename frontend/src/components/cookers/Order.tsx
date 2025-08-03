@@ -58,20 +58,20 @@ export type OrderProps = React.HTMLAttributes<HTMLDivElement> &
         onStatusUpdate: (updateStatus: OrderProps) => void;
     };
 
-const getOrderStatusProps = (currentStatus: OrderStatus) => {
-    switch (currentStatus) {
-        case OrderStatus.receive:
-            return { text: 'เริ่มปรุงอาหาร', nextStatus: OrderStatus.cooking };
-        case OrderStatus.cooking:
-            return { text: 'พร้อมเสิร์ฟ', nextStatus: OrderStatus.ready };
-        case OrderStatus.ready:
-            return { text: 'เสร็จสิ้น', nextStatus: OrderStatus.done }; // Text for marking as done
-        case OrderStatus.done:
-            return { text: 'ออเดอร์เสร็จสิ้น' }; // Text for marking as done
-        default: // Should ideally not be hit
-            return { text: 'สถานะไม่ทราบ', nextStatus: currentStatus };
-    }
-};
+// const getOrderStatusProps = (currentStatus: OrderStatus) => {
+//     switch (currentStatus) {
+//         case OrderStatus.receive:
+//             return { text: 'เริ่มปรุงอาหาร', nextStatus: OrderStatus.cooking };
+//         case OrderStatus.cooking:
+//             return { text: 'พร้อมเสิร์ฟ', nextStatus: OrderStatus.ready };
+//         case OrderStatus.ready:
+//             return { text: 'เสร็จสิ้น', nextStatus: OrderStatus.done }; // Text for marking as done
+//         case OrderStatus.done:
+//             return { text: 'ออเดอร์เสร็จสิ้น' }; // Text for marking as done
+//         default: // Should ideally not be hit
+//             return { text: 'สถานะไม่ทราบ', nextStatus: currentStatus };
+//     }
+// };
 
 export const Order = ({
     orderId,
