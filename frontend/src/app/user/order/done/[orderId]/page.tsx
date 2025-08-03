@@ -83,7 +83,7 @@ export default function DoneOrderPage() {
         };
 
         fetchData();
-    }, [orderId]);
+    }, [orderId, router]);
 
     if (loading) return <LoadingPage />
     if (!order) return <div>ไม่พบออเดอร์ของคุณ</div>;

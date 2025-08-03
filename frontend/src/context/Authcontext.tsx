@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useCallback, useState, useEffect, useRef, useMemo } from "react";
 import { api, handleTokenRefresh } from "@/lib/api";
-import axios, { AxiosResponse, AxiosRequestConfig, AxiosError } from "axios";
+import axios, { AxiosError } from "axios";
 import { useRouter } from "next/navigation";
 import { setAccessToken, setCsrfToken, clearTokens, removeAccessToken } from "@/lib/token";
 import LoadingPage from "@/components/LoadingPage";
@@ -34,12 +34,6 @@ interface AuthContextType {
     login: (email: string, password: string) => Promise<User>;
     logout: () => Promise<void>;
 }
-
-type FailedRequest = {
-    resolve: (value: AxiosResponse | PromiseLike<AxiosResponse>) => void;
-    reject: (reason?: unknown) => void;
-    config: AxiosRequestConfig;
-};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -144,7 +138,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             alertShowRef.current = false;
             setLoading(false);
         }
-    }, [handleLogoutSideEffects]);
+    }, [handleLogoutSideEffects, clearRefresh]);
 
     useEffect(() => {
         if (loading) return;
@@ -173,7 +167,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
 
         handleSession();
-    }, [loading, user, isAuth, handleLogoutSideEffects, checkRouteAuthRequirement]);
+    }, [loading, user, isAuth, handleLogoutSideEffects, checkRouteAuthRequirement, router]);
 
     const checkSessionValidity = useCallback(async (): Promise<boolean> => {
         try {
