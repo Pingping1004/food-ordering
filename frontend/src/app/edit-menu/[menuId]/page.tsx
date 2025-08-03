@@ -12,6 +12,7 @@ import { api } from "@/lib/api";
 import { Menu } from "@/context/MenuContext";
 import { getParamId } from "@/util/param";
 import LoadingPage from "@/components/LoadingPage";
+import { toastDanger, toastSuccess } from "@/components/ui/Toast";
 
 export default function EditMenuPage() {
     const [menu, setMenu] = useState<Menu>();
@@ -112,7 +113,7 @@ export default function EditMenuPage() {
         });
 
         const updateResult = Array.isArray(response.data) ? response.data : [response.data];
-        alert(`แก้ไขเมนู ${updateResult.map(menu => menu.name).join(', ')} สำเร็จ`);
+        toastSuccess(`แก้ไขเมนู ${updateResult.map(menu => menu.name).join(', ')} สำเร็จ`);
         router.push(`/managed-menu/${restaurantId}`);
     }
 
@@ -121,7 +122,7 @@ export default function EditMenuPage() {
             .map(([field, error]) => `${field}: ${error?.message}`)
             .join('\n');
 
-        alert(`กรุณากรอกข้อมูลให้ถูกต้อง:\n\n${messages}`);
+        toastDanger(`กรุณากรอกข้อมูลให้ถูกต้อง:\n\n${messages}`);
     };
 
     if (isLoading) return <LoadingPage />

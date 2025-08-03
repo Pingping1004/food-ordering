@@ -10,6 +10,7 @@ import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/Authcontext";
+import { toastSuccess, toastDanger } from "@/components/ui/Toast";
 
 export default function SignupPage() {
     const {
@@ -32,7 +33,7 @@ export default function SignupPage() {
         setErrorMessage(null);
         try {
             await api.post(`/auth/signup`, signupData);
-            alert(`ลงทะเบียนใช้งานสำเร็จ!`);
+            toastSuccess(`ลงทะเบียนใช้งานสำเร็จ!`);
             await login(signupData.email, signupData.password);
             router.push("/user/restaurant"); // Navigate to the home page
         } catch (error: unknown) {
@@ -40,18 +41,18 @@ export default function SignupPage() {
                 const err = error as { response: { status: number; data?: { message?: string } } };
 
                 if (err.response.status === 409) {
-                    alert('อีเมลนี้มีผู้ใช้งานแล้ว กรุณาใช้อีเมลอื่น');
+                    toastDanger('อีเมลนี้มีผู้ใช้งานแล้ว กรุณาใช้อีเมลอื่น');
                 } else if (err.response.data?.message) {
                     setErrorMessage(err.response.data.message);
-                    alert(err.response.data.message); // use fresh message directly
+                    toastDanger(err.response.data.message); // use fresh message directly
                 } else {
-                    alert('พบข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
+                    toastDanger('พบข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
                 }
 
             } else if (typeof error === 'object' && error !== null && 'request' in error) {
-                alert('เกิดเหตุขัดข้องจากเซิฟเวอร์ กรุณาลองใหม่อีกครั้ง');
+                toastDanger('เกิดเหตุขัดข้องจากเซิฟเวอร์ กรุณาลองใหม่อีกครั้ง');
             } else {
-                alert('ข้อมูลไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง');
+                toastDanger('ข้อมูลไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง');
             }
         } finally {
             setIsLoading(false);

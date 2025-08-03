@@ -11,6 +11,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { createOrderSchema, CreateOrderSchemaType } from '@/schemas/addOrderSchema';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
+import { toastDanger } from '@/components/ui/Toast';
 // import { toast } from 'sonner';
 // import { toastPrimary } from '@/components/ui/Toast';
 
@@ -78,14 +79,14 @@ function OrderConfirmContext() {
             };
 
             if (!cart || cart.length === 0) {
-                alert('ตะกร้าสินค้าว่างเปล่า กรุณาเพิ่มรายการอาหาร');
+                toastDanger('ตะกร้าสินค้าว่างเปล่า กรุณาเพิ่มรายการอาหาร');
                 return; // Prevent submission
             }
 
             const deliverHour = new Date(orderPayload.deliverAt).getHours();
             const timeBuffer = (deliverHour === 12 || currentHour === 12) ? 20 : 10;
             if (new Date(getBufferTime({ deliverHour, bufferMins: 10 })) > new Date(orderPayload.deliverAt)) {
-                alert(`เวลารับอาหารต้องอยู่หลังจากเวลาปัจจุบันอย่างน้อย ${timeBuffer}นาที`);
+                toastDanger(`เวลารับอาหารต้องอยู่หลังจากเวลาปัจจุบันอย่างน้อย ${timeBuffer}นาที`);
                 return;
             }
 
@@ -99,7 +100,7 @@ function OrderConfirmContext() {
             if (typeof error === 'object' && error !== null && 'response' in error) {
                 const err = error as { response: { status: number; data?: { message?: string } } };
 
-                alert(err.response.data?.message);
+                toastDanger(err.response.data?.message as string);
             }
         }
     }

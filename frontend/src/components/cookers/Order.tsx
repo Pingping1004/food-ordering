@@ -8,6 +8,7 @@ import clsx from "clsx";
 import { api } from "@/lib/api";
 import { getTimeFormat } from "@/util/time";
 import { OrderStatus } from "./OrderNavbar";
+import { toastDanger, toastSuccess } from "../ui/Toast";
 
 const orderVariants = cva("noto-sans-regular justify-center text-sm", {
     variants: {
@@ -116,10 +117,10 @@ export const Order = ({
             // IMPORTANT: Call the callback to update the parent's state
             onDelayUpdate(updatedOrderFromServer);
 
-            alert(`เลื่อนเวลาจัดส่งออเดอร์ไป10นาทีสำเร็จ!`);
+            toastSuccess(`เลื่อนเวลาจัดส่งออเดอร์ไป10นาทีสำเร็จ!`);
 
         } catch {
-            alert(`เลื่อนเวลาจัดส่งออเดอร์ล้มเหลว`);
+            toastDanger(`เลื่อนเวลาจัดส่งออเดอร์ล้มเหลว`);
         } finally {
             setIsUpdating(false);
         }
@@ -131,7 +132,7 @@ export const Order = ({
             // const { nextStatus } = getOrderStatusProps(status);
 
             if (isPaid === 'unpaid') {
-                alert('ไม่สามารถจบออเดอร์ได้ หากยังไม่ชำระเงิน');
+                toastDanger('ไม่สามารถจบออเดอร์ได้ หากยังไม่ชำระเงิน');
                 return;
             }
 
@@ -141,7 +142,7 @@ export const Order = ({
             setCurrentStatus(updatedOrder.status);
             onStatusUpdate(updatedOrder.status);
         } catch {
-            alert(`แจ้งออเกอร์ล่าช้าล้มเหลว`);
+            toastDanger(`แจ้งออเดอร์ล่าช้าล้มเหลว`);
         } finally {
             setIsUpdating(false);
         }

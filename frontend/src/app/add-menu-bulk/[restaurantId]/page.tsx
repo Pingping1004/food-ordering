@@ -17,6 +17,7 @@ import {
     FinalBulkMenuPayloadType,
 } from '@/schemas/addMenuSchema';
 import { useParams, useRouter } from 'next/navigation';
+import { toastDanger, toastSuccess } from "@/components/ui/Toast";
 
 type CsvDummyRow = {
     name: string;
@@ -207,7 +208,7 @@ export default function BulkAddMenuPage() {
             // Step 5: Update local states and redirect
             setMenuLists(prev => [...prev, ...result.createdMenus]);
             setSuccessMessage(`Created ${result.totalCreated} menu items.`);
-            alert('สร้างเมนูสำเร็จ');
+            toastSuccess('สร้างเมนูสำเร็จ');
             router.push(`/managed-menu/${restaurantId}`);
 
             // Step 6: Reset form and clean up states
@@ -218,7 +219,7 @@ export default function BulkAddMenuPage() {
         } catch(err) {
             const error = err as { response: { status: number }}
             if (error.response?.status === 409) {
-                alert('ชื่อเมนูซ้ำกับเมนูที่มีอยู่แล้ว');
+                toastDanger('ชื่อเมนูซ้ำกับเมนูที่มีอยู่แล้ว');
             }
             setPageError("พบข้อผิดพลาดในการสร้างเมนู กรุณาลองอีกครั้ง");
         } finally {
@@ -228,7 +229,7 @@ export default function BulkAddMenuPage() {
 
     const handleGenerateCsvTemplate = useCallback(() => {
         if (!uploadedImageMetadata.length) {
-            alert("กรุณาอัพโหลดรูปภาพ เพื่อสร้างไฟล์ CSV");
+            toastDanger("กรุณาอัพโหลดรูปภาพ เพื่อสร้างไฟล์ CSV");
             return;
         }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { toastDanger } from "@/components/ui/Toast";
 import { useState } from "react";
 
 export function useToggle<T extends { value: string }>(
@@ -15,7 +16,7 @@ export function useToggle<T extends { value: string }>(
             const isSelected = prev[index] === 'primary';
 
             if (!isSelected && selectedCount >= maxSelected) {
-                alert(`สามารถเลือกได้สูงสุด ${maxSelected}รายการเท่านั้น`)
+                toastDanger(`สามารถเลือกได้สูงสุด ${maxSelected}รายการเท่านั้น`)
                 return prev;
             }
 

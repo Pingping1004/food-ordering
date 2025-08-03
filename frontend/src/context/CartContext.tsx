@@ -1,4 +1,5 @@
 "use client";
+import { toastDanger } from "@/components/ui/Toast";
 import React, { createContext, useContext, useMemo, useState } from "react";
 
 export interface CartItem {
@@ -26,7 +27,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     const addToCart = (menuId: string, menuName: string, unitPrice: number, menuImg: string, restaurantId: string) => {
         setCart((prev) => {
             if (prev.length > 0 && prev[0].restaurantId !== restaurantId) {
-                alert('ไม่สามารถสั่งเมนูจากร้านอาหารอื่นได้');
+                toastDanger('ไม่สามารถสั่งเมนูจากร้านอาหารอื่นได้');
                 return prev;
             }
             const existingCartItem = prev.find((item) => item.menuId === menuId);

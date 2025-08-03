@@ -10,6 +10,7 @@ import { OrderStatus } from '@/components/cookers/OrderNavbar';
 import { Button } from '@/components/Button';
 import { getTimeFormat } from '@/util/time';
 import LoadingPage from '@/components/LoadingPage';
+import { toastDanger } from '@/components/ui/Toast';
 
 interface Order {
     orderMenus: OrderMenuType[];
@@ -61,7 +62,7 @@ export default function DoneOrderPage() {
 
                 if (orderResponse.data.isPaid === "unpaid" && !hasRedirectedRef.current) {
                     hasRedirectedRef.current = true;
-                    alert('กรุณาชำระเงินก่อน');
+                    toastDanger('กรุณาชำระเงินก่อน');
                     const createPaymentResponse = await api.post(`/payment/create/${orderId}`);
                     const { checkoutUrl } = createPaymentResponse.data;
                     router.push(checkoutUrl);

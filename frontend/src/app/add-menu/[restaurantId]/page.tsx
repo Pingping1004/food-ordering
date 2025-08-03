@@ -9,6 +9,7 @@ import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { api } from '@/lib/api';
 import { singleCreateMenuSchema, SingleCreateMenuSchemaType } from '@/schemas/addMenuSchema'; // Adjust path
+import { toastDanger } from '@/components/ui/Toast';
 
 export type MenuItem = Omit<SingleCreateMenuSchemaType, "menuImg"> & {
     menuId: string;
@@ -84,7 +85,7 @@ export default function AddMenuPage() {
             .map(([field, error]) => `${field}: ${error?.message}`)
             .join('\n');
 
-        alert(`กรุณากรอกข้อมูลให้ถูกต้อง:\n\n${messages}`);
+        toastDanger(`กรุณากรอกข้อมูลให้ถูกต้อง:\n\n${messages}`);
     };
 
     // --- API Call and Form Submission ---

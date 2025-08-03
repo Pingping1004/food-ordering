@@ -14,6 +14,7 @@ import { buttonLabels, shortEngDays } from '@/common/restaurant.enum';
 import { getCurrentTime, getApproxCloseTime } from '@/util/time';
 import { useToggle } from '@/hook/useToggle';
 import { useRouter } from 'next/navigation';
+import { toastDanger, toastSuccess } from '@/components/ui/Toast';
 
 export default function RestaurantRegisterPage() {
     const { user } = useAuth();
@@ -69,12 +70,12 @@ export default function RestaurantRegisterPage() {
             .map(([field, error]) => `${field}: ${error?.message}`)
             .join('\n');
 
-        alert(`กรุณากรอกข้อมูลให้ถูกต้อง:\n\n${messages}`);
+        toastDanger(`กรุณากรอกข้อมูลให้ถูกต้อง:\n\n${messages}`);
     };
 
     const submitData = async (data: CreateRestaurantSchemaType) => {
         if (!user?.userId) {
-            alert('กรุณาเข้าสู่ระบบก่อนลงทะเบียนร้านอาหาร');
+            toastDanger('กรุณาเข้าสู่ระบบก่อนลงทะเบียนร้านอาหาร');
             return;
         }
 
@@ -121,20 +122,20 @@ export default function RestaurantRegisterPage() {
             });
 
             const restaurantId = response.data.result.restaurantId
-            alert(`ส่งคำขอเปิดร้านอาหารสำเร็จ ระบบกำลังตรวจสอบและจะทำการอนุมัติสถานะร้านอาหาร`);
+            toastSuccess(`ส่งคำขอเปิดร้านอาหารสำเร็จ ระบบกำลังตรวจสอบและจะทำการอนุมัติสถานะร้านอาหาร`);
             router.push(`/cooker/${restaurantId}`)
         } catch (error: unknown) {
             if (typeof error === 'object' && error !== null && 'response' in error) {
                 const err = error as { response: { status: number; data?: { message?: string } } };
                 if (err.response.status === 409) {
-                    alert(`ผู้ใช้งานได้ลงทะเบียนร้านอาหารไปแล้ว`)
+                    toastDanger(`ผู้ใช้งานได้ลงทะเบียนร้านอาหารไปแล้ว`)
                 }
             }
         }
     }
 
     if (user?.restaurant?.restaurantId) {
-        alert(`ผู้ใช้งานได้ลงทะเบียนร้านอาหารไปแล้ว`)
+        toastDanger(`ผู้ใช้งานได้ลงทะเบียนร้านอาหารไปแล้ว`)
         router.push(`/cooker/${user.restaurant.restaurantId}`);
     }
 

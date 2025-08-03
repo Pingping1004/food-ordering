@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import RestaurantHeader from '@/components/users/RestaurantHeader';
 import MenuProfile from '@/components/users/MenuProfile';
 import { Button } from '@/components/Button';
+import { toastDanger } from '@/components/ui/Toast';
 
 function MenuContext() {
     const { restaurant, menus } = useMenu();
@@ -21,7 +22,7 @@ function MenuContext() {
 
     useEffect(() => {
         if (!restaurant.isActuallyOpen && !alertShownRef.current) {
-            alert(`ขณะนี้ร้าน ${restaurant.name}ยังไม่เปิดให้บริการ`);
+            toastDanger(`ขณะนี้ร้าน ${restaurant.name}ยังไม่เปิดให้บริการ`);
             alertShownRef.current = true;
             setIsNowOpen(false);
         }
