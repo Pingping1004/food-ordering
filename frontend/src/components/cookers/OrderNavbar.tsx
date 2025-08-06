@@ -3,6 +3,8 @@ import clsx from "clsx";
 import { cva, VariantProps } from "class-variance-authority";
 
 export enum OrderStatus {
+  accepted = "accepted",
+  rejected = "rejected",
   receive = "receive",
   cooking = "cooking",
   ready = "ready",
@@ -18,6 +20,8 @@ const orderNavbarVariants = cva(
                 cooking: "",
                 ready: "",
                 done: "",
+                accepted: "",
+                rejected: "",
             },
         },
         defaultVariants: {
