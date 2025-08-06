@@ -187,6 +187,7 @@ enum PaymentMethod {
 }
 
 enum OrderStatus {
+  accepted
   receive
   cooking
   ready

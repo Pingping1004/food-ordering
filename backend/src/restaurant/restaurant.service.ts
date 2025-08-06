@@ -93,6 +93,18 @@ export class RestaurantService {
   async findAllRestaurant() {
     return this.prisma.restaurant.findMany({
       where: { isApproved: true },
+      select: {
+        restaurantId: true,
+        restaurantImg: true,
+        name: true,
+        location: true,
+        categories: true,
+        openDate: true,
+        openTime: true,
+        closeTime: true,
+        avgCookingTime: true,
+        isTemporarilyClosed: true,
+      }
     });
   }
 
@@ -192,27 +204,25 @@ export class RestaurantService {
     const currentTimeString = moment().tz('Asia/Bangkok').format('HH:mm');
 
     const allRestaurants = await this.findAllRestaurant();
-    const openRestaurant = allRestaurants.map((restaurant) => {
-      const isScheduledOpenDay = this.isTodayOpen(restaurant.openDate, restaurant.openTime, restaurant.closeTime);
-      const isScheduledOpenTime = this.isTimeBetween(
-        currentTimeString,
-        restaurant.openTime,
-        restaurant.closeTime,
-      );
-      const isOpen = isScheduledOpenDay && isScheduledOpenTime;
-      const isManuallyClosed = restaurant.isTemporarilyClosed;
-      const isActuallyOpen = isOpen && !isManuallyClosed;
+    const openRestaurants = allRestaurants
+      .map(restaurant => {
+        const isScheduledOpenDay = this.isTodayOpen(restaurant.openDate, restaurant.openTime, restaurant.closeTime);
+        const isScheduledOpenTime = this.isTimeBetween(currentTimeString, restaurant.openTime, restaurant.closeTime);
+        const isOpen = isScheduledOpenDay && isScheduledOpenTime;
+        const isManuallyClosed = restaurant.isTemporarilyClosed;
+        const isActuallyOpen = isOpen && !isManuallyClosed;
 
-      return {
-        ...restaurant,
-        isScheduledOpenDay,
-        isScheduledOpenTime,
-        isOpen,
-        isActuallyOpen,
-      };
-    });
+        return {
+          ...restaurant,
+          isScheduledOpenDay,
+          isScheduledOpenTime,
+          isOpen,
+          isActuallyOpen,
+        };
+      })
+      .filter(restaurant => restaurant.isActuallyOpen);
 
-    return openRestaurant;
+    return openRestaurants;
   }
 
   async updateRestaurant(
