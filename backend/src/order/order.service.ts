@@ -1,11 +1,13 @@
 import {
   BadRequestException,
   Injectable,
+  Inject,
   NotFoundException,
   InternalServerErrorException,
   ForbiddenException,
   Logger,
   ConflictException,
+  forwardRef,
 } from '@nestjs/common';
 import { CreateOrderDto, CreateOrderMenusDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
@@ -13,25 +15,26 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PaymentStatus, OrderStatus, PaymentMethod } from '@prisma/client';
 import { PaymentService } from 'src/payment/payment.service';
 import { calculateWeeklyInterval } from 'src/payout/payout-calculator';
+import axios from 'axios';
 
 import Decimal from 'decimal.js';
-import { PaymentPayload } from 'src/common/interface/payment-gateway';
+import { InventoryService } from 'src/inventory/inventory.service';
+import { MenuService } from 'src/menu/menu.service';
+import moment from 'moment-timezone';
 
 @Injectable()
 export class OrderService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly paymentService: PaymentService,
+    @Inject(forwardRef(() => MenuService))
+    private readonly menuService: MenuService,
+    @Inject(forwardRef(() => InventoryService))
+    private readonly inventoryService: InventoryService,
+    // private readonly paymentService: PaymentService,
   ) { }
 
   private readonly logger = new Logger('OrderService');
 
-  private readonly statusTransitions = {
-    [OrderStatus.receive]: OrderStatus.cooking,
-    [OrderStatus.cooking]: OrderStatus.ready,
-    [OrderStatus.ready]: OrderStatus.done,
-    [OrderStatus.done]: null, // No further transition from DONE
-  };
 
   async validateExisting(params: {
     restaurantId: string;
@@ -116,25 +119,61 @@ export class OrderService {
     return calculatedTotalAmount;
   }
 
-  validateDeliveryTime(deliverTime: Date | string, bufferMin: number = 10) {
-    const now = new Date();
-    const deliverAtDate = new Date(deliverTime);
-    const deliverHour = deliverAtDate.getHours();
-    const peakTimeBuffer = (deliverHour === 12) ? 10 : 0;
-    const minimumAllowedDeliveTime = new Date(now.getTime() + (bufferMin + peakTimeBuffer) * 60 * 1000);
+  validateDeliveryTime(deliverTime: Date | string) {
+    const nowBkk = moment().tz('Asia/Bangkok');
+    const deliverAtBkk = moment(deliverTime).tz('Asia/Bangkok');
 
-    if (deliverAtDate < minimumAllowedDeliveTime) {
-      throw new BadRequestException(`เวลารับอาหารต้องอยู่หลังจากเวลาปัจจุบัน ${bufferMin}นาที`);
+    const bufferMin = 5; // fixed 5-minute buffer at all times
+    const diffMinutes = deliverAtBkk.diff(nowBkk, 'minutes'); // whole-minute difference
+
+    if (diffMinutes < bufferMin) {
+      throw new BadRequestException(
+        `เวลารับอาหารต้องอยู่หลังจากเวลาปัจจุบันอย่างน้อย ${bufferMin} นาที`,
+      );
     }
   }
 
-  async createOrderWithPayment(createOrderDto: CreateOrderDto, userId?: string) {
-    const calculatedTotalAmount = await this.validateOrderMenus(
-      createOrderDto.orderMenus,
-      createOrderDto.restaurantId,
-    );
+  async createOrder(createOrderDto: CreateOrderDto, userId?: string) {
+    this.validateDeliveryTime(createOrderDto.deliverAt);
 
-    return await this.prisma.$transaction(async (tx) => {
+    const calculatedTotalAmount = await this.validateOrderMenus(createOrderDto.orderMenus, createOrderDto.restaurantId);
+
+    const order = await this.prisma.$transaction(async (tx) => {
+      const outOfStockMenus: string[] = [];
+
+      // Group duplicate menuIds
+      const groupedMenus = new Map<
+        string,
+        { quantity: number; menuName: string }
+      >();
+
+      for (const item of createOrderDto.orderMenus) {
+        if (!groupedMenus.has(item.menuId)) {
+          groupedMenus.set(item.menuId, {
+            quantity: item.quantity,
+            menuName: item.menuName,
+          });
+        } else {
+          groupedMenus.get(item.menuId)!.quantity += item.quantity;
+        }
+      }
+
+      // Deduct inventory per unique menu
+      for (const [menuId, data] of groupedMenus.entries()) {
+        const result = await this.inventoryService.deductInventoryTx(
+          tx,
+          menuId,
+          data.quantity,
+          data.menuName
+        );
+
+        if (result) {
+          outOfStockMenus.push(result);
+        }
+      }
+
+      if (outOfStockMenus.length > 0) throw new BadRequestException(`เมนูต่อไปนี้หมด: ${outOfStockMenus.join(", ")}`)
+
       const order = await tx.order.create({
         data: {
           userId: userId || null,
@@ -163,50 +202,32 @@ export class OrderService {
         },
       });
 
-      this.validateDeliveryTime(order.deliverAt, 5);
-
-      try {
-        const paymentPayload: PaymentPayload = {
-          // userId,
-          userEmail: createOrderDto.userEmail,
-          orderId: order.orderId,
-          amountInStang: Math.round(Number(order.totalAmount) * 100),
-          currency: 'thb',
-          method: PaymentMethod.promptpay,
-          restaurantId: order.restaurantId,
-        }
-
-        const paymentIntent = await this.paymentService.createPaymentCharge(paymentPayload);
-
-        await tx.order.update({
-          where: { orderId: order.orderId },
-          data: {
-            paymentGatewayChargeId: paymentIntent.id,
-            paymentGatewayStatus: 'created',
-          },
-        });
-
-        return {
-          orderId: order.orderId,
-          intentId: paymentIntent.id,
-          checkoutUrl: paymentIntent.url,
-          paymentGatewayIntentId: paymentIntent.payment_intent as string,
-          status: 'pending',
-        };
-      } catch (paymentError) {
-        this.logger.error('Error stack:', paymentError.stack);
-
-        await tx.order.update({
-          where: { orderId: order.orderId },
-          data: {
-            paymentGatewayStatus: 'failed_initiation',
-            paymentGatewayChargeId: null,
-          },
-        });
-
-        throw new InternalServerErrorException(`Payment initiation failed: ${paymentError.message || JSON.stringify(paymentError)}`);
-      }
+      return order;
     });
+
+    if (!process.env.AUTOMATION_WEBHOOK_URL) throw new NotFoundException('Not found automation webhook URL');
+
+    try {
+      const payload = {
+        orderId: order.orderId,
+        userTel: order.userTel,
+        deliverAt: order.deliverAt.toISOString(),
+        totalAmount: order.totalAmount.toNumber(),
+        orderMenus: order.orderMenus.map(item => ({
+          menuId: item.menuId,
+          quantity: item.quantity,
+          menuName: item.menuName,
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice.toNumber(),
+        })),
+      };
+
+      await axios.post(process.env.AUTOMATION_WEBHOOK_URL, payload);
+    } catch (error) {
+      console.warn('⚠️ Order created but Make webhook failed:', error.message);
+    }
+
+    return order;
   }
 
   async findRestaurantOrders(restaurantId: string) {
@@ -349,31 +370,7 @@ export class OrderService {
     }
   }
 
-  // async updateOrderStatus(orderId: string) {
-  //   const order = await this.findOneOrder(orderId);
-  //   const nextStatus = this.statusTransitions[order.status];
-
-  //   if (order.isPaid === PaymentStatus.unpaid && 
-  //     (order.status === OrderStatus.ready || nextStatus === OrderStatus.done)
-  //   ) {
-  //     throw new ConflictException('Only paid order can be marked as done');
-  //   }
-
-  //   const result = await this.prisma.order.update({
-  //     where: { orderId },
-  //     data: {
-  //       status: nextStatus,
-  //     },
-  //     select: { orderId: true, status: true, deliverAt: true },
-  //   });
-
-  //   return {
-  //     result,
-  //     message: `Successfully update order status to ${result.status} `,
-  //   };
-  // }
-
-  async updateOrderStatus(orderId: string) {
+  async updateOrderStatus(orderId: string, status: OrderStatus) {
     const order = await this.findOneOrder(orderId);
 
     if (order.isPaid === PaymentStatus.unpaid) {
@@ -383,7 +380,7 @@ export class OrderService {
     const result = await this.prisma.order.update({
       where: { orderId },
       data: {
-        status: OrderStatus.done,
+        status: status,
       },
       select: { orderId: true, status: true, deliverAt: true },
     });
@@ -397,7 +394,7 @@ export class OrderService {
   async removeOrder(orderId: string) {
     const order = await this.findOneOrder(orderId);
 
-    if (order.status !== OrderStatus.done) {
+    if (order.status !== OrderStatus.accepted) {
       throw new BadRequestException(
         'สามารถลบได้เฉพาะออเดอร์ที่มีสถ่านะเสร็จสมบูรณ์เรียบร้อยแล้วเท่านั้น',
       );

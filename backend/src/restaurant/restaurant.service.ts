@@ -45,15 +45,17 @@ export class RestaurantService {
       if (typeof createRestaurantDto.openTime === 'string') {
         openTime = createRestaurantDto.openTime;
       } else if (createRestaurantDto.openTime instanceof Date) {
-        openTime = createRestaurantDto.openTime.toISOString().substring(11, 16);
+        openTime = moment(createRestaurantDto.openTime)
+          .tz('Asia/Bangkok')
+          .format('HH:mm');
       }
 
       if (typeof createRestaurantDto.closeTime === 'string') {
         closeTime = createRestaurantDto.closeTime;
       } else if (createRestaurantDto.closeTime instanceof Date) {
-        closeTime = createRestaurantDto.closeTime
-          .toISOString()
-          .substring(11, 16);
+        closeTime = moment(createRestaurantDto.closeTime)
+          .tz('Asia/Bangkok')
+          .format('HH:mm');
       }
 
       const newRestaurant = {
@@ -307,7 +309,7 @@ export class RestaurantService {
       select: { orderId: true, status: true },
     });
 
-    const allOrderDone = orders.every((order) => order.status === 'done');
+    const allOrderDone = orders.every((order) => order.status === 'accepted');
     if (!allOrderDone)
       throw new BadRequestException(
         'ไม่สามารถลบร้านอาหารในขณะที่ยังมีออเดอร์ค้างอยู่',
@@ -325,7 +327,7 @@ export class RestaurantService {
       await tx.order.deleteMany({
         where: {
           restaurantId,
-          status: 'done',
+          status: 'accepted',
         },
       });
 

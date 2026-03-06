@@ -43,10 +43,13 @@ import { S3Module } from './s3/s3.module';
 import { S3Service } from './s3/s3.service';
 import { ConfigModule } from '@nestjs/config';
 import configuration from './config/configuration';
+import { InventoryModule } from './inventory/inventory.module';
+import { InventoryService } from './inventory/inventory.service';
 
 @Module({
   imports: [
     RestaurantModule,
+    InventoryModule,
     MenuModule,
     PrismaModule,
     OrderModule,
@@ -91,6 +94,7 @@ import configuration from './config/configuration';
       provide: APP_FILTER,
       useClass: CatchEverythingFilter,
     },
+    InventoryService,
     CsrfTokenService,
     AppService,
     RestaurantService,

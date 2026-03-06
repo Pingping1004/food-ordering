@@ -91,12 +91,26 @@ model Menu {
   isAvailable  Boolean     @default(true)
   restaurantId String
   restaurant   Restaurant  @relation("RestaurantMenus", fields: [restaurantId], references: [restaurantId], onDelete: Cascade)
+
+  inventories   Inventory[]
   orderMenus   OrderMenu[] @relation("menuToOrderMenus")
 
   @@unique([restaurantId, name])
   @@index([restaurantId])
   @@index([isAvailable])
   @@index([cookingTime])
+}
+
+model Inventory {
+  id          String    @id @default(uuid())
+  menuId      String
+  date        DateTime
+  remaining   Int
+  dailyQuota  Int
+
+  menu        Menu      @relation(fields: [menuId], references: [menuId], onDelete: Cascade)
+
+  @@unique([menuId, date])
 }
 
 model OrderMenu {
@@ -117,7 +131,7 @@ model OrderMenu {
 
 model Order {
   orderId              String      @id @default(uuid())
-  status               OrderStatus @default(receive)
+  status               OrderStatus @default(accepted)
   userTel              String
   userEmail           String
   orderAt              DateTime    @default(now())
@@ -187,12 +201,11 @@ enum PaymentMethod {
 }
 
 enum OrderStatus {
+  paid
   accepted
-  receive
-  cooking
-  ready
-  done
   rejected
+  refund_pending
+  refund_complete
 }
 
 enum Role {
@@ -207,6 +220,8 @@ enum PaymentStatus {
   unpaid
   processing
   rejected
+  refund_pending
+  refund_complete
 }
 
 enum RestaurantCategory {

@@ -107,7 +107,7 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  async login(loginDto: LoginDto) {
+  async login(loginDto: LoginDto) { 
     this.csrfTokenService.generateToken();
     const validationResult = await this.validateUser(loginDto.email, loginDto.password);
     if (!validationResult) throw new NotFoundException('Validation result not found');

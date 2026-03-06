@@ -18,6 +18,7 @@ import { Menu } from '@prisma/client';
 import Decimal from 'decimal.js';
 import { UploadService } from 'src/upload/upload.service';
 import { randomUUID } from 'crypto';
+import { InventoryService } from 'src/inventory/inventory.service';
 
 export interface MenusWithDisplayPrices {
     menuId: string;
@@ -46,6 +47,8 @@ export class MenuService implements OnModuleInit {
         @Inject(forwardRef(() => RestaurantService))
         private readonly restaurantService: RestaurantService,
         private readonly uploadService: UploadService,
+        @Inject(forwardRef(() => InventoryService))
+        private readonly inventoryService: InventoryService,
     ) { }
 
     onModuleInit() {

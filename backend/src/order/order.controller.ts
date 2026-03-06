@@ -17,7 +17,7 @@ import { Request } from 'express';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from '../decorators/role.decorator';
 import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
-import { Role, User } from '@prisma/client';
+import { OrderStatus, Role, User } from '@prisma/client';
 import { CsrfGuard } from 'src/guards/csrf.guard';
 import { Public } from 'src/decorators/public.decorator';
 
@@ -39,8 +39,7 @@ export class OrderController {
       const userId = req.user?.userId || undefined;
       if (!userId && !createOrderDto.userEmail) throw new Error('User ID is required to create an order');
 
-      // const result = await this.orderService.createOrderWithPayment(userId, createOrderDto);
-      const result = await this.orderService.createOrderWithPayment(createOrderDto, userId);
+      const result = await this.orderService.createOrder(createOrderDto, userId);
       return result;
     } catch (error) {
       this.logger.error(
@@ -87,8 +86,8 @@ export class OrderController {
   }
 
   @Patch('update-status/:orderId')
-  async updateOrderStatus(@Param('orderId') orderId: string) {
-    return this.orderService.updateOrderStatus(orderId);
+  async updateOrderStatus(@Param('orderId')orderId: string, @Body() status: OrderStatus) {
+    return this.orderService.updateOrderStatus(orderId, status);
   }
 
   @Delete(':orderId')

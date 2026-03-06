@@ -61,6 +61,8 @@ async function bootstrap() {
     'https://api.promptserve.online',
     'https://promptserve-mvp.onrender.com',
     'https://localhost:8000',
+    'https://localhost:3000',
+    'http://localhost:3000',
     process.env.FRONTEND_BASE_URL,
     process.env.NEXT_PUBLIC_BACKEND_API_URL,
     process.env.WEBHOOK_ENDPOINT,
