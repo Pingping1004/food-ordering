@@ -131,9 +131,9 @@ model OrderMenu {
 
 model Order {
   orderId              String      @id @default(uuid())
-  status               OrderStatus @default(accepted)
+  status               OrderStatus @default(sent)
   userTel              String
-  userEmail           String
+  userEmail            String
   orderAt              DateTime    @default(now())
   deliverAt            DateTime
   isPaid               PaymentStatus      @default(unpaid)
@@ -202,7 +202,7 @@ enum PaymentMethod {
 }
 
 enum OrderStatus {
-  paid
+  sent
   accepted
   rejected
   refund_pending

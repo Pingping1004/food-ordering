@@ -396,9 +396,9 @@ export class OrderService {
   async updateOrderStatus(orderId: string, status: OrderStatus) {
     const order = await this.findOneOrder(orderId);
 
-    if (order.isPaid === PaymentStatus.unpaid) {
-      throw new ConflictException('Only paid order can be marked as done');
-    }
+    // if (order.isPaid === PaymentStatus.unpaid) {
+    //   throw new ConflictException('Only paid order can be marked as done');
+    // }
 
     const result = await this.prisma.order.update({
       where: { orderId },
