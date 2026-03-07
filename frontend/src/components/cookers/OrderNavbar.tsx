@@ -3,10 +3,11 @@ import clsx from "clsx";
 import { cva, VariantProps } from "class-variance-authority";
 
 export enum OrderStatus {
-  receive = "receive",
-  cooking = "cooking",
-  ready = "ready",
-  done = "done",
+  paid = "paid",
+  accepted = "accepted",
+  rejected = "rejected",
+  refund_pending = "refund_pending",
+  refund_complete = "refund_complete",
 }
 
 const orderNavbarVariants = cva(
@@ -14,14 +15,15 @@ const orderNavbarVariants = cva(
     {
         variants: {
             variant: {
-                receive: "",
-                cooking: "",
-                ready: "",
-                done: "",
+                paid: "",
+                accepted: "",
+                rejected: "",
+                refund_pending: "",
+                refund_complete: "",
             },
         },
         defaultVariants: {
-            variant: "receive",
+            variant: "accepted",
         },
     }
 );
@@ -37,7 +39,7 @@ export const OrderNavBar = ({
     onStatusUpdate,
     ...props
 }: CookerNavbarProps) => {
-    const [state, setState] = useState<OrderStatus>(OrderStatus.receive);
+    const [state, setState] = useState<OrderStatus>(OrderStatus.accepted);
 
     const handleClick = (newState: OrderStatus) => {
         setState(newState);
@@ -54,44 +56,47 @@ export const OrderNavBar = ({
             {...props}
         >
             <button
-                onClick={() => handleClick(OrderStatus.receive)}
+                onClick={() => handleClick(OrderStatus.paid)}
                 className={
-                    state === OrderStatus.receive
+                    state === OrderStatus.paid
                         ? "w-1/2 text-primary p-2 border-b-2 border-primary-main"
                         : "w-1/2 p-2"
                 }
             >
-        ออเดอร์ใหม่
+                ออเดอร์ใหม่
             </button>
-            {/* <button
-                onClick={() => handleClick(OrderStatus.cooking)}
-                className={
-                    state === OrderStatus.cooking
-                        ? "w-1/4 text-primary p-2 border-b-2 border-primary-main"
-                        : "w-1/4 p-2"
-                }
-            >
-        กำลังปรุง
-            </button> */}
-            {/* <button
-                onClick={() => handleClick(OrderStatus.ready)}
-                className={
-                    state === OrderStatus.ready
-                        ? "w-1/2 text-primary p-2 border-b-2 border-primary-main"
-                        : "w-1/2 p-2"
-                }
-            >
-        พร้อมเสิร์ฟ
-            </button> */}
+
             <button
-                onClick={() => handleClick(OrderStatus.done)}
+                onClick={() => handleClick(OrderStatus.accepted)}
                 className={
-                    state === OrderStatus.done
+                    state === OrderStatus.accepted
                         ? "w-1/2 text-primary p-2 border-b-2 border-primary-main"
                         : "w-1/2 p-2"
                 }
             >
-        เสร็จ
+                ออเดอร์ที่รับแล้ว
+            </button>
+
+            <button
+                onClick={() => handleClick(OrderStatus.refund_pending)}
+                className={
+                    state === OrderStatus.refund_pending
+                        ? "w-1/2 text-primary p-2 border-b-2 border-primary-main"
+                        : "w-1/2 p-2"
+                }
+            >
+                รอการคืนเงิน
+            </button>
+
+            <button
+                onClick={() => handleClick(OrderStatus.refund_complete)}
+                className={
+                    state === OrderStatus.refund_complete
+                        ? "w-1/2 text-primary p-2 border-b-2 border-primary-main"
+                        : "w-1/2 p-2"
+                }
+            >
+                คืนเงินเสร็จสิ้น
             </button>
         </div>
     );

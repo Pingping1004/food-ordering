@@ -15,19 +15,13 @@ import { toastDanger } from '@/components/ui/Toast';
 // import { toast } from 'sonner';
 // import { toastPrimary } from '@/components/ui/Toast';
 
-const now = new Date();
-const currentHour = new Date().getHours();
+// Fixed 5-minute buffer at all times
+const getRequiredBufferMinutes = (): number => 5;
 
-const getBufferTime = ({
-    deliverHour = new Date().getHours(),
-    bufferMins = 0,
-}: {
-    deliverHour?: number;
-    bufferMins?: number;
-} = {}): string => {
-    const peakTimeBuffer = (currentHour === 12 || deliverHour === 12) ? 10 : 0;
-    const timeBuffer = peakTimeBuffer + bufferMins;
-    const minimumAllowedDeliverTime = new Date(now.getTime() + timeBuffer * 60 * 1000);
+const getBufferTime = (): string => {
+    const now = new Date();
+    const bufferMins = getRequiredBufferMinutes();
+    const minimumAllowedDeliverTime = new Date(now.getTime() + bufferMins * 60 * 1000);
     const hours = minimumAllowedDeliverTime.getHours().toString().padStart(2, '0');
     const minutes = minimumAllowedDeliverTime.getMinutes().toString().padStart(2, '0');
     return `${hours}:${minutes}`;
@@ -36,7 +30,7 @@ const getBufferTime = ({
 function OrderConfirmContext() {
     const { restaurant } = useMenu();
     const { cart } = useCart();
-    const router = useRouter();
+    // const router = useRouter();
     // const [click, setClick] = useState<number>(0);
     const {
         control,
@@ -47,7 +41,7 @@ function OrderConfirmContext() {
         resolver: zodResolver(createOrderSchema),
         defaultValues: {
             paymentMethod: 'promptpay',
-            deliverAt: getBufferTime({ bufferMins: 10 }),
+            deliverAt: getBufferTime(),
             restaurantId: restaurant?.restaurantId,
             userTel: '',
             userEmail: ''
@@ -83,17 +77,47 @@ function OrderConfirmContext() {
                 return; // Prevent submission
             }
 
-            const deliverHour = new Date(orderPayload.deliverAt).getHours();
-            const timeBuffer = (deliverHour === 12 || currentHour === 12) ? 20 : 10;
-            if (new Date(getBufferTime({ deliverHour, bufferMins: 10 })) > new Date(orderPayload.deliverAt)) {
-                toastDanger(`เวลารับอาหารต้องอยู่หลังจากเวลาปัจจุบันอย่างน้อย ${timeBuffer}นาที`);
+            const now = new Date();
+            const deliverAtDate = new Date(orderPayload.deliverAt);
+            const bufferMins = getRequiredBufferMinutes();
+
+            const diffMs = deliverAtDate.getTime() - now.getTime();
+            const diffMinutes = Math.floor(diffMs / (60 * 1000));
+
+            // #region agent log
+            fetch('http://127.0.0.1:7607/ingest/e0505a6f-55e2-42ef-8389-652c78546b33', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Debug-Session-Id': 'cced91',
+                },
+                body: JSON.stringify({
+                    sessionId: 'cced91',
+                    runId: 'pre-fix-1',
+                    hypothesisId: 'H-frontend-buffer',
+                    location: 'frontend/src/app/user/order/confirm/[restaurantId]/page.tsx:submitOrder',
+                    message: 'Frontend delivery time validation',
+                    data: {
+                        now: now.toISOString(),
+                        deliverAt: deliverAtDate.toISOString(),
+                        bufferMins,
+                        diffMinutes,
+                    },
+                    timestamp: Date.now(),
+                }),
+            }).catch(() => { });
+            // #endregion agent log
+
+            if (diffMinutes < bufferMins) {
+                toastDanger(`เวลารับอาหารต้องอยู่หลังจากเวลาปัจจุบันอย่างน้อย ${bufferMins} นาที`);
                 return;
             }
 
             const response = await api.post(`/order/create`, orderPayload);
-            alert('กำลังนำทางไปหน้าชำระเงิน ห้ามรีเฟรชหรือปิดหน้าQR Code');
-            const { checkoutUrl } = response.data;
-            router.push(checkoutUrl);
+            console.log('Response data: ', response.data);
+            // alert('กำลังนำทางไปหน้าชำระเงิน ห้ามรีเฟรชหรือปิดหน้าQR Code');
+            // const { checkoutUrl } = response.data;
+            // router.push(checkoutUrl);
 
         } catch (error: unknown) {
             if (typeof error === 'object' && error !== null && 'response' in error) {
@@ -157,7 +181,7 @@ function OrderConfirmContext() {
                 <div className="flex justify-between items-center">
                     <h3 className="noto-sans-bold text-base">เลือกเวลารับอาหาร</h3>
                     <p className="noto-sans-regular text-sm text-danger-main">
-                        ใช้เวลาจัดเตรียมขั้นต่ำ{(currentHour === 12) ? 20 : 10}นาที
+                        ใช้เวลาจัดเตรียมขั้นต่ำ 5 นาที
                     </p>
                 </div>
                 <div>
@@ -171,7 +195,9 @@ function OrderConfirmContext() {
                         )}
                     />
                     {errors.deliverAt && (
-                        <p className="text-red-500 text-sm z-50">กรุณาเลือกเวลาจัดส่งหลัง {getBufferTime({ bufferMins: 10 })}นาที</p>
+                        <p className="text-red-500 text-sm z-50">
+                            กรุณาเลือกเวลาจัดส่งหลังเวลาปัจจุบันอย่างน้อย 5 นาที
+                        </p>
                     )}
                 </div>
             </div>

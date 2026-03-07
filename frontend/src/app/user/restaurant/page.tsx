@@ -6,9 +6,11 @@ import { Restaurant } from "@/context/MenuContext";
 import { api } from "@/lib/api";
 import UserHeader from "@/components/users/Header";
 import LoadingPage from "@/components/LoadingPage";
+import OrderBeforeLunchModal from "@/components/users/Model";
 
 export default function UserHomePage() {
     const [data, setData] = useState<Restaurant[] | null>(null);
+    const [showModal, setShowModal] = useState(true)
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
@@ -27,29 +29,41 @@ export default function UserHomePage() {
         fetchData();
     }, []);
 
+    useEffect(() => {
+        const hasAlreadySeen = localStorage.getItem("order-before-lunch-modal")
+
+        if (!hasAlreadySeen) {
+            setShowModal(true)
+            localStorage.setItem("order-before-lunch-modal", "true")
+        }
+    }, [])
+
     if (loading) return <LoadingPage />
     if (error) return <div>{error}</div>;
     if (!data) return <div>No Data found</div>
 
     return (
-        <div className="flex flex-col gap-y-10 py-10 px-6">
-            <UserHeader />
-            <div className="grid md:grid-cols-4 lg:grid-cols-6 grid-cols-2 gap-x-4 gap-y-6">
-                {data.map((restaurant) => {
+        <>
+            <OrderBeforeLunchModal isOpen={showModal} onClose={() => setShowModal(false)}/>
+            <div className="flex flex-col gap-y-10 py-10 px-6">
+                <UserHeader />
+                <div className="grid md:grid-cols-4 lg:grid-cols-6 grid-cols-2 gap-x-4 gap-y-6">
+                    {data.map((restaurant) => {
 
-                    return (
-                        <RestaurantProfile
-                            key={restaurant.restaurantId}
-                            name={restaurant.name}
-                            categories={restaurant.categories}
-                            restaurantId={restaurant.restaurantId}
-                            restaurantImg={restaurant.restaurantImg}
-                            isOpen={restaurant.isActuallyOpen}
-                            variant={restaurant.isActuallyOpen ? "isOpen" : "isClose"}
-                        />
-                    );
-                })}
+                        return (
+                            <RestaurantProfile
+                                key={restaurant.restaurantId}
+                                name={restaurant.name}
+                                categories={restaurant.categories}
+                                restaurantId={restaurant.restaurantId}
+                                restaurantImg={restaurant.restaurantImg}
+                                isOpen={restaurant.isActuallyOpen}
+                                variant={restaurant.isActuallyOpen ? "isOpen" : "isClose"}
+                            />
+                        );
+                    })}
+                </div>
             </div>
-        </div>
+        </>
     )
 }

@@ -14,7 +14,7 @@ function Page() {
     const [weeklyOrders, setWeeklyOrders] = useState<OrderProps[]>([]);
     const { cooker, fetchOrders, orders } = useCooker();
     const [, setOrder] = useState<OrderProps>();
-    const [navbarStatus, setNavbarStatus] = useState<OrderStatus>(OrderStatus.receive);
+    const [navbarStatus, setNavbarStatus] = useState<OrderStatus>(OrderStatus.accepted);
     const [isLoading, setIsLoading] = useState<boolean>(true);
 
     useEffect(() => {
@@ -35,12 +35,12 @@ function Page() {
     }, [weeklyOrders]);
 
     const weeklyDone = useMemo(() => {
-        return filterWeeklyOrders.filter((order) => (order.status === OrderStatus.done)).length;
+        return filterWeeklyOrders.filter((order) => (order.status === OrderStatus.accepted)).length;
     }, [filterWeeklyOrders]);
 
     const weeklySales = useMemo(() => {
         return weeklyOrders
-            .filter((order) => order.isPaid === "paid" && order.status === OrderStatus.done)
+            .filter((order) => order.isPaid === "paid" && order.status === OrderStatus.accepted)
             .reduce((total, order) => total + Number(order.totalAmount), 0);
     }, [weeklyOrders]);
 
@@ -88,7 +88,7 @@ function Page() {
                 onStatusUpdate={handleNavbarChange}
             />
 
-            {navbarStatus === OrderStatus.done ? (
+            {navbarStatus === OrderStatus.accepted ? (
                 <section className="flex flex-col gap-y-6">
                     <h1 className="noto-sans-bold text-2xl text-primary">สรุปรายสัปดาห์</h1>
                     <div className="flex justify-between items-center">

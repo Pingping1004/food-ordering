@@ -13,10 +13,11 @@ import { toastDanger, toastSuccess } from "../ui/Toast";
 const orderVariants = cva("noto-sans-regular justify-center text-sm", {
     variants: {
         variant: {
-            receive: "",
-            cooking: "",
-            ready: "",
-            done: "",
+            paid: "",
+            accepted: "",
+            rejected: "",
+            refund_pending: "",
+            refund_complete: "",
         },
         isPaid: {
             paid: "",
@@ -35,7 +36,7 @@ const orderVariants = cva("noto-sans-regular justify-center text-sm", {
         }
     },
     defaultVariants: {
-        variant: "receive",
+        variant: "accepted",
         isPaid: "unpaid",
         selected: "default",
         isDelayProp: false,
@@ -131,10 +132,10 @@ export const Order = ({
         try {
             // const { nextStatus } = getOrderStatusProps(status);
 
-            if (isPaid === 'unpaid') {
-                toastDanger('ไม่สามารถจบออเดอร์ได้ หากยังไม่ชำระเงิน');
-                return;
-            }
+            // if (isPaid === 'unpaid') {
+            //     toastDanger('ไม่สามารถจบออเดอร์ได้ หากยังไม่ชำระเงิน');
+            //     return;
+            // }
 
             const response = await api.patch(`/order/update-status/${orderId}`);
 
@@ -147,6 +148,8 @@ export const Order = ({
             setIsUpdating(false);
         }
     }
+
+    const isRefund = variant?.startsWith('refund');
 
     return (
         <div
@@ -198,13 +201,15 @@ export const Order = ({
                     </div>
                 </div>
 
-                <Button
-                    variant={isPaid === 'paid' ? "secondarySuccess" : "secondaryDanger"}
-                    size="sm"
-                    type="button"
-                >
-                    {isPaid === 'paid' ? "ชำระแล้ว" : "ยังไม่ชำระ"}
-                </Button>
+                {isRefund && (
+                    <Button
+                        variant={variant === 'refund_complete' ? "secondarySuccess" : "secondaryDanger"}
+                        size="sm"
+                        type="button"
+                    >
+                        {variant === 'refund_complete' ? "คืนเงินแล้ว" : "ยังไม่่คืนเงิน"}
+                    </Button>
+                )}
             </header>
 
             <main className="flex grid-rows-2 justify-between">
@@ -234,7 +239,7 @@ export const Order = ({
                 <p className="noto-sans-bold text-sm">{details}</p>
             </section> */}
 
-            {status === OrderStatus.done ? (
+            {status === OrderStatus.accepted ? (
                 <Button
                     variant="secondarySuccess"
                     size="md"
@@ -260,7 +265,7 @@ export const Order = ({
                     </Button>
 
                     <Button
-                        variant="secondaryDanger"
+                        variant="tertiary"
                         disabled={isDelay || isUpdating}
                         size="md"
                         type="button"
@@ -269,6 +274,19 @@ export const Order = ({
                     >
                         <span className="noto-sans-regular">
                             {isDelay === false ? 'แจ้งล่าช้า10นาที' : 'แจ้งล่าช้าสำเร็จ'}
+                        </span>
+                    </Button>
+
+                    <Button
+                        variant="secondaryDanger"
+                        disabled={isDelay || isUpdating}
+                        size="md"
+                        type="button"
+                        className="flex w-full"
+                        // onClick={handleRejectOrder}
+                    >
+                        <span className="noto-sans-regular">
+                            ยกเลิกออเดอร์
                         </span>
                     </Button>
                 </div>
