@@ -4,6 +4,7 @@ import CookerHeader from "@/components/cookers/Header";
 import { Order, OrderProps } from "@/components/cookers/Order";
 import { OrderNavBar, OrderStatus } from "@/components/cookers/OrderNavbar";
 import LoadingPage from "@/components/LoadingPage";
+import { Button } from "@/components/Button";
 import { CookerProvider, useCooker } from "@/context/Cookercontext";
 import { api } from "@/lib/api";
 import { getDateFormat, getTimeFormat } from "@/util/time";
@@ -11,6 +12,7 @@ import Image from "next/image";
 import { useState, useEffect, useMemo, useRef } from "react";
 
 function Page() {
+    const [isLargeTextMode, setIsLargeTextMode] = useState(false)
     const [orders, setOrders] = useState<OrderProps[]>([]);
     const lastTimestampRef = useRef<string | null>(null)
     const { cooker, fetchOrders } = useCooker();
@@ -35,13 +37,29 @@ function Page() {
                     const newOrders = data.orders.filter((order: OrderProps) => !existing.has(order.orderId));
 
                     return [...prev, ...newOrders]
-                })
+                });
+
                 lastTimestampRef.current = data.latestTimestamp
             }
         } finally {
             setIsLoading(false)
         }
     }
+
+    const handleTextMode = () => {
+        const newValue = !isLargeTextMode
+        setIsLargeTextMode(newValue);
+        localStorage.setItem("large_text_mode", JSON.stringify(newValue))
+    }
+
+    useEffect(() => {
+        const saved = localStorage.getItem("cook_large_text");
+
+        if (saved) {
+            setIsLargeTextMode(JSON.parse(saved));
+        }
+
+    }, []);
 
     useEffect(() => {
         if (!cooker.restaurantId) return
@@ -63,13 +81,13 @@ function Page() {
         return orders
             .filter((order) => order.isPaid === "paid" && order.status === OrderStatus.accepted)
             .reduce((total, order) => total + Number(order.totalAmount), 0);
-    }, [orders]);
+    }, [filterWeeklyOrders]);
 
     const handleOrderUpdate = (updatedOrder: OrderProps) => {
         setOrders(prev =>
             prev.map(order => order.orderId === updatedOrder.orderId ? updatedOrder : order)
         );
-        
+
         fetchOrders();
     };
 
@@ -99,13 +117,26 @@ function Page() {
     if (isLoading) return <LoadingPage />
 
     return (
-        <div className="flex flex-col gap-y-10 py-10 px-6">
+        <div
+            className={`flex flex-col py-10 px-6 transition-all duration-200
+            ${isLargeTextMode ? "gap-y-14 text-lg" : "gap-y-10 text-base"}`}
+        >
             <CookerHeader
                 restaurantId={cooker.restaurantId}
                 name={cooker.name}
                 openTime={cooker?.openTime}
                 closeTime={cooker?.closeTime}
             />
+
+            <Button
+                variant="secondary"
+                size={isLargeTextMode ? "lg" : "md"}
+                type="button"
+                onClick={handleTextMode}
+                className="self-end px-4 py-2 rounded-lg bg-primary-light text-sm font-semibold "
+            >
+                {isLargeTextMode ? "โหมดตัวอักษรปกติ" : "โหมดตัวอักษรใหญ่"}
+            </Button>
 
             <OrderNavBar
                 status={navbarStatus}
@@ -114,10 +145,11 @@ function Page() {
 
             {navbarStatus === OrderStatus.accepted ? (
                 <section className="flex flex-col gap-y-6">
-                    <h1 className="noto-sans-bold text-2xl text-primary">สรุปรายสัปดาห์</h1>
+                    <h1 className={`${isLargeTextMode ? "text-3xl" : "text-2xl"} font-bold text-primary`}>สรุปรายสัปดาห์</h1>
                     <div className="flex justify-between items-center">
-                        <h2 className="noto-sans-bold text-lg text-primary">ยอดรวม: {weeklySales}</h2>
-                        <p className="text-secondary noto-sans-regular text-lg">ออเดอร์สัปดาห์นี้: {weeklyDone}</p>
+                        <h2 className={`${isLargeTextMode ? "text-2xl" : "text-lg"} font-bold text-primary`}>ยอดรวม: {weeklySales}</h2>
+
+                        <p className={`${isLargeTextMode ? "text-xl" : "text-lg"} text-secondary`}>ออเดอร์สัปดาห์นี้: {weeklyDone}</p>
                     </div>
                 </section>
             ) : ('')}
@@ -172,6 +204,7 @@ function Page() {
                         orderMenus={order.orderMenus}
                         details={order.details}
                         userTel={order.userTel}
+                        isLargeTextMode={isLargeTextMode}
                         className="mb-4"
                         selected="default"
                         onDelayUpdate={handleOrderUpdate}

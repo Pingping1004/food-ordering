@@ -56,6 +56,7 @@ export type OrderProps = React.HTMLAttributes<HTMLDivElement> &
         orderMenus: { quantity: number; menuName: string; menuImg?: string }[];
         details?: string;
         userTel: string;
+        isLargeTextMode?: boolean
         onDelayUpdate: (updateOrder: OrderProps) => void;
         onStatusUpdate: (updateStatus: OrderProps) => void;
     };
@@ -88,6 +89,7 @@ export const Order = ({
     isDelay = false,
     orderMenus = [],
     className,
+    isLargeTextMode = false,
     onDelayUpdate,
     onStatusUpdate,
     ...props
@@ -154,7 +156,8 @@ export const Order = ({
     return (
         <div
             className={clsx(
-                "flex flex-col p-4 border-1 border-[#E1E1E1] rounded-2xl gap-y-6",
+                "flex flex-col p-4 border-1 border-[#E1E1E1] rounded-2xl",
+                isLargeTextMode ? "p-6 gap-y-8 text-lg" : "p-4 gap-y-6 text-sm",
                 orderVariants({ variant, isPaid, selected, isDelayProp: isDelayed }),
                 className
             )}
@@ -182,11 +185,19 @@ export const Order = ({
 
                     <div className="flex flex-col gap-y-1">
                         <div className="flex justify-center gap-x-2">
-                            <h3 className="noto-sans-bold text-lg text-primary">
+                            <h3 className={clsx(
+                                "noto-sans-bold text-lg text-primary",
+                                isLargeTextMode ? "text-2xl" : "text-lg"
+                            )}>
                                 {orderId?.substring(0, 4)}
                             </h3>
 
-                            <p className="flex items-center noto-sans-bold text-sm text-secondary">
+                            <p
+                                className={clsx(
+                                    "flex items-center noto-sans-bold text-secondary",
+                                    isLargeTextMode ? "text-base" : "text-sm"
+                                )}
+                            >
                                 (<span className="mr-1">เบอร์ติดต่อ:</span>
                                 <a
                                     href={`tel:${userTel}`}
@@ -197,7 +208,14 @@ export const Order = ({
                                 <span>{')'}</span>
                             </p>
                         </div>
-                        <p className="noto-sans-regular text-light text-sm">สั่งเมื่อ {orderAt}</p>
+                        <p
+                            className={clsx(
+                                "noto-sans-regular text-light",
+                                isLargeTextMode ? "text-base" : "text-sm"
+                            )}
+                        >
+                            สั่งเมื่อ {orderAt}
+                        </p>
                     </div>
                 </div>
 
@@ -213,24 +231,39 @@ export const Order = ({
             </header>
 
             <main className="flex grid-rows-2 justify-between">
-                <div className="w-1/2 text-base text-secondary">
+                <div
+                    className={clsx(
+                        "w-1/2 text-secondary",
+                        isLargeTextMode ? "text-lg" : "text-base"
+                    )}
+                >
                     <p className="mb-2 text-primary">รายละเอียดออเดอร์:</p>
                     {orderMenus.map((item) => (
                         <p
                             key={item.menuName}
+                            className={clsx(isLargeTextMode ? "text-lg mb-1" : "text-base")}
                         >{item.quantity}x - {item.menuName}</p>
                     ))}
                 </div>
 
                 <div className="flex w-1/2 grid-cols-2 items-end justify-end md:gap-x-6 gap-x-4">
                     <div className="text-center">
-                        <p className="text-sm">จัดส่ง:</p>
-                        <h4 className="text-base text-secondary">{getTimeFormat(deliverAt)}</h4>
+                        <p className={clsx(isLargeTextMode ? "text-base" : "text-sm")}>จัดส่ง:</p>
+
+                        <h4
+                            className={clsx("text-secondary", isLargeTextMode ? "text-xl font-bold" : "text-base")}
+                        >
+                            {getTimeFormat(deliverAt)}
+                        </h4>
                     </div>
 
                     <div className="text-center">
-                        <p className="text-sm">ราคา:</p>
-                        <h4 className="text-base text-secondary">{totalAmount}</h4>
+                        <p className={clsx(isLargeTextMode ? "text-base" : "text-sm")}>ราคา:</p>
+                        <h4
+                            className={clsx("text-secondary", isLargeTextMode ? "text-xl font-bold" : "text-base")}
+                        >
+                            {totalAmount}
+                        </h4>
                     </div>
                 </div>
             </main>
@@ -242,7 +275,7 @@ export const Order = ({
             {status === OrderStatus.accepted ? (
                 <Button
                     variant="secondarySuccess"
-                    size="md"
+                    size={isLargeTextMode ? "lg" : "md"}
                     className="flex w-full"
                     type="button"
                 >
@@ -252,7 +285,7 @@ export const Order = ({
                 <div className="flex gap-x-6">
                     <Button
                         variant="primary"
-                        size="md"
+                        size={isLargeTextMode ? "lg" : "md"}
                         className="flex w-full"
                         type="button"
                         disabled={isUpdating}
@@ -267,7 +300,7 @@ export const Order = ({
                     <Button
                         variant="tertiary"
                         disabled={isDelay || isUpdating}
-                        size="md"
+                        size={isLargeTextMode ? "lg" : "md"}
                         type="button"
                         className="flex w-full"
                         onClick={handleDelayOrder}
@@ -280,10 +313,10 @@ export const Order = ({
                     <Button
                         variant="secondaryDanger"
                         disabled={isDelay || isUpdating}
-                        size="md"
+                        size={isLargeTextMode ? "lg" : "md"}
                         type="button"
                         className="flex w-full"
-                        // onClick={handleRejectOrder}
+                    // onClick={handleRejectOrder}
                     >
                         <span className="noto-sans-regular">
                             ยกเลิกออเดอร์
