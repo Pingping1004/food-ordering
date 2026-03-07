@@ -152,6 +152,7 @@ model Order {
   user                 User?          @relation("OrderToUser", fields: [userId], references: [userId], onDelete: Cascade)
 
   @@index([restaurantId])
+  @@index([restaurantId, orderAt])
   @@index([status])
   @@index([isPaid])
   @@index([orderAt])

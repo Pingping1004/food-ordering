@@ -9,6 +9,7 @@ import {
   UseGuards,
   Req,
   Logger,
+  Query,
 } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -67,6 +68,12 @@ export class OrderController {
     @Param('restaurantId') restaurantId: string,
   ) {
     return this.orderService.findWeeklyOrderForRestaurant(restaurantId);
+  }
+
+  @Get('new/:restaurantId')
+  async getNewOrders(@Param('restaurantId') restaurantId: string, @Query('after') after?: Date) {
+    const timestamp = after ? new Date(after) : undefined
+    return this.orderService.getOrdersAfterTimeStamp(restaurantId, timestamp)
   }
 
   @Patch(':orderId')

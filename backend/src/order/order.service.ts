@@ -21,6 +21,7 @@ import Decimal from 'decimal.js';
 import { InventoryService } from 'src/inventory/inventory.service';
 import { MenuService } from 'src/menu/menu.service';
 import moment from 'moment-timezone';
+import { timestamp } from 'rxjs';
 
 @Injectable()
 export class OrderService {
@@ -235,9 +236,31 @@ export class OrderService {
       where: { restaurantId },
       include: { orderMenus: true },
       orderBy: {
-        deliverAt: 'desc',
+        deliverAt: 'asc',
       },
     });
+  }
+
+  async getOrdersAfterTimeStamp(restaurantId: string, timeStamp?: Date) {
+    const orders = await this.prisma.order.findMany({
+      where: {
+        restaurantId,
+        orderAt: {
+          gt: timeStamp
+        }
+      },
+      include: { orderMenus: true },
+      orderBy: {
+        orderAt: 'asc'
+      }
+    });
+
+    const latestTimestamp = orders.length > 0 ? orders[orders.length - 1].orderAt : timeStamp ?? null
+
+    console.log('New orders: ', orders)
+    console.log('Latest timestamp: ', latestTimestamp)
+
+    return { orders, latestTimestamp }
   }
 
   async findOneOrder(orderId: string) {
