@@ -8,44 +8,68 @@ import { CookerProvider, useCooker } from "@/context/Cookercontext";
 import { api } from "@/lib/api";
 import { getDateFormat, getTimeFormat } from "@/util/time";
 import Image from "next/image";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 
 function Page() {
-    const [weeklyOrders, setWeeklyOrders] = useState<OrderProps[]>([]);
-    const { cooker, fetchOrders, orders } = useCooker();
-    const [, setOrder] = useState<OrderProps>();
+    const [orders, setOrders] = useState<OrderProps[]>([]);
+    const lastTimestampRef = useRef<string | null>(null)
+    const { cooker, fetchOrders } = useCooker();
     const [navbarStatus, setNavbarStatus] = useState<OrderStatus>(OrderStatus.accepted);
     const [isLoading, setIsLoading] = useState<boolean>(true);
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
+    const fetchNewOrders = async () => {
+        try {
+            const params = new URLSearchParams()
 
-                const response = await api.get(`/order/weekly/${cooker.restaurantId}`);
-                setWeeklyOrders(response.data);
-            } finally {
-                setIsLoading(false);
+            if (lastTimestampRef.current) {
+                params.append("after", lastTimestampRef.current)
             }
+
+            const url = `/order/new/${cooker.restaurantId}` + (params.toString() ? `?${params.toString()}` : "");
+            const response = await api.get(url)
+            const data = response.data
+
+            if (data.orders.length > 0) {
+                setOrders(prev => {
+                    const existing = new Set(prev.map(order => order.orderId));
+                    const newOrders = data.orders.filter((order: OrderProps) => !existing.has(order.orderId));
+
+                    return [...prev, ...newOrders]
+                })
+                lastTimestampRef.current = data.latestTimestamp
+            }
+        } finally {
+            setIsLoading(false)
         }
-        fetchData();
-    }, [cooker.restaurantId, orders]);
+    }
+
+    useEffect(() => {
+        if (!cooker.restaurantId) return
+        fetchNewOrders();
+
+        const interval = setInterval(() => { fetchNewOrders() }, 15000)
+        return () => clearInterval(interval)
+    }, [cooker.restaurantId])
 
     const filterWeeklyOrders = useMemo(() => {
-        return weeklyOrders.filter((order) => order.isPaid === "paid");
-    }, [weeklyOrders]);
+        return orders.filter((order) => order.isPaid === "paid");
+    }, [orders]);
 
     const weeklyDone = useMemo(() => {
         return filterWeeklyOrders.filter((order) => (order.status === OrderStatus.accepted)).length;
     }, [filterWeeklyOrders]);
 
     const weeklySales = useMemo(() => {
-        return weeklyOrders
+        return orders
             .filter((order) => order.isPaid === "paid" && order.status === OrderStatus.accepted)
             .reduce((total, order) => total + Number(order.totalAmount), 0);
-    }, [weeklyOrders]);
+    }, [orders]);
 
     const handleOrderUpdate = (updatedOrder: OrderProps) => {
-        setOrder(updatedOrder);
+        setOrders(prev =>
+            prev.map(order => order.orderId === updatedOrder.orderId ? updatedOrder : order)
+        );
+        
         fetchOrders();
     };
 
