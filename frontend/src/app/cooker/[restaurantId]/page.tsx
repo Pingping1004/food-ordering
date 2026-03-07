@@ -16,7 +16,7 @@ function Page() {
     const [orders, setOrders] = useState<OrderProps[]>([]);
     const lastTimestampRef = useRef<string | null>(null)
     const { cooker, fetchOrders } = useCooker();
-    const [navbarStatus, setNavbarStatus] = useState<OrderStatus>(OrderStatus.accepted);
+    const [navbarStatus, setNavbarStatus] = useState<OrderStatus>(OrderStatus.sent);
     const [isLoading, setIsLoading] = useState<boolean>(true);
 
     const fetchNewOrders = async () => {

@@ -241,8 +241,10 @@ export const Order = ({
                     {orderMenus.map((item) => (
                         <p
                             key={item.menuName}
-                            className={clsx(isLargeTextMode ? "text-lg mb-1" : "text-base")}
-                        >{item.quantity}x - {item.menuName}</p>
+                            className={clsx(isLargeTextMode ? "text-xl mb-1 font-bold" : "text-base")}
+                        >
+                            {item.quantity}x - {item.menuName}
+                        </p>
                     ))}
                 </div>
 
@@ -282,7 +284,7 @@ export const Order = ({
                     ออเดอร์เสร็จสิ้น
                 </Button>
             ) : (
-                <div className="flex gap-x-6">
+                <div className="grid grid-cols-3 gap-x-2">
                     <Button
                         variant="primary"
                         size={isLargeTextMode ? "lg" : "md"}
@@ -293,7 +295,20 @@ export const Order = ({
                     >
                         <span className="noto-sans-regular">
                             {/* {getOrderStatusProps(status).text} */}
-                            พร้อมเสิร์ฟ
+                            เริ่มปรุง
+                        </span>
+                    </Button>
+
+                    <Button
+                        variant="secondaryDanger"
+                        disabled={isDelay || isUpdating}
+                        size={isLargeTextMode ? "lg" : "md"}
+                        type="button"
+                        className="flex w-full"
+                    onClick={() => handleUpdateStatus(orderId)}
+                    >
+                        <span className="noto-sans-regular">
+                            ปฏิเสธ
                         </span>
                     </Button>
 
@@ -306,20 +321,7 @@ export const Order = ({
                         onClick={handleDelayOrder}
                     >
                         <span className="noto-sans-regular">
-                            {isDelay === false ? 'แจ้งล่าช้า10นาที' : 'แจ้งล่าช้าสำเร็จ'}
-                        </span>
-                    </Button>
-
-                    <Button
-                        variant="secondaryDanger"
-                        disabled={isDelay || isUpdating}
-                        size={isLargeTextMode ? "lg" : "md"}
-                        type="button"
-                        className="flex w-full"
-                    // onClick={handleRejectOrder}
-                    >
-                        <span className="noto-sans-regular">
-                            ยกเลิกออเดอร์
+                            {isDelay === false ? 'ล่าช้า10นาที' : 'แจ้งล่าช้าสำเร็จ'}
                         </span>
                     </Button>
                 </div>

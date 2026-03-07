@@ -3,7 +3,7 @@ import clsx from "clsx";
 import { cva, VariantProps } from "class-variance-authority";
 
 export enum OrderStatus {
-  paid = "paid",
+  sent = "sent",
   accepted = "accepted",
   rejected = "rejected",
   refund_pending = "refund_pending",
@@ -15,7 +15,7 @@ const orderNavbarVariants = cva(
     {
         variants: {
             variant: {
-                paid: "",
+                sent: "",
                 accepted: "",
                 rejected: "",
                 refund_pending: "",
@@ -23,7 +23,7 @@ const orderNavbarVariants = cva(
             },
         },
         defaultVariants: {
-            variant: "accepted",
+            variant: "sent",
         },
     }
 );
@@ -56,9 +56,9 @@ export const OrderNavBar = ({
             {...props}
         >
             <button
-                onClick={() => handleClick(OrderStatus.paid)}
+                onClick={() => handleClick(OrderStatus.sent)}
                 className={
-                    state === OrderStatus.paid
+                    state === OrderStatus.sent
                         ? "w-1/2 text-primary p-2 border-b-2 border-primary-main"
                         : "w-1/2 p-2"
                 }
@@ -74,7 +74,7 @@ export const OrderNavBar = ({
                         : "w-1/2 p-2"
                 }
             >
-                ออเดอร์ที่รับแล้ว
+                รับแล้ว
             </button>
 
             <button
@@ -85,7 +85,7 @@ export const OrderNavBar = ({
                         : "w-1/2 p-2"
                 }
             >
-                รอการคืนเงิน
+                รอคืนเงิน
             </button>
 
             <button
@@ -96,7 +96,18 @@ export const OrderNavBar = ({
                         : "w-1/2 p-2"
                 }
             >
-                คืนเงินเสร็จสิ้น
+                คืนเงินสำเร็จ
+            </button>
+
+            <button
+                onClick={() => handleClick(OrderStatus.rejected)}
+                className={
+                    state === OrderStatus.rejected
+                        ? "w-1/2 text-primary p-2 border-b-2 border-primary-main"
+                        : "w-1/2 p-2"
+                }
+            >
+                ปฏิเสธ
             </button>
         </div>
     );
