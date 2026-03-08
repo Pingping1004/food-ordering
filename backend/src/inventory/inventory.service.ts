@@ -11,6 +11,8 @@ export class InventoryService {
         private readonly menuService: MenuService,
     ) { }
 
+    private pendingQuotaRequests = new Map<string, Promise<Record<string, number>>>();
+
     async deductInventoryTx(
         tx: Prisma.TransactionClient,
         menuId: string,
@@ -52,5 +54,50 @@ export class InventoryService {
         }
 
         return null
+    }
+
+    async getRemainingQuotas(menuIds: string[]): Promise<Record<string, number>> {
+        if (menuIds.length === 0) return {}
+
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+
+        const sortedMenuIds = [...menuIds].sort()
+        const requestKey = `${today.toISOString()}-${JSON.stringify(sortedMenuIds)}`
+
+        if (this.pendingQuotaRequests.has(requestKey)) return this.pendingQuotaRequests.get(requestKey)!
+
+        const requestPromise = (async () => {
+            const inventories = await this.prisma.inventory.findMany({
+                where: {
+                    menuId: { in: sortedMenuIds },
+                    date: today
+                },
+                select: {
+                    menuId: true,
+                    remaining: true,
+                }
+            })
+    
+            const remainingMap: Record<string, number> = {};
+
+            for (const id of menuIds) {
+                remainingMap[id] = 0
+            }
+    
+            for (const inv of inventories) {
+                remainingMap[inv.menuId] = inv.remaining
+            }
+    
+            return remainingMap
+        })()
+
+        this.pendingQuotaRequests.set(requestKey, requestPromise)
+
+        try {
+            return await requestPromise
+        } finally {
+            this.pendingQuotaRequests.delete(requestKey)
+        }
     }
 }

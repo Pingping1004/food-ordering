@@ -19,6 +19,7 @@ import Decimal from 'decimal.js';
 import { UploadService } from 'src/upload/upload.service';
 import { randomUUID } from 'crypto';
 import { InventoryService } from 'src/inventory/inventory.service';
+import { clearMenuCache, clearMenuQuotaCache, getMenuCache, getMenuQuotaCache, setMenuCache, setMenuQuotaCache } from './menuCache';
 
 export interface MenusWithDisplayPrices {
     menuId: string;
@@ -57,7 +58,27 @@ export class MenuService implements OnModuleInit {
     }
 
     private readonly logger = new Logger('menuService');
+    private pendingMenuRequest = new Map<string, Promise<MenusWithDisplayPrices[]>>();
     private readonly tempImageStore = new Map<string, { url: string; createdAt: Date }>();
+    private readonly MENU_CACHE_TTL_MS = 10 * 60 * 1000;
+    private readonly QUOTA_CACHE_TTL_MS = 5 * 1000;
+    private markupRate = new Decimal(process.env.SELL_PRICE_MARKUP_RATE ?? '0');
+    private commissionRate = new Decimal(process.env.PLATFORM_COMMISSION_RATE ?? '0');
+
+    private getMenuCacheKey(restaurantId: string): string {
+        return `menus:restaurant:${restaurantId}`;
+    }
+
+    private getMenuQuotaCacheKey(restaurantId: string): string {
+        return `menuQuota:restaurant:${restaurantId}`;
+    }
+
+    private invalidateRestaurantMenuCache(restaurantId: string): void {
+        const menuCacheKey = this.getMenuCacheKey(restaurantId);
+        const quotaCacheKey = this.getMenuQuotaCacheKey(restaurantId);
+        clearMenuCache(menuCacheKey);
+        clearMenuQuotaCache(quotaCacheKey);
+    }
 
     async createSingleMenu(createMenuDto: CreateMenuDto, file: Express.Multer.File) {
         const existingName = await this.checkDuplicateMenuNameInRestaurant(createMenuDto.name, createMenuDto.restaurantId);
@@ -80,6 +101,8 @@ export class MenuService implements OnModuleInit {
                 data: newMenu,
             });
 
+            this.invalidateRestaurantMenuCache(createMenuDto.restaurantId);
+
             return result;
         } catch (error) {
             this.logger.error(`Failed to create menu ${createMenuDto.name}:`, error);
@@ -98,10 +121,9 @@ export class MenuService implements OnModuleInit {
             const existingRestaurant = await this.validateBulkInput(restaurantId, menusData);
 
             // 3. Process each menu item and create database records
-            const { createdMenus, failedCreations } = await this.processMenuCreations(
-                menusData,
-                existingRestaurant.restaurantId,
-            );
+            const { createdMenus, failedCreations } = await this.processMenuCreations(menusData, existingRestaurant.restaurantId);
+
+            this.invalidateRestaurantMenuCache(restaurantId);
 
             // 4. Format and return the final comprehensive result
             return this.formatResponse(menusData.length, createdMenus, failedCreations);
@@ -184,45 +206,60 @@ export class MenuService implements OnModuleInit {
         }, interval);
     }
 
-    private async processMenuCreations(
-        menusData: CsvMenuItemData[],
-        restaurantId: string,
-    ) {
+    private async processMenuCreations(menusData: CsvMenuItemData[], restaurantId: string) {
+        const results = await Promise.all(
+            menusData.map(async (dto) => {
+                try {
+                    const imageData = this.tempImageStore.get(dto.menuImgTempId);
+                    if (!imageData) throw new BadRequestException(`Image not found for tempId: ${dto.menuImgTempId}`);
+
+                    const menuDataToCreate = {
+                        name: dto.name,
+                        // description: dto.description,
+                        price: dto.price,
+                        maxDaily: dto.maxDaily,
+                        cookingTime: dto.cookingTime ?? 5,
+                        isAvailable: dto.isAvailable,
+                        menuImg: imageData.url,
+                        restaurant: { connect: { restaurantId: restaurantId } },
+                    };
+                    const createdMenu = await this.prisma.menu.create({ data: menuDataToCreate });
+
+                    return {
+                        success: true as const,
+                        menu: createdMenu,
+                    }
+                } catch (itemError: any) {
+                    this.logger.error(
+                        `Failed to create menu item "${dto.name}" (Original file: ${dto.originalFileName || 'N/A'}): `,
+                        itemError.message,
+                        itemError.stack,
+                    );
+
+                    return {
+                        success: false as const,
+                        error: itemError.message,
+                        item: dto,
+                    };
+                }
+            }),
+        );
+
         const createdMenus: Menu[] = [];
         const failedCreations: { item: CsvMenuItemData; error: string }[] = [];
 
-        for (const [, dto] of menusData.entries()) {
-            try {
-
-                const imageData = this.tempImageStore.get(dto.menuImgTempId);
-                if (!imageData) throw new BadRequestException(`Image not found for tempId: ${dto.menuImgTempId}`);
-
-                const menuDataToCreate = {
-                    name: dto.name,
-                    // description: dto.description,
-                    price: dto.price,
-                    maxDaily: dto.maxDaily,
-                    cookingTime: dto.cookingTime ?? 5,
-                    isAvailable: dto.isAvailable,
-                    menuImg: imageData.url,
-                    restaurant: {
-                        connect: {
-                            restaurantId: restaurantId,
-                        },
-                    },
-                };
-                const createdMenu = await this.prisma.menu.create({ data: menuDataToCreate });
-                createdMenus.push(createdMenu);
-            } catch (itemError: any) {
-                this.logger.error(
-                    `Failed to create menu item "${dto.name}" (Original file: ${dto.originalFileName || 'N/A'}): `,
-                    itemError.message,
-                    itemError.stack,
-                );
-                failedCreations.push({ item: dto, error: itemError.message });
+        for (const result of results) {
+            if (result.success) {
+                createdMenus.push(result.menu);
+            } else {
+                failedCreations.push({
+                    item: result.item,
+                    error: result.error,
+                });
             }
         }
-        return { createdMenus, failedCreations };
+
+        return { createdMenus, failedCreations }
     }
 
     private formatResponse(
@@ -265,22 +302,19 @@ export class MenuService implements OnModuleInit {
         return menu;
     }
 
-    private calculateDisplayPrice(menu: Partial<Menu>): {
-        sellPriceDisplay: number;
-        platformFeeDisplay: number;
-    } {
+    private calculateDisplayPrice(menu: Partial<Menu>) {
         if (!menu.price)
             throw new NotFoundException(
                 'Cannot find menu price, cannot calculate display price',
             );
-        const markup = new Decimal(Number(process.env.SELL_PRICE_MARKUP_RATE));
-        const rate = new Decimal(Number(process.env.PLATFORM_COMMISSION_RATE));
 
         const priceInSatang = new Decimal(menu.price);
-        const sellingPriceInSatang = priceInSatang.times(
-            new Decimal(1).plus(markup),
-        );
-        const platformFeeInSatang = sellingPriceInSatang.times(rate);
+
+        const sellingPriceInSatang =
+            priceInSatang.times(new Decimal(1).plus(this.markupRate));
+
+        const platformFeeInSatang =
+            sellingPriceInSatang.times(this.commissionRate);
 
         return {
             sellPriceDisplay: sellingPriceInSatang.toNumber(),
@@ -288,14 +322,44 @@ export class MenuService implements OnModuleInit {
         };
     }
 
-    async getRestaurantMenusDisplay(
-        restaurantId: string,
-    ): Promise<MenusWithDisplayPrices[]> {
-        try {
-            const menus = await this.prisma.menu.findMany({
-                where: {
-                    restaurantId,
-                },
+    async getRestaurantMenusDisplay(restaurantId: string): Promise<MenusWithDisplayPrices[]> {
+        const cacheKey = this.getMenuCacheKey(restaurantId);
+        const quotaCacheKey = this.getMenuQuotaCacheKey(restaurantId);
+
+        const cachedMenus = getMenuCache(cacheKey);
+        if (cachedMenus) {
+            this.logger.debug(`Menu cache hit for key: ${cacheKey}`);
+
+            const menuIds = cachedMenus.map(m => m.menuId);
+            let quotas = getMenuQuotaCache(quotaCacheKey);
+
+            if (quotas) {
+                this.logger.debug(`Quota cache hit for key: ${quotaCacheKey}`);
+            } else {
+                quotas = await this.inventoryService.getRemainingQuotas(menuIds);
+                setMenuQuotaCache(quotaCacheKey, quotas, this.QUOTA_CACHE_TTL_MS);
+            }
+
+            return cachedMenus.map(menu => {
+                const remainingQuota = quotas[menu.menuId] ?? 0;
+                const isOrderable = menu.isAvailable && remainingQuota > 0;
+
+                return {
+                    ...menu,
+                    isOrderable,
+                };
+            });
+        }
+
+        const pending = this.pendingMenuRequest.get(cacheKey);
+        if (pending) {
+            this.logger.debug(`Reusing pending menu request for key: ${cacheKey}`);
+            return pending;
+        }
+
+        const requestPromise = (async () => {
+            const dbMenus = await this.prisma.menu.findMany({
+                where: { restaurantId },
                 select: {
                     menuId: true,
                     name: true,
@@ -308,25 +372,46 @@ export class MenuService implements OnModuleInit {
                 },
             });
 
-            const menusWithCalculatedPrices: MenusWithDisplayPrices[] = menus.map(
-                (menu) => {
-                    const displayPrices = this.calculateDisplayPrice(menu);
-                    return {
-                        ...menu,
-                        menuImg: menu.menuImg ?? undefined,
-                        sellPriceDisplay: displayPrices.sellPriceDisplay,
-                        // platformFeeDisplay: displayPrices.platformFeeDisplay,
-                    };
-                },
-            );
+            const menus = dbMenus.map(menu => {
+                const displayPrices = this.calculateDisplayPrice(menu);
 
-            return menusWithCalculatedPrices;
-        } catch (error) {
-            this.logger.error(
-                'An error occurred while fetching restaurant menus with display prices:',
-                error,
-            );
-            throw new InternalServerErrorException('ค้นหาเมนูขัดข้อง');
+                return {
+                    ...menu,
+                    menuImg: menu.menuImg ?? undefined,
+                    sellPriceDisplay: displayPrices.sellPriceDisplay,
+                    isOrderable: false
+                };
+            });
+
+            setMenuCache(cacheKey, menus, this.MENU_CACHE_TTL_MS);
+
+            const menuIds = menus.map(m => m.menuId);
+            let quotas = getMenuQuotaCache(quotaCacheKey);
+
+            if (quotas) {
+                this.logger.debug(`Quota cache hit for key: ${quotaCacheKey}`);
+            } else {
+                quotas = await this.inventoryService.getRemainingQuotas(menuIds);
+                setMenuQuotaCache(quotaCacheKey, quotas, this.QUOTA_CACHE_TTL_MS);
+            }
+
+            return menus.map(menu => {
+                const remainingQuota = quotas[menu.menuId] ?? 0;
+                const isOrderable = menu.isAvailable && remainingQuota > 0;
+
+                return {
+                    ...menu,
+                    isOrderable,
+                };
+            });
+        })();
+
+        this.pendingMenuRequest.set(cacheKey, requestPromise);
+
+        try {
+            return await requestPromise;
+        } finally {
+            this.pendingMenuRequest.delete(cacheKey);
         }
     }
 
@@ -351,38 +436,36 @@ export class MenuService implements OnModuleInit {
     }
 
     private async isOwnerOfMultipleMenus(restaurantId: string, menuIds: string[]) {
+        if (menuIds.length === 0) throw new BadRequestException("Menu IDs cannot be empty");
+
         await this.restaurantService.findRestaurant(restaurantId);
-        const ownedAndExistingMenus = await this.prisma.menu.findMany({
-            where: {
-                menuId: { in: menuIds },
-                restaurantId,
-            },
+
+        const allMenus = await this.prisma.menu.findMany({
+            where: { menuId: { in: menuIds } },
             select: { menuId: true, restaurantId: true },
         });
 
-        if (ownedAndExistingMenus.length !== menuIds.length) {
-            const foundOwnedMenuids = new Set(
-                ownedAndExistingMenus.map((menu) => menu.menuId),
-            );
-            const problematicMenuIds = menuIds.filter(
-                (id) => !foundOwnedMenuids.has(id),
+        if (allMenus.length !== menuIds.length) {
+            const foundMenuIds = new Set(allMenus.map(menu => menu.menuId));
+            const notFoundMenuIds = menuIds.filter(
+                id => !foundMenuIds.has(id)
             );
 
-            const allRequestMenus = await this.prisma.menu.findMany({
-                where: { menuId: { in: problematicMenuIds } },
-                select: { menuId: true, restaurantId: true },
-            });
-
-            if (allRequestMenus.length === 0) {
-                throw new NotFoundException(
-                    'The following menus were not found: ',
-                    problematicMenuIds.join(', '),
-                );
-            } else {
-                throw new ForbiddenException(
-                    `The following menus exist but do not belong to restaurant "${restaurantId}": ${problematicMenuIds.join(', ')}.`,
-                );
+            if (notFoundMenuIds.length > 0) {
+                throw new NotFoundException(`The following menus were not found: ${notFoundMenuIds.join(", ")}`);
             }
+        }
+
+        const unauthorizedMenus = allMenus.filter(
+            menu => menu.restaurantId !== restaurantId
+        );
+
+        if (unauthorizedMenus.length > 0) {
+            const unauthorizedIds = unauthorizedMenus.map(
+                menu => menu.menuId
+            );
+
+            throw new ForbiddenException(`The following menus exist but do not belong to restaurant "${restaurantId}": ${unauthorizedIds.join(", ")}`);
         }
     }
 
@@ -412,7 +495,7 @@ export class MenuService implements OnModuleInit {
     async updateMenu(menuId: string, updateMenuDto: UpdateMenuDto, file?: Express.Multer.File) {
         const results: Menu[] = [];
 
-        this.isOwnerOfSingleMenu(updateMenuDto.restaurantId, menuId);
+        await this.isOwnerOfSingleMenu(updateMenuDto.restaurantId, menuId);
 
         const existingMenu = await this.findMenu(menuId);
         const updateData = this.omitUnchangedFields(existingMenu, updateMenuDto);
@@ -434,6 +517,7 @@ export class MenuService implements OnModuleInit {
             data: updateData,
         });
 
+        this.invalidateRestaurantMenuCache(existingMenu.restaurantId);
         results.push(result);
 
         return results;
@@ -450,10 +534,13 @@ export class MenuService implements OnModuleInit {
             );
         }
 
-        // --- 1. Upload images optionally and concurrently
+        const restaurantId = updateDtos[0].restaurantId;
+        await this.isOwnerOfMultipleMenus(restaurantId, menuIds)
+
+        // Upload images optionally and concurrently
         const imageUrl = await this.uploadService.saveOptionalBulkImages(files);
 
-        // 2. Prepare the updates with the new image URLs
+        // Prepare the updates with the new image URLs
         const updates = updateDtos.map((dto, index) => {
             const menuImgUrl = imageUrl[index].url;
 
@@ -472,7 +559,10 @@ export class MenuService implements OnModuleInit {
                 this.prisma.menu.update(update),
             );
 
-            return await this.prisma.$transaction(updatePromises);
+            const result = await this.prisma.$transaction(updatePromises);
+
+            this.invalidateRestaurantMenuCache(restaurantId);
+            return result;
         } catch (error) {
             this.logger.error('Failed to perform bulk menu update in transaction:', error);
             throw new InternalServerErrorException('A transaction failed during bulk menu update. No changes were applied.');
@@ -481,7 +571,7 @@ export class MenuService implements OnModuleInit {
 
     private async isOwnerOfSingleMenu(restaurantId: string, menuId: string) {
         await this.restaurantService.findRestaurant(restaurantId);
-        const isOwner = await this.prisma.menu.findUnique({
+        const isOwner = await this.prisma.menu.findFirst({
             where: {
                 menuId,
                 restaurantId,
@@ -502,6 +592,8 @@ export class MenuService implements OnModuleInit {
                 },
             });
 
+            this.invalidateRestaurantMenuCache(updateMenuDto.restaurantId);
+
             return {
                 result,
                 message: `Sucessfully update availability of menu ${result.name} to be ${result.isAvailable}`,
@@ -518,8 +610,18 @@ export class MenuService implements OnModuleInit {
     }
 
     async removeMenu(menuId: string) {
-        return this.prisma.menu.delete({
+        const restaurant = await this.prisma.menu.findUnique({
+            where: { menuId },
+            select: { restaurantId: true }
+        });
+
+        const result = await this.prisma.menu.delete({
             where: { menuId },
         });
+
+        if (restaurant?.restaurantId) {
+            this.invalidateRestaurantMenuCache(restaurant.restaurantId);
+        }
+        return result
     }
 }

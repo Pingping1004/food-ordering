@@ -32,7 +32,7 @@ export type UserWithRestaurantWithoutPassword = Omit<
 
 @Injectable()
 export class UserService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async createUser(createUserDto: CreateUserDto) {
     const existingUser = await this.findOneByEmail(createUserDto.email);
@@ -83,7 +83,7 @@ export class UserService {
         createdAt: true,
         updatedAt: true,
         restaurant: {
-          select: { 
+          select: {
             restaurantId: true,
             isApproved: true,
           },
@@ -130,6 +130,25 @@ export class UserService {
     });
 
     return result;
+  }
+
+  async updateRoleRequest(userId: string, requestRole: Role, status: RoleRequestStatus) {
+    const roleRequest = await this.prisma.roleRequest.update({
+      where: { userId },
+      data: {
+        requestRole: requestRole,
+        status: status,
+      }
+    });
+
+    if (status === "accepted") {
+      const user = await this.prisma.user.update({
+        where: { userId },
+        data: { role: requestRole }
+      });
+    }
+
+    return roleRequest
   }
 
   async removeUser(userId: string) {
