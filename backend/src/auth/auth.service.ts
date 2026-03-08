@@ -9,7 +9,7 @@ import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
-import { UserService, UserWithRestaurant } from 'src/user/user.service';
+import { UserService, UserWithRestaurant, UserProfile } from 'src/user/user.service';
 import { Role, User } from '@prisma/client';
 import { RefreshTokenService } from 'src/refreshToken/refresh-token.service';
 import { v4 as uuidv4 } from 'uuid';
@@ -29,7 +29,7 @@ interface RefreshTokenPayload {
 interface RefreshResult {
   accessToken: string;
   refreshToken: string;
-  user: Omit<UserWithRestaurant, 'password' | 'createdAt' | 'updatedAt'>;
+  user: Omit<UserProfile, 'createdAt' | 'updatedAt'>;
 }
 
 interface ValidatedUserResult {
@@ -141,7 +141,8 @@ export class AuthService {
         restaurant: {
           restaurantId: existingUser.restaurant?.restaurantId,
           isApproved: existingUser.restaurant?.isApproved,
-        }
+        },
+        roleRequest: existingUser.roleRequest,
       },
     };
   }
@@ -196,6 +197,7 @@ export class AuthService {
             ? { restaurantId: user.restaurant.restaurantId, isApproved: user.restaurant.isApproved }
             : null,
           profileImg: user.profileImg,
+          roleRequest: user.roleRequest,
         },
       };
     } catch (error) {

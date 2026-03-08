@@ -1,6 +1,8 @@
 import {
   BadRequestException,
   ConflictException,
+  forwardRef,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -9,6 +11,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { Prisma, Role, RoleRequestStatus } from '@prisma/client';
+import { RestaurantService } from 'src/restaurant/restaurant.service';
 
 export type UserWithRestaurant = Prisma.UserGetPayload<{
   select: {
@@ -22,6 +25,16 @@ export type UserWithRestaurant = Prisma.UserGetPayload<{
     restaurant: {
       select: { restaurantId: true, isApproved: true };
     };
+    RoleRequest: {
+      select: {
+        requestId: true;
+        userId: true;
+        requestRole: true;
+        status: true;
+        createdAt: true;
+        updatedAt: true;
+      };
+    };
   };
 }>;
 
@@ -30,9 +43,17 @@ export type UserWithRestaurantWithoutPassword = Omit<
   'password'
 >;
 
+export type UserProfile = Omit<UserWithRestaurantWithoutPassword, 'RoleRequest'> & {
+  roleRequest: UserWithRestaurantWithoutPassword['RoleRequest'] | null;
+};
+
 @Injectable()
 export class UserService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => RestaurantService))
+    private readonly restaurantService: RestaurantService
+  ) { }
 
   async createUser(createUserDto: CreateUserDto) {
     const existingUser = await this.findOneByEmail(createUserDto.email);
@@ -71,7 +92,7 @@ export class UserService {
 
   async findOneUser(
     userId: string,
-  ): Promise<UserWithRestaurantWithoutPassword> {
+  ): Promise<UserProfile> {
     const user = await this.prisma.user.findUnique({
       where: { userId },
       select: {
@@ -88,6 +109,16 @@ export class UserService {
             isApproved: true,
           },
         },
+        RoleRequest: {
+          select: {
+            requestId: true,
+            userId: true,
+            requestRole: true,
+            status: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
       },
     });
 
@@ -95,7 +126,11 @@ export class UserService {
       throw new NotFoundException('ไม่พบผู้ใช้งานไอดี: ', userId);
     }
 
-    return user;
+    const { RoleRequest, ...rest } = user;
+    return {
+      ...rest,
+      roleRequest: RoleRequest ?? null,
+    };
   }
 
   async updateUser(userId: string, updateUserDto: UpdateUserDto) {
@@ -108,6 +143,9 @@ export class UserService {
   }
 
   async createRoleRequest(userId: string, requestRole: Role) {
+    if (requestRole !== Role.cooker)
+      throw new BadRequestException('อนุญาตให้ขอเป็นร้านอาหาร (cooker) เท่านั้น');
+
     const existingPendingRequest = await this.prisma.roleRequest.findFirst({
       where: {
         userId,
@@ -117,38 +155,51 @@ export class UserService {
 
     if (existingPendingRequest) {
       throw new BadRequestException(
-        'Your request already sent, admin is processing',
+        'คุณได้ส่งคำขอไปแล้ว ระบบกำลังรอการอนุมัติจากผู้ดูแลอยู่',
       );
     }
 
-    const result = await this.prisma.roleRequest.create({
-      data: {
-        userId,
-        requestRole,
-        status: RoleRequestStatus.pending,
-      },
-    });
+    try {
+      const result = await this.prisma.roleRequest.create({
+        data: {
+          userId,
+          requestRole,
+          status: RoleRequestStatus.pending,
+        },
+      });
 
-    return result;
+      return result;
+    } catch (error) {
+      // Handle unique constraint on userId to provide a friendly message
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new BadRequestException(
+          'คุณได้ส่งคำขอไปแล้ว ระบบกำลังรอการอนุมัติจากผู้ดูแลอยู่',
+        );
+      }
+      throw error;
+    }
   }
 
   async updateRoleRequest(userId: string, requestRole: Role, status: RoleRequestStatus) {
     const roleRequest = await this.prisma.roleRequest.update({
       where: { userId },
       data: {
-        requestRole: requestRole,
-        status: status,
-      }
+        requestRole,
+        status,
+      },
     });
 
-    if (status === "accepted") {
-      const user = await this.prisma.user.update({
+    if (status === RoleRequestStatus.accepted) {
+      await this.prisma.user.update({
         where: { userId },
-        data: { role: requestRole }
+        data: { role: requestRole },
       });
     }
 
-    return roleRequest
+    return roleRequest;
   }
 
   async removeUser(userId: string) {

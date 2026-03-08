@@ -1,6 +1,13 @@
-import { Controller, Get, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Patch, Param, Delete, UseGuards } from '@nestjs/common';
 import { AdminService } from './admin.service';
+import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
+import { RolesGuard } from 'src/guards/roles.guard';
+import { Roles } from 'src/decorators/role.decorator';
+import { Role } from '@prisma/client';
+import { CsrfGuard } from 'src/guards/csrf.guard';
 
+@UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
+@Roles([Role.admin])
 @Controller('request')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
@@ -10,7 +17,7 @@ export class AdminController {
     return this.adminService.findAllRequest();
   }
 
-  @Get()
+  @Get('pending')
   findPendingRequest() {
     return this.adminService.findPendingRequest();
   }

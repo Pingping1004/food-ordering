@@ -8,8 +8,6 @@ import {
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
-import { UserService } from 'src/user/user.service';
-import { UpdateUserDto } from 'src/user/dto/update-user.dto';
 import moment from 'moment-timezone';
 import { UploadService } from 'src/upload/upload.service';
 import { clearRestaurantCache, getRestaurantCache, OpenRestaurant, RestaurantCache, setRestaurantCache } from './restaurantCache';
@@ -19,7 +17,6 @@ export class RestaurantService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly uploadService: UploadService,
-    private readonly userService: UserService,
   ) { }
 
   private readonly logger = new Logger('RestaurantService');
@@ -70,7 +67,7 @@ export class RestaurantService {
         openDate: createRestaurantDto.openDate,
         openTime: openTime,
         closeTime: closeTime,
-        isApproved: false,
+        isApproved: true,
         adminName: createRestaurantDto.adminName,
         adminSurname: createRestaurantDto.adminSurname,
         adminTel: createRestaurantDto.adminTel,
@@ -83,9 +80,6 @@ export class RestaurantService {
       const result = await this.prisma.restaurant.create({
         data: newRestaurant,
       });
-
-      const updateDto: UpdateUserDto = { role: 'cooker' };
-      await this.userService.updateUser(userId, updateDto);
 
       clearRestaurantCache("restaurants:all")
       clearRestaurantCache("restaurants:open")
@@ -254,7 +248,7 @@ export class RestaurantService {
     if (cached) return cached;
 
     const currentTimeString = moment().tz('Asia/Bangkok').format('HH:mm');
-    
+
     const allRestaurants = await this.findAllRestaurant();
     const openRestaurants = allRestaurants
       .map(restaurant => {

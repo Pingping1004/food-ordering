@@ -35,6 +35,7 @@ export class RestaurantController {
 
   private readonly logger = new Logger('RestaurantController');
   @Post()
+  @Roles([Role.cooker])
   @UseInterceptors(
     FileInterceptor('restaurantImg', {
       storage: null,
