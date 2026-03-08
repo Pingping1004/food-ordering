@@ -7,7 +7,6 @@ import { RestaurantCategory } from "@/components/users/RestaurantProfile";
 import LoadingPage from '@/components/LoadingPage';
 
 export interface Restaurant {
-    // [x: string]: any;
     restaurantId: string;
     name: string;
     image: string;
@@ -31,6 +30,7 @@ export interface Menu {
     maxDaily: number;
     cookingTime: number;
     isAvailable: boolean;
+    isOrderable: boolean;
     restaurantId: string;
 }
 

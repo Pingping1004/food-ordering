@@ -1,37 +1,102 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "../Button";
 import { useAuth } from "@/context/Authcontext";
+import { api } from "@/lib/api";
+import axios from "axios";
+import { toastDanger, toastSuccess } from "@/components/ui/Toast";
 
 export default function UserHeader() {
     const router = useRouter();
     const { user, logout } = useAuth();
 
-    const userId = user?.userId;
-    const restaurantId = user?.restaurant?.restaurantId;
-    const isApprovedRestaurant = user?.restaurant?.isApproved;
-    let routing: string;
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [localPending, setLocalPending] = useState(false);
 
-    if (userId && !restaurantId) {
-        routing = `/restaurant-register/${userId}`;
-    } else if (userId && restaurantId && !isApprovedRestaurant) {
-        routing = `restaurant/waiting-approved`;
-    }
+    const pendingRequest = user?.roleRequest?.status === 'pending';
+
+    useEffect(() => {
+        setLocalPending(pendingRequest);
+    }, [pendingRequest]);
+
+    const primaryAction = useMemo(() => {
+        if (!user) {
+            return {
+                label: 'ลงทะเบียน',
+                disabled: false,
+                onClick: () => router.push('/signup'),
+            };
+        }
+
+        if (user.role === 'admin') {
+            return {
+                label: 'จัดการคำขอร้านอาหาร',
+                disabled: false,
+                onClick: () => router.push('/admin/role-requests'),
+            };
+        }
+
+        if (user.role === 'cooker') {
+            const restaurantId = user.restaurant?.restaurantId;
+            return {
+                label: restaurantId ? 'ร้านของฉัน' : 'ลงทะเบียนร้านอาหาร',
+                disabled: false,
+                onClick: () => {
+                    if (restaurantId) router.push(`/cooker/${restaurantId}`);
+                    else router.push(`/restaurant-register/${user.userId}`);
+                },
+            };
+        }
+
+        // Normal user
+        return {
+            label: localPending ? 'รอการอนุมัติจากแอดมิน' : 'ขอเป็นร้านอาหาร',
+            disabled: localPending,
+            onClick: async () => {
+                if (localPending || isSubmitting) return;
+                setIsSubmitting(true);
+                try {
+                    await api.post('/user/request-role', { role: 'cooker' });
+                    setLocalPending(true);
+                    toastSuccess('ส่งคำขอเป็นร้านอาหารแล้ว กรุณารอการอนุมัติจากแอดมิน');
+                } catch (err) {
+                    if (axios.isAxiosError(err)) {
+                        const backendMessage = err.response?.data?.message;
+                        if (typeof backendMessage === 'string') {
+                            // Backend already says the request is pending
+                            toastDanger(backendMessage);
+                            if (backendMessage.includes('already sent')) {
+                                setLocalPending(true);
+                            }
+                        } else {
+                            toastDanger('ส่งคำขอไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+                        }
+                    } else {
+                        toastDanger('ส่งคำขอไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+                    }
+                } finally {
+                    setIsSubmitting(false);
+                }
+            },
+        };
+    }, [user, router, localPending, isSubmitting]);
+
     return (
         <header className="flex justify-between items-center">
             <h1 className="noto-sans-bold text-xl">วันนี้กินอะไรดี?</h1>
 
-            {userId ? (
+            {user ? (
                 <div className="flex justify-between gap-x-2">
                     <Button
                         size="md"
                         type="button"
                         variant="tertiary"
-                        onClick={() => {router.push(routing)}}
+                        onClick={primaryAction.onClick}
+                        disabled={primaryAction.disabled || isSubmitting}
                     >
-                        สมัครร้านอาหาร?
+                        {primaryAction.label}
                     </Button>
                     <Button
                         type="button"
@@ -45,9 +110,9 @@ export default function UserHeader() {
             ) : (
                 <Button
                     type="button"
-                    onClick={() => router.push('/signup')}
+                    onClick={primaryAction.onClick}
                 >
-                    ลงทะเบียน
+                    {primaryAction.label}
                 </Button>
             )}
         </header >

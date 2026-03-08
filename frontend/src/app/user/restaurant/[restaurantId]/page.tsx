@@ -41,7 +41,7 @@ function MenuContext() {
 
             <h3 className="noto-sans-bold text-base text-primary">เมนูสำหรับคุณ</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-x-4 gap-y-6">
-                {menus?.map((menu) => (
+                {menus?.filter(menu => menu.isOrderable === true).map(menu => (
                     <MenuProfile
                         key={menu.menuId}
                         menuId={menu.menuId}

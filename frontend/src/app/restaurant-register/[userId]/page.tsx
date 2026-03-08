@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { Button } from '@/components/Button'
 import { Input } from '@/components/Input'
 import { useAuth } from '@/context/Authcontext';
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import TimePickerInput from '@/components/ui/TimePicker';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, Controller } from 'react-hook-form';
@@ -20,6 +20,7 @@ export default function RestaurantRegisterPage() {
     const { user } = useAuth();
     const router = useRouter();
     const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+    const hasShownInitToast = useRef(false);
     const {
         variants: categoryVariants,
         selected: categories,
@@ -65,6 +66,40 @@ export default function RestaurantRegisterPage() {
         }
     }, [watchedMenuImgFile]);
 
+    useEffect(() => {
+        if (!user) return;
+
+        // Prevent duplicate toasts
+        if (hasShownInitToast.current) {
+            // Still ensure redirects happen without re-showing toast
+            if (user.role !== 'cooker') {
+                router.push('/user/restaurant');
+                return;
+            }
+            if (user.restaurant?.restaurantId) {
+                router.push(`/cooker/${user.restaurant.restaurantId}`);
+            }
+            return;
+        }
+
+        if (user.role !== 'cooker') {
+            hasShownInitToast.current = true;
+            toastDanger('ต้องได้รับการอนุมัติเป็นร้านอาหารก่อน จึงจะลงทะเบียนร้านได้');
+            router.push('/user/restaurant');
+            return;
+        }
+
+        if (user.restaurant?.restaurantId) {
+            hasShownInitToast.current = true;
+            router.push(`/cooker/${user.restaurant.restaurantId}`);
+            return;
+        }
+
+        // Cooker approved but has not created a restaurant yet
+        hasShownInitToast.current = true;
+        toastSuccess('คุณได้รับการอนุมัติเป็นร้านอาหารแล้ว กรุณาลงทะเบียนร้านของคุณเพื่อเริ่มขาย');
+    }, [user, router]);
+
     const onError = (formErrors: typeof errors) => {
         const messages = Object.entries(formErrors)
             .map(([field, error]) => `${field}: ${error?.message}`)
@@ -80,7 +115,6 @@ export default function RestaurantRegisterPage() {
         }
 
         try {
-
             const categoriesList = categories.map((item) => item.value);
             const openDateList = openDate.map((date) => date.value);
 
@@ -122,7 +156,7 @@ export default function RestaurantRegisterPage() {
             });
 
             const restaurantId = response.data.result.restaurantId
-            toastSuccess(`ส่งคำขอเปิดร้านอาหารสำเร็จ ระบบกำลังตรวจสอบและจะทำการอนุมัติสถานะร้านอาหาร`);
+            toastSuccess(`ลงทะเบียนร้านอาหารสำเร็จ`);
             router.push(`/cooker/${restaurantId}`)
         } catch (error: unknown) {
             if (typeof error === 'object' && error !== null && 'response' in error) {
@@ -132,11 +166,6 @@ export default function RestaurantRegisterPage() {
                 }
             }
         }
-    }
-
-    if (user?.restaurant?.restaurantId) {
-        toastDanger(`ผู้ใช้งานได้ลงทะเบียนร้านอาหารไปแล้ว`)
-        router.push(`/cooker/${user.restaurant.restaurantId}`);
     }
 
     return (

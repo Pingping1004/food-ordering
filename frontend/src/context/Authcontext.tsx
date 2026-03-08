@@ -15,6 +15,17 @@ export enum UserRole {
     guest = 'guest',
 }
 
+export type RoleRequestStatus = 'pending' | 'accepted' | 'rejected';
+
+interface RoleRequest {
+    requestId: string;
+    userId: string;
+    requestRole: UserRole;
+    status: RoleRequestStatus;
+    createdAt: string;
+    updatedAt: string | null;
+}
+
 interface User {
     userId: string;
     email: string;
@@ -25,6 +36,7 @@ interface User {
     };
     profileImg?: string;
     role: UserRole.admin | UserRole.cooker | UserRole.user;
+    roleRequest?: RoleRequest | null;
 }
 
 interface AuthContextType {
@@ -44,7 +56,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const router = useRouter();
 
     const alertShowRef = useRef(false);
-    const reroutingToLoginRef = useRef<boolean>(false);
 
     const isInitialLoad = useRef<boolean>(true);
     const isLoggingOut = useRef<boolean>(false);
@@ -64,22 +75,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
     }, []);
 
-    const checkRouteAuthRequirement = useCallback((pathname: string, userRole?: UserRole) => {
-        const protectedRoutes = [
-            '/cooker', // All cooker routes require auth
-            '/restaurant',
-            '/managed-menu',
-            '/add-menu',
-            '/add-menu-bulk',
-            '/edit-menu',
-            '/restaurant-register' // User must login before registering restaurant
+    const checkRouteAuthRequirement = useCallback((pathname: string) => {
+        const protectedRouteRules: Array<{ prefix: string; requiredRole?: UserRole }> = [
+            { prefix: '/cooker', requiredRole: UserRole.cooker },
+            { prefix: '/managed-menu', requiredRole: UserRole.cooker },
+            { prefix: '/add-menu', requiredRole: UserRole.cooker },
+            { prefix: '/add-menu-bulk', requiredRole: UserRole.cooker },
+            { prefix: '/edit-menu', requiredRole: UserRole.cooker },
+            { prefix: '/restaurant-register', requiredRole: UserRole.cooker },
+            { prefix: '/restaurant/profile', requiredRole: UserRole.cooker },
+            { prefix: '/admin', requiredRole: UserRole.admin },
         ];
 
-        const requiresAuth = protectedRoutes.some(route => pathname.startsWith(route));
-        const cookerNeedsAuth = protectedRoutes.some(route => pathname.startsWith(route)) &&
-            (!userRole || userRole === UserRole.cooker);
+        const matchedRule = protectedRouteRules.find(rule => pathname.startsWith(rule.prefix));
+        const requiresAuth = !!matchedRule;
+        const requiredRole = matchedRule?.requiredRole;
 
-        return { requiresAuth, cookerNeedsAuth };
+        return { requiresAuth, requiredRole };
     }, []);
 
     const handleLogoutSideEffects = useCallback((showAlert: boolean = false) => {
@@ -144,7 +156,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (loading) return;
         const handleSession = async () => {
             const currentPath = window.location.pathname;
-            const { requiresAuth, cookerNeedsAuth } = checkRouteAuthRequirement(currentPath, user?.role);
+            const { requiresAuth, requiredRole } = checkRouteAuthRequirement(currentPath);
             const shouldLogout = !user && requiresAuth;
 
             if (!alertShowRef.current && shouldLogout) {
@@ -153,11 +165,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 return;
             }
 
-            if (cookerNeedsAuth && (!user || user.role !== UserRole.cooker)) {
-                if (!reroutingToLoginRef.current) {
-                    reroutingToLoginRef.current = true;
-                    router.push('/login');
-                }
+            if (requiresAuth && requiredRole && user && user.role !== requiredRole) {
+                router.push('/user/restaurant');
                 return;
             }
 
@@ -213,6 +222,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             throw err;
         }
     }, []);
+
+    const getRoleFromAccessToken = (token: string | null): UserRole | undefined => {
+        if (!token) return undefined;
+        try {
+            const parts = token.split('.');
+            if (parts.length < 2) return undefined;
+            const payloadJson = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
+            const payload = JSON.parse(payloadJson) as { role?: string };
+            const role = payload.role as UserRole | undefined;
+            return role;
+        } catch {
+            return undefined;
+        }
+    };
 
     const getFormattedBackendMessage = (message: string | string[] | undefined): string | undefined => {
         if (!message) {
@@ -315,20 +338,35 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 if (accessToken) setAccessToken(accessToken);
 
                 try {
-                    const profileUser = await getProfile();
+                    let profileUser = await getProfile();
+
+                    const roleInToken = getRoleFromAccessToken(localStorage.getItem('accessToken'));
+                    if (roleInToken && roleInToken !== profileUser.role) {
+                        await handleTokenRefresh();
+                        profileUser = await getProfile();
+                    }
 
                     setUser(profileUser);
                     setIsAuth(true);
                     alertShowRef.current = false;
+                    await fetchCsrfToken();
 
                     const publicRoutes = ['/login', '/signup'];
                     const isPublicRoute = publicRoutes.includes(currentPath);
 
                     if (isInitialLoad.current && isPublicRoute) {
-                        const routePath = profileUser.role === UserRole.cooker
-                            ? `cooker/${profileUser.restaurant?.restaurantId}`
-                            : 'user/restaurant';
-                        router.push(`/${routePath}`);
+                        if (profileUser.role === UserRole.admin) {
+                            router.push('/admin/role-requests');
+                        } else if (profileUser.role === UserRole.cooker) {
+                            const restaurantId = profileUser.restaurant?.restaurantId;
+                            if (restaurantId) {
+                                router.push(`/cooker/${restaurantId}`);
+                            } else {
+                                router.push(`/restaurant-register/${profileUser.userId}`);
+                            }
+                        } else {
+                            router.push('/user/restaurant');
+                        }
                     }
                 } catch {
                     setUser(null);

@@ -31,10 +31,17 @@ export default function LoginPage() {
     const submitForm = async (loginData: loginSchemaType) => {
         const user = await login(loginData.email, loginData.password);
 
-        if (user.role === "user") {
+        if (user.role === "admin") {
+            router.push('/admin/role-requests');
+        } else if (user.role === "user") {
             router.push('/user/restaurant');
         } else if (user.role === 'cooker') {
-            router.push(`/cooker/${user.restaurant?.restaurantId}`)
+            const restaurantId = user.restaurant?.restaurantId;
+            if (restaurantId) {
+                router.push(`/cooker/${restaurantId}`);
+            } else {
+                router.push(`/restaurant-register/${user.userId}`);
+            }
         }
     };
 
