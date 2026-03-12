@@ -1,26 +1,28 @@
-import cron from 'node-cron';
-import { PrismaClient } from '@prisma/client';
-import { Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
+import { PrismaService } from 'src/prisma/prisma.service';
 
-const prisma = new PrismaClient();
-const logger = new Logger('Expire token clean job');
+@Injectable()
+export class TokenCleanService {
+  private readonly logger = new Logger(TokenCleanService.name);
 
-export const deleteExpiredTokens = async () => {
-  try {
-    const result = await prisma.refreshToken.deleteMany({
-      where: {
-        OR: [
-          { isRevoked: true },
-          { expiresAt: { lt: new Date() } },
-        ],
-      },
-    });
+  constructor(private prisma: PrismaService) {}
 
-    logger.log(`⏰ Deleted ${result.count} expired/invalid tokens`);
-  } catch (error) {
-    logger.error('❌ Failed to clean up tokens:', error);
+  @Cron('0 0 * * *') // every day at midnight
+  async deleteExpiredTokens() {
+    try {
+      const result = await this.prisma.refreshToken.deleteMany({
+        where: {
+          OR: [
+            { isRevoked: true },
+            { expiresAt: { lt: new Date() } },
+          ],
+        },
+      });
+
+      this.logger.log(`Deleted ${result.count} expired/invalid tokens`);
+    } catch (error) {
+      this.logger.error('Failed to clean tokens', error);
+    }
   }
-};
-
-// Run every day at midnight
-cron.schedule('0 0 * * *', deleteExpiredTokens);
+}
