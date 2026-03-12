@@ -202,6 +202,9 @@ export class UserService {
     return roleRequest;
   }
 
+  // activated once the request is rejected so user can resend new reqeust
+  // async removeRoleRequest() {}
+
   async removeUser(userId: string) {
     const user = await this.prisma.user.delete({
       where: { userId },

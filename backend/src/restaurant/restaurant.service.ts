@@ -74,6 +74,7 @@ export class RestaurantService {
         adminEmail: createRestaurantDto.adminEmail,
         accountNumber: createRestaurantDto.accountNumber,
         bankAccount: createRestaurantDto.bankAccount,
+        paymentQr: createRestaurantDto.paymentQr,
         accountHolderFullName: createRestaurantDto.accountHolderFullName,
       };
 

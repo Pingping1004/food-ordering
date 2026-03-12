@@ -59,7 +59,7 @@ export class PaymentService {
                 ],
                 mode: 'payment',
                 success_url: successUrl,
-                customer_email: payload.userEmail,
+                // customer_email: payload.userEmail,
                 metadata: {
                     orderId: payload.orderId,
                     restaurantId: payload.restaurantId,

@@ -27,6 +27,7 @@ export interface MenusWithDisplayPrices {
     menuImg?: string;
     price: number;
     restaurantId: string;
+    maxDaily: number;
     isAvailable: boolean;
     sellPriceDisplay: number;
     platformFeeDisplay?: number;
@@ -78,6 +79,8 @@ export class MenuService implements OnModuleInit {
         const quotaCacheKey = this.getMenuQuotaCacheKey(restaurantId);
         clearMenuCache(menuCacheKey);
         clearMenuQuotaCache(quotaCacheKey);
+
+        this.pendingMenuRequest.delete(menuCacheKey);
     }
 
     async createSingleMenu(createMenuDto: CreateMenuDto, file: Express.Multer.File) {
@@ -341,7 +344,7 @@ export class MenuService implements OnModuleInit {
             }
 
             return cachedMenus.map(menu => {
-                const remainingQuota = quotas[menu.menuId] ?? 0;
+                const remainingQuota = quotas[menu.menuId] !== undefined ? quotas[menu.menuId] : menu.maxDaily;
                 const isOrderable = menu.isAvailable && remainingQuota > 0;
 
                 return {

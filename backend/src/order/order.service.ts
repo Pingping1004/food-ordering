@@ -6,7 +6,6 @@ import {
   InternalServerErrorException,
   ForbiddenException,
   Logger,
-  ConflictException,
   forwardRef,
 } from '@nestjs/common';
 import { CreateOrderDto, CreateOrderMenusDto } from './dto/create-order.dto';
@@ -16,12 +15,12 @@ import { PaymentStatus, OrderStatus, PaymentMethod } from '@prisma/client';
 import { PaymentService } from 'src/payment/payment.service';
 import { calculateWeeklyInterval } from 'src/payout/payout-calculator';
 import axios from 'axios';
+import { v4 as uuidv4 } from 'uuid';
 
 import Decimal from 'decimal.js';
 import { InventoryService } from 'src/inventory/inventory.service';
 import { MenuService } from 'src/menu/menu.service';
 import moment from 'moment-timezone';
-import { timestamp } from 'rxjs';
 
 @Injectable()
 export class OrderService {
@@ -180,10 +179,12 @@ export class OrderService {
           userId: userId || null,
           restaurantId: createOrderDto.restaurantId,
           deliverAt: createOrderDto.deliverAt,
-          isPaid: PaymentStatus.unpaid,
-          paymentMethod: createOrderDto.paymentMethod,
+          paymentStatus: PaymentStatus.unpaid,
+          paymentSlipImg: createOrderDto.paymentSlipImg,
+          acceptAt: new Date(),
+          paidAt: new Date(), // temporary value
           userTel: createOrderDto.userTel,
-          userEmail: createOrderDto.userEmail,
+          paymentId: uuidv4(), // temporary value
           paymentGatewayStatus: 'pending',
           totalAmount: calculatedTotalAmount,
           orderMenus: {
@@ -313,7 +314,7 @@ export class OrderService {
         select: {
           orderId: true,
           totalAmount: true,
-          isPaid: true,
+          paymentStatus: true,
           orderAt: true,
           deliverAt: true,
           status: true,
@@ -382,11 +383,11 @@ export class OrderService {
       const updatePaymentOrder = await this.prisma.order.update({
         where: { orderId },
         data: {
-          isPaid: { set: status },
+          paymentStatus: { set: status },
         },
       });
 
-      this.logger.log(`Update payment status too: ${updatePaymentOrder.isPaid}`);
+      this.logger.log(`Update payment status too: ${updatePaymentOrder.paymentStatus}`);
       return updatePaymentOrder;
     } catch (err) {
       this.logger.log(`Failed to update order payment status ${err}`);

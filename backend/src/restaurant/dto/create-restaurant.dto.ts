@@ -85,5 +85,9 @@ export class CreateRestaurantDto {
 
   @IsNotEmpty()
   @IsString()
+  paymentQr: string;
+
+  @IsNotEmpty()
+  @IsString()
   accountHolderFullName: string;
 }

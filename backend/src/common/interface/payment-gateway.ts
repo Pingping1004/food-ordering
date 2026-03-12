@@ -5,7 +5,7 @@ export interface PaymentPayload {
   orderId: string;
   amountInStang: number;
   currency?: string;
-  userEmail: string;
+  // userEmail: string;
   method?: PaymentMethod;
   description?: string;
   restaurantId: string;

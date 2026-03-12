@@ -56,7 +56,7 @@ export class PaymentController {
         try {
             const paymentPayload: PaymentPayload = {
                 userId,
-                userEmail: order.userEmail,
+                // userEmail: order.userEmail,
                 orderId,
                 amountInStang: Math.round(Number(order.totalAmount.toFixed(2)) * 100),
                 currency: 'thb',

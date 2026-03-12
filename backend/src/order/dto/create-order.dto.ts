@@ -53,22 +53,19 @@ export class CreateOrderDto {
   @IsUUID()
   restaurantId!: string;
 
+  @IsString()
+  @IsNotEmpty()
+  userTel: string;
+
   @IsDate()
   @IsNotEmpty()
   @Type(() => Date)
   deliverAt: Date;
 
-  @IsString()
-  @IsNotEmpty()
-  userTel: string;
-
-  @IsString()
-  @IsNotEmpty()
-  userEmail: string;
-
   @IsOptional()
-  @IsString()
-  details?: string;
+  @IsDate()
+  @Type(() => Date)
+  acceptAt?: Date;
 
   @IsOptional()
   @IsBoolean()
@@ -84,17 +81,18 @@ export class CreateOrderDto {
   @Type(() => CreateOrderMenusDto)
   orderMenus: CreateOrderMenusDto[];
 
-  @IsOptional()
-  @Type(() => CreatePaymentDto)
-  paymentDetails?: CreatePaymentDto;
+  @IsNotEmpty()
+  @IsDate()
+  @Type(() => Date)
+  paidAt: Date
 
   @IsOptional() // Could be null if no payment initiated or failed initiation
   @IsString()
-  paymentGatewayChargeId?: string;
+  paymentId?: string;
 
-  @IsOptional()
-  @IsEnum(PaymentMethod)
-  paymentMethod?: PaymentMethod;
+  @IsNotEmpty()
+  @IsString()
+  paymentSlipImg: string;
 
   @IsOptional() // Could be null if no payment initiated or before first update
   @IsString() // Use string as Omise provides various statuses

@@ -1,6 +1,7 @@
 import { Inject, Injectable, forwardRef } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { MenuService } from "src/menu/menu.service";
+import { clearMenuQuotaCache } from "src/menu/menuCache";
 import { PrismaService } from "src/prisma/prisma.service";
 
 @Injectable()
@@ -53,6 +54,9 @@ export class InventoryService {
             return menuName
         }
 
+        const quotaCacheKey = `menuQuota:restaurant:${menu.restaurantId}`;
+        clearMenuQuotaCache(quotaCacheKey);
+
         return null
     }
 
@@ -78,17 +82,13 @@ export class InventoryService {
                     remaining: true,
                 }
             })
-    
+
             const remainingMap: Record<string, number> = {};
 
-            for (const id of menuIds) {
-                remainingMap[id] = 0
-            }
-    
             for (const inv of inventories) {
                 remainingMap[inv.menuId] = inv.remaining
             }
-    
+
             return remainingMap
         })()
 

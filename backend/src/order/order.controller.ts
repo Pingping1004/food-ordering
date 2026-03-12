@@ -38,7 +38,6 @@ export class OrderController {
   ) {
     try {
       const userId = req.user?.userId || undefined;
-      if (!userId && !createOrderDto.userEmail) throw new Error('User ID is required to create an order');
 
       const result = await this.orderService.createOrder(createOrderDto, userId);
       return result;
