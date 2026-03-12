@@ -45,6 +45,7 @@ import { ConfigModule } from '@nestjs/config';
 import configuration from './config/configuration';
 import { InventoryModule } from './inventory/inventory.module';
 import { InventoryService } from './inventory/inventory.service';
+import { TokenCleanService } from './auth/jobs/tokenClean.job';
 
 @Module({
   imports: [
@@ -95,6 +96,7 @@ import { InventoryService } from './inventory/inventory.service';
       useClass: CatchEverythingFilter,
     },
     InventoryService,
+    TokenCleanService,
     CsrfTokenService,
     AppService,
     RestaurantService,
