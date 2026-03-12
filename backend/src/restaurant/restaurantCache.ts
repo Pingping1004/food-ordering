@@ -13,6 +13,8 @@ export interface RestaurantCache {
     closeTime: string,
     avgCookingTime: number,
     isTemporarilyClosed: boolean,
+    accountNumber: string,
+    accountHolderFullName: string,
 }
 
 export type OpenRestaurant = RestaurantCache & {
