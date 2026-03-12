@@ -214,6 +214,36 @@ api.interceptors.response.use(
     }
 );
 
+export const slipApi = axios.create({
+    baseURL: "https://connect.slip2go.com/api",
+    headers: {
+        Authorization: `Bearer ${process.env.SLIP_VEERIFY_SECRET}`
+    }
+});
+
 export async function fetchCsrfToken(): Promise<void> {
     await api.get('/csrf-token');
 }
+
+// const payload: PaymentPayload = {
+//     payload: {
+//       qrCode: paymentSlipImg,
+//       checkCondition: {
+//         checkDuplicate: true,
+//         checkReceiver: [
+//           {
+//             accountType: "02001",
+//             accountNumber: "0812345678"
+//           }
+//         ],
+//         checkAmount: {
+//           type: "eq",
+//           amount: "85.00"
+//         },
+//         checkDate: {
+//             date: new Date(),
+//             type: "gte"
+//         }
+//       }
+//     }
+//   };

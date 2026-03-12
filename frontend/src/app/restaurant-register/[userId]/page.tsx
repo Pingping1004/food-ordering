@@ -200,7 +200,7 @@ export default function RestaurantRegisterPage() {
                         <Input
                             type="file"
                             id="restaurantImg"
-                            placeholder="รูปโปรไฟล์ร้านอาหาร"
+                            placeholder="อัพโหลดรูปโปรไฟล์ร้านอาหาร"
                             accept="image/*,.svg,.svg+xml"
                             multiple={false} // Ensure only one file can be selected
                             error={errors.restaurantImg?.message as string | undefined}
@@ -363,7 +363,7 @@ export default function RestaurantRegisterPage() {
                     </div>
                     <Input
                         type="text"
-                        label="ชื่อ-นามสกุลเจ้าของบัญชีธนาคาร"
+                        label="ชื่อ-นามสกุล เจ้าของบัญชีธนาคาร"
                         placeholder="นายสมชาย ใจรัก"
                         {...register('accountHolderFullName')}
                         error={errors.accountHolderFullName?.message}

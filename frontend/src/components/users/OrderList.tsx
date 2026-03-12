@@ -21,7 +21,6 @@ export interface OrderMenuType {
   menuName: string;
   menuImg: string;
   unitPrice: number;
-  totalPrice: number;
 }
 
 interface CartListProps {

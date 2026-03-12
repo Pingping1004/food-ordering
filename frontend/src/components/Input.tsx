@@ -79,14 +79,20 @@ export const Input = forwardRef<HTMLInputElement | HTMLSelectElement, InputProps
         },
         ref // This is the ref from react-hook-form
     ) => {
-    // Determine the variant based on the error state
+        // Determine the variant based on the error state
         const inputVariant = error ? "error" : (variant || 'primary');
+        const labelColorClass =
+            inputVariant === "error"
+                ? "text-danger-main"
+                : inputVariant === "success"
+                    ? "text-success"
+                    : "text-secondary";
 
         if (type === "select") {
             return (
                 <div className="flex flex-col w-full">
                     {label && <label htmlFor={name}
-                        className="mb-2 text-sm text-start noto-sans-regular text-secondary">{label}</label>}
+                        className={clsx("mb-2 text-sm text-start noto-sans-regular", labelColorClass)}>{label}</label>}
                     <select
                         id={name}
                         name={name}
@@ -113,7 +119,7 @@ export const Input = forwardRef<HTMLInputElement | HTMLSelectElement, InputProps
             return (
                 <div className="flex flex-col w-full">
                     {label && <label htmlFor={name}
-                        className="mb-2 text-sm text-start noto-sans-regular text-secondary">{label}</label>}
+                        className={clsx("mb-2 text-sm text-start noto-sans-regular", labelColorClass)}>{label}</label>}
                     <input
                         id={name}
                         type="file"
@@ -128,7 +134,7 @@ export const Input = forwardRef<HTMLInputElement | HTMLSelectElement, InputProps
                         className="flex items-center justify-center gap-2 cursor-pointer rounded-lg border border-dashed border-gray-400 py-4 px-6 bg-gray-50 hover:bg-gray-100 transition"
                     >
                         <UploadIcon className="w-6 h-6 text-gray-500" />
-                        <span className="text-gray-700">อัปโหลดรูปภาพเมนู</span>
+                        <span className="text-gray-700">{placeholder}</span>
                     </label>
                     {/* You can add a custom styled label here */}
                     {error && <span className="text-sm text-danger-main">{error}</span>}
@@ -139,7 +145,7 @@ export const Input = forwardRef<HTMLInputElement | HTMLSelectElement, InputProps
         return (
             <div className="flex flex-col w-full">
                 {label && <label htmlFor={name}
-                    className="mb-2 text-sm text-start noto-sans-regular text-secondary">{label}</label>}
+                    className={clsx("mb-2 text-sm text-start noto-sans-regular", labelColorClass)}>{label}</label>}
                 <input
                     id={name}
                     name={name}

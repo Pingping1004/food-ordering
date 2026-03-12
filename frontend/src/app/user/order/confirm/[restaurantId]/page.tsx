@@ -2,25 +2,64 @@
 
 import { useCart } from '@/context/CartContext';
 import { MenuProvider, useMenu } from '@/context/MenuContext';
-import OrderList from '@/components/users/OrderList';
+import OrderList, { OrderMenuType } from '@/components/users/OrderList';
 import TimePickerInput from '@/components/ui/TimePicker';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
-import { api } from '@/lib/api';
+import { api, slipApi } from '@/lib/api';
 import { useForm, Controller } from 'react-hook-form';
 import { createOrderSchema, CreateOrderSchemaType } from '@/schemas/addOrderSchema';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { toastDanger } from '@/components/ui/Toast';
-// import { toast } from 'sonner';
-// import { toastPrimary } from '@/components/ui/Toast';
+import Image from 'next/image';
+import { PandaIcon } from 'lucide-react';
+import { toastSuccess } from '@/components/ui/Toast';
+import { AccountType } from '@/util/accountType';
+
+interface PaymentPayload {
+    payload: {
+        qrCode: string;
+
+        checkCondition: {
+            checkDuplicate: boolean;
+
+            checkAmount: {
+                type?: "eq" | "gte" | "lte";
+                amount: string;
+            };
+
+            checkDate: {
+                type?: "eq" | "gte" | "lte";
+                date: Date;
+            };
+            
+            checkReceiver?: {
+                accountType?: AccountType;
+                accountNumber: string;
+                accountNameTH?: string;
+                accountNameEN?: string;
+            }[];
+        }
+    }
+}
+
+interface orderPaymentPayload {
+    paymentSlipImg: string;
+    totalAmount: number;
+    restaurantId: string;
+    deliverAt: Date;
+    userTel: string;
+    orderMenus: OrderMenuType[];
+}
 
 // Fixed 5-minute buffer at all times
 const getRequiredBufferMinutes = (): number => 5;
+const paymentQrImageUrl = "/picture.svg"
 
 const getBufferTime = (): string => {
     const now = new Date();
-    const bufferMins = getRequiredBufferMinutes();
+    const bufferMins = getRequiredBufferMinutes() + 1;
     const minimumAllowedDeliverTime = new Date(now.getTime() + bufferMins * 60 * 1000);
     const hours = minimumAllowedDeliverTime.getHours().toString().padStart(2, '0');
     const minutes = minimumAllowedDeliverTime.getMinutes().toString().padStart(2, '0');
@@ -33,32 +72,67 @@ function OrderConfirmContext() {
     // const router = useRouter();
     // const [click, setClick] = useState<number>(0);
     const {
+        watch,
         control,
         handleSubmit,
         register,
-        formState: { errors, isSubmitting }
+        setValue,
+        formState: { errors, isSubmitting, isValid, isDirty }
     } = useForm({
         resolver: zodResolver(createOrderSchema),
         defaultValues: {
-            paymentMethod: 'promptpay',
+            paymentSlipImg: '',
             deliverAt: getBufferTime(),
             restaurantId: restaurant?.restaurantId,
             userTel: '',
-            userEmail: ''
         },
-        mode: "onBlur",
+        mode: "onChange",
     });
 
-    // const handleCalculateTimeClick = () => {
-    //     toastPrimary('ยังไม่เปิดใช้งานนะ แต่เดี๋ยวมาแน่นอน');
-    //     setClick(prev => prev + 1);
-    // }
+    const paymentSlipImg = watch("paymentSlipImg");
+    const totalAmount = cart.reduce((total, value) => { return total + value.totalPrice }, 0)
+    const isButtonDisabled = isSubmitting || !isValid || !isDirty || cart.length === 0;
+
+    const handleSlipUpload = (file: File) => {
+        const reader = new FileReader();
+
+        if (file.size > 2 * 1024 * 1024) {
+            toastDanger("ไฟล์สลิปต้องไม่เกิน 2MB");
+            return;
+        }
+
+        reader.onloadend = () => {
+            setValue("paymentSlipImg", reader.result as string, {
+                shouldValidate: true,
+                shouldDirty: true,
+            });
+        };
+
+        reader.readAsDataURL(file)
+    }
 
     const submitOrder = async (data: CreateOrderSchemaType) => {
         try {
+            if (!cart || cart.length === 0) {
+                toastDanger('ตะกร้าสินค้าว่างเปล่า กรุณาเพิ่มรายการอาหาร');
+                return;
+            }
 
-            const orderPayload = {
-                restaurantId: restaurant?.restaurantId,
+            if (!paymentSlipImg) {
+                toastDanger("กรุณาอัพโหลดสลิปก่อนสั่งอาหาร");
+                return;
+            }
+
+            if (!restaurant) {
+                toastDanger("ไม่พบข้อมูลร้านอาหาร");
+                return;
+            }
+
+            const orderPaymentPayload: orderPaymentPayload = {
+                paymentSlipImg: paymentSlipImg,
+                restaurantId: restaurant.restaurantId,
+                totalAmount: totalAmount,
+                deliverAt: new Date(data.deliverAt),
                 orderMenus: cart.map((item) => ({
                     menuId: item.menuId,
                     menuName: item.menuName,
@@ -67,53 +141,17 @@ function OrderConfirmContext() {
                     menuImg: item.menuImg,
                 })),
                 userTel: data.userTel,
-                userEmail: data.userEmail,
-                paymentMethod: data.paymentMethod,
-                deliverAt: data.deliverAt?.toISOString(),
-            };
-
-            if (!cart || cart.length === 0) {
-                toastDanger('ตะกร้าสินค้าว่างเปล่า กรุณาเพิ่มรายการอาหาร');
-                return; // Prevent submission
             }
 
             const now = new Date();
-            const deliverAtDate = new Date(orderPayload.deliverAt);
+            const deliverAtDate = new Date(orderPaymentPayload.deliverAt);
             const bufferMins = getRequiredBufferMinutes();
 
             const diffMs = deliverAtDate.getTime() - now.getTime();
             const diffMinutes = Math.floor(diffMs / (60 * 1000));
 
-            // #region agent log
-            fetch('http://127.0.0.1:7607/ingest/e0505a6f-55e2-42ef-8389-652c78546b33', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Debug-Session-Id': 'cced91',
-                },
-                body: JSON.stringify({
-                    sessionId: 'cced91',
-                    runId: 'pre-fix-1',
-                    hypothesisId: 'H-frontend-buffer',
-                    location: 'frontend/src/app/user/order/confirm/[restaurantId]/page.tsx:submitOrder',
-                    message: 'Frontend delivery time validation',
-                    data: {
-                        now: now.toISOString(),
-                        deliverAt: deliverAtDate.toISOString(),
-                        bufferMins,
-                        diffMinutes,
-                    },
-                    timestamp: Date.now(),
-                }),
-            }).catch(() => { });
-            // #endregion agent log
-
-            if (diffMinutes < bufferMins) {
-                toastDanger(`เวลารับอาหารต้องอยู่หลังจากเวลาปัจจุบันอย่างน้อย ${bufferMins} นาที`);
-                return;
-            }
-
-            const response = await api.post(`/order/create`, orderPayload);
+            const response = await api.post(`/order/verify-and-create-order`, orderPaymentPayload);
+            toastSuccess("ชำระเงินสำเร็จและสร้างออเดอร์เรียบร้อย");
             console.log('Response data: ', response.data);
             // alert('กำลังนำทางไปหน้าชำระเงิน ห้ามรีเฟรชหรือปิดหน้าQR Code');
             // const { checkoutUrl } = response.data;
@@ -123,7 +161,7 @@ function OrderConfirmContext() {
             if (typeof error === 'object' && error !== null && 'response' in error) {
                 const err = error as { response: { status: number; data?: { message?: string } } };
 
-                toastDanger(err.response.data?.message as string);
+                toastDanger(err.response.data?.message ?? "เกิดข้อผิดพลาด");
             }
         }
     }
@@ -151,31 +189,17 @@ function OrderConfirmContext() {
 
             <div className="flex w-[calc(100%+3rem)] justify-between bg-primary-main text-white p-6 -mx-6">
                 <h3 className="noto-sans-bold text-xl">ทั้งหมด</h3>
-                <h3 className="noto-sans-bold text-xl">{cart.reduce((total, value) => { return total + value.totalPrice }, 0)}</h3>
+                <h3 className="noto-sans-bold text-xl">{totalAmount}</h3>
             </div>
 
-            <div className="flex flex-col gap-y-4">
-                <h2 className="noto-sans-bold text-primary text-base">ข้อมูลติดต่อ</h2>
-                <div className="grid grid-cols-2 gap-x-6">
-                    <Input
-                        type="tel"
-                        label="เบอร์ติดต่อ"
-                        placeholder="0xxxxxxxxx"
-                        {...register('userTel')}
-                        // name="userTel"
-                        error={errors.userTel?.message}
-                    />
-
-                    <Input
-                        type="email"
-                        label="อีเมลลูกค้า"
-                        placeholder="example@gmail.com"
-                        {...register('userEmail')}
-                        // name="userTel"
-                        error={errors.userEmail?.message}
-                    />
-                </div>
-            </div>
+            <Input
+                type="tel"
+                label="เบอร์ติดต่อ"
+                placeholder="0xxxxxxxxx"
+                {...register('userTel')}
+                // name="userTel"
+                error={errors.userTel?.message}
+            />
 
             <div className="flex flex-col gap-y-4">
                 <div className="flex justify-between items-center">
@@ -202,32 +226,43 @@ function OrderConfirmContext() {
                 </div>
             </div>
 
-            <div className="flex flex-col gap-y-4">
-                <h3 className="noto-sans-bold text-primary text-base">ชำระเงิน</h3>
-                <Controller
-                    control={control}
-                    name="paymentMethod"
-                    render={({ field }) => (
-                        <Input
-                            type="select"
-                            label="เลือกวิธีการชำระเงิน"
-                            {...field}
-                            options={[
-                                { key: 'พร้อมเพย์', value: 'promptpay' },
-                            ]}
-                        />
-                    )}
-                />
-                {errors.paymentMethod && <p className="text-red-500 text-base">{errors.paymentMethod.message}</p>}
+            <div className="flex flex-col gap-y-6">
+                <h3 className="noto-sans-bold text-start text-primary text-base">ชำระเงินจากQRนี้</h3>
+
+                <div className="flex w-full justify-center">
+                    <Image
+                        src={paymentQrImageUrl}
+                        alt="Payment QR picture"
+                        width={300}
+                        height={300}
+                    />
+                </div>
             </div>
+
+            <Input
+                type="file"
+                variant={paymentSlipImg ? "success" : "primary"}
+                label={paymentSlipImg ? "อัพโหลดสลิปสำเร็จ" : "ยังไม่ได้อัพโหลดสลิป"}
+                placeholder="อัพโหลดสลิปชำระเงิน"
+                id="paymentSlipImg"
+                accept="image/*,.svg,.svg+xml"
+                multiple={false}
+                error={errors.paymentSlipImg?.message as string | undefined}
+                {...register('paymentSlipImg')}
+                onChange={(e) => {
+                    const file = (e.target as HTMLInputElement).files?.[0];
+                    if (file) handleSlipUpload(file);
+                }}
+            />
 
             <div className=" w-full px-6 z-50 flex">
                 <Button
                     className="w-full noto-sans-bold py-4"
                     type="submit"
-                    disabled={isSubmitting}
+                    // disable when user doesn't complete the form
+                    disabled={isButtonDisabled}
                 >
-                    ยืนยันออเดอร์พร้อมชำระเงิน
+                    {isSubmitting ? "กำลังส่งคำสั่งซื้อ..." : "ยืนยันออเดอร์พร้อมชำระเงิน"}
                 </Button>
             </div>
         </form>

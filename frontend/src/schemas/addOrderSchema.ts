@@ -47,8 +47,9 @@ export const createOrderSchema = z.object({
     userTel: z.string()
         .trim()
         .regex(/^\d{10}$/, { message: 'กรุณาระบุเบอร์โทรที่ถูกต้อง 10 หลัก' }),
-    userEmail: z.string().trim().email('กรุณาระบุอีเมลที่ถูกต้อง').optional().or(z.literal('')),
-    paymentMethod: z.string().optional(),
+    paymentSlipImg: z.any().refine((f) => f === undefined || (f instanceof FileList && (f.length === 0 || f.length === 1)),
+        { message: "Invalid file" }
+    )
 });
 
 export type CreateOrderSchemaType = z.infer<typeof createOrderSchema>
