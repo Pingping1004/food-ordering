@@ -4,6 +4,8 @@ import {
   ConflictException,
   BadRequestException,
   Logger,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -11,6 +13,7 @@ import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
 import moment from 'moment-timezone';
 import { UploadService } from 'src/upload/upload.service';
 import { clearRestaurantCache, getRestaurantCache, OpenRestaurant, RestaurantCache, setRestaurantCache } from './restaurantCache';
+import { MenuService } from 'src/menu/menu.service';
 
 @Injectable()
 export class RestaurantService {
@@ -118,6 +121,9 @@ export class RestaurantService {
           closeTime: true,
           avgCookingTime: true,
           isTemporarilyClosed: true,
+          accountNumber: true,
+          accountHolderFullName: true,
+          paymentQr: true,
         }
       });
 
@@ -173,6 +179,7 @@ export class RestaurantService {
       const restaurant = await this.prisma.restaurant.findUnique({
         where: { restaurantId },
       });
+      console.log("Finding restaurant: ", restaurant)
 
       if (!restaurant) throw new NotFoundException(`ไม่พบร้านอาหารที่มีID: ${restaurantId}`);
 
