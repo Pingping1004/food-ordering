@@ -21,16 +21,18 @@ import Decimal from 'decimal.js';
 import { InventoryService } from 'src/inventory/inventory.service';
 import { MenuService } from 'src/menu/menu.service';
 import moment from 'moment-timezone';
+import { PaymentPayload } from 'src/common/interface/accountType';
+import { RestaurantService } from 'src/restaurant/restaurant.service';
 
 @Injectable()
 export class OrderService {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(forwardRef(() => MenuService))
-    private readonly menuService: MenuService,
+    private readonly restaurantService: RestaurantService,
     @Inject(forwardRef(() => InventoryService))
     private readonly inventoryService: InventoryService,
-    // private readonly paymentService: PaymentService,
+    private readonly paymentService: PaymentService,
   ) { }
 
   private readonly logger = new Logger('OrderService');
@@ -69,54 +71,84 @@ export class OrderService {
   async validateOrderMenus(
     orderMenus: CreateOrderMenusDto[],
     restaurantId: string,
-  ): Promise<number> {
-    let calculatedTotalAmount = 0;
-    const markupRate: number = 1 + Number(process.env.SELL_PRICE_MARKUP_RATE);
-
+  ): Promise<{
+    totalAmount: number;
+    validatedMenus: {
+      menuId: string;
+      menuName: string;
+      quantity: number;
+      unitPrice: number;
+      totalPrice: number;
+      menuImg?: string;
+      details?: string;
+    }[];
+  }> {
+    const markupRate = 1 + Number(process.env.SELL_PRICE_MARKUP_RATE);
+  
+    const menuIds = orderMenus.map((m) => m.menuId);
+    const menus = await this.prisma.menu.findMany({
+      where: {
+        menuId: { in: menuIds },
+      },
+    });
+  
+    const menuMap = new Map(menus.map((m) => [m.menuId, m]));
+  
+    const toSatang = (amount: number) => Math.round(amount * 100) / 100;
+    let totalAmount = 0;
+  
+    const validatedMenus: {
+      menuId: string;
+      menuName: string;
+      quantity: number;
+      unitPrice: number;
+      totalPrice: number;
+      menuImg?: string;
+      details?: string;
+    }[] = [];
+  
     for (const item of orderMenus) {
-      const existingMenu = await this.prisma.menu.findUnique({
-        where: { menuId: item.menuId },
-      });
-
+      const existingMenu = menuMap.get(item.menuId);
+  
       if (!existingMenu) {
         throw new NotFoundException(
-          `Menu item with ID ${item.menuName} not found.`,
+          `Menu item with ID ${item.menuId} not found`,
         );
       }
-
+  
       if (existingMenu.restaurantId !== restaurantId) {
         throw new BadRequestException(
-          `Menu item ${item.menuName} does not belong to the selected restaurant.`,
+          `Menu ${item.menuName} does not belong to this restaurant`,
         );
       }
-
-      const markupUnitPrice = (markupRate * existingMenu.price); // Calculated Price from backend
-      const actualTotalPrice = (markupUnitPrice * item.quantity); // Backend total price
-      const orderTotalPrice = (item.unitPrice * item.quantity); // Total price from user input
-
-      const toSatang = (amount: number) => Math.round(amount * 100);
-      const isEqual: boolean = toSatang(actualTotalPrice) === toSatang(orderTotalPrice);
-
-      if (!isEqual) {
-        this.logger.log(`Markup unit price: ${markupUnitPrice}`);
-        this.logger.log(`Unitprice: ${markupUnitPrice}`);
-
-        this.logger.log(`Order total price: ${orderTotalPrice}`);
-        this.logger.log(`Actual total price: ${actualTotalPrice}`);
-        throw new BadRequestException(
-          `Mismatched price for menu ${item.menuName}. Expected ${actualTotalPrice}, got ${orderTotalPrice}`,
-        );
-      }
-
+  
       if (existingMenu.name !== item.menuName) {
-        throw new NotFoundException(
-          `Name ${item.menuName} not found in the menu.`,
+        throw new BadRequestException(
+          `Menu name mismatch for ${item.menuName}`,
         );
       }
-
-      calculatedTotalAmount += item.unitPrice * item.quantity;
+  
+      // SERVER calculates price
+      const markupUnitPrice = toSatang(existingMenu.price * markupRate);
+      const totalPrice = toSatang(markupUnitPrice * item.quantity);
+  
+      totalAmount += totalPrice;
+  
+      validatedMenus.push({
+        menuId: item.menuId,
+        menuName: existingMenu.name,
+        quantity: item.quantity,
+        unitPrice: markupUnitPrice,
+        totalPrice,
+        menuImg: item.menuImg,
+        details: item.details,
+      });
     }
-    return calculatedTotalAmount;
+  
+    return {
+      totalAmount: toSatang(totalAmount),
+      validatedMenus,
+    };
   }
 
   validateDeliveryTime(deliverTime: Date | string) {
@@ -136,98 +168,93 @@ export class OrderService {
   async createOrder(createOrderDto: CreateOrderDto, userId?: string) {
     this.validateDeliveryTime(createOrderDto.deliverAt);
 
-    const calculatedTotalAmount = await this.validateOrderMenus(createOrderDto.orderMenus, createOrderDto.restaurantId);
+    const { totalAmount, validatedMenus } = await this.validateOrderMenus(createOrderDto.orderMenus, createOrderDto.restaurantId);
+    const restaurant = await this.restaurantService.findRestaurant(createOrderDto.restaurantId);
+
+    const paymentData: PaymentPayload = {
+      payload: {
+        qrCode: createOrderDto.paymentSlipImg,
+        checkCondition: {
+          checkAmount: {
+            type: "eq",
+            amount: totalAmount.toString(),
+          },
+          checkDate: {
+            type: "gte",
+            date: createOrderDto.paidAt,
+          },
+          checkDuplicate: true,
+          checkReceiver: [
+            {
+              accountNumber: restaurant.accountNumber.toString(),
+              accountNameTH: restaurant.accountHolderFullName,
+            }
+          ]
+        }
+      }
+    }
+
+    const paymentResult = await this.paymentService.verifyPayment(paymentData);
+    if (!paymentResult?.success) throw new BadRequestException("Payment verification failed");
 
     const order = await this.prisma.$transaction(async (tx) => {
       const outOfStockMenus: string[] = [];
 
       // Group duplicate menuIds
-      const groupedMenus = new Map<
-        string,
-        { quantity: number; menuName: string }
-      >();
+      const groupedMenus = new Map<string, { quantity: number; menuName: string }>();
 
       for (const item of createOrderDto.orderMenus) {
-        if (!groupedMenus.has(item.menuId)) {
+        const existing = groupedMenus.get(item.menuId);
+    
+        if (existing) {
+          existing.quantity += item.quantity;
+        } else {
           groupedMenus.set(item.menuId, {
             quantity: item.quantity,
             menuName: item.menuName,
           });
-        } else {
-          groupedMenus.get(item.menuId)!.quantity += item.quantity;
         }
       }
 
       // Deduct inventory per unique menu
       for (const [menuId, data] of groupedMenus.entries()) {
-        const result = await this.inventoryService.deductInventoryTx(
-          tx,
-          menuId,
-          data.quantity,
-          data.menuName
-        );
+        const result = await this.inventoryService.deductInventoryTx(tx, menuId, data.quantity, data.menuName);
 
-        if (result) {
-          outOfStockMenus.push(result);
-        }
+        if (result) outOfStockMenus.push(result)
       }
 
       if (outOfStockMenus.length > 0) throw new BadRequestException(`เมนูต่อไปนี้หมด: ${outOfStockMenus.join(", ")}`)
 
       const order = await tx.order.create({
         data: {
-          userId: userId || null,
+          userId: userId ?? null,
           restaurantId: createOrderDto.restaurantId,
           deliverAt: createOrderDto.deliverAt,
-          paymentStatus: PaymentStatus.unpaid,
+          paymentStatus: PaymentStatus.paid,
           paymentSlipImg: createOrderDto.paymentSlipImg,
           acceptAt: new Date(),
-          paidAt: new Date(), // temporary value
+          paidAt: createOrderDto.paidAt,
           userTel: createOrderDto.userTel,
-          paymentId: uuidv4(), // temporary value
-          paymentGatewayStatus: 'pending',
-          totalAmount: calculatedTotalAmount,
+          paymentId: paymentResult.referenceId ?? uuidv4(),
+          paymentGatewayStatus: 'verified',
+          totalAmount: totalAmount,
           orderMenus: {
-            create: createOrderDto.orderMenus.map((item) => ({
+            create: validatedMenus.map((item) => ({
               quantity: item.quantity,
               menuName: item.menuName,
               unitPrice: item.unitPrice,
               menuImg: item.menuImg,
               details: item.details,
-              totalPrice: new Decimal(item.unitPrice * item.quantity),
+              totalPrice: new Decimal(item.totalPrice),
               menu: { connect: { menuId: item.menuId } },
             })),
           },
         },
-        include: {
-          orderMenus: true,
-        },
+        include: { orderMenus: true },
       });
 
       return order;
     });
-
-    if (!process.env.AUTOMATION_WEBHOOK_URL) throw new NotFoundException('Not found automation webhook URL');
-
-    try {
-      const payload = {
-        orderId: order.orderId,
-        userTel: order.userTel,
-        deliverAt: order.deliverAt.toISOString(),
-        totalAmount: order.totalAmount.toNumber(),
-        orderMenus: order.orderMenus.map(item => ({
-          menuId: item.menuId,
-          quantity: item.quantity,
-          menuName: item.menuName,
-          unitPrice: item.unitPrice,
-          totalPrice: item.totalPrice.toNumber(),
-        })),
-      };
-
-      await axios.post(process.env.AUTOMATION_WEBHOOK_URL, payload);
-    } catch (error) {
-      console.warn('⚠️ Order created but Make webhook failed:', error.message);
-    }
 
     return order;
   }
@@ -280,7 +307,6 @@ export class OrderService {
           quantity: menu.quantity,
           menuName: menu.menuName,
           unitPrice: menu.unitPrice,
-          totalPrice: menu.totalPrice,
           menuImg: menu.menuImg || '',
         })),
       });
