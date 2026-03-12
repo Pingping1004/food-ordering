@@ -15,34 +15,6 @@ import { toastDanger } from '@/components/ui/Toast';
 import Image from 'next/image';
 import { PandaIcon } from 'lucide-react';
 import { toastSuccess } from '@/components/ui/Toast';
-import { AccountType } from '@/util/accountType';
-
-interface PaymentPayload {
-    payload: {
-        qrCode: string;
-
-        checkCondition: {
-            checkDuplicate: boolean;
-
-            checkAmount: {
-                type?: "eq" | "gte" | "lte";
-                amount: string;
-            };
-
-            checkDate: {
-                type?: "eq" | "gte" | "lte";
-                date: Date;
-            };
-            
-            checkReceiver?: {
-                accountType?: AccountType;
-                accountNumber: string;
-                accountNameTH?: string;
-                accountNameEN?: string;
-            }[];
-        }
-    }
-}
 
 interface orderPaymentPayload {
     paymentSlipImg: string;
