@@ -20,6 +20,7 @@ export default function RestaurantRegisterPage() {
     const { user } = useAuth();
     const router = useRouter();
     const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+    const [slipPreview, setSlipPreview] = useState<string | null>(null);
     const hasShownInitToast = useRef(false);
     const {
         variants: categoryVariants,
@@ -35,6 +36,7 @@ export default function RestaurantRegisterPage() {
     const {
         control,
         register,
+        setValue,
         handleSubmit,
         watch,
         formState: { errors, isSubmitting }
@@ -49,10 +51,13 @@ export default function RestaurantRegisterPage() {
             adminSurname: '',
             adminTel: '',
             adminEmail: '',
+            paymentQr: ''
         },
-        mode: 'onBlur',
+        mode: 'onChange',
     });
+
     const watchedMenuImgFile = watch('restaurantImg');
+    const paymentQr = watch('paymentQr')
 
     useEffect(() => {
         if (watchedMenuImgFile && watchedMenuImgFile.length > 0) {
@@ -120,9 +125,8 @@ export default function RestaurantRegisterPage() {
 
             const formData = new FormData();
 
-            if (data.restaurantImg && data.restaurantImg.length > 0) {
-                formData.append('restaurantImg', data.restaurantImg[0]);
-            }
+            if (data.restaurantImg) formData.append('restaurantImg', data.restaurantImg[0]);
+            if (data.paymentQr) formData.append('paymentQr', data.paymentQr);
 
             formData.append('name', data.name);
             formData.append('email', user.email);
@@ -342,7 +346,11 @@ export default function RestaurantRegisterPage() {
                 </section>
 
                 <section className="flex flex-col gap-y-6">
-                    <h2 className="noto-sans-bold text-base text-primary">ข้อมูลบัญชีรับเงิน</h2>
+                    <div className="flex items-center gap-x-1">
+                        <h2 className="noto-sans-bold text-base text-primary">บัญชีรับเงิน</h2>
+                        <p className="text-danger-main noto-sans-bold text-sm">(ข้อมูลต้องตรงกับบัญชีธนาคารทุกประการ)</p>
+                    </div>
+
                     <div className="grid grid-cols-2 gap-x-4">
                         <Input
                             type="text"
@@ -354,8 +362,8 @@ export default function RestaurantRegisterPage() {
 
                         <Input
                             type="text"
-                            label="เลขบัญชีธนาคาร (ไม่ต้องใส่ขีด)"
-                            placeholder="087-X-XXXXX-X"
+                            label="เลขบัญชี(ต้องเป็นตัวเลขเท่านั้น)"
+                            placeholder="087XXXXXXX"
                             {...register('accountNumber')}
                             error={errors.accountNumber?.message}
                         />
@@ -363,12 +371,45 @@ export default function RestaurantRegisterPage() {
                     </div>
                     <Input
                         type="text"
-                        label="ชื่อ-นามสกุล เจ้าของบัญชีธนาคาร"
-                        placeholder="นายสมชาย ใจรัก"
+                        label="ชื่อ-นามสกุลบัญชีธนาคาร(ห้ามมีคำนำหน้า)"
+                        placeholder="สมชาย ใจรัก"
                         {...register('accountHolderFullName')}
                         error={errors.accountHolderFullName?.message}
                     />
                 </section>
+
+                <div className="flex flex-col items-center gap-y-6">
+                    <h2 className="w-full noto-sans-bold text-start text-primary text-base">สลิปของคุณ</h2>
+
+                    <Image
+                        src={slipPreview ?? "/picture.svg"}
+                        // const paymentQrImageUrl = "/picture.svg"
+                        alt="Payment slip preview"
+                        width={250}
+                        height={250}
+                        className="object-cover aspect-square"
+                    />
+
+                    <Input
+                        type="file"
+                        variant={paymentQr ? "success" : "primary"}
+                        label={paymentQr ? "อัพโหลดQRสำเร็จ" : "ยังไม่ได้อัพโหลดQR"}
+                        placeholder="อัพโหลดสลิปชำระเงิน"
+                        id="paymentQr"
+                        accept="image/*"
+                        error={errors.paymentQr?.message as string | undefined}
+                        {...register('paymentQr')}
+                        onChange={(e) => {
+                            const file = (e.target as HTMLInputElement).files?.[0];
+                            if (!file) return;
+
+                            const previewUrl = URL.createObjectURL(file);
+                            setSlipPreview(previewUrl);
+
+                            setValue("paymentQr", file, { shouldValidate: true });
+                        }}
+                    />
+                </div>
 
                 <Button
                     type="submit"
