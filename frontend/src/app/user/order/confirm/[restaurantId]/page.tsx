@@ -6,20 +6,21 @@ import OrderList, { OrderMenuType } from '@/components/users/OrderList';
 import TimePickerInput from '@/components/ui/TimePicker';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
-import { api, slipApi } from '@/lib/api';
+import { api } from '@/lib/api';
 import { useForm, Controller } from 'react-hook-form';
 import { createOrderSchema, CreateOrderSchemaType } from '@/schemas/addOrderSchema';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { toastDanger } from '@/components/ui/Toast';
 import Image from 'next/image';
-import { PandaIcon } from 'lucide-react';
 import { toastSuccess } from '@/components/ui/Toast';
+import { useState } from 'react';
+import CountdownTimer from '@/components/Timer';
 
 interface orderPaymentPayload {
     paymentSlipImg: string;
-    totalAmount: number;
     restaurantId: string;
+    paidAt: Date;
     deliverAt: Date;
     userTel: string;
     orderMenus: OrderMenuType[];
@@ -27,7 +28,6 @@ interface orderPaymentPayload {
 
 // Fixed 5-minute buffer at all times
 const getRequiredBufferMinutes = (): number => 5;
-const paymentQrImageUrl = "/picture.svg"
 
 const getBufferTime = (): string => {
     const now = new Date();
@@ -38,9 +38,25 @@ const getBufferTime = (): string => {
     return `${hours}:${minutes}`;
 };
 
+const slipErrorMap: Record<string, string> = {
+    "200000": "พบข้อมูลสลิปในระบบธนาคาร",
+    "200001": "ขอข้อมูลสลิปสำเร็จ",
+    "200200": "สลิปถูกต้อง",
+    "200401": "บัญชีผู้รับไม่ถูกต้อง",
+    "200402": "จำนวนเงินไม่ตรงกับยอดที่ต้องชำระ",
+    "200403": "วันที่โอนไม่ตรงเงื่อนไข",
+    "200404": "ไม่พบข้อมูลสลิปในระบบธนาคาร",
+    "200500": "สลิปไม่ถูกต้องหรืออาจเป็นสลิปปลอม",
+    "200501": "สลิปนี้ถูกใช้ไปแล้ว",
+};
+
 function OrderConfirmContext() {
     const { restaurant } = useMenu();
     const { cart } = useCart();
+    const [showQR, setShowQR] = useState(false);
+    const [slipPreview, setSlipPreview] = useState<string | null>(null);
+    const [paidAt, setPaidAt] = useState<Date | null>(null);
+    const [expired, setExpired] = useState(false);
     // const router = useRouter();
     // const [click, setClick] = useState<number>(0);
     const {
@@ -61,9 +77,10 @@ function OrderConfirmContext() {
         mode: "onChange",
     });
 
+    const paymentQrImageUrl = restaurant.paymentQr ?? "/picture.svg"
     const paymentSlipImg = watch("paymentSlipImg");
     const totalAmount = cart.reduce((total, value) => { return total + value.totalPrice }, 0)
-    const isButtonDisabled = isSubmitting || !isValid || !isDirty || cart.length === 0;
+    const isButtonDisabled = isSubmitting || !isValid || !isDirty || expired || cart.length === 0;
 
     const handleSlipUpload = (file: File) => {
         const reader = new FileReader();
@@ -74,12 +91,15 @@ function OrderConfirmContext() {
         }
 
         reader.onloadend = () => {
-            setValue("paymentSlipImg", reader.result as string, {
+            const base64DataUrl = (reader.result as string);
+
+            setValue("paymentSlipImg", base64DataUrl, {
                 shouldValidate: true,
                 shouldDirty: true,
             });
         };
 
+        setPaidAt(new Date())
         reader.readAsDataURL(file)
     }
 
@@ -103,7 +123,7 @@ function OrderConfirmContext() {
             const orderPaymentPayload: orderPaymentPayload = {
                 paymentSlipImg: paymentSlipImg,
                 restaurantId: restaurant.restaurantId,
-                totalAmount: totalAmount,
+                paidAt: paidAt ?? new Date(),
                 deliverAt: new Date(data.deliverAt),
                 orderMenus: cart.map((item) => ({
                     menuId: item.menuId,
@@ -124,16 +144,22 @@ function OrderConfirmContext() {
 
             const response = await api.post(`/order/verify-and-create-order`, orderPaymentPayload);
             toastSuccess("ชำระเงินสำเร็จและสร้างออเดอร์เรียบร้อย");
-            console.log('Response data: ', response.data);
             // alert('กำลังนำทางไปหน้าชำระเงิน ห้ามรีเฟรชหรือปิดหน้าQR Code');
             // const { checkoutUrl } = response.data;
             // router.push(checkoutUrl);
 
         } catch (error: unknown) {
             if (typeof error === 'object' && error !== null && 'response' in error) {
-                const err = error as { response: { status: number; data?: { message?: string } } };
+                const err = error as { response: { status: number; data?: { message?: string, code?: string } } };
+                console.log("Error response: ", err.response.data)
 
-                toastDanger(err.response.data?.message ?? "เกิดข้อผิดพลาด");
+                const backendMessage = err.response.data?.message;
+                const code = err.response?.data?.code;
+
+                console.log("code:", code);
+                console.log("backendMessage:", backendMessage);
+
+                toastDanger(code ? slipErrorMap[code] ?? backendMessage ?? "เกิดข้อผิดพลาด" : backendMessage ?? "เกิดข้อผิดพลาด");
             }
         }
     }
@@ -199,17 +225,45 @@ function OrderConfirmContext() {
             </div>
 
             <div className="flex flex-col gap-y-6">
-                <h3 className="noto-sans-bold text-start text-primary text-base">ชำระเงินจากQRนี้</h3>
+                <div className="flex flex-col w-full justify-center items-center gap-y-6">
+                    {showQR && (
+                        <>
+                            <Image
+                                src={paymentQrImageUrl}
+                                alt="Payment QR picture"
+                                width={300}
+                                height={300}
+                                className="object-cover aspect-square rounded-lg"
+                            />
+                        </>
+                    )}
 
-                <div className="flex w-full justify-center">
-                    <Image
-                        src={paymentQrImageUrl}
-                        alt="Payment QR picture"
-                        width={300}
-                        height={300}
-                    />
+                    <CountdownTimer duration={300} onExpire={() => setExpired(true)} />
+
+                    <Button
+                        type="button"
+                        variant="secondary"
+                        size="lg"
+                        onClick={() => setShowQR(prev => !prev)}
+                    >
+                        {showQR ? "Hide Payment QR" : "Show Payment QR"}
+                    </Button>
                 </div>
             </div>
+
+            {slipPreview && (
+                <div className="flex flex-col items-center gap-y-6">
+                    <h2 className="w-full noto-sans-bold text-start text-primary text-base">สลิปของคุณ</h2>
+
+                    <Image
+                        src={slipPreview}
+                        alt="Payment slip preview"
+                        width={250}
+                        height={250}
+                        className="object-cover aspect-square"
+                    />
+                </div>
+            )}
 
             <Input
                 type="file"
@@ -217,13 +271,18 @@ function OrderConfirmContext() {
                 label={paymentSlipImg ? "อัพโหลดสลิปสำเร็จ" : "ยังไม่ได้อัพโหลดสลิป"}
                 placeholder="อัพโหลดสลิปชำระเงิน"
                 id="paymentSlipImg"
-                accept="image/*,.svg,.svg+xml"
-                multiple={false}
+                accept="image/*"
                 error={errors.paymentSlipImg?.message as string | undefined}
                 {...register('paymentSlipImg')}
                 onChange={(e) => {
                     const file = (e.target as HTMLInputElement).files?.[0];
-                    if (file) handleSlipUpload(file);
+                    if (!file) return;
+
+                    const previewUrl = URL.createObjectURL(file);
+                    setSlipPreview(previewUrl);
+
+                    setValue("paymentSlipImg", file, { shouldValidate: true });
+                    handleSlipUpload(file);
                 }}
             />
 
