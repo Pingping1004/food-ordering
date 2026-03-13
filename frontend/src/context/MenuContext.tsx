@@ -19,6 +19,10 @@ export interface Restaurant {
     isTemporarilyClosed: boolean;
     isApproved: boolean;
     adminTel: string;
+    accountNumber: string;
+    bankAccount: string;
+    paymentQr: string;
+    accountHolderFullName: string;
 };
 
 export interface Menu {
@@ -46,7 +50,7 @@ export const MenuContext = createContext<MenuContextType | null>(null);
 
 export const useMenu = () => {
     const context = useContext(MenuContext);
-    
+
     if (!context) throw new Error("useMenuContext must be used within MenuProvider");
     return context;
 };
@@ -70,6 +74,11 @@ export const MenuProvider = ({ children }: { children: React.ReactNode }) => {
         isTemporarilyClosed: false,
         isApproved: false,
         adminTel: '',
+        accountNumber: '',
+        bankAccount: '',
+        paymentQr: '',
+        accountHolderFullName: ''
+
     });
     const [menus, setMenus] = useState<Menu[] | null>(null);
     const [loading, setLoading] = useState(true);
