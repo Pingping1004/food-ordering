@@ -70,8 +70,26 @@ export const createRestaurantSchema = z.object({
         .regex(/^\d{10}$/, { message: 'กรุณาระบุเบอร์โทรที่ถูกต้อง 10 หลัก' }),
     adminEmail: z.string().trim().email('กรุณาระบุอีเมลที่ถูกต้อง').optional().or(z.literal('')),
     bankAccount: z.string().trim().min(1, { message: 'กรุณาใส่ชื่อธนาคาร' }),
-    accountNumber: z.string().trim().min(1, { message: 'กรุณาใส่เลขบัญชีธนาคาร'}),
-    accountHolderFullName: z.string().trim().min(1, { message: 'กรุณาใส่ชื่อ-นามสกุลของบัญชีธนาคาร' })
+    accountNumber: z.string()
+        .min(1, { message: 'กรุณาใส่เลขบัญชีธนาคาร'})
+        .regex(/^[0-9]+$/, { message: "เลขบัญชีต้องเป็นตัวเลขเท่านั้น ห้ามเว้นวรรคหรือใส่สัญลักษณ์" }),
+    accountHolderFullName: z.string().trim().min(1, { message: 'กรุณาใส่ชื่อ-นามสกุลของบัญชีธนาคาร' }),
+    paymentQr: z.any().superRefine((file, ctx) => {
+        if (!file) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "กรุณาอัพโหลดQR",
+          });
+          return;
+        }
+      
+        if (file.size > 2 * 1024 * 1024) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "ไฟล์ต้องไม่เกิน 2MB",
+            });
+        }
+    })
 })
 
 export type CreateRestaurantSchemaType = z.infer<typeof createRestaurantSchema>
