@@ -9,9 +9,17 @@ import { CsrfModule } from 'src/csrf/csrf.module';
 import { UserModule } from 'src/user/user.module';
 import { MenuModule } from 'src/menu/menu.module';
 import { InventoryModule } from 'src/inventory/inventory.module';
+import { RestaurantModule } from 'src/restaurant/restaurant.module';
 
 @Module({
-  imports: [forwardRef(() => PayoutModule), CsrfModule, UserModule, forwardRef(() => MenuModule), forwardRef(() => InventoryModule)],
+  imports: [
+    forwardRef(() => PayoutModule), 
+    CsrfModule, 
+    UserModule, 
+    forwardRef(() => MenuModule), 
+    forwardRef(() => InventoryModule), 
+    forwardRef(() => RestaurantModule)
+  ],
   controllers: [OrderController],
   providers: [OrderService, PrismaService, PaymentService, ConfigService],
   exports: [OrderService],

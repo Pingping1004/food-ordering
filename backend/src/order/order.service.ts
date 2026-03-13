@@ -14,12 +14,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PaymentStatus, OrderStatus, PaymentMethod } from '@prisma/client';
 import { PaymentService } from 'src/payment/payment.service';
 import { calculateWeeklyInterval } from 'src/payout/payout-calculator';
-import axios from 'axios';
-import { v4 as uuidv4 } from 'uuid';
 
 import Decimal from 'decimal.js';
 import { InventoryService } from 'src/inventory/inventory.service';
-import { MenuService } from 'src/menu/menu.service';
 import moment from 'moment-timezone';
 import { PaymentPayload } from 'src/common/interface/accountType';
 import { RestaurantService } from 'src/restaurant/restaurant.service';
@@ -28,7 +25,7 @@ import { RestaurantService } from 'src/restaurant/restaurant.service';
 export class OrderService {
   constructor(
     private readonly prisma: PrismaService,
-    @Inject(forwardRef(() => MenuService))
+    @Inject(forwardRef(() => RestaurantService))
     private readonly restaurantService: RestaurantService,
     @Inject(forwardRef(() => InventoryService))
     private readonly inventoryService: InventoryService,
@@ -78,7 +75,6 @@ export class OrderService {
       menuName: string;
       quantity: number;
       unitPrice: number;
-      totalPrice: number;
       menuImg?: string;
       details?: string;
     }[];
@@ -102,7 +98,6 @@ export class OrderService {
       menuName: string;
       quantity: number;
       unitPrice: number;
-      totalPrice: number;
       menuImg?: string;
       details?: string;
     }[] = [];
@@ -139,7 +134,6 @@ export class OrderService {
         menuName: existingMenu.name,
         quantity: item.quantity,
         unitPrice: markupUnitPrice,
-        totalPrice,
         menuImg: item.menuImg,
         details: item.details,
       });
@@ -151,7 +145,7 @@ export class OrderService {
     };
   }
 
-  validateDeliveryTime(deliverTime: Date | string) {
+  validateDeliveryAndPaymentTime(deliverTime: Date, paidAt: Date) {
     const nowBkk = moment().tz('Asia/Bangkok');
     const deliverAtBkk = moment(deliverTime).tz('Asia/Bangkok');
 
@@ -163,17 +157,23 @@ export class OrderService {
         `เวลารับอาหารต้องอยู่หลังจากเวลาปัจจุบันอย่างน้อย ${bufferMin} นาที`,
       );
     }
+
+
+    const paidTime = new Date(paidAt).getTime()
+    if (Date.now() - paidTime > 6 * 60 * 1000) {
+      throw new BadRequestException("เวลาที่ชำระเกินกว่ากำหนดเวลา(5นาที)");
+    }
   }
 
   async createOrder(createOrderDto: CreateOrderDto, userId?: string) {
-    this.validateDeliveryTime(createOrderDto.deliverAt);
+    this.validateDeliveryAndPaymentTime(createOrderDto.deliverAt, createOrderDto.paidAt);
 
     const { totalAmount, validatedMenus } = await this.validateOrderMenus(createOrderDto.orderMenus, createOrderDto.restaurantId);
-    const restaurant = await this.restaurantService.findRestaurant(createOrderDto.restaurantId);
+    const { accountNumber, accountHolderFullName } = await this.restaurantService.findRestaurant(createOrderDto.restaurantId);
 
     const paymentData: PaymentPayload = {
       payload: {
-        qrCode: createOrderDto.paymentSlipImg,
+        imageBase64: createOrderDto.paymentSlipImg,
         checkCondition: {
           checkAmount: {
             type: "eq",
@@ -186,8 +186,8 @@ export class OrderService {
           checkDuplicate: true,
           checkReceiver: [
             {
-              accountNumber: restaurant.accountNumber.toString(),
-              accountNameTH: restaurant.accountHolderFullName,
+              accountType: "01004",
+              accountNumber: accountNumber.toString(),
             }
           ]
         }
@@ -195,7 +195,7 @@ export class OrderService {
     }
 
     const paymentResult = await this.paymentService.verifyPayment(paymentData);
-    if (!paymentResult?.success) throw new BadRequestException("Payment verification failed");
+    if (paymentResult.code !== "200200") throw new BadRequestException("Payment verification failed");
 
     const order = await this.prisma.$transaction(async (tx) => {
       const outOfStockMenus: string[] = [];
@@ -232,10 +232,9 @@ export class OrderService {
           deliverAt: createOrderDto.deliverAt,
           paymentStatus: PaymentStatus.paid,
           paymentSlipImg: createOrderDto.paymentSlipImg,
-          acceptAt: new Date(),
-          paidAt: createOrderDto.paidAt,
+          paidAt: paymentResult.data.dateTime ?? createOrderDto.paidAt,
           userTel: createOrderDto.userTel,
-          paymentId: paymentResult.referenceId ?? uuidv4(),
+          paymentId: paymentResult.data.transRef,
           paymentGatewayStatus: 'verified',
           totalAmount: totalAmount,
           orderMenus: {
@@ -245,7 +244,6 @@ export class OrderService {
               unitPrice: item.unitPrice,
               menuImg: item.menuImg,
               details: item.details,
-              totalPrice: new Decimal(item.totalPrice),
               menu: { connect: { menuId: item.menuId } },
             })),
           },
@@ -284,9 +282,6 @@ export class OrderService {
     });
 
     const latestTimestamp = orders.length > 0 ? orders[orders.length - 1].orderAt : timeStamp ?? null
-
-    console.log('New orders: ', orders)
-    console.log('Latest timestamp: ', latestTimestamp)
 
     return { orders, latestTimestamp }
   }

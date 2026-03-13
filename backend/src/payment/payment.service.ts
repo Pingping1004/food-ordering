@@ -1,10 +1,11 @@
 import {
     BadRequestException,
-    forwardRef,
+    HttpException,
+    HttpStatus,
     Injectable,
     Logger,
 } from '@nestjs/common';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { PaymentPayload } from 'src/common/interface/accountType';
 import { PayoutService } from 'src/payout/payout.service';
 
@@ -18,24 +19,28 @@ export class PaymentService {
 
     async verifyPayment(data: PaymentPayload) {
         try {
-            const response = await axios.post("https://connect.slip2go.com/api/verify-slip/qr-code/info", data, {
+            const response = await axios.post("https://connect.slip2go.com/api/verify-slip/qr-base64/info", data, {
                 headers: {
                     Authorization: `Bearer ${process.env.SLIP_VEERIFY_SECRET}`
                 },
             });
     
             const result = response.data
-            console.log("Payment Verification Response: ", result)
+            console.log("Payment service response: ", result)
 
-            if (!result || result.message !== "Slip found") {
-                throw new BadRequestException("Payment verification failed");
+            if (result.code !== "200200") {
+                throw new HttpException({ message: result.message, code: result.code }, HttpStatus.BAD_REQUEST);
             }
           
-            return result.data;
+            return result;
 
         } catch (error) {
-            this.logger.warn('⚠️ Order created but Make webhook failed:', error.message);
-            throw error
+            if (error instanceof HttpException) throw error;
+
+            const err = error as AxiosError;
+        
+            this.logger.warn("ยืนยันการชำระเงินล้มเหลว:", err.response?.data || err.message);
+            throw new HttpException({ message: "ยืนยันการชำระเงินล้มเหลว" }, HttpStatus.BAD_REQUEST);
         }
     }
 }

@@ -26,7 +26,7 @@ export type AccountType =
 
   export interface PaymentPayload {
     payload: {
-        qrCode: string;
+        imageBase64: string;
   
         checkCondition: {
             checkDuplicate: boolean;

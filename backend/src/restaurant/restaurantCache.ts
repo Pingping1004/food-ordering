@@ -29,22 +29,18 @@ const restaurantCache = new Map < string, CacheEntry<unknown>>();
 export function getRestaurantCache<T>(key: string): T | null {
     const entry = restaurantCache.get(key)
     if (!entry) {
-        console.log("❌ CACHE MISS:", key)
         return null
     }
 
     if (Date.now() > entry.expireAt) {
-        console.log("⌛ CACHE EXPIRED:", key)
         restaurantCache.delete(key)
         return null
     }
 
-    console.log("✅ CACHE HIT:", key)
     return entry.data as T
 }
 
 export function setRestaurantCache<T>(key: string, data: T, ttl: number) {
-    console.log("Cache set: ", key)
     restaurantCache.set(key, {
         data,
         expireAt: Date.now() + ttl

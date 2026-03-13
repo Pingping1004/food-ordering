@@ -83,9 +83,9 @@ export class CreateRestaurantDto {
   @IsString()
   bankAccount: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  paymentQr: string;
+  paymentQr?: string;
 
   @IsNotEmpty()
   @IsString()

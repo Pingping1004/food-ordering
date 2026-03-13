@@ -13,7 +13,6 @@ import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
 import moment from 'moment-timezone';
 import { UploadService } from 'src/upload/upload.service';
 import { clearRestaurantCache, getRestaurantCache, OpenRestaurant, RestaurantCache, setRestaurantCache } from './restaurantCache';
-import { MenuService } from 'src/menu/menu.service';
 
 @Injectable()
 export class RestaurantService {
@@ -28,18 +27,18 @@ export class RestaurantService {
   async createRestaurant(
     createRestaurantDto: CreateRestaurantDto,
     userId: string,
+    paymentFile: Express.Multer.File, 
     file?: Express.Multer.File,
   ) {
     try {
       const existingRestaurant = await this.findExistingRestaurant(userId);
       if (existingRestaurant)
-        throw new ConflictException(
-          `User already register as restaurant: ${existingRestaurant.name}`,
-        );
+        throw new ConflictException(`User already register as restaurant: ${existingRestaurant.name}`);
 
-      const restaurantImgUrl = file
-        ? (await this.uploadService.saveImage(file)).url
-        : null;
+      const restaurantImgUrl = file ? (await this.uploadService.saveImage(file)).url : null;
+      const paymentQr = paymentFile ? (await this.uploadService.saveImage(paymentFile)).url : null;
+
+      if (!paymentQr) throw new NotFoundException(`Please upload payment QR file`);
 
       let openTime: string = '';
       let closeTime: string = '';
@@ -77,7 +76,7 @@ export class RestaurantService {
         adminEmail: createRestaurantDto.adminEmail,
         accountNumber: createRestaurantDto.accountNumber,
         bankAccount: createRestaurantDto.bankAccount,
-        paymentQr: createRestaurantDto.paymentQr,
+        paymentQr: paymentQr,
         accountHolderFullName: createRestaurantDto.accountHolderFullName,
       };
 
@@ -179,7 +178,6 @@ export class RestaurantService {
       const restaurant = await this.prisma.restaurant.findUnique({
         where: { restaurantId },
       });
-      console.log("Finding restaurant: ", restaurant)
 
       if (!restaurant) throw new NotFoundException(`ไม่พบร้านอาหารที่มีID: ${restaurantId}`);
 

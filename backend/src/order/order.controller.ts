@@ -31,7 +31,7 @@ export class OrderController {
   private readonly logger = new Logger('OrderController');
 
   @Public()
-  @Post('create')
+  @Post('verify-and-create-order')
   async createOrder(
     @Body() createOrderDto: CreateOrderDto,
     @Req() req: Request & { user?: User },
