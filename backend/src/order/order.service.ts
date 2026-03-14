@@ -80,19 +80,19 @@ export class OrderService {
     }[];
   }> {
     const markupRate = 1 + Number(process.env.SELL_PRICE_MARKUP_RATE);
-  
+
     const menuIds = orderMenus.map((m) => m.menuId);
     const menus = await this.prisma.menu.findMany({
       where: {
         menuId: { in: menuIds },
       },
     });
-  
+
     const menuMap = new Map(menus.map((m) => [m.menuId, m]));
-  
+
     const toSatang = (amount: number) => Math.round(amount * 100) / 100;
     let totalAmount = 0;
-  
+
     const validatedMenus: {
       menuId: string;
       menuName: string;
@@ -101,34 +101,34 @@ export class OrderService {
       menuImg?: string;
       details?: string;
     }[] = [];
-  
+
     for (const item of orderMenus) {
       const existingMenu = menuMap.get(item.menuId);
-  
+
       if (!existingMenu) {
         throw new NotFoundException(
           `Menu item with ID ${item.menuId} not found`,
         );
       }
-  
+
       if (existingMenu.restaurantId !== restaurantId) {
         throw new BadRequestException(
           `Menu ${item.menuName} does not belong to this restaurant`,
         );
       }
-  
+
       if (existingMenu.name !== item.menuName) {
         throw new BadRequestException(
           `Menu name mismatch for ${item.menuName}`,
         );
       }
-  
+
       // SERVER calculates price
       const markupUnitPrice = toSatang(existingMenu.price * markupRate);
       const totalPrice = toSatang(markupUnitPrice * item.quantity);
-  
+
       totalAmount += totalPrice;
-  
+
       validatedMenus.push({
         menuId: item.menuId,
         menuName: existingMenu.name,
@@ -138,14 +138,14 @@ export class OrderService {
         details: item.details,
       });
     }
-  
+
     return {
       totalAmount: toSatang(totalAmount),
       validatedMenus,
     };
   }
 
-  validateDeliveryAndPaymentTime(deliverTime: Date, paidAt: Date) {
+  validateDeliveryTime(deliverTime: Date) {
     const nowBkk = moment().tz('Asia/Bangkok');
     const deliverAtBkk = moment(deliverTime).tz('Asia/Bangkok');
 
@@ -157,20 +157,15 @@ export class OrderService {
         `เวลารับอาหารต้องอยู่หลังจากเวลาปัจจุบันอย่างน้อย ${bufferMin} นาที`,
       );
     }
-
-
-    const paidTime = new Date(paidAt).getTime()
-    if (Date.now() - paidTime > 6 * 60 * 1000) {
-      throw new BadRequestException("เวลาที่ชำระเกินกว่ากำหนดเวลา(5นาที)");
-    }
   }
 
   async createOrder(createOrderDto: CreateOrderDto, userId?: string) {
-    this.validateDeliveryAndPaymentTime(createOrderDto.deliverAt, createOrderDto.paidAt);
+    this.validateDeliveryTime(createOrderDto.deliverAt);
 
     const { totalAmount, validatedMenus } = await this.validateOrderMenus(createOrderDto.orderMenus, createOrderDto.restaurantId);
-    const { accountNumber, accountHolderFullName } = await this.restaurantService.findRestaurant(createOrderDto.restaurantId);
+    const { accountNumber } = await this.restaurantService.findRestaurant(createOrderDto.restaurantId);
 
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
     const paymentData: PaymentPayload = {
       payload: {
         imageBase64: createOrderDto.paymentSlipImg,
@@ -181,7 +176,7 @@ export class OrderService {
           },
           checkDate: {
             type: "gte",
-            date: createOrderDto.paidAt,
+            date: fiveMinutesAgo,
           },
           checkDuplicate: true,
           checkReceiver: [
@@ -196,65 +191,78 @@ export class OrderService {
 
     const paymentResult = await this.paymentService.verifyPayment(paymentData);
     if (paymentResult.code !== "200200") throw new BadRequestException("Payment verification failed");
+    if (!paymentResult?.data?.dateTime) throw new BadRequestException("Invalid payment response");
 
-    const order = await this.prisma.$transaction(async (tx) => {
-      const outOfStockMenus: string[] = [];
+    const paymentTime = new Date(paymentResult.data.dateTime)
 
-      // Group duplicate menuIds
-      const groupedMenus = new Map<string, { quantity: number; menuName: string }>();
+    if (Date.now() - paymentTime.getTime() > 5 * 60 * 1000) {
+      throw new BadRequestException("การชำระเงินหมดอายุ กรุณาทำรายการใหม่")
+    }
 
-      for (const item of createOrderDto.orderMenus) {
-        const existing = groupedMenus.get(item.menuId);
-    
-        if (existing) {
-          existing.quantity += item.quantity;
-        } else {
-          groupedMenus.set(item.menuId, {
-            quantity: item.quantity,
-            menuName: item.menuName,
-          });
-        }
-      }
+    try {
+      const order = await this.prisma.$transaction(async (tx) => {
+        const outOfStockMenus: string[] = [];
 
-      // Deduct inventory per unique menu
-      for (const [menuId, data] of groupedMenus.entries()) {
-        const result = await this.inventoryService.deductInventoryTx(tx, menuId, data.quantity, data.menuName);
+        // Group duplicate menuIds
+        const groupedMenus = new Map<string, { quantity: number; menuName: string }>();
 
-        if (result) outOfStockMenus.push(result)
-      }
+        for (const item of createOrderDto.orderMenus) {
+          const existing = groupedMenus.get(item.menuId);
 
-      if (outOfStockMenus.length > 0) throw new BadRequestException(`เมนูต่อไปนี้หมด: ${outOfStockMenus.join(", ")}`)
-
-      const order = await tx.order.create({
-        data: {
-          userId: userId ?? null,
-          restaurantId: createOrderDto.restaurantId,
-          deliverAt: createOrderDto.deliverAt,
-          paymentStatus: PaymentStatus.paid,
-          paymentSlipImg: createOrderDto.paymentSlipImg,
-          paidAt: paymentResult.data.dateTime ?? createOrderDto.paidAt,
-          userTel: createOrderDto.userTel,
-          paymentId: paymentResult.data.transRef,
-          paymentGatewayStatus: 'verified',
-          totalAmount: totalAmount,
-          orderMenus: {
-            create: validatedMenus.map((item) => ({
+          if (existing) {
+            existing.quantity += item.quantity;
+          } else {
+            groupedMenus.set(item.menuId, {
               quantity: item.quantity,
               menuName: item.menuName,
-              unitPrice: item.unitPrice,
-              menuImg: item.menuImg,
-              details: item.details,
-              menu: { connect: { menuId: item.menuId } },
-            })),
+            });
+          }
+        }
+
+        // Deduct inventory per unique menu
+        for (const [menuId, data] of groupedMenus.entries()) {
+          const result = await this.inventoryService.deductInventoryTx(tx, menuId, data.quantity, data.menuName);
+
+          if (result) outOfStockMenus.push(result)
+        }
+
+        if (outOfStockMenus.length > 0) throw new BadRequestException(`เมนูต่อไปนี้หมด: ${outOfStockMenus.join(", ")}`)
+
+        const order = await tx.order.create({
+          data: {
+            userId: userId ?? null,
+            restaurantId: createOrderDto.restaurantId,
+            deliverAt: createOrderDto.deliverAt,
+            paymentStatus: PaymentStatus.paid,
+            paymentSlipImg: createOrderDto.paymentSlipImg,
+            paidAt: new Date(paymentResult.data.dateTime),
+            userTel: createOrderDto.userTel,
+            paymentId: paymentResult.data.transRef,
+            paymentGatewayStatus: 'verified',
+            totalAmount: totalAmount,
+            orderMenus: {
+              create: validatedMenus.map((item) => ({
+                quantity: item.quantity,
+                menuName: item.menuName,
+                unitPrice: item.unitPrice,
+                menuImg: item.menuImg,
+                details: item.details,
+                menu: { connect: { menuId: item.menuId } },
+              })),
+            },
           },
-        },
-        include: { orderMenus: true },
+          include: { orderMenus: true },
+        });
+
+        return order;
       });
 
       return order;
-    });
+    } catch (error) {
+      if (error.code === "P2002") throw new BadRequestException("Duplicate payment detected")
 
-    return order;
+      throw error
+    }
   }
 
   async findRestaurantOrders(restaurantId: string) {
