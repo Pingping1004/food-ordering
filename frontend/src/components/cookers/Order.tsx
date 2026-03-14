@@ -7,23 +7,24 @@ import { cva, VariantProps } from "class-variance-authority";
 import clsx from "clsx";
 import { api } from "@/lib/api";
 import { getTimeFormat } from "@/util/time";
-import { OrderStatus } from "./OrderNavbar";
+import { OrderStatus, PaymentStatus } from "./OrderNavbar";
 import { toastDanger, toastSuccess } from "../ui/Toast";
 
 const orderVariants = cva("noto-sans-regular justify-center text-sm", {
     variants: {
         variant: {
-            paid: "",
+            sent: "",
             accepted: "",
-            rejected: "",
-            refund_pending: "",
-            refund_complete: "",
+            cancelled: "",
+            completed: "",
         },
-        isPaid: {
+        paymentStatus: {
             paid: "",
             unpaid: "",
-            processing: "",
-            rejected: "",
+            verifying: "",
+            refund_pending: "",
+            refund_complete: "",
+            failed: "",
         },
         selected: {
             default: "",
@@ -36,8 +37,8 @@ const orderVariants = cva("noto-sans-regular justify-center text-sm", {
         }
     },
     defaultVariants: {
-        variant: "accepted",
-        isPaid: "unpaid",
+        variant: "sent",
+        paymentStatus: "unpaid",
         selected: "default",
         isDelayProp: false,
     },
@@ -51,30 +52,14 @@ export type OrderProps = React.HTMLAttributes<HTMLDivElement> &
         status: OrderStatus;
         selected: "default" | boolean;
         totalAmount: number;
-        isPaid: "paid" | "unpaid" | "processing" | "rejected";
         isDelay: boolean;
         orderMenus: { quantity: number; menuName: string; menuImg?: string }[];
         details?: string;
         userTel: string;
         isLargeTextMode?: boolean
-        onDelayUpdate: (updateOrder: OrderProps) => void;
-        onStatusUpdate: (updateStatus: OrderProps) => void;
+        onDelayUpdate: (orderId: string) => void;
+        onStatusUpdate: (orderId: string, status: OrderStatus) => void;
     };
-
-// const getOrderStatusProps = (currentStatus: OrderStatus) => {
-//     switch (currentStatus) {
-//         case OrderStatus.receive:
-//             return { text: 'เริ่มปรุงอาหาร', nextStatus: OrderStatus.cooking };
-//         case OrderStatus.cooking:
-//             return { text: 'พร้อมเสิร์ฟ', nextStatus: OrderStatus.ready };
-//         case OrderStatus.ready:
-//             return { text: 'เสร็จสิ้น', nextStatus: OrderStatus.done }; // Text for marking as done
-//         case OrderStatus.done:
-//             return { text: 'ออเดอร์เสร็จสิ้น' }; // Text for marking as done
-//         default: // Should ideally not be hit
-//             return { text: 'สถานะไม่ทราบ', nextStatus: currentStatus };
-//     }
-// };
 
 export const Order = ({
     orderId,
@@ -85,7 +70,7 @@ export const Order = ({
     status,
     deliverAt,
     totalAmount,
-    isPaid,
+    paymentStatus,
     isDelay = false,
     orderMenus = [],
     className,
@@ -94,62 +79,8 @@ export const Order = ({
     onStatusUpdate,
     ...props
 }: OrderProps) => {
-    const [, setCurrentStatus] = useState(status);
     const [isDelayed, setIsDelayed] = useState(isDelay);
     const [isUpdating, setIsUpdating] = useState(false);
-
-    useEffect(() => {
-        setCurrentStatus(status);
-        setIsDelayed(isDelay);
-    }, [status, isDelay]);
-
-    const handleDelayOrder = async () => {
-        if (isUpdating) return;
-        setIsUpdating(true);
-
-        try {
-            const response = await api.patch(`/order/delay/${orderId}`, {
-                // delayDuration: 10,
-                isDelay: true,
-            });
-            const updatedOrderFromServer = response.data;
-
-            // Update local state for immediate feedback in this component
-            setIsDelayed(updatedOrderFromServer.isDelayed || true);
-
-            // IMPORTANT: Call the callback to update the parent's state
-            onDelayUpdate(updatedOrderFromServer);
-
-            toastSuccess(`เลื่อนเวลาจัดส่งออเดอร์ไป10นาทีสำเร็จ!`);
-
-        } catch {
-            toastDanger(`เลื่อนเวลาจัดส่งออเดอร์ล้มเหลว`);
-        } finally {
-            setIsUpdating(false);
-        }
-    }
-
-    const handleUpdateStatus = async (orderId: string) => {
-        setIsUpdating(true);
-        try {
-            // const { nextStatus } = getOrderStatusProps(status);
-
-            // if (isPaid === 'unpaid') {
-            //     toastDanger('ไม่สามารถจบออเดอร์ได้ หากยังไม่ชำระเงิน');
-            //     return;
-            // }
-
-            const response = await api.patch(`/order/update-status/${orderId}`);
-
-            const updatedOrder = response.data.result;
-            setCurrentStatus(updatedOrder.status);
-            onStatusUpdate(updatedOrder.status);
-        } catch {
-            toastDanger(`แจ้งออเดอร์ล่าช้าล้มเหลว`);
-        } finally {
-            setIsUpdating(false);
-        }
-    }
 
     const isRefund = variant?.startsWith('refund');
 
@@ -158,7 +89,7 @@ export const Order = ({
             className={clsx(
                 "flex flex-col p-4 border-1 border-[#E1E1E1] rounded-2xl",
                 isLargeTextMode ? "p-6 gap-y-8 text-lg" : "p-4 gap-y-6 text-sm",
-                orderVariants({ variant, isPaid, selected, isDelayProp: isDelayed }),
+                orderVariants({ variant, paymentStatus, selected, isDelayProp: isDelayed }),
                 className
             )}
             {...props}
@@ -221,11 +152,11 @@ export const Order = ({
 
                 {isRefund && (
                     <Button
-                        variant={variant === 'refund_complete' ? "secondarySuccess" : "secondaryDanger"}
+                        variant={paymentStatus === 'refund_complete' ? "secondarySuccess" : "secondaryDanger"}
                         size="sm"
                         type="button"
                     >
-                        {variant === 'refund_complete' ? "คืนเงินแล้ว" : "ยังไม่่คืนเงิน"}
+                        {paymentStatus === 'refund_complete' ? "คืนเงินแล้ว" : "ยังไม่่คืนเงิน"}
                     </Button>
                 )}
             </header>
@@ -274,7 +205,7 @@ export const Order = ({
                 <p className="noto-sans-bold text-sm">{details}</p>
             </section> */}
 
-            {status === OrderStatus.accepted ? (
+            {status === OrderStatus.completed ? (
                 <Button
                     variant="secondarySuccess"
                     size={isLargeTextMode ? "lg" : "md"}
@@ -284,46 +215,51 @@ export const Order = ({
                     ออเดอร์เสร็จสิ้น
                 </Button>
             ) : (
-                <div className="grid grid-cols-3 gap-x-2">
-                    <Button
-                        variant="primary"
-                        size={isLargeTextMode ? "lg" : "md"}
-                        className="flex w-full"
-                        type="button"
-                        disabled={isUpdating}
-                        onClick={() => handleUpdateStatus(orderId)}
-                    >
-                        <span className="noto-sans-regular">
-                            {/* {getOrderStatusProps(status).text} */}
-                            เริ่มปรุง
-                        </span>
-                    </Button>
+                <div className={status === OrderStatus.sent ? "grid grid-cols-2 gap-x-2" : ""}>
+                    {status === OrderStatus.sent && (
+                        <>
+                            <Button
+                                variant="primary"
+                                size={isLargeTextMode ? "lg" : "md"}
+                                className="flex w-full"
+                                type="button"
+                                disabled={isUpdating}
+                                onClick={() => onStatusUpdate(orderId, OrderStatus.accepted)}
+                            >
+                                <span className="noto-sans-regular">
+                                    รับออเดอร์
+                                </span>
+                            </Button>
 
-                    <Button
-                        variant="secondaryDanger"
-                        disabled={isDelay || isUpdating}
-                        size={isLargeTextMode ? "lg" : "md"}
-                        type="button"
-                        className="flex w-full"
-                    onClick={() => handleUpdateStatus(orderId)}
-                    >
-                        <span className="noto-sans-regular">
-                            ปฏิเสธ
-                        </span>
-                    </Button>
+                            <Button
+                                variant="secondaryDanger"
+                                disabled={isDelay || isUpdating}
+                                size={isLargeTextMode ? "lg" : "md"}
+                                type="button"
+                                className="flex w-full"
+                                onClick={() => onStatusUpdate(orderId, OrderStatus.cancelled)}
+                            >
+                                <span className="noto-sans-regular">
+                                    ปฏิเสธ
+                                </span>
+                            </Button>
+                        </>
+                    )}
 
-                    <Button
-                        variant="tertiary"
-                        disabled={isDelay || isUpdating}
-                        size={isLargeTextMode ? "lg" : "md"}
-                        type="button"
-                        className="flex w-full"
-                        onClick={handleDelayOrder}
-                    >
-                        <span className="noto-sans-regular">
-                            {isDelay === false ? 'ล่าช้า10นาที' : 'แจ้งล่าช้าสำเร็จ'}
-                        </span>
-                    </Button>
+                    {status === OrderStatus.accepted && (
+                        <Button
+                            variant={isDelay === false ? "tertiary" : "secondary"}
+                            disabled={isDelay || isUpdating}
+                            size={"full"}
+                            type="button"
+                            className="flex w-full"
+                            onClick={() => onDelayUpdate(orderId)}
+                        >
+                            <span className="noto-sans-regular">
+                                {isDelay === false ? 'ล่าช้า10นาที' : 'แจ้งล่าช้าสำเร็จ'}
+                            </span>
+                        </Button>
+                    )}
                 </div>
             )}
         </div>
