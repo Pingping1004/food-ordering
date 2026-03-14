@@ -5,9 +5,17 @@ import { cva, VariantProps } from "class-variance-authority";
 export enum OrderStatus {
   sent = "sent",
   accepted = "accepted",
-  rejected = "rejected",
-  refund_pending = "refund_pending",
-  refund_complete = "refund_complete",
+  cancelled = "cancelled",
+  completed = "completed",
+}
+
+export enum PaymentStatus {
+    paid = "paid",
+    unpaid = "unpaid",
+    verifying = "verifying",
+    failed = "failed",
+    refund_pending = "refund_pending",
+    refund_complete = "refund_complete"
 }
 
 const orderNavbarVariants = cva(
@@ -17,9 +25,8 @@ const orderNavbarVariants = cva(
             variant: {
                 sent: "",
                 accepted: "",
-                rejected: "",
-                refund_pending: "",
-                refund_complete: "",
+                cancelled: "",
+                completed: ""
             },
         },
         defaultVariants: {
@@ -39,7 +46,7 @@ export const OrderNavBar = ({
     onStatusUpdate,
     ...props
 }: CookerNavbarProps) => {
-    const [state, setState] = useState<OrderStatus>(OrderStatus.accepted);
+    const [state, setState] = useState<OrderStatus>(OrderStatus.sent);
 
     const handleClick = (newState: OrderStatus) => {
         setState(newState);
@@ -78,36 +85,25 @@ export const OrderNavBar = ({
             </button>
 
             <button
-                onClick={() => handleClick(OrderStatus.refund_pending)}
+                onClick={() => handleClick(OrderStatus.completed)}
                 className={
-                    state === OrderStatus.refund_pending
+                    state === OrderStatus.completed
                         ? "w-1/2 text-primary p-2 border-b-2 border-primary-main"
                         : "w-1/2 p-2"
                 }
             >
-                รอคืนเงิน
+                เสร็จสิ้น
             </button>
 
             <button
-                onClick={() => handleClick(OrderStatus.refund_complete)}
+                onClick={() => handleClick(OrderStatus.cancelled)}
                 className={
-                    state === OrderStatus.refund_complete
+                    state === OrderStatus.cancelled
                         ? "w-1/2 text-primary p-2 border-b-2 border-primary-main"
                         : "w-1/2 p-2"
                 }
             >
-                คืนเงินสำเร็จ
-            </button>
-
-            <button
-                onClick={() => handleClick(OrderStatus.rejected)}
-                className={
-                    state === OrderStatus.rejected
-                        ? "w-1/2 text-primary p-2 border-b-2 border-primary-main"
-                        : "w-1/2 p-2"
-                }
-            >
-                ปฏิเสธ
+                ยกเลิก
             </button>
         </div>
     );
