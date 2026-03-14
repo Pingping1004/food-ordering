@@ -10,22 +10,24 @@ import { api } from "@/lib/api";
 import { getDateFormat, getTimeFormat } from "@/util/time";
 import Image from "next/image";
 import { useState, useEffect, useMemo, useRef } from "react";
+import { toastDanger, toastSuccess } from "@/components/ui/Toast";
 
 function Page() {
     const [isLargeTextMode, setIsLargeTextMode] = useState(false)
-    const [orders, setOrders] = useState<OrderProps[]>([]);
+    const [orders, setOrders] = useState<Record<string, OrderProps>>({});
     const lastTimestampRef = useRef<string | null>(null)
     const { cooker, fetchOrders } = useCooker();
     const [navbarStatus, setNavbarStatus] = useState<OrderStatus>(OrderStatus.sent);
     const [isLoading, setIsLoading] = useState<boolean>(true);
 
+    const fetchingRef = useRef(false);
     const fetchNewOrders = async () => {
+        if (fetchingRef.current) return fetchingRef.current = true
+
         try {
             const params = new URLSearchParams()
 
-            if (lastTimestampRef.current) {
-                params.append("after", lastTimestampRef.current)
-            }
+            if (lastTimestampRef.current) params.append("after", lastTimestampRef.current)
 
             const url = `/order/new/${cooker.restaurantId}` + (params.toString() ? `?${params.toString()}` : "");
             const response = await api.get(url)
@@ -33,23 +35,63 @@ function Page() {
 
             if (data.orders.length > 0) {
                 setOrders(prev => {
-                    const existing = new Set(prev.map(order => order.orderId));
-                    const newOrders = data.orders.filter((order: OrderProps) => !existing.has(order.orderId));
+                    const next = { ...prev }
 
-                    return [...prev, ...newOrders]
+                    for (const order of data.orders) {
+                        next[order.orderId] = order
+                    }
+
+                    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+                    for (const id in next) {
+                        if (new Date(next[id].orderAt).getTime() < cutoff) delete next[id]
+                    }
+
+                    return next
                 });
 
-                lastTimestampRef.current = data.latestTimestamp
+                if (data.latestTimestamp) lastTimestampRef.current = data.latestTimestamp
             }
         } finally {
             setIsLoading(false)
+            fetchingRef.current = false
         }
     }
+
+    const ordersArray = useMemo(
+        () => Object.values(orders),
+        [orders]
+    )
 
     const handleTextMode = () => {
         const newValue = !isLargeTextMode
         setIsLargeTextMode(newValue);
         localStorage.setItem("large_text_mode", JSON.stringify(newValue))
+    }
+
+    const handleDelayOrder = async (orderId: string) => {
+        try {
+            const response = await api.patch(`/order/delay/${orderId}`, { isDelay: true });
+            const updatedOrder = response.data.result;
+
+            setOrders(prev => ({ ...prev, [orderId]: updatedOrder }))
+            toastSuccess(response.data.message)
+        } catch (error) {
+            console.error("Update order delay error: ", error)
+            toastDanger(`แจ้งส่งออเดอร์ล่าช้าล้มเหลว`);
+        }
+    }
+
+    const handleUpdateStatus = async (orderId: string, status: OrderStatus) => {
+        try {
+            const response = await api.patch(`/order/update-status/${orderId}`, { status });
+            const updatedOrder = response.data.result;
+
+            setOrders(prev => ({ ...prev, [orderId]: updatedOrder }))
+            toastSuccess(response.data.message)
+        } catch (error) {
+            console.error("Update order status error: ", error)
+            toastDanger(`อัพเดทสถานะออเดอร์ล้มเหลว`);
+        }
     }
 
     useEffect(() => {
@@ -69,35 +111,30 @@ function Page() {
         return () => clearInterval(interval)
     }, [cooker.restaurantId])
 
-    const filterWeeklyOrders = useMemo(() => {
-        return orders.filter((order) => order.isPaid === "paid");
-    }, [orders]);
+    const filterDailyOrders = useMemo(() => {
+        const yesterday = new Date()
+        yesterday.setDate(yesterday.getDate() - 1)
 
-    const weeklyDone = useMemo(() => {
-        return filterWeeklyOrders.filter((order) => (order.status === OrderStatus.accepted)).length;
-    }, [filterWeeklyOrders]);
+        return ordersArray.filter((order) => order.paymentStatus === "paid" && new Date(order.orderAt) >= yesterday);
+    }, [ordersArray]);
 
-    const weeklySales = useMemo(() => {
-        return orders
-            .filter((order) => order.isPaid === "paid" && order.status === OrderStatus.accepted)
+    const dailyDone = useMemo(() => {
+        return ordersArray.filter((order) => (order.status === OrderStatus.accepted)).length;
+    }, [filterDailyOrders]);
+
+    const dailySales = useMemo(() => {
+        return ordersArray.filter((order) => order.paymentStatus === "paid" && order.status === OrderStatus.accepted)
             .reduce((total, order) => total + Number(order.totalAmount), 0);
-    }, [filterWeeklyOrders]);
-
-    const handleOrderUpdate = (updatedOrder: OrderProps) => {
-        setOrders(prev =>
-            prev.map(order => order.orderId === updatedOrder.orderId ? updatedOrder : order)
-        );
-
-        fetchOrders();
-    };
+    }, [ordersArray]);
 
     const handleNavbarChange = (status: OrderStatus) => {
         setNavbarStatus(status);
     };
 
     const filterOrderStatus: OrderProps[] = useMemo(() => {
-        return orders.filter(order => order.status === navbarStatus);
-    }, [navbarStatus, orders]);
+        return ordersArray.filter(order => order.status === navbarStatus)
+            .sort((a, b) => new Date(a.deliverAt).getTime() - new Date(b.deliverAt).getTime());
+    }, [navbarStatus, ordersArray]);
 
     if (!cooker.isApproved) {
         return (
@@ -147,9 +184,9 @@ function Page() {
                 <section className="flex flex-col gap-y-6">
                     <h1 className={`${isLargeTextMode ? "text-3xl" : "text-2xl"} font-bold text-primary`}>สรุปรายสัปดาห์</h1>
                     <div className="flex justify-between items-center">
-                        <h2 className={`${isLargeTextMode ? "text-2xl" : "text-lg"} font-bold text-primary`}>ยอดรวม: {weeklySales}</h2>
+                        <h2 className={`${isLargeTextMode ? "text-2xl" : "text-lg"} font-bold text-primary`}>ยอดขายรวม: {dailySales}</h2>
 
-                        <p className={`${isLargeTextMode ? "text-xl" : "text-lg"} text-secondary`}>ออเดอร์สัปดาห์นี้: {weeklyDone}</p>
+                        <p className={`${isLargeTextMode ? "text-xl" : "text-lg"} text-secondary`}>ออเดอร์วันนี้: {dailyDone}</p>
                     </div>
                 </section>
             ) : ('')}
@@ -200,15 +237,15 @@ function Page() {
                         status={order.status}
                         orderAt={`${getTimeFormat(order.orderAt)} ${getDateFormat(new Date(order.orderAt))}`}
                         deliverAt={order.deliverAt}
-                        isPaid={order.isPaid}
+                        paymentStatus={order.paymentStatus}
                         orderMenus={order.orderMenus}
                         details={order.details}
                         userTel={order.userTel}
                         isLargeTextMode={isLargeTextMode}
                         className="mb-4"
                         selected="default"
-                        onDelayUpdate={handleOrderUpdate}
-                        onStatusUpdate={handleOrderUpdate}
+                        onDelayUpdate={handleDelayOrder}
+                        onStatusUpdate={handleUpdateStatus}
                     />
                 ))}
             </main>
