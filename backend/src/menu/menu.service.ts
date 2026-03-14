@@ -344,12 +344,11 @@ export class MenuService implements OnModuleInit {
             }
 
             return cachedMenus.map(menu => {
-                const remainingQuota = quotas[menu.menuId] !== undefined ? quotas[menu.menuId] : menu.maxDaily;
-                const isOrderable = menu.isAvailable && remainingQuota > 0;
+                const remainingQuota = quotas[menu.menuId] ?? menu.maxDaily;
 
                 return {
                     ...menu,
-                    isOrderable,
+                    isOrderable: menu.isAvailable && remainingQuota > 0,
                 };
             });
         }
@@ -375,20 +374,7 @@ export class MenuService implements OnModuleInit {
                 },
             });
 
-            const menus = dbMenus.map(menu => {
-                const displayPrices = this.calculateDisplayPrice(menu);
-
-                return {
-                    ...menu,
-                    menuImg: menu.menuImg ?? undefined,
-                    sellPriceDisplay: displayPrices.sellPriceDisplay,
-                    isOrderable: false
-                };
-            });
-
-            setMenuCache(cacheKey, menus, this.MENU_CACHE_TTL_MS);
-
-            const menuIds = menus.map(m => m.menuId);
+            const menuIds = dbMenus.map(m => m.menuId);
             let quotas = getMenuQuotaCache(quotaCacheKey);
 
             if (quotas) {
@@ -398,15 +384,21 @@ export class MenuService implements OnModuleInit {
                 setMenuQuotaCache(quotaCacheKey, quotas, this.QUOTA_CACHE_TTL_MS);
             }
 
-            return menus.map(menu => {
-                const remainingQuota = quotas[menu.menuId] ?? 0;
-                const isOrderable = menu.isAvailable && remainingQuota > 0;
+            const menus = dbMenus.map(menu => {
+                const displayPrices = this.calculateDisplayPrice(menu);
+                const remainingQuota = quotas[menu.menuId] ?? menu.maxDaily;
 
                 return {
                     ...menu,
-                    isOrderable,
+                    menuImg: menu.menuImg ?? undefined,
+                    sellPriceDisplay: displayPrices.sellPriceDisplay,
+                    isOrderable: menu.isAvailable && remainingQuota > 0
                 };
             });
+
+            setMenuCache(cacheKey, menus, this.MENU_CACHE_TTL_MS);
+
+            return menus;
         })();
 
         this.pendingMenuRequest.set(cacheKey, requestPromise);
