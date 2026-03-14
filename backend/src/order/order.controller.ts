@@ -10,6 +10,8 @@ import {
   Req,
   Logger,
   Query,
+  NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -88,12 +90,17 @@ export class OrderController {
     @Param('orderId') orderId: string,
     @Body() updateOrderDto: UpdateOrderDto,
   ) {
-    return this.orderService.updateDelay(orderId, updateOrderDto);
+    if (!updateOrderDto.isDelay) throw new NotFoundException('ไม่พบสถานะออเดอร์ที่ต้องการแก้ไข')
+      
+    return this.orderService.updateDelay(orderId, updateOrderDto.isDelay);
   }
 
   @Patch('update-status/:orderId')
-  async updateOrderStatus(@Param('orderId')orderId: string, @Body() status: OrderStatus) {
-    return this.orderService.updateOrderStatus(orderId, status);
+  async updateOrderStatus(@Param('orderId')orderId: string, @Body() updateOrderDto: UpdateOrderDto) {
+    if (!updateOrderDto.status) throw new BadRequestException('ไม่พบสถานะออเดอร์');
+    if (!Object.values(OrderStatus).includes(updateOrderDto.status)) throw new BadRequestException('สถานะออเดอร์ไม่ถูกต้อง')
+    
+      return this.orderService.updateOrderStatus(orderId, updateOrderDto.status);
   }
 
   @Delete(':orderId')
