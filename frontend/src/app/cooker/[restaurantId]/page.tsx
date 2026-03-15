@@ -16,9 +16,10 @@ function Page() {
     const [isLargeTextMode, setIsLargeTextMode] = useState(false)
     const [orders, setOrders] = useState<Record<string, OrderProps>>({});
     const lastTimestampRef = useRef<string | null>(null)
-    const { cooker, fetchOrders } = useCooker();
+    const { cooker } = useCooker();
     const [navbarStatus, setNavbarStatus] = useState<OrderStatus>(OrderStatus.sent);
     const [isLoading, setIsLoading] = useState<boolean>(true);
+    const [now, setNow] = useState(new Date());
 
     const fetchingRef = useRef(false);
     const fetchNewOrders = async () => {
@@ -56,11 +57,6 @@ function Page() {
             fetchingRef.current = false
         }
     }
-
-    const ordersArray = useMemo(
-        () => Object.values(orders),
-        [orders]
-    )
 
     const handleTextMode = () => {
         const newValue = !isLargeTextMode
@@ -111,25 +107,41 @@ function Page() {
         return () => clearInterval(interval)
     }, [cooker.restaurantId])
 
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setNow(new Date());
+        }, 10000);
+
+        return () => clearInterval(interval);
+    }, []);
+
+    const ordersArray = useMemo(() => Object.values(orders),[orders])
     const filterDailyOrders = useMemo(() => {
         const yesterday = new Date()
         yesterday.setDate(yesterday.getDate() - 1)
 
-        return ordersArray.filter((order) => order.paymentStatus === "paid" && new Date(order.orderAt) >= yesterday);
+        return ordersArray.filter((order) => order.paymentStatus === "paid" && order.completedAt && order.completedAt >= yesterday);
     }, [ordersArray]);
 
     const dailyDone = useMemo(() => {
-        return ordersArray.filter((order) => (order.status === OrderStatus.accepted)).length;
+        return ordersArray.filter((order) => (order.status === OrderStatus.completed && order.completedAt)).length;
     }, [filterDailyOrders]);
 
     const dailySales = useMemo(() => {
-        return ordersArray.filter((order) => order.paymentStatus === "paid" && order.status === OrderStatus.accepted)
+        return ordersArray.filter((order) => order.paymentStatus === "paid" && order.status === OrderStatus.completed && order.completedAt)
             .reduce((total, order) => total + Number(order.totalAmount), 0);
     }, [ordersArray]);
 
     const handleNavbarChange = (status: OrderStatus) => {
         setNavbarStatus(status);
     };
+
+    const isButtonDisabled = (orderAt: Date, bufferMins: number): boolean => {
+        const elapsedMs = now.getTime() - new Date(orderAt).getTime();
+        const elapsedMins = elapsedMs / 1000 / 60;
+
+        return elapsedMins > bufferMins;
+    }
 
     const filterOrderStatus: OrderProps[] = useMemo(() => {
         return ordersArray.filter(order => order.status === navbarStatus)
@@ -177,16 +189,17 @@ function Page() {
 
             <OrderNavBar
                 status={navbarStatus}
+                isLargeTextMode={isLargeTextMode}
                 onStatusUpdate={handleNavbarChange}
             />
 
-            {navbarStatus === OrderStatus.accepted ? (
+            {navbarStatus === OrderStatus.completed ? (
                 <section className="flex flex-col gap-y-6">
-                    <h1 className={`${isLargeTextMode ? "text-3xl" : "text-2xl"} font-bold text-primary`}>สรุปรายสัปดาห์</h1>
+                    <h1 className={`${isLargeTextMode ? "text-3xl" : "text-2xl"} font-bold text-primary`}>สรุปรายวัน</h1>
                     <div className="flex justify-between items-center">
-                        <h2 className={`${isLargeTextMode ? "text-2xl" : "text-lg"} font-bold text-primary`}>ยอดขายรวม: {dailySales}</h2>
+                        <h2 className={`${isLargeTextMode ? "text-2xl" : "text-xl"} font-bold text-primary`}>ยอดขายรวม: {dailySales}</h2>
 
-                        <p className={`${isLargeTextMode ? "text-xl" : "text-lg"} text-secondary`}>ออเดอร์วันนี้: {dailyDone}</p>
+                        <p className={`${isLargeTextMode ? "text-2xl" : "text-xl"} text-secondary`}>ออเดอร์วันนี้: {dailyDone}</p>
                     </div>
                 </section>
             ) : ('')}
@@ -242,6 +255,8 @@ function Page() {
                         details={order.details}
                         userTel={order.userTel}
                         isLargeTextMode={isLargeTextMode}
+                        isDelayDisabled={isButtonDisabled(new Date(order.orderAt), 10)}
+                        isCancelledDisabled={isButtonDisabled(new Date(order.orderAt), 5)}
                         className="mb-4"
                         selected="default"
                         onDelayUpdate={handleDelayOrder}
