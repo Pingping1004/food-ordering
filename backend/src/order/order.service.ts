@@ -3,7 +3,6 @@ import {
   Injectable,
   Inject,
   NotFoundException,
-  InternalServerErrorException,
   ForbiddenException,
   Logger,
   forwardRef,
@@ -13,6 +12,7 @@ import { UpdateOrderDto } from './dto/update-order.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentStatus, OrderStatus, PaymentMethod } from '@prisma/client';
 import { PaymentService } from 'src/payment/payment.service';
+import { Cron } from '@nestjs/schedule';
 import { calculateWeeklyInterval } from 'src/payout/payout-calculator';
 
 import { InventoryService } from 'src/inventory/inventory.service';
@@ -386,5 +386,40 @@ export class OrderService {
     return this.prisma.order.delete({
       where: { orderId },
     });
+  }
+
+  @Cron('*/5 * * * *')
+  async autoCompleteOrders() {
+    const bufferMinutes = 15;
+    const threshold = new Date(Date.now() - bufferMinutes * 60 * 1000);
+
+    const result = await this.prisma.order.updateMany({
+      where: {
+        status: 'accepted',
+        deliverAt: { lt: threshold }
+      },
+      data: { status: 'completed', completedAt: new Date() }
+    });
+
+    if (result.count > 0) this.logger.log(`Auto completed ${result.count} orders`)
+  }
+
+  @Cron('*/15 * * * *')
+  async autoCancelledOrders() {
+    const threshold = new Date(Date.now() - 15 * 60 * 1000);
+    const result = await this.prisma.order.updateMany({
+      where: {
+        status: "sent",
+        paymentStatus: "paid",
+        orderAt: { lt: threshold }
+      },
+      data: {
+        status: "cancelled",
+        paymentStatus: "refund_pending",
+        cancelledAt: new Date()
+      }
+    });
+
+    if (result.count > 0) this.logger.log(`Auto-cancelled ${result.count} orders`);
   }
 }

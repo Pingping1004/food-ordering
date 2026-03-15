@@ -144,6 +144,10 @@ model Order {
   paymentSlipImg       String
   paymentMethod        String?     @map("payment_method_type")
   paymentGatewayStatus String?     @map("payment_gateway_status")
+  
+  completedAt          DateTime?
+  cancelledAt          DateTime?
+  refundAt             DateTime?
 
   restaurantId         String
   restaurant           Restaurant  @relation("restaurantToOrder", fields: [restaurantId], references: [restaurantId], onDelete: Cascade)

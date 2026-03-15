@@ -46,6 +46,7 @@ import configuration from './config/configuration';
 import { InventoryModule } from './inventory/inventory.module';
 import { InventoryService } from './inventory/inventory.service';
 import { TokenCleanService } from './auth/jobs/tokenClean.job';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { TokenCleanService } from './auth/jobs/tokenClean.job';
       load: [configuration],
       envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
     }),
+    ScheduleModule.forRoot(),
     PayoutModule,
     AuthModule,
     UserModule,
