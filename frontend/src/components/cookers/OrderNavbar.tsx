@@ -38,12 +38,14 @@ const orderNavbarVariants = cva(
 export type CookerNavbarProps = React.HTMLAttributes<HTMLDivElement> &
   VariantProps<typeof orderNavbarVariants> & {
     status: OrderStatus;
+    isLargeTextMode?: boolean
     onStatusUpdate: (navStatus: OrderStatus) => void;
 };
 
 export const OrderNavBar = ({
     className,
     onStatusUpdate,
+    isLargeTextMode = false,
     ...props
 }: CookerNavbarProps) => {
     const [state, setState] = useState<OrderStatus>(OrderStatus.sent);
@@ -64,44 +66,40 @@ export const OrderNavBar = ({
         >
             <button
                 onClick={() => handleClick(OrderStatus.sent)}
-                className={
-                    state === OrderStatus.sent
-                        ? "w-1/2 text-primary p-2 border-b-2 border-primary-main"
-                        : "w-1/2 p-2"
-                }
+                className={`w-1/2 p-2
+                    ${state === OrderStatus.sent ? "text-primary border-b-2 border-primary-main" : ""}
+                    ${isLargeTextMode ? "text-lg py-3" : "text-sm"}
+                `}
             >
                 ออเดอร์ใหม่
             </button>
 
             <button
                 onClick={() => handleClick(OrderStatus.accepted)}
-                className={
-                    state === OrderStatus.accepted
-                        ? "w-1/2 text-primary p-2 border-b-2 border-primary-main"
-                        : "w-1/2 p-2"
-                }
+                className={`w-1/2 p-2
+                    ${state === OrderStatus.accepted ? "text-primary border-b-2 border-primary-main" : ""}
+                    ${isLargeTextMode ? "text-lg py-3" : "text-sm"}
+                `}
             >
                 รับแล้ว
             </button>
 
             <button
                 onClick={() => handleClick(OrderStatus.completed)}
-                className={
-                    state === OrderStatus.completed
-                        ? "w-1/2 text-primary p-2 border-b-2 border-primary-main"
-                        : "w-1/2 p-2"
-                }
+                className={`w-1/2 p-2
+                    ${state === OrderStatus.completed ? "text-primary border-b-2 border-primary-main" : ""}
+                    ${isLargeTextMode ? "text-lg py-3" : "text-sm"}
+                `}
             >
                 เสร็จสิ้น
             </button>
 
             <button
                 onClick={() => handleClick(OrderStatus.cancelled)}
-                className={
-                    state === OrderStatus.cancelled
-                        ? "w-1/2 text-primary p-2 border-b-2 border-primary-main"
-                        : "w-1/2 p-2"
-                }
+                className={`w-1/2 p-2
+                    ${state === OrderStatus.cancelled ? "text-primary border-b-2 border-primary-main" : ""}
+                    ${isLargeTextMode ? "text-lg py-3" : "text-sm"}
+                `}
             >
                 ยกเลิก
             </button>

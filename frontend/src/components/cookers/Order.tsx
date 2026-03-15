@@ -55,7 +55,12 @@ export type OrderProps = React.HTMLAttributes<HTMLDivElement> &
         orderMenus: { quantity: number; menuName: string; menuImg?: string }[];
         details?: string;
         userTel: string;
+        completedAt?: Date;
+        cancelledAt?: Date;
+        refundAt?: Date;
         isLargeTextMode?: boolean
+        isDelayDisabled: boolean
+        isCancelledDisabled: boolean
         onDelayUpdate: (orderId: string) => void;
         onStatusUpdate: (orderId: string, status: OrderStatus) => void;
     };
@@ -72,8 +77,13 @@ export const Order = ({
     paymentStatus,
     isDelay = false,
     orderMenus = [],
+    completedAt,
+    cancelledAt,
+    refundAt,
     className,
     isLargeTextMode = false,
+    isDelayDisabled = false,
+    isCancelledDisabled = false,
     onDelayUpdate,
     onStatusUpdate,
     ...props
@@ -81,7 +91,8 @@ export const Order = ({
     const [isDelayed, setIsDelayed] = useState(isDelay);
     const [isUpdating, setIsUpdating] = useState(false);
 
-    const isRefund = variant?.startsWith('refund');
+    // const isRefund = variant?.startsWith('refund');
+    const isRefund = (paymentStatus === "refund_complete" || paymentStatus === "refund_pending") && status === OrderStatus.cancelled
 
     return (
         <div
@@ -116,8 +127,8 @@ export const Order = ({
                     <div className="flex flex-col gap-y-1">
                         <div className="flex justify-center gap-x-2">
                             <h3 className={clsx(
-                                "noto-sans-bold text-lg text-primary",
-                                isLargeTextMode ? "text-2xl" : "text-lg"
+                                "noto-sans-bold text-primary",
+                                isLargeTextMode ? "text-3xl" : "text-xl"
                             )}>
                                 {orderId?.substring(0, 4)}
                             </h3>
@@ -128,10 +139,10 @@ export const Order = ({
                                     isLargeTextMode ? "text-base" : "text-sm"
                                 )}
                             >
-                                (<span className="mr-1">เบอร์ติดต่อ:</span>
+                                (<span className={clsx("mr-1", isLargeTextMode ? "text-xl" : "text-lg")}>เบอร์ติดต่อ:</span>
                                 <a
                                     href={`tel:${userTel}`}
-                                    className="text-info underline hover:text-info"
+                                    className={clsx("text-info underline hover:text-info", isLargeTextMode ? "text-xl" : "text-lg")}
                                 >
                                     {userTel}
                                 </a>
@@ -148,16 +159,6 @@ export const Order = ({
                         </p>
                     </div>
                 </div>
-
-                {isRefund && (
-                    <Button
-                        variant={paymentStatus === 'refund_complete' ? "secondarySuccess" : "secondaryDanger"}
-                        size="sm"
-                        type="button"
-                    >
-                        {paymentStatus === 'refund_complete' ? "คืนเงินแล้ว" : "ยังไม่่คืนเงิน"}
-                    </Button>
-                )}
             </header>
 
             <main className="flex grid-rows-2 justify-between">
@@ -171,7 +172,7 @@ export const Order = ({
                     {orderMenus.map((item) => (
                         <p
                             key={item.menuName}
-                            className={clsx(isLargeTextMode ? "text-xl mb-1 font-bold" : "text-base")}
+                            className={clsx(isLargeTextMode ? "text-2xl mb-1 font-bold" : "text-lg")}
                         >
                             {item.quantity}x - {item.menuName}
                         </p>
@@ -183,7 +184,7 @@ export const Order = ({
                         <p className={clsx(isLargeTextMode ? "text-base" : "text-sm")}>จัดส่ง:</p>
 
                         <h4
-                            className={clsx("text-secondary", isLargeTextMode ? "text-xl font-bold" : "text-base")}
+                            className={clsx("text-secondary", isLargeTextMode ? "text-2xl font-bold" : "text-xl")}
                         >
                             {getTimeFormat(deliverAt)}
                         </h4>
@@ -192,7 +193,7 @@ export const Order = ({
                     <div className="text-center">
                         <p className={clsx(isLargeTextMode ? "text-base" : "text-sm")}>ราคา:</p>
                         <h4
-                            className={clsx("text-secondary", isLargeTextMode ? "text-xl font-bold" : "text-base")}
+                            className={clsx("text-secondary", isLargeTextMode ? "text-2xl font-bold" : "text-xl")}
                         >
                             {totalAmount}
                         </h4>
@@ -204,6 +205,16 @@ export const Order = ({
                 <p className="noto-sans-bold text-sm">{details}</p>
             </section> */}
 
+            {isRefund && (
+                <Button
+                    variant={paymentStatus === 'refund_complete' ? "secondarySuccess" : "secondaryDanger"}
+                    size="full"
+                    type="button"
+                >
+                    <p className={clsx(isLargeTextMode ? "text-2xl mb-1 font-bold" : "text-lg")}>{paymentStatus === 'refund_complete' ? "คืนเงินแล้ว" : "ยังไม่คืนเงิน"}</p>
+                </Button>
+            )}
+
             {status === OrderStatus.completed ? (
                 <Button
                     variant="secondarySuccess"
@@ -211,7 +222,7 @@ export const Order = ({
                     className="flex w-full"
                     type="button"
                 >
-                    ออเดอร์เสร็จสิ้น
+                    <p className={clsx(isLargeTextMode ? "text-2xl mb-1 font-bold" : "text-lg")}>ออเดอร์เสร็จสิ้น</p>
                 </Button>
             ) : (
                 <div className={status === OrderStatus.sent ? "grid grid-cols-2 gap-x-2" : ""}>
@@ -225,22 +236,18 @@ export const Order = ({
                                 disabled={isUpdating}
                                 onClick={() => onStatusUpdate(orderId, OrderStatus.accepted)}
                             >
-                                <span className="noto-sans-regular">
-                                    รับออเดอร์
-                                </span>
+                                <p className={clsx(isLargeTextMode ? "text-2xl mb-1 font-bold" : "text-lg")}>รับออเดอร์</p>
                             </Button>
 
                             <Button
                                 variant="secondaryDanger"
-                                disabled={isDelay || isUpdating}
+                                disabled={isDelay || isUpdating || isCancelledDisabled}
                                 size={isLargeTextMode ? "lg" : "md"}
                                 type="button"
                                 className="flex w-full"
                                 onClick={() => onStatusUpdate(orderId, OrderStatus.cancelled)}
                             >
-                                <span className="noto-sans-regular">
-                                    ปฏิเสธ
-                                </span>
+                                <p className={clsx(isLargeTextMode ? "text-2xl mb-1 font-bold" : "text-lg")}>ปฏิเสธ</p>
                             </Button>
                         </>
                     )}
@@ -248,15 +255,15 @@ export const Order = ({
                     {status === OrderStatus.accepted && (
                         <Button
                             variant={isDelay === false ? "tertiary" : "secondary"}
-                            disabled={isDelay || isUpdating}
+                            disabled={isDelay || isUpdating || isDelayDisabled}
                             size={"full"}
                             type="button"
                             className="flex w-full"
                             onClick={() => onDelayUpdate(orderId)}
                         >
-                            <span className="noto-sans-regular">
-                                {isDelay === false ? 'ล่าช้า10นาที' : 'แจ้งล่าช้าสำเร็จ'}
-                            </span>
+                            <p className={clsx(isLargeTextMode ? "text-2xl mb-1 font-bold" : "text-lg")}>
+                                {isDelay === false ? 'แจ้งล่าช้า10นาที' : 'แจ้งล่าช้าสำเร็จ'}
+                            </p>
                         </Button>
                     )}
                 </div>
