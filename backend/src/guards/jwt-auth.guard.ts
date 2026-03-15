@@ -36,9 +36,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   }
 
   handleRequest(err, user, info) {
-    if (err || !user) {
-      throw err || new UnauthorizedException();
-    }
+    if (err || !user) throw err || new UnauthorizedException();
 
     if (info) {
       this.logger.error(
@@ -46,14 +44,14 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       );
       // Specific checks for common JWT errors:
       if (info.name === 'TokenExpiredError') {
-        throw new UnauthorizedException('Token Expired');
+        throw new UnauthorizedException('โทเคนหมดอายุ');
       } else if (info.name === 'JsonWebTokenError') {
         // This is often due to an invalid signature (secret mismatch)
-        throw new UnauthorizedException('Invalid Token Signature');
+        throw new UnauthorizedException('โทเคนไม่ถูกต้อง');
       } else if (info.name === 'NotBeforeError') {
-        throw new UnauthorizedException('Token not active yet');
+        throw new UnauthorizedException('โทเคนยังไม่ถูกเริ่มใช้งาน');
       }
-      throw err || new UnauthorizedException('Unauthorized');
+      throw err || new UnauthorizedException('ไม่ได้รับอนุญาติ');
     }
 
     return user;

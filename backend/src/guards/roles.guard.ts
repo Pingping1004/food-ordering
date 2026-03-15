@@ -31,9 +31,7 @@ export class RolesGuard implements CanActivate {
     const userRole = user.role;
 
     if (!userRole || !requiredRoles) {
-      throw new ForbiddenException(
-        'ผู้ใช้งานทั่วไปไม่สามารถแก้ไขข้อมูลของร้านอาหารได้',
-      );
+      throw new ForbiddenException('ผู้ใช้งานทั่วไปไม่สามารถแก้ไขข้อมูลของร้านอาหารได้');
     }
 
     return requiredRoles.includes(userRole);

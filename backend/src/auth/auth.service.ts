@@ -110,7 +110,7 @@ export class AuthService {
   async login(loginDto: LoginDto) { 
     this.csrfTokenService.generateToken();
     const validationResult = await this.validateUser(loginDto.email, loginDto.password);
-    if (!validationResult) throw new NotFoundException('Validation result not found');
+    if (!validationResult) throw new NotFoundException('ไม่พบผลการยืนยัน');
 
     if (validationResult.errorType) {
       this.logger.log(`Login failed: Email '${loginDto.email}' not found.`);
@@ -119,10 +119,10 @@ export class AuthService {
 
     const user = validationResult.user;
 
-    if (!user) throw new NotFoundException('User data not found');
+    if (!user) throw new NotFoundException('ไม่พบข้อมูลลูกค้า');
     if (!user.userId || !user.email || !user.role) {
       this.logger.error(`User data is incomplete for user ID: ${user.userId}`);
-      throw new UnauthorizedException('User profile is incomplete. Please contact support.');
+      throw new UnauthorizedException('โปรไฟล์ยังไม่สมบูรณ์ กรุณาลองอีกครั้ง');
     }
 
     const existingUser = await this.userService.findOneUser(user.userId);
@@ -151,20 +151,11 @@ export class AuthService {
     try {
       const payload = await this.jwtService.verifyAsync(refreshToken);
 
-      if (!payload.jti || !payload.sub) {
-        throw new UnauthorizedException(
-          'Invalid refresh token payload: missing JTI or User ID',
-        );
-      }
+      if (!payload.jti || !payload.sub) throw new UnauthorizedException('โทเคนไม่ถูกต้อง');
 
       const storedToken = await this.refreshTokenService.findTokenByJti(payload.jti);
-      if (!storedToken || storedToken.isRevoked) {
-        throw new UnauthorizedException('Invalid or revoked refresh token');
-      }
-
-      if (storedToken.expiresAt < new Date()) {
-        throw new UnauthorizedException('Refresh token expired');
-      }
+      if (!storedToken || storedToken.isRevoked) throw new UnauthorizedException('Refresh token ไม่ถูกต้อง');
+      if (storedToken.expiresAt < new Date()) throw new UnauthorizedException('Refresh token หมดอายุ');
 
       const newExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
       await this.refreshTokenService.updateTokenExpiry(payload.jti, newExpiry);
@@ -172,9 +163,7 @@ export class AuthService {
       const user = await this.userService.findOneUser(payload.sub);
       if (!user) {
         await this.refreshTokenService.revokeToken(payload.jti);
-        throw new UnauthorizedException(
-          'User associated with refresh token not found.',
-        );
+        throw new UnauthorizedException('ไม่พบผู้ใช่ที่มีrefresh tokenนี้');
       }
 
       const newAccessTokenPayload: AccessTokenPayload = {
@@ -202,7 +191,7 @@ export class AuthService {
       };
     } catch (error) {
       this.logger.error('Refresh token verification failed:', error);
-      throw new UnauthorizedException('Invalid refresh token');
+      throw new UnauthorizedException('โทเคนไม่ถูกต้อง');
     }
   }
 
@@ -210,7 +199,7 @@ export class AuthService {
     this.csrfTokenService.generateToken();
     const existingUser = await this.userService.findOneByEmail(signupDto.email);
     if (existingUser)
-      throw new ConflictException('User with this email already exists');
+      throw new ConflictException(`อีเมล ${signupDto.email}นี้ถูกใช้งานแล้ว`);
 
     const newUser = await this.userService.createUser({
       ...signupDto,

@@ -86,7 +86,7 @@ export class MenuService implements OnModuleInit {
     async createSingleMenu(createMenuDto: CreateMenuDto, file: Express.Multer.File) {
         const existingName = await this.checkDuplicateMenuNameInRestaurant(createMenuDto.name, createMenuDto.restaurantId);
         if (existingName)
-            throw new BadRequestException(`Menu name ${createMenuDto.name} has already exists`);
+            throw new BadRequestException(`เมนู ${createMenuDto.name} มีอยู่แล้ว`);
 
         const { url: menuImageUrl } = await this.uploadService.saveImage(file);
         try {
@@ -109,9 +109,7 @@ export class MenuService implements OnModuleInit {
             return result;
         } catch (error) {
             this.logger.error(`Failed to create menu ${createMenuDto.name}:`, error);
-            throw new InternalServerErrorException(
-                'Failed to create menu: ' + error.message,
-            );
+            throw new InternalServerErrorException('สร้างเมนูล้มเหลว: ' + error.message);
         }
     }
 
@@ -131,17 +129,17 @@ export class MenuService implements OnModuleInit {
             // 4. Format and return the final comprehensive result
             return this.formatResponse(menusData.length, createdMenus, failedCreations);
         } catch (error: any) {
-            this.logger.error(`An unexpected error occurred during bulk menu creation for restaurant ${restaurantId}: `, error);
+            this.logger.error(`สร้างหลายเมนูพร้อมกันล้มเหลว ${restaurantId}: `, error);
             if (error instanceof BadRequestException || error instanceof ConflictException) {
                 throw error;
             }
 
-            throw new InternalServerErrorException('Failed to perform bulk menu creation due to an internal server error. Please try again.');
+            throw new InternalServerErrorException('เซิฟเวอร์ขัดข้อง กรุณาลองใหม่');
         }
     }
 
     private async validateBulkInput(restaurantId: string, menusData: CsvMenuItemData[]) {
-        if (!restaurantId) throw new BadRequestException('Restaurant ID is required.');
+        if (!restaurantId) throw new BadRequestException('ไม่พบไอดีร้านอาหาร.');
         const existingRestaurant = await this.restaurantService.findRestaurant(restaurantId);
 
         const newMenuNames = menusData.map((dto) => dto.name);
@@ -159,9 +157,8 @@ export class MenuService implements OnModuleInit {
             );
 
             throw new ConflictException(
-                `Duplicate menu names found within the batch: ${[...new Set(duplicateNamesInBatch)].join(', ')}. ` +
-                `Each menu name must be unique within the batch.`,
-            );
+                `พบเมนูซ้ำดังต่อไปนี้: ${[...new Set(duplicateNamesInBatch)].join(', ')}. ` +
+                `ชื่อเมนูในร้านต้องไม่ซ้ำกัน`);
         }
 
         const existingMenusWithSameNames = await this.prisma.menu.findMany({
@@ -175,8 +172,8 @@ export class MenuService implements OnModuleInit {
         if (existingMenusWithSameNames.length > 0) {
             const duplicateNamesInDb = existingMenusWithSameNames.map((menu) => menu.name);
             throw new ConflictException(
-                `The following menu names already exist for restaurant ${restaurantId}: ${duplicateNamesInDb.join(', ')}. ` +
-                `Menu names must be unique per restaurant.`,
+                `เมนูดังต่อไปนี้มีอยู่แล้ว: ${duplicateNamesInDb.join(', ')}. ` +
+                `ชื่อเมนูในร้านต้องไม่ซ้ำกัน`,
             );
         }
     }
@@ -214,7 +211,7 @@ export class MenuService implements OnModuleInit {
             menusData.map(async (dto) => {
                 try {
                     const imageData = this.tempImageStore.get(dto.menuImgTempId);
-                    if (!imageData) throw new BadRequestException(`Image not found for tempId: ${dto.menuImgTempId}`);
+                    if (!imageData) throw new BadRequestException(`ไม่พบรูปภาพ: ${dto.menuImgTempId}`);
 
                     const menuDataToCreate = {
                         name: dto.name,
@@ -273,12 +270,12 @@ export class MenuService implements OnModuleInit {
         const totalCreated = createdMenus.length;
         const totalFailed = failedCreations.length;
 
-        let responseMessage = `Bulk menu creation completed. `;
+        let responseMessage = `สร้างหลายเมนูสำเร็จ `;
         if (totalFailed > 0) {
             const failedNames = failedCreations.map((f) => f.item.name).join(', ');
-            responseMessage += `Created: ${totalCreated}, Failed: ${totalFailed}. Failed items: ${failedNames}.`;
+            responseMessage += `เพิ่ม: ${totalCreated}, ล้มเหลว: ${totalFailed} เมนูดังนี้: ${failedNames}.`;
         } else {
-            responseMessage += `All ${totalCreated} menus were successfully created.`;
+            responseMessage += `${totalCreated} เมนู`;
         }
 
         return {
@@ -306,10 +303,7 @@ export class MenuService implements OnModuleInit {
     }
 
     private calculateDisplayPrice(menu: Partial<Menu>) {
-        if (!menu.price)
-            throw new NotFoundException(
-                'Cannot find menu price, cannot calculate display price',
-            );
+        if (!menu.price) throw new NotFoundException('ไม่สามารถคำนวณราคาของเมนูได้');
 
         const priceInSatang = new Decimal(menu.price);
 
@@ -421,34 +415,27 @@ export class MenuService implements OnModuleInit {
             await this.restaurantService.findRestaurant(menu.restaurantId);
             return menu;
         } catch (error) {
-            if (error.code === 'P2025') {
-                // Prisma "Record not found"
-                throw new NotFoundException(`ไม่พบออเดอร์ที่มีID: ${menuId}`);
-            }
+            if (error.code === 'P2025') throw new NotFoundException(`ไม่พบออเดอร์ที่มีID: ${menuId}`); // Prisma "Record not found"
 
             throw error;
         }
     }
 
     private async isOwnerOfMultipleMenus(restaurantId: string, menuIds: string[]) {
-        if (menuIds.length === 0) throw new BadRequestException("Menu IDs cannot be empty");
+        if (menuIds.length === 0) throw new BadRequestException("ไม่พบเมนูไอดี");
 
         await this.restaurantService.findRestaurant(restaurantId);
 
         const allMenus = await this.prisma.menu.findMany({
             where: { menuId: { in: menuIds } },
-            select: { menuId: true, restaurantId: true },
+            select: { menuId: true, restaurantId: true, name: true },
         });
 
         if (allMenus.length !== menuIds.length) {
             const foundMenuIds = new Set(allMenus.map(menu => menu.menuId));
-            const notFoundMenuIds = menuIds.filter(
-                id => !foundMenuIds.has(id)
-            );
+            const notFoundMenuIds = menuIds.filter(id => !foundMenuIds.has(id));
 
-            if (notFoundMenuIds.length > 0) {
-                throw new NotFoundException(`The following menus were not found: ${notFoundMenuIds.join(", ")}`);
-            }
+            if (notFoundMenuIds.length > 0) throw new NotFoundException(`ไม่พบเมนูดังนี้: ${notFoundMenuIds.join(", ")}`);
         }
 
         const unauthorizedMenus = allMenus.filter(
@@ -456,32 +443,19 @@ export class MenuService implements OnModuleInit {
         );
 
         if (unauthorizedMenus.length > 0) {
-            const unauthorizedIds = unauthorizedMenus.map(
-                menu => menu.menuId
-            );
+            const unauthorizedMenuName = unauthorizedMenus.map(menu => menu.name);
 
-            throw new ForbiddenException(`The following menus exist but do not belong to restaurant "${restaurantId}": ${unauthorizedIds.join(", ")}`);
+            throw new ForbiddenException(`เมนูดังต่อไปนี้เป็นของร้านอื่น: ${unauthorizedMenuName.join(", ")}`);
         }
     }
 
-    omitUnchangedFields<T extends object>(
-        original: T,
-        updates: Partial<T>,
-    ): Partial<T> {
+    omitUnchangedFields<T extends object>(original: T, updates: Partial<T>): Partial<T> {
         const changedFields: Partial<T> = {};
 
         for (const key in updates) {
-            if (updates[key] !== undefined && updates[key] !== original[key]) {
-                changedFields[key] = updates[key];
-            }
+            if (updates[key] !== undefined && updates[key] !== original[key]) changedFields[key] = updates[key];
 
-            if (
-                key === 'menuImg' &&
-                typeof updates[key] === 'string' &&
-                updates[key] === '/'
-            ) {
-                continue;
-            }
+            if (key === 'menuImg' && typeof updates[key] === 'string' && updates[key] === '/') continue
         }
 
         return changedFields;
@@ -523,11 +497,7 @@ export class MenuService implements OnModuleInit {
         updateDtos: UpdateMenuDto[],
         files?: Express.Multer.File[],
     ) {
-        if (menuIds.length !== updateDtos.length) {
-            throw new BadRequestException(
-                'The number of menu IDs must match the number of update payloads.',
-            );
-        }
+        if (menuIds.length !== updateDtos.length) throw new BadRequestException('เมนูไอดีไม่ถูกต้อง');
 
         const restaurantId = updateDtos[0].restaurantId;
         await this.isOwnerOfMultipleMenus(restaurantId, menuIds)
@@ -539,9 +509,7 @@ export class MenuService implements OnModuleInit {
         const updates = updateDtos.map((dto, index) => {
             const menuImgUrl = imageUrl[index].url;
 
-            if (menuImgUrl) {
-                dto.menuImg = menuImgUrl;
-            }
+            if (menuImgUrl) dto.menuImg = menuImgUrl;
 
             return {
                 where: { menuId: menuIds[index] },
@@ -550,9 +518,7 @@ export class MenuService implements OnModuleInit {
         });
 
         try {
-            const updatePromises = updates.map(update =>
-                this.prisma.menu.update(update),
-            );
+            const updatePromises = updates.map(update => this.prisma.menu.update(update));
 
             const result = await this.prisma.$transaction(updatePromises);
 
@@ -560,7 +526,7 @@ export class MenuService implements OnModuleInit {
             return result;
         } catch (error) {
             this.logger.error('Failed to perform bulk menu update in transaction:', error);
-            throw new InternalServerErrorException('A transaction failed during bulk menu update. No changes were applied.');
+            throw new InternalServerErrorException('อัพเดทหลายเมนูล้มเหลว ไม่มีการแก้ไขเมนูใดๆ');
         }
     }
 
@@ -573,7 +539,7 @@ export class MenuService implements OnModuleInit {
             },
         });
 
-        if (!isOwner) throw new BadRequestException(`You are not the owner of the menu or restaurant`);
+        if (!isOwner) throw new BadRequestException(`คุณไม่ใช่ผู้ดูแลของร้านนี้`);
     }
 
     async updateIsAvailable(menuId: string, updateMenuDto: UpdateMenuDto) {
@@ -582,25 +548,18 @@ export class MenuService implements OnModuleInit {
 
             const result = await this.prisma.menu.update({
                 where: { menuId },
-                data: {
-                    isAvailable: updateMenuDto.isAvailable,
-                },
+                data: { isAvailable: updateMenuDto.isAvailable },
             });
 
             this.invalidateRestaurantMenuCache(updateMenuDto.restaurantId);
 
             return {
                 result,
-                message: `Sucessfully update availability of menu ${result.name} to be ${result.isAvailable}`,
+                message: `อัพเดทสถานะเมนู ${result.name} ให้เป็น ${result.isAvailable} สำเร็จ`,
             };
         } catch (error) {
-            this.logger.error(
-                `An unexpected error occurred during update menu isavailable`,
-                error,
-            );
-            throw new InternalServerErrorException(
-                'Failed to update isAvailable state of menu',
-            );
+            this.logger.error(`An unexpected error occurred during update menu isavailable`, error);
+            throw new InternalServerErrorException('อัพเดทสถานะเมนูล้มเหลว');
         }
     }
 

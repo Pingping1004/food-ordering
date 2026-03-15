@@ -53,7 +53,7 @@ export class CsrfGuard implements CanActivate {
     ) {
       throw new ForbiddenException({
         statusCode: HttpStatus.FORBIDDEN,
-        message: 'Invalid CSRF token.',
+        message: 'CSRF token ไม่ถูกต้อง',
         code: 'INVALID_CSRF_TOKEN',
       });
     }

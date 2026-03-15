@@ -25,7 +25,7 @@ export class UploadService {
             return uploadedInfo;
         } catch (error) {
             this.logger.error(`Error uploading image ${file.originalname}: ${error.message}`, error.stack);
-            throw new InternalServerErrorException(`Failed to upload image ${file.originalname}`);
+            throw new InternalServerErrorException(`อัพโหลดรูป ${file.originalname}ล้มเหลว`);
         }
     }
 
@@ -35,7 +35,7 @@ export class UploadService {
         try {
             return await Promise.all(uplaodPromises);
         } catch (error) {
-            this.logger.error(`Failed to upload bulk images`);
+            this.logger.error(`อัพโหลดหลายรูปล้มเหลว`);
             throw error;
         }
     }
@@ -61,7 +61,7 @@ export class UploadService {
             return results;
         } catch (error) {
             this.logger.log(`Failed to save optional bulk images: ${error}`);
-            throw new InternalServerErrorException('Failed to save optional bulk images');
+            throw new InternalServerErrorException('อัพโหลดหลายรูปล้มเหลว');
         }
     }
 
@@ -90,7 +90,7 @@ export class UploadService {
                 `Error deleting image with key ${key} from R2: ${error.message}`,
                 error.stack,
             );
-            throw new InternalServerErrorException(`Failed to delete image with key ${key}.`);
+            throw new InternalServerErrorException(`ลบรูปล้มเหลว`);
         }
     }
 }

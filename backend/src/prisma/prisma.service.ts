@@ -10,9 +10,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   constructor() {
     const connectionString = process.env.DATABASE_URL;
   
-    if (!connectionString) {
-      throw new Error("DATABASE_URL missing");
-    }
+    if (!connectionString) throw new Error("DATABASE_URL missing");
 
     const pool = new Pool({
       connectionString

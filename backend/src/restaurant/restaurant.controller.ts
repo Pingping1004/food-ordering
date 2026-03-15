@@ -98,12 +98,9 @@ export class RestaurantController {
         file,
       );
     } catch (error) {
-      this.logger.error(
-        `Failed to update restaurant ${restaurantId} in controller:`,
-        error,
-      );
+      this.logger.error(`Failed to update restaurant ${restaurantId} in controller: `, error);
 
-      throw new InternalServerErrorException('Failed to update restaurant');
+      throw new InternalServerErrorException('อัพเดทร้านอาหรรล้มเหลว');
     }
   }
 

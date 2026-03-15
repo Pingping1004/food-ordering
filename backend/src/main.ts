@@ -123,8 +123,7 @@ async function bootstrap() {
 
   const APP_GLOBAL_SECRET = assertEnvVar('APP_GLOBAL_SECRET');
   if (!APP_GLOBAL_SECRET) {
-    const errorMessage =
-      '❌ CRITICAL: APP_GLOBAL_SECRET is missing. Cannot start the server.';
+    const errorMessage = '❌ CRITICAL: APP_GLOBAL_SECRET is missing. Cannot start the server.';
     logger.error(errorMessage);
 
     setTimeout(() => {

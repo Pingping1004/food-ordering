@@ -12,9 +12,7 @@ export class CsrfTokenService {
 
     if (!envSecret) {
       if (process.env.NODE_ENV === 'production') {
-        this.logger.error(
-          'CRITICAL ERROR: CSRF_SECRET is not defined in production environment!',
-        );
+        this.logger.error('CRITICAL ERROR: CSRF_SECRET is not defined in production environment!');
         process.exit(1); // Exit process in production if critical secret is missing
       }
     } else {

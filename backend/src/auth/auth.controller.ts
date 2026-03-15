@@ -106,7 +106,7 @@ export class AuthController {
   ) {
     const refreshToken = req.cookies['refresh_token'] || req.body.refreshToken;
     if (!refreshToken)
-      throw new UnauthorizedException('No refresh token provided');
+      throw new UnauthorizedException('ไม่พบโทเคน');
 
     const result = await this.authService.refresh(refreshToken);
     res.cookie('access_token', result.accessToken, {

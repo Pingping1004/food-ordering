@@ -52,7 +52,7 @@ export class S3Service {
             return { fileName: uniqueFilename, url: url };
         } catch (error) {
             this.logger.log(`Error uploading file to R2: ${error}`);
-            throw new InternalServerErrorException('Failed to upload file');
+            throw new InternalServerErrorException('อัพโหลดไฟล์ล้มเหลว');
         }
     }
 
@@ -67,7 +67,7 @@ export class S3Service {
             await this.s3Client.send(command);
         } catch (error) {
             this.logger.log(`Error deleting file ${fileName} from R2: ${error}`);
-            throw new InternalServerErrorException(`Failed to delete file ${fileName}`);
+            throw new InternalServerErrorException(`ลบไฟล์ ${fileName} ล้มเหลว`);
         }
     }
 }

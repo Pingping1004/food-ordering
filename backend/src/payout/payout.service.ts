@@ -20,9 +20,7 @@ export class PayoutService {
   async createPayout(orderId: string) {
     const order = await this.orderService.findOneOrder(orderId);
 
-    if (await this.findExistingPayout(orderId)) {
-      throw new ConflictException('Payout of this order is already created');
-    }
+    if (await this.findExistingPayout(orderId)) throw new ConflictException();
     
     const { name } = await this.restaurantService.findRestaurant(order.restaurantId);
     const sellingPrice = order.totalAmount;

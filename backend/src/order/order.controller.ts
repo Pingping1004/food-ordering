@@ -64,13 +64,6 @@ export class OrderController {
     return this.orderService.findOneOrder(orderId);
   }
 
-  @Get('weekly/:restaurantId')
-  async findWeeklyOrdersForRestaurant(
-    @Param('restaurantId') restaurantId: string,
-  ) {
-    return this.orderService.findWeeklyOrderForRestaurant(restaurantId);
-  }
-
   @Get('new/:restaurantId')
   async getNewOrders(@Param('restaurantId') restaurantId: string, @Query('after') after?: Date) {
     const timestamp = after ? new Date(after) : undefined
@@ -91,7 +84,7 @@ export class OrderController {
     @Body() updateOrderDto: UpdateOrderDto,
   ) {
     if (!updateOrderDto.isDelay) throw new NotFoundException('ไม่พบสถานะออเดอร์ที่ต้องการแก้ไข')
-      
+
     return this.orderService.updateDelay(orderId, updateOrderDto.isDelay);
   }
 

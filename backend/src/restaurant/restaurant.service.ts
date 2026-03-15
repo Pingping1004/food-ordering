@@ -33,12 +33,12 @@ export class RestaurantService {
     try {
       const existingRestaurant = await this.findExistingRestaurant(userId);
       if (existingRestaurant)
-        throw new ConflictException(`User already register as restaurant: ${existingRestaurant.name}`);
+        throw new ConflictException(`ผู้ใช้ได้ลงทะเบียนกับร้าน: ${existingRestaurant.name}แล้ว`);
 
       const restaurantImgUrl = file ? (await this.uploadService.saveImage(file)).url : null;
       const paymentQr = paymentFile ? (await this.uploadService.saveImage(paymentFile)).url : null;
 
-      if (!paymentQr) throw new NotFoundException(`Please upload payment QR file`);
+      if (!paymentQr) throw new NotFoundException(`กรุณาอัพโหลดQR สำหรับให้ลูกค้าชำระเงิน`);
 
       let openTime: string = '';
       let closeTime: string = '';
@@ -87,9 +87,9 @@ export class RestaurantService {
       clearRestaurantCache("restaurants:all")
       clearRestaurantCache("restaurants:open")
 
-      return { message: 'File uploaded successfully', result, imageUrl: restaurantImgUrl };
+      return { message: 'อัพโหลดไฟล์สำเร็จ', result, imageUrl: restaurantImgUrl };
     } catch (error) {
-      this.logger.error('Failed to create restaurant service: ', error);
+      this.logger.error('ลงทะเบียนร้านอาหารล้มเหลว: ', error);
       throw error;
     }
   }
@@ -294,7 +294,7 @@ export class RestaurantService {
         select: { restaurantImg: true }
       });
 
-      if (!existingRestaurant) throw new NotFoundException(`Restaurant with ID: ${restaurantId} not found`)
+      if (!existingRestaurant) throw new NotFoundException(`ไมพบร้านอาหาร`)
 
       if (file) {
         const { url } = await this.uploadService.saveImage(file);
@@ -348,7 +348,7 @@ export class RestaurantService {
 
       return {
         result,
-        message: `Successfully update temporarilyClose status of restaurant ${result.name} to be ${result.isTemporarilyClosed}`,
+        message: `อัพเดทสถานะเปิด/ปิดชั่วคราวของร้านอาหาร ${result.name} เป็น ${result.isTemporarilyClosed} สำเร็จ`,
       };
     } catch (error) {
       this.logger.error('Failed to update temporary close status of restaurant', error.message, error.stack);

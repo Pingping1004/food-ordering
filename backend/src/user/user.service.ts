@@ -58,7 +58,7 @@ export class UserService {
   async createUser(createUserDto: CreateUserDto) {
     const existingUser = await this.findOneByEmail(createUserDto.email);
     if (existingUser)
-      throw new ConflictException('User with this email already exists.');
+      throw new ConflictException('อีเมลนี้ถูกใช้งานแล้ว');
 
     const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
     const newUser = {
@@ -144,7 +144,7 @@ export class UserService {
 
   async createRoleRequest(userId: string, requestRole: Role) {
     if (requestRole !== Role.cooker)
-      throw new BadRequestException('อนุญาตให้ขอเป็นร้านอาหาร (cooker) เท่านั้น');
+      throw new BadRequestException('อนุญาตให้ขอเป็นร้านอาหารเท่านั้น');
 
     const existingPendingRequest = await this.prisma.roleRequest.findFirst({
       where: {
@@ -153,11 +153,7 @@ export class UserService {
       },
     });
 
-    if (existingPendingRequest) {
-      throw new BadRequestException(
-        'คุณได้ส่งคำขอไปแล้ว ระบบกำลังรอการอนุมัติจากผู้ดูแลอยู่',
-      );
-    }
+    if (existingPendingRequest) throw new BadRequestException('คุณได้ส่งคำขอไปแล้ว ระบบกำลังรอการอนุมัติจากผู้ดูแลอยู่');
 
     try {
       const result = await this.prisma.roleRequest.create({
@@ -171,14 +167,10 @@ export class UserService {
       return result;
     } catch (error) {
       // Handle unique constraint on userId to provide a friendly message
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
-        throw new BadRequestException(
-          'คุณได้ส่งคำขอไปแล้ว ระบบกำลังรอการอนุมัติจากผู้ดูแลอยู่',
-        );
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new BadRequestException('คุณได้ส่งคำขอไปแล้ว ระบบกำลังรอการอนุมัติจากผู้ดูแลอยู่');
       }
+      
       throw error;
     }
   }

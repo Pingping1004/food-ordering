@@ -104,9 +104,9 @@ export class OrderService {
     for (const item of orderMenus) {
       const existingMenu = menuMap.get(item.menuId);
 
-      if (!existingMenu) throw new NotFoundException(`Menu item with ID ${item.menuId} not found`);
-      if (existingMenu.restaurantId !== restaurantId) throw new BadRequestException(`Menu ${item.menuName} does not belong to this restaurant`);
-      if (existingMenu.name !== item.menuName) throw new BadRequestException(`Menu name mismatch for ${item.menuName}`);
+      if (!existingMenu) throw new NotFoundException(`ไม่พบเมนู`);
+      if (existingMenu.restaurantId !== restaurantId) throw new BadRequestException(`เมนู ${item.menuName} ไม่ใช่ของร้านนี้`);
+      if (existingMenu.name !== item.menuName) throw new BadRequestException(`ชื่อเมนูไม่ตรง: ${item.menuName}`);
 
       // SERVER calculates price
       const markupUnitPrice = toSatang(existingMenu.price * markupRate);
@@ -137,11 +137,7 @@ export class OrderService {
     const bufferMin = 5; // fixed 5-minute buffer at all times
     const diffMinutes = deliverAtBkk.diff(nowBkk, 'minutes'); // whole-minute difference
 
-    if (diffMinutes < bufferMin) {
-      throw new BadRequestException(
-        `เวลารับอาหารต้องอยู่หลังจากเวลาปัจจุบันอย่างน้อย ${bufferMin} นาที`,
-      );
-    }
+    if (diffMinutes < bufferMin) throw new BadRequestException(`เวลารับอาหารต้องอยู่หลังจากเวลาปัจจุบันอย่างน้อย ${bufferMin} นาที`);
   }
 
   async createOrder(createOrderDto: CreateOrderDto, userId?: string) {
@@ -175,13 +171,13 @@ export class OrderService {
     }
 
     const paymentResult = await this.paymentService.verifyPayment(paymentData);
-    if (paymentResult.code !== "200200") throw new BadRequestException("Payment verification failed");
-    if (!paymentResult?.data?.dateTime) throw new BadRequestException("Invalid payment response");
+    if (paymentResult.code !== "200200") throw new BadRequestException("ยืนยันการชำระเงินล้มเหลว");
+    if (!paymentResult?.data?.dateTime) throw new BadRequestException("ข้อมูลการชำระเงินไม่สมบูรณ์");
 
     const paymentTime = new Date(paymentResult.data.dateTime)
 
     if (Date.now() - paymentTime.getTime() > 5 * 60 * 1000) {
-      throw new BadRequestException("การชำระเงินหมดอายุ กรุณาทำรายการใหม่")
+      throw new BadRequestException("เวลาในการชำระเงินหมดอายุ กรุณาทำรายการใหม่")
     }
 
     try {
@@ -237,7 +233,7 @@ export class OrderService {
 
       return order;
     } catch (error) {
-      if (error.code === "P2002") throw new BadRequestException("Duplicate payment detected")
+      if (error.code === "P2002") throw new BadRequestException("ชำระเงินซ้ำ/ใช้สลิปเก่า")
 
       throw error
     }
@@ -303,49 +299,11 @@ export class OrderService {
     }
   }
 
-  async findWeeklyOrderForRestaurant(restaurantId: string) {
-    const now = new Date();
-    const { startDate, endDate } = calculateWeeklyInterval(now);
-    try {
-      const orders = await this.prisma.order.findMany({
-        where: {
-          restaurantId,
-          deliverAt: {
-            gte: startDate,
-            lte: endDate,
-          },
-        },
-        orderBy: {
-          deliverAt: 'desc',
-        },
-        select: {
-          orderId: true,
-          totalAmount: true,
-          paymentStatus: true,
-          orderAt: true,
-          deliverAt: true,
-          status: true,
-        },
-      });
-
-      return orders;
-    } catch (error) {
-      this.logger.error(
-        'Error finding weekly orders: ',
-        error.message,
-        error.stack,
-      );
-      throw new InternalServerErrorException(
-        'Finding weekly orders failed. Please try again.',
-      );
-    }
-  }
-
   async updateOrder(orderId: string, updateOrderDto: UpdateOrderDto) {
     const order = await this.findOneOrder(orderId);
 
-    if (order.restaurantId !== updateOrderDto.restaurantId) throw new ForbiddenException('You do not have permission to update this order.');
-    if (updateOrderDto.status && !Object.values(OrderStatus).includes(updateOrderDto.status)) throw new BadRequestException('Invalid order status');
+    if (order.restaurantId !== updateOrderDto.restaurantId) throw new ForbiddenException('คุณไม่ได้รับอนุญ่ติให้อัพเดทออเดอร์นี้');
+    if (updateOrderDto.status && !Object.values(OrderStatus).includes(updateOrderDto.status)) throw new BadRequestException('สถานะออดเอร์ไม่ถูกต้อง');
 
     return this.prisma.order.update({
       where: { orderId },
@@ -423,11 +381,7 @@ export class OrderService {
   async removeOrder(orderId: string) {
     const order = await this.findOneOrder(orderId);
 
-    if (order.status !== OrderStatus.accepted) {
-      throw new BadRequestException(
-        'สามารถลบได้เฉพาะออเดอร์ที่มีสถ่านะเสร็จสมบูรณ์เรียบร้อยแล้วเท่านั้น',
-      );
-    }
+    if (order.status !== OrderStatus.accepted) throw new BadRequestException('สามารถลบได้เฉพาะออเดอร์ที่มีสถ่านะเสร็จสมบูรณ์เรียบร้อยแล้วเท่านั้น');
 
     return this.prisma.order.delete({
       where: { orderId },
