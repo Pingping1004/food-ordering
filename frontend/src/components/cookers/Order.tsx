@@ -8,7 +8,6 @@ import clsx from "clsx";
 import { api } from "@/lib/api";
 import { getTimeFormat } from "@/util/time";
 import { OrderStatus, PaymentStatus } from "./OrderNavbar";
-import { toastDanger, toastSuccess } from "../ui/Toast";
 
 const orderVariants = cva("noto-sans-regular justify-center text-sm", {
     variants: {

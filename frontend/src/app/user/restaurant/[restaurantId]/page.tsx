@@ -59,16 +59,18 @@ function MenuContext() {
                 ))}
             </div>
 
-            <Button
-                type="button"
-                size="full"
-                numberIcon={cart.length}
-                iconPosition="start"
-                className=""
-                onClick={() => checkOrderCart()}
-            >
-        เช็คออเดอร์ของคุณ
-            </Button>
+            {cart.length > 0 && (
+                <Button
+                    type="button"
+                    size="full"
+                    numberIcon={cart.length}
+                    iconPosition="start"
+                    className=""
+                    onClick={() => checkOrderCart()}
+                >
+                    เช็คออเดอร์ของคุณ
+                </Button>
+            )}
         </div>
     )
 }

@@ -181,7 +181,7 @@ export default function BulkAddMenuPage() {
                 const tempId = nameToTempId.get(nomalizedKey);
 
                 if (csv.originalImageFileNameCsv && !tempId) {
-                    throw new Error(`Image '${csv.originalImageFileNameCsv}' not matched.`);
+                    throw new Error(`รูป '${csv.originalImageFileNameCsv}' ไม่ตรงกัน`);
                 }
 
                 return {

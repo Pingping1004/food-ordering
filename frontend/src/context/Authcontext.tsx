@@ -68,7 +68,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             return csrfTokenValue;
         } catch (error) {
             if (axios.isAxiosError(error)) {
-                const message = error.response?.data?.message || error.response?.statusText || 'Failed to fetch CSRF token';
+                const message = error.response?.data?.message || error.response?.statusText || 'ไม่พบโทเคน';
                 throw new Error(message);
             }
             throw error;
@@ -202,20 +202,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 const status = err.response?.status;
 
                 if (status === 401) {
-                    throw new Error("Unauthorized - Token expired");
+                    throw new Error("โทเคนหมดอายุ");
                 }
 
                 if (status === 403) {
-                    throw new Error("Forbidden - Access denied");
+                    throw new Error("การเข้าถึงถูกปฏิเสธ");
                 }
 
                 if (status === 404) {
-                    throw new Error("User not found");
+                    throw new Error("ไม่พบผู้ใช้งาน");
                 }
 
                 // Network or other errors
                 if (err.code === 'ECONNABORTED') {
-                    throw new Error("Request timeout");
+                    throw new Error("เครือข่ายขัดข้อง");
                 }
             }
 
@@ -287,9 +287,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
             const { accessToken: newAccessToken, user: userData } = response.data;
 
-            if (!newAccessToken || !userData) {
-                throw new Error('Login response missing access token or user data.');
-            }
+            if (!newAccessToken || !userData) throw new Error('ไม่พบข้อมูลในการเข้าสู้ระบบ');
 
             setAccessToken(newAccessToken);
             localStorage.setItem('accessToken', newAccessToken)
