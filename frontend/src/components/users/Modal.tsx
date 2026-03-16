@@ -57,7 +57,7 @@ export default function Modal({
 
           <h2 className="text-xl font-bold">{title}</h2>
 
-          <p className="text-gray-600">{body}</p>
+          <p className="text-secondary whitespace-pre-line text-start">{body}</p>
 
           <button
             onClick={onClose}
