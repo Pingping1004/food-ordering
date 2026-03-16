@@ -148,11 +148,11 @@ function Page() {
     }, []);
 
     useEffect(() => {
-        const seen = localStorage.getItem("cook_auto_cancel_notice")
+        const seen = localStorage.getItem("cook_order_rules_seen")
 
         if (!seen) {
             setShowAutoCancelModal(true)
-            localStorage.setItem("cook_auto_cancel_notice", "true")
+            localStorage.setItem("cook_order_rules_seen", "true")
         }
     }, [])
 
@@ -309,8 +309,13 @@ function Page() {
             <Modal
                 isOpen={showAutoCancelModal}
                 onClose={() => setShowAutoCancelModal(false)}
-                title="แจ้งเตือนการรับออเดอร์"
-                body="หากร้านค้าไม่กดรับออเดอร์ภายใน5นาที ระบบจะยกเลิกออเดอร์อัตโนมัติ และร้านจะไม่ได้รับเงินจากออเดอร์นี้"
+                title="กฎการจัดการออเดอร์"
+                body={`• ต้องกดรับออเดอร์ภายใน 5 นาที มิฉะนั้นระบบจะยกเลิกอัตโนมัติ และร้านจะไม่ได้รับเงิน
+                    • สามารถกดปฏิเสธออเดอร์ได้ภายใน 5 นาทีหลังจากลูกค้าสั่ง
+                    • หลังจากรับออเดอร์แล้ว สามารถกด "แจ้งล่าช้า" ได้ภายใน 10 นาทีเท่านั้น
+                    
+                    กรุณาตรวจสอบออเดอร์และดำเนินการให้ทันเวลา`
+                }
                 confirmText="รับทราบ"
             />
         </div>
