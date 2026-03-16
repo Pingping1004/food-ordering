@@ -57,8 +57,9 @@ function OrderConfirmContext() {
     const [slipPreview, setSlipPreview] = useState<string | null>(null);
     const [paidAt, setPaidAt] = useState<Date | null>(null);
     const [expired, setExpired] = useState(false);
-    // const router = useRouter();
+    const router = useRouter();
     // const [click, setClick] = useState<number>(0);
+
     const {
         watch,
         control,
@@ -135,29 +136,20 @@ function OrderConfirmContext() {
                 userTel: data.userTel,
             }
 
-            const now = new Date();
-            const deliverAtDate = new Date(orderPaymentPayload.deliverAt);
-            const bufferMins = getRequiredBufferMinutes();
-
-            const diffMs = deliverAtDate.getTime() - now.getTime();
-            const diffMinutes = Math.floor(diffMs / (60 * 1000));
-
             const response = await api.post(`/order/verify-and-create-order`, orderPaymentPayload);
+            const result = response.data;
+            localStorage.setItem(`orderSecret:${result.orderId}`, result.orderSecret);
+
+
             toastSuccess("ชำระเงินสำเร็จและสร้างออเดอร์เรียบร้อย");
-            // alert('กำลังนำทางไปหน้าชำระเงิน ห้ามรีเฟรชหรือปิดหน้าQR Code');
-            // const { checkoutUrl } = response.data;
-            // router.push(checkoutUrl);
+            router.push(`/user/order/done/${result.orderId}`);
 
         } catch (error: unknown) {
             if (typeof error === 'object' && error !== null && 'response' in error) {
                 const err = error as { response: { status: number; data?: { message?: string, code?: string } } };
-                console.log("Error response: ", err.response.data)
 
                 const backendMessage = err.response.data?.message;
                 const code = err.response?.data?.code;
-
-                console.log("code:", code);
-                console.log("backendMessage:", backendMessage);
 
                 toastDanger(code ? slipErrorMap[code] ?? backendMessage ?? "เกิดข้อผิดพลาด" : backendMessage ?? "เกิดข้อผิดพลาด");
             }
@@ -186,8 +178,8 @@ function OrderConfirmContext() {
             </div>
 
             <div className="flex w-[calc(100%+3rem)] justify-between bg-primary-main text-white p-6 -mx-6">
-                <h3 className="noto-sans-bold text-xl">ทั้งหมด</h3>
-                <h3 className="noto-sans-bold text-xl">{totalAmount}</h3>
+                <h3 className="noto-sans-bold text-2xl">ยอดรวมทั้งหมด</h3>
+                <h3 className="noto-sans-bold text-2xl">{totalAmount}</h3>
             </div>
 
             <Input
