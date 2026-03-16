@@ -6,7 +6,7 @@ import { Restaurant } from "@/context/MenuContext";
 import { api } from "@/lib/api";
 import UserHeader from "@/components/users/Header";
 import LoadingPage from "@/components/LoadingPage";
-import OrderBeforeLunchModal from "@/components/users/Model";
+import Modal from "@/components/users/Modal";
 
 export default function UserHomePage() {
     const [data, setData] = useState<Restaurant[] | null>(null);
@@ -44,7 +44,14 @@ export default function UserHomePage() {
 
     return (
         <>
-            <OrderBeforeLunchModal isOpen={showModal} onClose={() => setShowModal(false)}/>
+            <Modal
+                isOpen={showModal}
+                onClose={() => setShowModal(false)}
+                title="สั่งอาหารก่อน 11:45"
+                body="กรุณาสั่งอาหารก่อนเวลา 11:45 น. เพื่อให้ร้านอาหารสามารถเตรียมอาหารของคุณได้ทันเวลา"
+                confirmText="เข้าใจแล้ว"
+            />
+
             <div className="flex flex-col gap-y-10 py-10 px-6">
                 <UserHeader />
                 <div className="grid md:grid-cols-4 lg:grid-cols-6 grid-cols-2 gap-x-4 gap-y-6">

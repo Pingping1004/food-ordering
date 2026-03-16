@@ -11,6 +11,7 @@ import { getDateFormat, getTimeFormat } from "@/util/time";
 import Image from "next/image";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { toastDanger, toastSuccess } from "@/components/ui/Toast";
+import Modal from "@/components/users/Modal";
 
 function Page() {
     const [isLargeTextMode, setIsLargeTextMode] = useState(false)
@@ -18,6 +19,7 @@ function Page() {
     const lastTimestampRef = useRef<string | null>(null)
     const { cooker } = useCooker();
     const [navbarStatus, setNavbarStatus] = useState<OrderStatus>(OrderStatus.sent);
+    const [showAutoCancelModal, setShowAutoCancelModal] = useState(false)
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [now, setNow] = useState(new Date());
 
@@ -79,16 +81,46 @@ function Page() {
 
     const handleUpdateStatus = async (orderId: string, status: OrderStatus) => {
         try {
-            const response = await api.patch(`/order/update-status/${orderId}`, { status });
+
+            let endpoint = "";
+
+            switch (status) {
+                case "accepted":
+                    endpoint = `/order/accept/${orderId}`;
+                    break;
+
+                case "rejected":
+                    endpoint = `/order/reject/${orderId}`;
+                    break;
+
+                case "cancelled":
+                    endpoint = `/order/cancel/${orderId}`;
+                    break;
+
+                case "completed":
+                    endpoint = `/order/complete/${orderId}`;
+                    break;
+
+                default:
+                    throw new Error("Invalid status update");
+            }
+
+            const response = await api.patch(endpoint);
+
             const updatedOrder = response.data.result;
 
-            setOrders(prev => ({ ...prev, [orderId]: updatedOrder }))
-            toastSuccess(response.data.message)
+            setOrders(prev => ({
+                ...prev,
+                [orderId]: updatedOrder
+            }));
+
+            toastSuccess(response.data.message);
+
         } catch (error) {
-            console.error("Update order status error: ", error)
-            toastDanger(`อัพเดทสถานะออเดอร์ล้มเหลว`);
+            console.error("Update order status error:", error);
+            toastDanger("อัพเดทสถานะออเดอร์ล้มเหลว");
         }
-    }
+    };
 
     useEffect(() => {
         const saved = localStorage.getItem("cook_large_text");
@@ -115,7 +147,16 @@ function Page() {
         return () => clearInterval(interval);
     }, []);
 
-    const ordersArray = useMemo(() => Object.values(orders),[orders])
+    useEffect(() => {
+        const seen = localStorage.getItem("cook_auto_cancel_notice")
+
+        if (!seen) {
+            setShowAutoCancelModal(true)
+            localStorage.setItem("cook_auto_cancel_notice", "true")
+        }
+    }, [])
+
+    const ordersArray = useMemo(() => Object.values(orders), [orders])
     const filterDailyOrders = useMemo(() => {
         const yesterday = new Date()
         yesterday.setDate(yesterday.getDate() - 1)
@@ -264,6 +305,14 @@ function Page() {
                     />
                 ))}
             </main>
+
+            <Modal
+                isOpen={showAutoCancelModal}
+                onClose={() => setShowAutoCancelModal(false)}
+                title="แจ้งเตือนการรับออเดอร์"
+                body="หากร้านค้าไม่กดรับออเดอร์ภายใน5นาที ระบบจะยกเลิกออเดอร์อัตโนมัติ และร้านจะไม่ได้รับเงินจากออเดอร์นี้"
+                confirmText="รับทราบ"
+            />
         </div>
     );
 }
