@@ -12,6 +12,7 @@ import {
   Query,
   NotFoundException,
   BadRequestException,
+  Headers,
 } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -60,8 +61,8 @@ export class OrderController {
 
   @Public()
   @Get(':orderId')
-  async findOneOrder(@Param('orderId') orderId: string) {
-    return this.orderService.findOneOrder(orderId);
+  async findOneOrder(@Param('orderId') orderId: string, @Headers('x-order-secret') orderSecret: string) {
+    return this.orderService.findOneOrder(orderId, orderSecret);
   }
 
   @Get('new/:restaurantId')
@@ -88,12 +89,22 @@ export class OrderController {
     return this.orderService.updateDelay(orderId, updateOrderDto.isDelay);
   }
 
-  @Patch('update-status/:orderId')
-  async updateOrderStatus(@Param('orderId')orderId: string, @Body() updateOrderDto: UpdateOrderDto) {
-    if (!updateOrderDto.status) throw new BadRequestException('ไม่พบสถานะออเดอร์');
-    if (!Object.values(OrderStatus).includes(updateOrderDto.status)) throw new BadRequestException('สถานะออเดอร์ไม่ถูกต้อง')
-    
-      return this.orderService.updateOrderStatus(orderId, updateOrderDto.status);
+  @Public()
+  @Patch('cancel/:orderId')
+  async cancelOrder(@Param('orderId') orderId: string, @Body('orderSecret') orderSecret: string) {
+    if (!orderId) throw new NotFoundException("ไม่พบออเดอร์ไอดี")
+
+    return this.orderService.cancelOrder(orderId, orderSecret);
+  }
+
+  @Patch('reject/:orderId')
+  async rejectOrder(@Param('orderId') orderId: string) {
+    return this.orderService.updateOrderStatus(orderId, "rejected");
+  }
+
+  @Patch('accept/:orderId')
+  async acceptOrder(@Param('orderId') orderId: string) {
+    return this.orderService.updateOrderStatus(orderId, "accepted");
   }
 
   @Delete(':orderId')

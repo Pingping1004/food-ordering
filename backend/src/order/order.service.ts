@@ -6,11 +6,12 @@ import {
   ForbiddenException,
   Logger,
   forwardRef,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { CreateOrderDto, CreateOrderMenusDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { PrismaService } from '../prisma/prisma.service';
-import { PaymentStatus, OrderStatus, PaymentMethod } from '@prisma/client';
+import { PaymentStatus, OrderStatus, PaymentMethod, Order, Prisma, OrderMenu } from '@prisma/client';
 import { PaymentService } from 'src/payment/payment.service';
 import { Cron } from '@nestjs/schedule';
 import { calculateWeeklyInterval } from 'src/payout/payout-calculator';
@@ -19,6 +20,7 @@ import { InventoryService } from 'src/inventory/inventory.service';
 import moment from 'moment-timezone';
 import { PaymentPayload } from 'src/common/interface/accountType';
 import { RestaurantService } from 'src/restaurant/restaurant.service';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class OrderService {
@@ -140,7 +142,7 @@ export class OrderService {
     if (diffMinutes < bufferMin) throw new BadRequestException(`เวลารับอาหารต้องอยู่หลังจากเวลาปัจจุบันอย่างน้อย ${bufferMin} นาที`);
   }
 
-  async createOrder(createOrderDto: CreateOrderDto, userId?: string) {
+  async createOrder(createOrderDto: CreateOrderDto, userId?: string): Promise<Order> {
     this.validateDeliveryTime(createOrderDto.deliverAt);
 
     const { totalAmount, validatedMenus } = await this.validateOrderMenus(createOrderDto.orderMenus, createOrderDto.restaurantId);
@@ -253,9 +255,7 @@ export class OrderService {
     const orders = await this.prisma.order.findMany({
       where: {
         restaurantId,
-        orderAt: {
-          gt: timeStamp
-        }
+        orderAt: { gt: timeStamp }
       },
       include: { orderMenus: true },
       orderBy: {
@@ -268,15 +268,18 @@ export class OrderService {
     return { orders, latestTimestamp }
   }
 
-  async findOneOrder(orderId: string) {
+  async findOneOrder(orderId: string, orderSecret?: string) {
     try {
       const order = await this.prisma.order.findUnique({
         where: { orderId },
         include: { orderMenus: true },
       });
-
-      if (!order) throw new NotFoundException('ไม่พบออเดอร์ที่ค้นหา');
-
+  
+      if (!order) throw new NotFoundException("ไม่พบออเดอร์ที่ค้นหา");
+  
+      // Only check secret if provided
+      if (orderSecret !== undefined && order.orderSecret !== orderSecret) throw new UnauthorizedException("ไม่สามารถเข้าถึงออเดอร์นี้ได้");
+  
       await this.validateExisting({
         restaurantId: order.restaurantId,
         orderMenus: order.orderMenus.map((menu) => ({
@@ -284,17 +287,16 @@ export class OrderService {
           quantity: menu.quantity,
           menuName: menu.menuName,
           unitPrice: menu.unitPrice,
-          menuImg: menu.menuImg || '',
+          menuImg: menu.menuImg || "",
         })),
       });
-
+  
       return order;
+  
     } catch (error) {
-      if (error.code === 'P2025') {
-        // Prisma "Record not found"
+      if (error.code === "P2025") {
         throw new NotFoundException(`ไม่พบออเดอร์ที่มีID: ${orderId}`);
       }
-
       throw error;
     }
   }
@@ -333,7 +335,15 @@ export class OrderService {
     return { result, message: `แจ้งส่งออเดอร์ล่าช้า10นาทีสำเร็จ` };
   }
 
-  async updateOrderStatus(orderId: string, status: OrderStatus) {
+  async updateOrderStatus(orderId: string, newStatus: OrderStatus) {
+    const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
+      sent: ["accepted", "cancelled", "rejected"],
+      accepted: ["completed"],
+      cancelled: [],
+      rejected: [],
+      completed: []
+    };
+
     return await this.prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({
         where: { orderId },
@@ -342,39 +352,86 @@ export class OrderService {
 
       if (!order) throw new NotFoundException("ไม่พบออเดอร์");
 
-      const outOfStockMenus: string[] = []
+      const allowed = ORDER_TRANSITIONS[order.status];
 
-      if (status === "accepted") {
-        const groupedMenus = new Map<string, { quantity: number; menuName: string }>()
+      if (!allowed.includes(newStatus)) throw new BadRequestException(`ไม่สามารถเปลี่ยนสถานะจาก ${order.status} เป็น ${newStatus}`);
 
-        for (const item of order.orderMenus) {
-          const existing = groupedMenus.get(item.menuId);
-
-          if (existing) {
-            existing.quantity += item.quantity;
-          } else {
-            groupedMenus.set(item.menuId, {
-              quantity: item.quantity,
-              menuName: item.menuName
-            });
-          }
-        }
-
-        for (const [menuId, data] of groupedMenus.entries()) {
-          const result = await this.inventoryService.deductInventoryTx(tx, menuId, data.quantity, data.menuName);
-          if (result) outOfStockMenus.push(result)
-        }
-
-        if (outOfStockMenus.length > 0) throw new BadRequestException(`เมนุดังต่อไปนี้หมด: ${outOfStockMenus.join(", ")}`)
+      // status specific logic
+      if (newStatus === "accepted") await this.handleInventoryDeduction(tx, order.orderMenus);
+  
+      const updateData: any = { status: newStatus }
+      if (newStatus === "cancelled") {
+        updateData.cancelledAt = new Date();
+        updateData.paymentStatus = "refund_pending";
       }
-
+      
+      if (newStatus === "rejected") {
+        updateData.rejectedAt = new Date();
+        updateData.paymentStatus = "refund_pending";
+      }
+  
       const updatedOrder = await tx.order.update({
         where: { orderId },
-        data: { status },
-        select: { orderId: true, status: true, deliverAt: true, isDelay: true }
+        data: updateData,
+        select: { orderId: true, status: true, paymentStatus: true, deliverAt: true, isDelay: true }
+      });
+  
+      return { result: updatedOrder, message: `อัพเดทสถานะออเดอร์เป็น ${updatedOrder.status} สำเร็จ` };
+    });
+  }
+
+  private async handleInventoryDeduction(tx: Prisma.TransactionClient, orderMenus: OrderMenu[]) {
+    const groupedMenus = new Map<string, { quantity: number; menuName: string }>();
+  
+    for (const item of orderMenus) {
+      const existing = groupedMenus.get(item.menuId);
+  
+      if (existing) {
+        existing.quantity += item.quantity;
+      } else {
+        groupedMenus.set(item.menuId, {
+          quantity: item.quantity,
+          menuName: item.menuName
+        });
+      }
+    }
+  
+    const outOfStockMenus: string[] = [];
+  
+    for (const [menuId, data] of groupedMenus.entries()) {
+      const result = await this.inventoryService.deductInventoryTx(tx, menuId, data.quantity, data.menuName);
+  
+      if (result) outOfStockMenus.push(result);
+    }
+  
+    if (outOfStockMenus.length > 0) throw new BadRequestException(`เมนุดังต่อไปนี้หมด: ${outOfStockMenus.join(", ")}`);
+  }
+
+  async cancelOrder(orderId: string, orderSecret: string) {
+    return await this.prisma.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({
+        where: { orderId },
       });
 
-      return { result: updatedOrder, message: `อัพเดทสถานะออเดอร์เป็น ${updatedOrder.status} สำเร็จ` }
+      if (!order) throw new NotFoundException("ไม่พบออเดอร์");
+
+      if (order.orderSecret !== orderSecret) throw new UnauthorizedException("ไม่สามารถยกเลิกออเดอร์ที่ไม่ใช่ของคุณได้")
+
+      if (order.status === "accepted") throw new BadRequestException("ร้านกำลังเตรียมอาหาร ไม่สามารถยกเลิกได้");
+      if (order.status === "completed") throw new BadRequestException("ไม่สามารถยกเลิกออเดอร์ที่เสร็จแล้ว");
+      if (order.status === "cancelled") throw new BadRequestException("ออเดอร์ถูกยกเลิกไปแล้ว");
+
+      const updatedorder = await tx.order.update({
+        where: { orderId },
+        data: {
+          status: "cancelled",
+          paymentStatus: "refund_pending",
+          cancelledAt: new Date()
+        },
+        select: { orderId: true, status: true, paymentStatus: true }
+      });
+
+      return { result: updatedorder, message: "ยกเลิกออเดอร์สำเร็จ" }
     })
   }
 
@@ -387,6 +444,7 @@ export class OrderService {
       where: { orderId },
     });
   }
+
 
   @Cron('*/5 * * * *')
   async autoCompleteOrders() {
