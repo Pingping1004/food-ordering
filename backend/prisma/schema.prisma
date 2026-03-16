@@ -130,6 +130,7 @@ model OrderMenu {
 
 model Order {
   orderId              String      @id @default(uuid())
+  orderSecret          String?      @default(uuid())    @unique
   status               OrderStatus @default(sent)
   userTel              String
   orderAt              DateTime    @default(now())
@@ -147,6 +148,7 @@ model Order {
   
   completedAt          DateTime?
   cancelledAt          DateTime?
+  rejectedAt           DateTime?
   refundAt             DateTime?
 
   restaurantId         String
@@ -211,6 +213,7 @@ enum OrderStatus {
   sent
   accepted
   cancelled
+  rejected
   completed
 }
 

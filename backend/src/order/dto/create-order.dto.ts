@@ -94,7 +94,7 @@ export class CreateOrderDto {
   @IsString()
   paymentSlipImg: string;
 
-  @IsOptional() // Could be null if no payment initiated or before first update
-  @IsString() // Use string as Omise provides various statuses
+  @IsOptional()
+  @IsString()
   paymentGatewayStatus?: string;
 }
