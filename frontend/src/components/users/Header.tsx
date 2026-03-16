@@ -24,9 +24,9 @@ export default function UserHeader() {
     const primaryAction = useMemo(() => {
         if (!user) {
             return {
-                label: 'ลงทะเบียน',
+                label: 'เข้าสู่ระบบ',
                 disabled: false,
-                onClick: () => router.push('/signup'),
+                onClick: () => router.push('/login'),
             };
         }
 
