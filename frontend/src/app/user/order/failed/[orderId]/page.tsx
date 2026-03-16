@@ -24,7 +24,12 @@ export default function FailedOrderPage() {
         }
         const fetchData = async () => {
             try {
-                const orderResponse = await api.get(`order/${orderId}`);
+                const orderSecret = localStorage.getItem(`orderSecret:${orderId}`)
+                const orderResponse = await api.get(`order/${orderId}`, {
+                    headers: {
+                        "x-order-secret": orderSecret
+                    }
+                });
                 setOrder(orderResponse.data);
 
                 const newRestaurantId = orderResponse.data.restaurantId;
@@ -64,7 +69,7 @@ export default function FailedOrderPage() {
             </div>
 
             <div>
-        Aside section
+                Aside section
             </div>
         </div>
     )
