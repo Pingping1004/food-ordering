@@ -90,8 +90,23 @@ export const Order = ({
 }: OrderProps) => {
     const [isDelayed, setIsDelayed] = useState(isDelay);
     const [isUpdating, setIsUpdating] = useState(false);
+    const [now, setNow] = useState(Date.now())
 
-    // const isRefund = variant?.startsWith('refund');
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setNow(Date.now())
+        }, 10000)
+
+        return () => clearInterval(interval)
+    }, [])
+
+    const orderTime = new Date(orderAt).getTime()
+
+    const canReject = (now - orderTime) / 1000 / 60 <= 5
+
+    const acceptedTime = status === OrderStatus.accepted ? orderTime : null
+    const canDelay = acceptedTime ? (now - acceptedTime) / 1000 / 60 <= 10 : false
+
     const isRefund = (paymentStatus === "refund_complete" || paymentStatus === "refund_pending") && status === OrderStatus.cancelled
 
     return (
@@ -241,7 +256,7 @@ export const Order = ({
 
                             <Button
                                 variant="secondaryDanger"
-                                disabled={isDelay || isUpdating || isCancelledDisabled}
+                                disabled={isDelay || isUpdating || !canReject}
                                 size={isLargeTextMode ? "lg" : "md"}
                                 type="button"
                                 className="flex w-full"
@@ -255,7 +270,7 @@ export const Order = ({
                     {status === OrderStatus.accepted && (
                         <Button
                             variant={isDelay === false ? "tertiary" : "secondary"}
-                            disabled={isDelay || isUpdating || isDelayDisabled}
+                            disabled={isDelay || isUpdating || !canDelay}
                             size={"full"}
                             type="button"
                             className="flex w-full"

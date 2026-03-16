@@ -74,6 +74,17 @@ export default function DoneOrderPage() {
         fetchData();
     }, [orderId, router]);
 
+    const canCancelOrder = (() => {
+        if (!order) return false
+
+        const orderTime = new Date(order.orderAt).getTime()
+        const now = Date.now()
+
+        const diffMinutes = (now - orderTime) / 1000 / 60
+
+        return diffMinutes <= 5
+    })()
+
     if (loading) return <LoadingPage />
     if (!order) return <div>ไม่พบออเดอร์ของคุณ</div>;
     if (orderMenus.length === 0) {
@@ -117,6 +128,12 @@ export default function DoneOrderPage() {
                 </div>
             </section>
 
+            {!canCancelOrder && (
+                <p className="text-base text-danger-main text-center">
+                    การยกเลิกออเดอร์ทำได้ภายใน 5 นาทีหลังสั่งเท่านั้น
+                </p>
+            )}
+
             <div className="grid grid-cols-2 gap-x-4">
                 <Button
                     type="button"
@@ -130,6 +147,7 @@ export default function DoneOrderPage() {
                     type="button"
                     size="lg"
                     variant="secondaryDanger"
+                    disabled={!canCancelOrder}
                     onClick={() => router.push(`/user/order/request-refund/${orderId}`)}
                 >
                     <p className="text-base">ยกเลิกคำสั่งซื้อ</p>

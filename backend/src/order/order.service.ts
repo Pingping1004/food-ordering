@@ -274,12 +274,12 @@ export class OrderService {
         where: { orderId },
         include: { orderMenus: true },
       });
-  
+
       if (!order) throw new NotFoundException("ไม่พบออเดอร์ที่ค้นหา");
-  
+
       // Only check secret if provided
       if (orderSecret !== undefined && order.orderSecret !== orderSecret) throw new UnauthorizedException("ไม่สามารถเข้าถึงออเดอร์นี้ได้");
-  
+
       await this.validateExisting({
         restaurantId: order.restaurantId,
         orderMenus: order.orderMenus.map((menu) => ({
@@ -290,9 +290,9 @@ export class OrderService {
           menuImg: menu.menuImg || "",
         })),
       });
-  
+
       return order;
-  
+
     } catch (error) {
       if (error.code === "P2025") {
         throw new NotFoundException(`ไม่พบออเดอร์ที่มีID: ${orderId}`);
@@ -319,7 +319,15 @@ export class OrderService {
 
   async updateDelay(orderId: string, isDelay: boolean) {
     const order = await this.findOneOrder(orderId);
+
     if (order.isDelay) throw new BadRequestException("ออเดอร์นี้ถูกแจ้งล่าช้าแล้ว");
+    if (!order.acceptAt) throw new BadRequestException("ออเดอร์นี้ยังไม่ได้รับ");
+  
+    const now = Date.now();
+    const acceptedTime = new Date(order.acceptAt).getTime();
+    const diffMinutes = (now - acceptedTime) / 1000 / 60;
+  
+    if (diffMinutes > 10) throw new BadRequestException("สามารถแจ้งล่าช้าได้ภายใน 10 นาทีหลังรับออเดอร์เท่านั้น");
 
     const updatedDeliverAt = new Date(order.deliverAt);
     updatedDeliverAt.setMinutes(updatedDeliverAt.getMinutes() + 10);
@@ -358,34 +366,40 @@ export class OrderService {
 
       // status specific logic
       if (newStatus === "accepted") await this.handleInventoryDeduction(tx, order.orderMenus);
-  
+
+      const now = Date.now();
+      const orderTime = new Date(order.orderAt).getTime();
+      const diffMinutes = (now - orderTime) / 1000 / 60;
+
+      if ((newStatus === "cancelled" || newStatus === "rejected") && diffMinutes > 5) throw new BadRequestException("สามารถยกเลิกหรือปฏิเสธออเดอร์ได้ภายใน 5 นาทีหลังสั่งเท่านั้น");
+
       const updateData: any = { status: newStatus }
       if (newStatus === "cancelled") {
         updateData.cancelledAt = new Date();
         updateData.paymentStatus = "refund_pending";
       }
-      
+
       if (newStatus === "rejected") {
         updateData.rejectedAt = new Date();
         updateData.paymentStatus = "refund_pending";
       }
-  
+
       const updatedOrder = await tx.order.update({
         where: { orderId },
         data: updateData,
         select: { orderId: true, status: true, paymentStatus: true, deliverAt: true, isDelay: true }
       });
-  
+
       return { result: updatedOrder, message: `อัพเดทสถานะออเดอร์เป็น ${updatedOrder.status} สำเร็จ` };
     });
   }
 
   private async handleInventoryDeduction(tx: Prisma.TransactionClient, orderMenus: OrderMenu[]) {
     const groupedMenus = new Map<string, { quantity: number; menuName: string }>();
-  
+
     for (const item of orderMenus) {
       const existing = groupedMenus.get(item.menuId);
-  
+
       if (existing) {
         existing.quantity += item.quantity;
       } else {
@@ -395,15 +409,15 @@ export class OrderService {
         });
       }
     }
-  
+
     const outOfStockMenus: string[] = [];
-  
+
     for (const [menuId, data] of groupedMenus.entries()) {
       const result = await this.inventoryService.deductInventoryTx(tx, menuId, data.quantity, data.menuName);
-  
+
       if (result) outOfStockMenus.push(result);
     }
-  
+
     if (outOfStockMenus.length > 0) throw new BadRequestException(`เมนุดังต่อไปนี้หมด: ${outOfStockMenus.join(", ")}`);
   }
 
