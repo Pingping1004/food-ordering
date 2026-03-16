@@ -50,7 +50,7 @@ export const CookerProvider = ({ children }: { children: React.ReactNode }) => {
                 const orderResponse = await api.get(`order/get-orders/${restaurantId}`);
                 setOrders(orderResponse.data);
             } catch {
-                setError('Error fetching cooker context');
+                setError('โหลดข้อมูลร้านอาหารล้มเหลว');
             } finally {
                 setLoading(false);
             }
@@ -66,7 +66,7 @@ export const CookerProvider = ({ children }: { children: React.ReactNode }) => {
             const orderResponse = await api.get(`order/get-orders/${restaurantId}`);
             setOrders(orderResponse.data);
         } catch {
-            setError('Failed to load orders.');
+            setError('โหลดข้อมูลร้านอาหารล้มเหลว');
         } finally {
             setLoading(false);
         }
@@ -78,7 +78,7 @@ export const CookerProvider = ({ children }: { children: React.ReactNode }) => {
 
     if (loading) return <LoadingPage />
     if (error) return <div>{error}</div>;
-    if (!cooker) return <div>No Cooker found</div>
+    if (!cooker) return <div>ไม่พบร้านอาหาร</div>
 
     return (
         <CookerContext.Provider

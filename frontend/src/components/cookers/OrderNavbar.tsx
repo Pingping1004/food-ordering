@@ -6,6 +6,7 @@ export enum OrderStatus {
   sent = "sent",
   accepted = "accepted",
   cancelled = "cancelled",
+  rejected = "rejected",
   completed = "completed",
 }
 
@@ -26,6 +27,7 @@ const orderNavbarVariants = cva(
                 sent: "",
                 accepted: "",
                 cancelled: "",
+                rejected: "",
                 completed: ""
             },
         },
