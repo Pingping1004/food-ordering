@@ -6,33 +6,20 @@ import { api } from '@/lib/api';
 import Image from 'next/image';
 import { getParamId } from '@/util/param';
 import { OrderMenuType } from '@/components/users/OrderList';
-import { OrderStatus } from '@/components/cookers/OrderNavbar';
+import { OrderStatus, PaymentStatus } from '@/components/cookers/OrderNavbar';
 import { Button } from '@/components/Button';
 import { getTimeFormat } from '@/util/time';
 import LoadingPage from '@/components/LoadingPage';
 import { toastDanger } from '@/components/ui/Toast';
 
-interface Order {
+export interface Order {
     orderMenus: OrderMenuType[];
     status: OrderStatus;
     orderAt: string;
     deliverAt: string;
+    paymentStatus: PaymentStatus
+    totalAmount: number
 }
-
-const getOrderStatusProps = (currentStatus: OrderStatus) => {
-    switch (currentStatus) {
-        case OrderStatus.receive:
-            return { renderStatus: 'รับออเดอร์', nextStatus: OrderStatus.cooking };
-        case OrderStatus.cooking:
-            return { renderStatus: 'เริ่มปรุงอาหาร', nextStatus: OrderStatus.ready };
-        case OrderStatus.ready:
-            return { renderStatus: 'พร้อมเสิร์ฟ', nextStatus: OrderStatus.done }; // Text for marking as done
-        case OrderStatus.done:
-            return { text: 'ออเดอร์เสร็จสิ้น' }; // Text for marking as done
-        default: // Should ideally not be hit
-            return { renderStatus: 'สถานะไม่ทราบ', nextStatus: currentStatus };
-    }
-};
 
 export default function DoneOrderPage() {
     const params = useParams();
@@ -46,7 +33,6 @@ export default function DoneOrderPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const hasRedirectedRef = useRef<boolean>(false);
-    const { renderStatus } = getOrderStatusProps(order?.status as OrderStatus);
 
     useEffect(() => {
         if (!orderId) {
@@ -57,15 +43,18 @@ export default function DoneOrderPage() {
 
         const fetchData = async () => {
             try {
-                const orderResponse = await api.get(`order/${orderId}`);
+                const orderSecret = localStorage.getItem(`orderSecret:${orderId}`)
+                const orderResponse = await api.get(`order/${orderId}`, {
+                    headers: {
+                        "x-order-secret": orderSecret
+                    }
+                });
                 setOrder(orderResponse.data);
 
                 if (orderResponse.data.isPaid === "unpaid" && !hasRedirectedRef.current) {
                     hasRedirectedRef.current = true;
                     toastDanger('กรุณาชำระเงินก่อน');
-                    const createPaymentResponse = await api.post(`/payment/create/${orderId}`);
-                    const { checkoutUrl } = createPaymentResponse.data;
-                    router.push(checkoutUrl);
+                    router.push(`/user/order/confirm/${orderId}`);
                     return;
                 }
 
@@ -112,15 +101,8 @@ export default function DoneOrderPage() {
 
 
             <section className="flex justify-between mt-0">
-                <div className="flex flex-col gap-y-4 border-r-[#B6B6B6] text-start text-lg">
-                    <p>สั่งเมื่อ: {getTimeFormat(order.orderAt)}</p>
-                    <p className="text-base">พร้อมเสิร์ฟ: {getTimeFormat(order.deliverAt)}</p>
-                </div>
-
-                <div className="flex flex-col gap-y-4 text-start text-lg">
-                    <p className="text-xl noto-sans-bold">สถานะ</p>
-                    <p>{renderStatus}</p>
-                </div>
+                <p className="text-xl font-semibold">สั่งเมื่อ: {getTimeFormat(order.orderAt)}</p>
+                <p className="text-xl font-semibold">พร้อมเสิร์ฟ: {getTimeFormat(order.deliverAt)}</p>
             </section>
 
             <section className="flex flex-col justify-between gap-y-6">
@@ -128,19 +110,31 @@ export default function DoneOrderPage() {
                 <div>
                     {order.orderMenus.map((item) => (
                         <div key={item.menuName} className="flex justify-between gap-y-2">
-                            <p className="noto-sans-regular text-base text-primary">{item.quantity}x{' '}-{' '}{item.menuName}</p>
-                            <p className="noto-sans-bold text-xl text-primary">{item.unitPrice}</p>
+                            <p className="noto-sans-regular text-lg text-primary">{item.quantity}x{' '}-{' '}{item.menuName}</p>
+                            <p className="noto-sans-bold text-2xl text-primary">{item.unitPrice}</p>
                         </div>
                     ))}
                 </div>
             </section>
 
-            <Button
-                type="button"
-                onClick={() => router.push('/user/restaurant')}
-            >
-                กลับสู่หน้าหลัก
-            </Button>
+            <div className="grid grid-cols-2 gap-x-4">
+                <Button
+                    type="button"
+                    size="lg"
+                    onClick={() => router.push('/user/restaurant')}
+                >
+                    <p className="text-base">กลับสู่หน้าหลัก</p>
+                </Button>
+
+                <Button
+                    type="button"
+                    size="lg"
+                    variant="secondaryDanger"
+                    onClick={() => router.push(`/user/order/request-refund/${orderId}`)}
+                >
+                    <p className="text-base">ยกเลิกคำสั่งซื้อ</p>
+                </Button>
+            </div>
         </div>
     )
 }
