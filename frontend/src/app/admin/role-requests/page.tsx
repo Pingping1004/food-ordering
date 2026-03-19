@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/Button";
 import { toastDanger, toastSuccess } from "@/components/ui/Toast";
+import { useRouter } from "next/navigation";
 
 type RoleRequestStatus = "pending" | "accepted" | "rejected";
 
@@ -19,6 +20,7 @@ type RoleRequest = {
 
 export default function AdminRoleRequestsPage() {
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
   const [roleRequests, setRoleRequests] = useState<RoleRequest[]>([]);
 
   const fetchData = useCallback(async () => {
@@ -64,9 +66,12 @@ export default function AdminRoleRequestsPage() {
     <div className="container mx-auto px-6 py-10">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl noto-sans-bold text-primary">คำขอเป็นร้านอาหาร</h1>
-        <Button type="button" variant="secondary" onClick={fetchData} disabled={loading}>
-          รีเฟรช
+        
+        <div>
+        <Button type="button" variant="secondary" onClick={() => router.push(`/admin/payout`)} disabled={loading}>
+          ตรวจสอบธุรกรรม
         </Button>
+        </div>
       </div>
 
       {loading ? (
@@ -83,15 +88,15 @@ export default function AdminRoleRequestsPage() {
             >
               Pending
             </button>
-            
-            <button 
+
+            <button
               className={`w-1/2 p-2 ${navbarState === "accepted" ? "text-primary border-b-2 border-primary-main" : ""}`}
               onClick={() => setNavbarState("accepted")}
             >
               Accepted
             </button>
 
-            <button 
+            <button
               className={`w-1/2 p-2 ${navbarState === "rejected" ? "text-primary border-b-2 border-primary-main" : ""}`}
               onClick={() => setNavbarState("rejected")}
             >
@@ -106,20 +111,33 @@ export default function AdminRoleRequestsPage() {
               className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border rounded-xl p-4 bg-white"
             >
               <div className="flex flex-col">
-                <div className="text-primary noto-sans-bold">User: {r.username}</div>
+                <div className="flex justify-between text-primary noto-sans-bold">
+                  <h2 className="text-lg">ผู้ใช้: {r.username}</h2>
+
+                  {r.status !== "pending" && (
+                    <Button type="button" size="sm" variant={r.status === "accepted" ? "secondarySuccess" : "secondaryDanger"}>
+                    {r.status}
+                  </Button>
+                  )}
+                </div>
+
                 <div className="text-sm text-secondary">
-                  Request to be: {r.requestRole} • Status: {r.status}
+                  <h3 className="noto-sans-regular text-base">ส่งคำขอสำหรับเป็น: {r.requestRole}</h3>
                 </div>
               </div>
 
-              <div className="flex gap-2">
-                <Button type="button" variant="primary" onClick={() => approve(r.requestId)}>
-                  อนุมัติ
-                </Button>
-                <Button type="button" variant="secondaryDanger" onClick={() => reject(r.requestId)}>
-                  ปฏิเสธ
-                </Button>
-              </div>
+              {r.status === "pending" && (
+                <div className="flex gap-2 justify-between">
+                  <Button type="button" size="full" variant="primary" onClick={() => approve(r.requestId)}>
+                    อนุมัติ
+                  </Button>
+
+                  <Button type="button" size="full" variant="secondaryDanger" onClick={() => reject(r.requestId)}>
+                    ปฏิเสธ
+                  </Button>
+
+                </div>
+              )}
             </div>
           ))}
         </div>
