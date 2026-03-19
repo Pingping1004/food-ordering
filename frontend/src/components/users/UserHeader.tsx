@@ -108,12 +108,22 @@ export default function UserHeader() {
                     </Button>
                 </div>
             ) : (
-                <Button
+                <div className="flex gap-x-2">
+                    <Button
                     type="button"
                     onClick={primaryAction.onClick}
                 >
                     {primaryAction.label}
                 </Button>
+
+                <Button
+                    type="button"
+                    variant="secondaryDanger"
+                    onClick={() => window.open("https://forms.gle/mmPg4uSpEsapLcPHA")}
+                >
+                    รายงานปัญหา
+                </Button>
+                </div>
             )}
         </header >
     );
