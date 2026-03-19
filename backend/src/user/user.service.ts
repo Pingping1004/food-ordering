@@ -62,6 +62,7 @@ export class UserService {
 
     const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
     const newUser = {
+      name: createUserDto.email.split("@")[0],
       email: createUserDto.email,
       password: hashedPassword,
       role: Role.user,
@@ -143,9 +144,9 @@ export class UserService {
   }
 
   async createRoleRequest(userId: string, requestRole: Role) {
-    if (requestRole !== Role.cooker)
-      throw new BadRequestException('อนุญาตให้ขอเป็นร้านอาหารเท่านั้น');
+    if (requestRole !== Role.cooker) throw new BadRequestException('อนุญาตให้ขอเป็นร้านอาหารเท่านั้น');
 
+    const { name } = await this.findOneUser(userId)
     const existingPendingRequest = await this.prisma.roleRequest.findFirst({
       where: {
         userId,
@@ -159,6 +160,7 @@ export class UserService {
       const result = await this.prisma.roleRequest.create({
         data: {
           userId,
+          username: name,
           requestRole,
           status: RoleRequestStatus.pending,
         },

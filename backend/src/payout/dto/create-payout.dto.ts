@@ -1,47 +1,45 @@
+import { Type } from 'class-transformer';
 import {
   IsDate,
+  IsISO8601,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
   IsUUID,
 } from 'class-validator';
-import Decimal from 'decimal.js';
 
 export class CreatePayoutDto {
-  @IsNumber()
+  @IsString()
   @IsNotEmpty()
-  restaurantRevenue: number | Decimal;
-
-  @IsNumber()
-  @IsNotEmpty()
-  platformFee: number | Decimal;
-
-  @IsNumber()
-  @IsNotEmpty()
-  transactionFee: number | Decimal;
-
-  @IsDate()
-  @IsOptional()
-  paidAt?: string;
-
-  @IsDate()
-  @IsNotEmpty()
-  startDate: Date;
-
-  @IsDate()
-  @IsNotEmpty()
-  endDate: Date;
-
-  @IsUUID()
-  @IsNotEmpty()
-  orderId: string;
-
-  @IsUUID()
-  @IsNotEmpty()
-  restaurantId: string;
+  restaurantEarning: string;
 
   @IsString()
   @IsNotEmpty()
+  platformNetEarning: string;
+
+  @IsString()
+  @IsNotEmpty()
+  transactionFee: string;
+
+  @IsISO8601()
+  @IsOptional()
+  paidAt?: string;
+
+  @Type(() => Date)
+  @IsDate()
+  startDate: Date;
+
+  @Type(() => Date)
+  @IsDate()
+  endDate: Date;
+
+  @IsUUID()
+  orderId: string;
+
+  @IsUUID()
+  restaurantId: string;
+
+  @IsString()
   restaurantName: string;
 }
