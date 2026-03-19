@@ -60,7 +60,7 @@ export type OrderProps = React.HTMLAttributes<HTMLDivElement> &
         refundAt?: Date;
         isLargeTextMode?: boolean
         isDelayDisabled: boolean
-        isCancelledDisabled: boolean
+        isRejectedDisabled: boolean
         onDelayUpdate: (orderId: string) => void;
         onStatusUpdate: (orderId: string, status: OrderStatus) => void;
     };
@@ -83,30 +83,11 @@ export const Order = ({
     className,
     isLargeTextMode = false,
     isDelayDisabled = false,
-    isCancelledDisabled = false,
+    isRejectedDisabled = false,
     onDelayUpdate,
     onStatusUpdate,
     ...props
 }: OrderProps) => {
-    const [isDelayed, setIsDelayed] = useState(isDelay);
-    const [isUpdating, setIsUpdating] = useState(false);
-    const [now, setNow] = useState(Date.now())
-
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setNow(Date.now())
-        }, 10000)
-
-        return () => clearInterval(interval)
-    }, [])
-
-    const orderTime = new Date(orderAt).getTime()
-
-    const canReject = (now - orderTime) / 1000 / 60 <= 5
-
-    const acceptedTime = status === OrderStatus.accepted ? orderTime : null
-    const canDelay = acceptedTime ? (now - acceptedTime) / 1000 / 60 <= 10 : false
-
     const isRefund = (paymentStatus === "refund_complete" || paymentStatus === "refund_pending") && status === OrderStatus.cancelled
 
     return (
@@ -114,7 +95,7 @@ export const Order = ({
             className={clsx(
                 "flex flex-col p-4 border-1 border-[#E1E1E1] rounded-2xl",
                 isLargeTextMode ? "p-6 gap-y-8 text-lg" : "p-4 gap-y-6 text-sm",
-                orderVariants({ variant, paymentStatus, selected, isDelayProp: isDelayed }),
+                orderVariants({ variant, paymentStatus, selected, isDelayProp: isDelay }),
                 className
             )}
             {...props}
@@ -184,9 +165,9 @@ export const Order = ({
                     )}
                 >
                     <p className="mb-2 text-primary">รายละเอียดออเดอร์:</p>
-                    {orderMenus.map((item) => (
+                    {orderMenus.map((item, index) => (
                         <p
-                            key={item.menuName}
+                            key={`${item.menuName}-${index}`}
                             className={clsx(isLargeTextMode ? "text-2xl mb-1 font-bold" : "text-lg")}
                         >
                             {item.quantity}x - {item.menuName}
@@ -248,7 +229,6 @@ export const Order = ({
                                 size={isLargeTextMode ? "lg" : "md"}
                                 className="flex w-full"
                                 type="button"
-                                disabled={isUpdating}
                                 onClick={() => onStatusUpdate(orderId, OrderStatus.accepted)}
                             >
                                 <p className={clsx(isLargeTextMode ? "text-2xl mb-1 font-bold" : "text-lg")}>รับออเดอร์</p>
@@ -256,11 +236,11 @@ export const Order = ({
 
                             <Button
                                 variant="secondaryDanger"
-                                disabled={isDelay || isUpdating || !canReject}
+                                disabled={isDelay || isRejectedDisabled}
                                 size={isLargeTextMode ? "lg" : "md"}
                                 type="button"
                                 className="flex w-full"
-                                onClick={() => onStatusUpdate(orderId, OrderStatus.cancelled)}
+                                onClick={() => onStatusUpdate(orderId, OrderStatus.rejected)}
                             >
                                 <p className={clsx(isLargeTextMode ? "text-2xl mb-1 font-bold" : "text-lg")}>ปฏิเสธ</p>
                             </Button>
@@ -270,7 +250,7 @@ export const Order = ({
                     {status === OrderStatus.accepted && (
                         <Button
                             variant={isDelay === false ? "tertiary" : "secondary"}
-                            disabled={isDelay || isUpdating || !canDelay}
+                            disabled={isDelay || isDelayDisabled || new Date(deliverAt).getTime() <= new Date().getTime()}
                             size={"full"}
                             type="button"
                             className="flex w-full"

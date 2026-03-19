@@ -8,7 +8,7 @@ import { useAuth } from '@/context/Authcontext';
 import { CookerProvider, useCooker } from '@/context/Cookercontext';
 import { getParamId } from '@/util/param';
 import { api } from '@/lib/api';
-import CookerHeader from '@/components/cookers/Header';
+import CookerHeader from '@/components/cookers/CookerHeader';
 
 function Page() {
     const params = useParams();

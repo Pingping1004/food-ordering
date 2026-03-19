@@ -12,7 +12,7 @@ import { CsrfGuard } from 'src/guards/csrf.guard';
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
-  @Get()
+  @Get('all')
   findAll() {
     return this.adminService.findAllRequest();
   }

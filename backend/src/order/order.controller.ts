@@ -16,7 +16,6 @@ import {
 } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
-import { UpdateOrderDto } from './dto/update-order.dto';
 import { Request } from 'express';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from '../decorators/role.decorator';
@@ -24,6 +23,7 @@ import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
 import { OrderStatus, Role, User } from '@prisma/client';
 import { CsrfGuard } from 'src/guards/csrf.guard';
 import { Public } from 'src/decorators/public.decorator';
+import { UpdateOrderDto } from './dto/update-order.dto';
 
 @Controller('order')
 @UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)

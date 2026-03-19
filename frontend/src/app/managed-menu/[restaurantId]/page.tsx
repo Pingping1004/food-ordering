@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useCallback } from 'react'
-import CookerHeader from '@/components/cookers/Header'
+import CookerHeader from '@/components/cookers/CookerHeader'
 import { Button } from '@/components/Button'
 import { Menu } from '@/components/cookers/Menu'
 import { useMenu, MenuProvider, Menu as MenuType } from '@/context/MenuContext';

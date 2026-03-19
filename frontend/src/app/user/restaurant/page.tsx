@@ -4,7 +4,7 @@ import { RestaurantProfile } from "@/components/users/RestaurantProfile";
 import React, { useEffect, useState } from "react";
 import { Restaurant } from "@/context/MenuContext";
 import { api } from "@/lib/api";
-import UserHeader from "@/components/users/Header";
+import UserHeader from "@/components/users/UserHeader";
 import LoadingPage from "@/components/LoadingPage";
 import Modal from "@/components/users/Modal";
 
