@@ -1,5 +1,6 @@
-import { Inject, Injectable, forwardRef } from "@nestjs/common";
+import { Inject, Injectable, NotFoundException, forwardRef } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
+import moment from "moment";
 import { MenuService } from "src/menu/menu.service";
 import { clearMenuQuotaCache } from "src/menu/menuCache";
 import { PrismaService } from "src/prisma/prisma.service";
@@ -19,12 +20,9 @@ export class InventoryService {
         menuId: string,
         quantity: number,
         menuName: string,
+        maxDaily: number
     ): Promise<string | null> {
-
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-
-        const menu = await this.menuService.findMenu(menuId)
+        const today = moment().tz('Asia/Bangkok').startOf('day').toDate();
 
         await tx.inventory.upsert({
             where: {
@@ -34,8 +32,8 @@ export class InventoryService {
             create: {
                 menuId,
                 date: today,
-                dailyQuota: menu.maxDaily,
-                remaining: menu.maxDaily
+                dailyQuota: maxDaily,
+                remaining: maxDaily
             }
         })
 
@@ -48,16 +46,11 @@ export class InventoryService {
             data: {
                 remaining: { decrement: quantity }
             }
-        })
+        });
 
-        if (result.count === 0) {
-            return menuName
-        }
+        if (result.count === 0) return menuName;
 
-        const quotaCacheKey = `menuQuota:restaurant:${menu.restaurantId}`;
-        clearMenuQuotaCache(quotaCacheKey);
-
-        return null
+        return null;
     }
 
     async getRemainingQuotas(menuIds: string[]): Promise<Record<string, number>> {
