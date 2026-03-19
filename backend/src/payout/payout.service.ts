@@ -1,12 +1,11 @@
-import { ConflictException, forwardRef, Inject, Injectable } from '@nestjs/common';
-import { CreatePayoutDto } from './dto/create-payout.dto';
-import { UpdatePayoutDto } from './dto/update-payout.dto';
+import { ConflictException, forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { calculatePayout, calculateWeeklyInterval } from './payout-calculator';
 import { OrderService } from 'src/order/order.service';
-import { Payout } from '@prisma/client';
+import { Order, Payout, Prisma } from '@prisma/client';
 import Decimal from 'decimal.js';
 import { RestaurantService } from 'src/restaurant/restaurant.service';
+import moment from 'moment';
 
 @Injectable()
 export class PayoutService {
@@ -18,33 +17,77 @@ export class PayoutService {
   ) {}
 
   async createPayout(orderId: string) {
-    const order = await this.orderService.findOneOrder(orderId);
+    const { restaurantId, totalAmount } = await this.orderService.findOneOrder(orderId);
+    if (await this.findExistingPayout(orderId)) throw new ConflictException("ออเดอร์นี้ถูกบันทึกไปแล้ว");
 
-    if (await this.findExistingPayout(orderId)) throw new ConflictException();
-    
-    const { name } = await this.restaurantService.findRestaurant(order.restaurantId);
-    const sellingPrice = order.totalAmount;
-    const { restaurantEarning, platformFee, transactionFee } = calculatePayout(sellingPrice);
+    const { name } = await this.restaurantService.findRestaurant(restaurantId);
+    const { restaurantEarning, platformNetEarning, transactionFee } = calculatePayout(totalAmount, {
+      platformCommissionRate: new Decimal(0.1),
+      baseTransactionRate: new Decimal(0.02),
+      vatRate: new Decimal(0.07)
+    });
 
     const now = new Date();
     const { startDate, endDate } = calculateWeeklyInterval(now);
 
-    const newPayout: CreatePayoutDto = {
-      restaurantRevenue: restaurantEarning,
-      platformFee,
-      transactionFee,
-      startDate,
-      endDate,
-      orderId: order.orderId,
-      restaurantId: order.restaurantId,
-      restaurantName: name,
-    };
-
     const result = await this.prisma.payout.create({
-      data: newPayout,
+      data: {
+        restaurantRevenue: restaurantEarning,
+        platformFee: platformNetEarning,
+        transactionFee: transactionFee,
+        startDate,
+        endDate,
+        orderId,
+        restaurantId,
+        restaurantName: name,
+      },
     });
 
     return result;
+  }
+
+  async createPayoutTx(tx: Prisma.TransactionClient, orderId: string) {
+    const order = await tx.order.findUnique({
+      where: { orderId },
+      include: {
+        orderMenus: true,
+        restaurant: {
+          select: {
+            restaurantId: true,
+            name: true
+          }
+        }
+      }
+    });
+
+    if (!order) throw new NotFoundException("ไม่พบออดดอร์สำหรับไอดี: ", orderId);
+
+    const existing = await tx.payout.findUnique({ where: { orderId } });
+    if (existing) return existing;
+
+    const totalAmount = order.orderMenus.reduce((sum, item) => {
+      return sum + Number(item.unitPrice) * item.quantity;
+    }, 0);
+    const totalAmountDecimal = new Prisma.Decimal(totalAmount);
+
+    const payout = calculatePayout(totalAmountDecimal, {
+      platformCommissionRate: new Decimal(0.1),
+      baseTransactionRate: new Decimal(0.02),
+      vatRate: new Decimal(0.07),
+    });
+
+    return await tx.payout.create({
+      data: {
+        orderId,
+        restaurantId: order.restaurantId,
+        restaurantRevenue: payout.restaurantEarning,
+        platformFee: payout.platformNetEarning,
+        transactionFee: payout.transactionFee,
+        restaurantName: order.restaurant.name,
+        startDate: order.paidAt,
+        endDate: new Date(),
+      }
+    })
   }
 
   async findWeeklyPayout(
@@ -65,6 +108,24 @@ export class PayoutService {
       orderBy: {
         startDate: 'desc',
       },
+    });
+
+    return payouts;
+  }
+
+  async getTodayPayout() {
+    const startOfDay = moment().tz('Asia/Bangkok').startOf('day').toDate();
+    const endOfDay = moment().tz('Asia/Bangkok').endOf('day').toDate();
+
+    const payouts = await this.prisma.payout.findMany({
+      where: {
+        createdAt: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      include: { restaurant: true },
     });
 
     return payouts;
@@ -115,13 +176,5 @@ export class PayoutService {
       return acc.add(item.platformFee);
     }, new Decimal(0))
     return allRevenue;
-  }
-
-  update(id: number, updatePayoutDto: UpdatePayoutDto) {
-    return `This action updates a #${id} payout`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} payout`;
   }
 }
