@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { PayoutService } from './payout.service';
 import { calculatePayout } from './payout-calculator';
+import { UpdatePayoutDto } from './dto/update-payout.dto';
 
 @Controller('payout')
 export class PayoutController {
@@ -39,7 +40,12 @@ export class PayoutController {
   }
 
   @Get()
-  findAllPayout(payoutId?: string) {
+  findAllPayout() {
     return this.payoutService.findAllPayout();
+  }
+
+  @Patch('update/:payoutId')
+  updatePayout(@Param('payoutId') payoutId: string, @Body() updatePayoutDto: UpdatePayoutDto) {
+    return this.payoutService.updatePayout(payoutId, updatePayoutDto.isPaid)
   }
 }

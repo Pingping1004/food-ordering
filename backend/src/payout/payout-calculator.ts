@@ -41,7 +41,8 @@ export function calculatePayout(
 
   return {
     totalRevenue: userPaidAmount.toDecimalPlaces(2),
-    restaurantEarning: restaurantEarning.toDecimalPlaces(2),
+    // restaurantEarning: restaurantEarning.toDecimalPlaces(2),
+    restaurantEarning: userPaidAmount,
     platformNetEarning: platformNetEarning.toDecimalPlaces(2),
     grossPlatformCommission: grossPlatformCommission.toDecimalPlaces(2),
     transactionFee: totalTransactionFee.toDecimalPlaces(2),

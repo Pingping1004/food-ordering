@@ -32,9 +32,11 @@ export class PayoutService {
 
     const result = await this.prisma.payout.create({
       data: {
+        grossAmount: totalAmount,
         restaurantRevenue: restaurantEarning,
         platformFee: platformNetEarning,
         transactionFee: transactionFee,
+        vat: new Decimal(0.07),
         startDate,
         endDate,
         orderId,
@@ -80,9 +82,11 @@ export class PayoutService {
       data: {
         orderId,
         restaurantId: order.restaurantId,
+        grossAmount: order.totalAmount,
         restaurantRevenue: payout.restaurantEarning,
         platformFee: payout.platformNetEarning,
         transactionFee: payout.transactionFee,
+        vat: new Decimal(0.07),
         restaurantName: order.restaurant.name,
         startDate: order.paidAt,
         endDate: new Date(),
@@ -168,6 +172,15 @@ export class PayoutService {
     });
 
     return payouts;
+  }
+
+  async updatePayout(payoutId: string, isPaid: boolean) {
+    const payout = await this.prisma.payout.update({
+      where: { payoutId },
+      data: { isPaid: isPaid, paidAt: isPaid === true ? new Date() : null }
+    });
+
+    return payout;
   }
 
   private async getAllRevenue() {
