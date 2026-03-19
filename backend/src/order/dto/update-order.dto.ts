@@ -15,7 +15,6 @@ import {
   ArrayMaxSize,
 } from 'class-validator';
 import { PaymentMethod, OrderStatus, PaymentStatus } from '@prisma/client';
-import { CreatePaymentDto } from 'src/payment/dto/create-payment.dto';
 import { CreateOrderDto, CreateOrderMenusDto } from './create-order.dto';
 import { PartialType } from '@nestjs/swagger';
 

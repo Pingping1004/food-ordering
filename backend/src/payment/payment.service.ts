@@ -26,11 +26,8 @@ export class PaymentService {
             });
     
             const result = response.data
-            console.log("Payment service response: ", result)
 
-            if (result.code !== "200200") {
-                throw new HttpException({ message: result.message, code: result.code }, HttpStatus.BAD_REQUEST);
-            }
+            if (result.code !== "200200") throw new HttpException({ message: result.message, code: result.code }, HttpStatus.BAD_REQUEST);
           
             return result;
 
@@ -40,7 +37,7 @@ export class PaymentService {
             const err = error as AxiosError;
         
             this.logger.warn("ยืนยันการชำระเงินล้มเหลว:", err.response?.data || err.message);
-            throw new HttpException({ message: "ยืนยันการชำระเงินล้มเหลว" }, HttpStatus.BAD_REQUEST);
+            throw new HttpException({ message: err.message }, HttpStatus.BAD_REQUEST);
         }
     }
 }

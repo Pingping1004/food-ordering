@@ -3,7 +3,6 @@ import {
   IsArray,
   IsBoolean,
   IsDate,
-  IsEnum,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -15,11 +14,9 @@ import {
   ArrayMinSize,
   ArrayMaxSize,
 } from 'class-validator';
-import { PaymentMethod } from '@prisma/client';
-import { CreatePaymentDto } from 'src/payment/dto/create-payment.dto';
 
 export class CreateOrderMenusDto {
-  @IsUUID('4', { message: 'menuId must be a valida UUID' })
+  @IsUUID('4', { message: 'menuId must be a valid UUID' })
   @IsNotEmpty()
   menuId: string;
 
@@ -33,9 +30,9 @@ export class CreateOrderMenusDto {
   @IsString()
   menuName: string;
 
-  @IsNumber()
   @IsNotEmpty()
   @IsPositive()
+  @IsNumber()
   @Type(() => Number)
   unitPrice: number;
 
