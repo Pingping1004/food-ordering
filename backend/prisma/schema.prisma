@@ -31,13 +31,17 @@ model RefreshToken {
 
 model Payout {
   payoutId          String     @id @default(uuid())
+  grossAmount       Decimal    @db.Decimal(10, 2)
   restaurantRevenue Decimal    @db.Decimal(10, 2)
   platformFee       Decimal    @db.Decimal(10, 2)
   transactionFee    Decimal    @db.Decimal(10, 2)
+  vat               Decimal    @db.Decimal(10, 2)
+  refundAmount      Decimal?    @db.Decimal(10, 2)
   isPaid            Boolean    @default(false)
   startDate         DateTime
   endDate           DateTime
   paidAt            DateTime?
+  refundAt            DateTime?
   createdAt         DateTime   @default(now())
   orderId           String     @unique
   restaurantName    String
