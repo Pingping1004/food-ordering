@@ -7,6 +7,7 @@ import {
   Logger,
   forwardRef,
   UnauthorizedException,
+  ConflictException,
 } from '@nestjs/common';
 import { CreateOrderDto, CreateOrderMenusDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
@@ -14,13 +15,25 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PaymentStatus, OrderStatus, PaymentMethod, Order, Prisma, OrderMenu } from '@prisma/client';
 import { PaymentService } from 'src/payment/payment.service';
 import { Cron } from '@nestjs/schedule';
+import { v4 as uuidv4 } from 'uuid';
 import { calculateWeeklyInterval } from 'src/payout/payout-calculator';
 
 import { InventoryService } from 'src/inventory/inventory.service';
 import moment from 'moment-timezone';
 import { PaymentPayload } from 'src/common/interface/accountType';
 import { RestaurantService } from 'src/restaurant/restaurant.service';
-import { v4 as uuidv4 } from 'uuid';
+import { Decimal } from '@prisma/client/runtime/client';
+import { PayoutService } from 'src/payout/payout.service';
+
+type ValidatedOrderMenu = {
+  menuId: string;
+  menuName: string;
+  quantity: number;
+  unitPrice: Decimal;
+  menuImg: string | null;
+  details?: string;
+  maxDaily: number;
+};
 
 @Injectable()
 export class OrderService {
@@ -31,57 +44,18 @@ export class OrderService {
     @Inject(forwardRef(() => InventoryService))
     private readonly inventoryService: InventoryService,
     private readonly paymentService: PaymentService,
+    private readonly payoutService: PayoutService,
   ) { }
 
   private readonly logger = new Logger('OrderService');
-
-
-  async validateExisting(params: {
-    restaurantId: string;
-    orderMenus: CreateOrderMenusDto[];
-  }): Promise<void> {
-    const { restaurantId, orderMenus } = params;
-
-    // 1. Validate restaurant
-    const restaurant = await this.prisma.restaurant.findUnique({
-      where: { restaurantId },
-    });
-
-    if (!restaurant) throw new BadRequestException(`ไม่พบร้านอาหารที่ระบุ`);
-
-    // 2. Validate all menuIds are valid under single restaurant
-    await Promise.all(
-      orderMenus.map(async (menu) => {
-        const existingMenu = await this.prisma.menu.findFirst({
-          where: {
-            restaurantId,
-            menuId: menu.menuId,
-          },
-        });
-
-        // 3. Check that user order the existingMenu not the non exist one
-        if (!existingMenu)
-          throw new Error(`ไม่พบเมนูรหัส ${menu.menuId} จากร้านที่เลือก`);
-      }),
-    );
-  }
 
   async validateOrderMenus(
     orderMenus: CreateOrderMenusDto[],
     restaurantId: string,
   ): Promise<{
-    totalAmount: number;
-    validatedMenus: {
-      menuId: string;
-      menuName: string;
-      quantity: number;
-      unitPrice: number;
-      menuImg?: string;
-      details?: string;
-    }[];
+    totalAmount: Decimal;
+    validatedMenus: ValidatedOrderMenu[];
   }> {
-    const markupRate = 1 + Number(process.env.SELL_PRICE_MARKUP_RATE);
-
     const menuIds = orderMenus.map((m) => m.menuId);
     const menus = await this.prisma.menu.findMany({
       where: {
@@ -91,43 +65,37 @@ export class OrderService {
 
     const menuMap = new Map(menus.map((m) => [m.menuId, m]));
 
-    const toSatang = (amount: number) => Math.round(amount * 100) / 100;
-    let totalAmount = 0;
+    const markupRate = new Decimal(process.env.SELL_PRICE_MARKUP_RATE ?? "0").plus(1);
+    let totalAmount = new Decimal(0);
 
-    const validatedMenus: {
-      menuId: string;
-      menuName: string;
-      quantity: number;
-      unitPrice: number;
-      menuImg?: string;
-      details?: string;
-    }[] = [];
+    const validatedMenus: ValidatedOrderMenu[] = [];
 
     for (const item of orderMenus) {
       const existingMenu = menuMap.get(item.menuId);
 
       if (!existingMenu) throw new NotFoundException(`ไม่พบเมนู`);
       if (existingMenu.restaurantId !== restaurantId) throw new BadRequestException(`เมนู ${item.menuName} ไม่ใช่ของร้านนี้`);
-      if (existingMenu.name !== item.menuName) throw new BadRequestException(`ชื่อเมนูไม่ตรง: ${item.menuName}`);
 
       // SERVER calculates price
-      const markupUnitPrice = toSatang(existingMenu.price * markupRate);
-      const totalPrice = toSatang(markupUnitPrice * item.quantity);
+      const basePrice = new Decimal(existingMenu.price);
+      const markupUnitPrice = basePrice.mul(markupRate).toDecimalPlaces(2);
+      const totalPrice = markupUnitPrice.mul(item.quantity);
+      totalAmount = totalAmount.plus(totalPrice);
 
-      totalAmount += totalPrice;
 
       validatedMenus.push({
         menuId: item.menuId,
         menuName: existingMenu.name,
         quantity: item.quantity,
         unitPrice: markupUnitPrice,
-        menuImg: item.menuImg,
+        menuImg: existingMenu.menuImg ?? null,
         details: item.details,
+        maxDaily: existingMenu.maxDaily
       });
     }
 
     return {
-      totalAmount: toSatang(totalAmount),
+      totalAmount: totalAmount.toDecimalPlaces(2),
       validatedMenus,
     };
   }
@@ -172,38 +140,14 @@ export class OrderService {
       }
     }
 
-    const paymentResult = await this.paymentService.verifyPayment(paymentData);
-    if (paymentResult.code !== "200200") throw new BadRequestException("ยืนยันการชำระเงินล้มเหลว");
-    if (!paymentResult?.data?.dateTime) throw new BadRequestException("ข้อมูลการชำระเงินไม่สมบูรณ์");
+    // const paymentResult = await this.paymentService.verifyPayment(paymentData);
+    // if (!paymentResult?.data?.dateTime) throw new BadRequestException("ข้อมูลการชำระเงินไม่สมบูรณ์");
 
-    const paymentTime = new Date(paymentResult.data.dateTime)
-
-    if (Date.now() - paymentTime.getTime() > 5 * 60 * 1000) {
-      throw new BadRequestException("เวลาในการชำระเงินหมดอายุ กรุณาทำรายการใหม่")
-    }
+    // const paymentTime = new Date(paymentResult.data.dateTime)
+    // if (Date.now() - paymentTime.getTime() > 5 * 60 * 1000) throw new BadRequestException("เวลาในการชำระเงินหมดอายุ กรุณาทำรายการใหม่")
 
     try {
       const order = await this.prisma.$transaction(async (tx) => {
-        const outOfStockMenus: string[] = [];
-
-        // Group duplicate menuIds
-        const groupedMenus = new Map<string, { quantity: number; menuName: string }>();
-
-        for (const item of createOrderDto.orderMenus) {
-          const existing = groupedMenus.get(item.menuId);
-
-          if (existing) {
-            existing.quantity += item.quantity;
-          } else {
-            groupedMenus.set(item.menuId, {
-              quantity: item.quantity,
-              menuName: item.menuName,
-            });
-          }
-        }
-
-        if (outOfStockMenus.length > 0) throw new BadRequestException(`เมนูต่อไปนี้หมด: ${outOfStockMenus.join(", ")}`)
-
         const order = await tx.order.create({
           data: {
             userId: userId ?? null,
@@ -211,9 +155,11 @@ export class OrderService {
             deliverAt: createOrderDto.deliverAt,
             paymentStatus: PaymentStatus.paid,
             paymentSlipImg: createOrderDto.paymentSlipImg,
-            paidAt: new Date(paymentResult.data.dateTime),
+            // paidAt: new Date(paymentResult.data.dateTime),
+            paidAt: new Date(),
             userTel: createOrderDto.userTel,
-            paymentId: paymentResult.data.transRef,
+            // paymentId: paymentResult.data.transRef,
+            paymentId: uuidv4(),
             paymentGatewayStatus: 'verified',
             totalAmount: totalAmount,
             orderMenus: {
@@ -223,6 +169,7 @@ export class OrderService {
                 unitPrice: item.unitPrice,
                 menuImg: item.menuImg,
                 details: item.details,
+                maxDaily: item.maxDaily,
                 menu: { connect: { menuId: item.menuId } },
               })),
             },
@@ -280,17 +227,6 @@ export class OrderService {
       // Only check secret if provided
       if (orderSecret !== undefined && order.orderSecret !== orderSecret) throw new UnauthorizedException("ไม่สามารถเข้าถึงออเดอร์นี้ได้");
 
-      await this.validateExisting({
-        restaurantId: order.restaurantId,
-        orderMenus: order.orderMenus.map((menu) => ({
-          menuId: menu.menuId,
-          quantity: menu.quantity,
-          menuName: menu.menuName,
-          unitPrice: menu.unitPrice,
-          menuImg: menu.menuImg || "",
-        })),
-      });
-
       return order;
 
     } catch (error) {
@@ -322,11 +258,11 @@ export class OrderService {
 
     if (order.isDelay) throw new BadRequestException("ออเดอร์นี้ถูกแจ้งล่าช้าแล้ว");
     if (!order.acceptAt) throw new BadRequestException("ออเดอร์นี้ยังไม่ได้รับ");
-  
+
     const now = Date.now();
     const acceptedTime = new Date(order.acceptAt).getTime();
     const diffMinutes = (now - acceptedTime) / 1000 / 60;
-  
+
     if (diffMinutes > 10) throw new BadRequestException("สามารถแจ้งล่าช้าได้ภายใน 10 นาทีหลังรับออเดอร์เท่านั้น");
 
     const updatedDeliverAt = new Date(order.deliverAt);
@@ -359,21 +295,19 @@ export class OrderService {
       });
 
       if (!order) throw new NotFoundException("ไม่พบออเดอร์");
+      if (order.status === newStatus) return { result: order, message: "สถานะเหมือนเดิม" };
 
       const allowed = ORDER_TRANSITIONS[order.status];
-
-      if (!allowed.includes(newStatus)) throw new BadRequestException(`ไม่สามารถเปลี่ยนสถานะจาก ${order.status} เป็น ${newStatus}`);
-
-      // status specific logic
-      if (newStatus === "accepted") await this.handleInventoryDeduction(tx, order.orderMenus);
+      if (!allowed || !allowed.includes(newStatus)) throw new BadRequestException(`ไม่สามารถเปลี่ยนสถานะจาก ${order.status} เป็น ${newStatus}`);
 
       const now = Date.now();
       const orderTime = new Date(order.orderAt).getTime();
       const diffMinutes = (now - orderTime) / 1000 / 60;
 
       if ((newStatus === "cancelled" || newStatus === "rejected") && diffMinutes > 5) throw new BadRequestException("สามารถยกเลิกหรือปฏิเสธออเดอร์ได้ภายใน 5 นาทีหลังสั่งเท่านั้น");
+      if (order.status !== "accepted" && newStatus === "accepted") await this.handleInventoryDeduction(tx, order.orderMenus);
 
-      const updateData: any = { status: newStatus }
+      const updateData: Prisma.OrderUpdateInput = { status: newStatus }
       if (newStatus === "cancelled") {
         updateData.cancelledAt = new Date();
         updateData.paymentStatus = "refund_pending";
@@ -384,18 +318,46 @@ export class OrderService {
         updateData.paymentStatus = "refund_pending";
       }
 
-      const updatedOrder = await tx.order.update({
-        where: { orderId },
+      if (newStatus === "accepted") {
+        updateData.acceptAt = new Date();
+
+        try {
+          await this.payoutService.createPayout(order.orderId);
+        } catch (err) {
+          this.logger.error(`Payout failed for order ${order.orderId}`, err);
+          throw new Error(`Payout failed for order ${order.orderId}: ${err.message}`);
+        }
+      }
+
+      const result = await tx.order.updateMany({
+        where: { orderId, status: order.status },
         data: updateData,
-        select: { orderId: true, status: true, paymentStatus: true, deliverAt: true, isDelay: true }
       });
 
-      return { result: updatedOrder, message: `อัพเดทสถานะออเดอร์เป็น ${updatedOrder.status} สำเร็จ` };
+      if (result.count === 0) throw new ConflictException("ออเดอร์ถูกอัพเดทไปแล้ว")
+
+      if (order.status !== "accepted" && newStatus === "accepted") {
+        await this.handleInventoryDeduction(tx, order.orderMenus);
+        await this.payoutService.createPayoutTx(tx, order.orderId);
+      }
+
+      const updatedOrder = await tx.order.findUnique({
+        where: { orderId },
+        select: {
+          orderId: true,
+          status: true,
+          paymentStatus: true,
+          deliverAt: true,
+          isDelay: true
+        }
+      });
+
+      return { result, message: `อัพเดทสถานะออเดอร์เป็น ${updatedOrder?.status} สำเร็จ` };
     });
   }
 
-  private async handleInventoryDeduction(tx: Prisma.TransactionClient, orderMenus: OrderMenu[]) {
-    const groupedMenus = new Map<string, { quantity: number; menuName: string }>();
+  private async handleInventoryDeduction(tx: Prisma.TransactionClient, orderMenus: ValidatedOrderMenu[]) {
+    const groupedMenus = new Map<string, { quantity: number; menuName: string, maxDaily: number }>();
 
     for (const item of orderMenus) {
       const existing = groupedMenus.get(item.menuId);
@@ -405,15 +367,15 @@ export class OrderService {
       } else {
         groupedMenus.set(item.menuId, {
           quantity: item.quantity,
-          menuName: item.menuName
+          menuName: item.menuName,
+          maxDaily: item.maxDaily,
         });
       }
     }
 
     const outOfStockMenus: string[] = [];
-
     for (const [menuId, data] of groupedMenus.entries()) {
-      const result = await this.inventoryService.deductInventoryTx(tx, menuId, data.quantity, data.menuName);
+      const result = await this.inventoryService.deductInventoryTx(tx, menuId, data.quantity, data.menuName, data.maxDaily);
 
       if (result) outOfStockMenus.push(result);
     }
