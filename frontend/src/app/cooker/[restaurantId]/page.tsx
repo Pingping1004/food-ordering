@@ -1,6 +1,6 @@
 "use client";
 
-import CookerHeader from "@/components/cookers/Header";
+import CookerHeader from "@/components/cookers/CookerHeader";
 import { Order, OrderProps } from "@/components/cookers/Order";
 import { OrderNavBar, OrderStatus } from "@/components/cookers/OrderNavbar";
 import LoadingPage from "@/components/LoadingPage";
@@ -22,10 +22,12 @@ function Page() {
     const [showAutoCancelModal, setShowAutoCancelModal] = useState(false)
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [now, setNow] = useState(new Date());
+    const [showRuleBanner, setShowRuleBanner] = useState(true);
 
     const fetchingRef = useRef(false);
     const fetchNewOrders = async () => {
-        if (fetchingRef.current) return fetchingRef.current = true
+        if (fetchingRef.current) return
+        fetchingRef.current = true
 
         try {
             const params = new URLSearchParams()
@@ -67,67 +69,91 @@ function Page() {
     }
 
     const handleDelayOrder = async (orderId: string) => {
+        const previousOrder = orders[orderId];
+
+        setOrders(prev => ({
+            ...prev,
+            [orderId]: {
+                ...prev[orderId],
+                isDelay: true,
+            }
+        }));
+
         try {
             const response = await api.patch(`/order/delay/${orderId}`, { isDelay: true });
             const updatedOrder = response.data.result;
 
             setOrders(prev => ({ ...prev, [orderId]: updatedOrder }))
             toastSuccess(response.data.message)
-        } catch (error) {
-            console.error("Update order delay error: ", error)
-            toastDanger(`แจ้งส่งออเดอร์ล่าช้าล้มเหลว`);
+        } catch (error: unknown) {
+            if (typeof error === 'object' && error !== null && 'response' in error) {
+                const err = error as { response: { status: number; data?: { message?: string, code?: string } } };
+                const backendMessage = err.response.data?.message;
+
+                setOrders(prev => ({
+                    ...prev,
+                    [orderId]: previousOrder,
+                }));
+
+                toastDanger(backendMessage ?? "แจ้งออเดอร์ล่าช้าล้มเหลว");
+            }
         }
     }
 
     const handleUpdateStatus = async (orderId: string, status: OrderStatus) => {
-        try {
+        const previousOrder = orders[orderId];
 
+        setOrders(prev => ({
+            ...prev,
+            [orderId]: {
+                ...prev[orderId],
+                status,
+            }
+        }));
+
+        try {
             let endpoint = "";
 
             switch (status) {
-                case "accepted":
-                    endpoint = `/order/accept/${orderId}`;
-                    break;
-
-                case "rejected":
-                    endpoint = `/order/reject/${orderId}`;
-                    break;
-
-                case "cancelled":
-                    endpoint = `/order/cancel/${orderId}`;
-                    break;
-
-                case "completed":
-                    endpoint = `/order/complete/${orderId}`;
-                    break;
-
-                default:
-                    throw new Error("Invalid status update");
+                case "accepted": endpoint = `/order/accept/${orderId}`; break;
+                case "rejected": endpoint = `/order/reject/${orderId}`; break;
+                case "cancelled": endpoint = `/order/cancel/${orderId}`; break;
+                case "completed": endpoint = `/order/complete/${orderId}`; break;
+                default: throw new Error("Invalid status update");
             }
 
             const response = await api.patch(endpoint);
-
             const updatedOrder = response.data.result;
 
             setOrders(prev => ({
                 ...prev,
-                [orderId]: updatedOrder
+                [orderId]: {
+                    ...prev[orderId],
+                    ...updatedOrder,
+                }
             }));
 
             toastSuccess(response.data.message);
 
-        } catch (error) {
-            console.error("Update order status error:", error);
-            toastDanger("อัพเดทสถานะออเดอร์ล้มเหลว");
+        } catch (error: unknown) {
+            if (typeof error === 'object' && error !== null && 'response' in error) {
+                const err = error as { response: { status: number; data?: { message?: string, code?: string } } };
+                const backendMessage = err.response.data?.message;
+
+                setOrders(prev => ({
+                    ...prev,
+                    [orderId]: previousOrder,
+                }));
+
+                toastDanger(backendMessage ?? `อัพเดทสถานะออเดอร์เป็น${status}ล้มเหลว`);
+            }
         }
     };
 
     useEffect(() => {
         const saved = localStorage.getItem("cook_large_text");
 
-        if (saved) {
-            setIsLargeTextMode(JSON.parse(saved));
-        }
+        if (saved) setIsLargeTextMode(JSON.parse(saved));
 
     }, []);
 
@@ -155,17 +181,18 @@ function Page() {
             localStorage.setItem("cook_order_rules_seen", "true")
         }
     }, [])
-
+    
+    const handleCloseBanner = () => { setShowRuleBanner(false) };
     const ordersArray = useMemo(() => Object.values(orders), [orders])
     const filterDailyOrders = useMemo(() => {
         const yesterday = new Date()
         yesterday.setDate(yesterday.getDate() - 1)
 
-        return ordersArray.filter((order) => order.paymentStatus === "paid" && order.completedAt && order.completedAt >= yesterday);
+        return ordersArray.filter((order) => order.paymentStatus === "paid" && new Date(order.orderAt) >= yesterday);
     }, [ordersArray]);
 
     const dailyDone = useMemo(() => {
-        return ordersArray.filter((order) => (order.status === OrderStatus.completed && order.completedAt)).length;
+        return ordersArray.filter((order) => (order.status === OrderStatus.completed && order.paymentStatus === "paid" && order.completedAt)).length;
     }, [filterDailyOrders]);
 
     const dailySales = useMemo(() => {
@@ -177,17 +204,20 @@ function Page() {
         setNavbarStatus(status);
     };
 
-    const isButtonDisabled = (orderAt: Date, bufferMins: number): boolean => {
+    const isButtonDisabled = (orderAt: Date, deliverAt: Date, bufferMins: number): boolean => {
         const elapsedMs = now.getTime() - new Date(orderAt).getTime();
         const elapsedMins = elapsedMs / 1000 / 60;
 
-        return elapsedMins > bufferMins;
+        const beforeDeliverMs = new Date(deliverAt).getTime() - now.getTime();
+        const beforeDeliverMins = beforeDeliverMs / 1000 / 60;
+
+        return elapsedMins > bufferMins && beforeDeliverMins > 5;
     }
 
-    const filterOrderStatus: OrderProps[] = useMemo(() => {
-        return ordersArray.filter(order => order.status === navbarStatus)
+    const filterTodayOrderStatus: OrderProps[] = useMemo(() => {
+        return filterDailyOrders.filter(order => order.status === navbarStatus)
             .sort((a, b) => new Date(a.deliverAt).getTime() - new Date(b.deliverAt).getTime());
-    }, [navbarStatus, ordersArray]);
+    }, [navbarStatus, filterDailyOrders]);
 
     if (!cooker.isApproved) {
         return (
@@ -233,6 +263,26 @@ function Page() {
                 isLargeTextMode={isLargeTextMode}
                 onStatusUpdate={handleNavbarChange}
             />
+
+            {showRuleBanner && (
+                <div
+                    className={`relative bg-yellow-100 border border-yellow-300 text-yellow-800 rounded-lg p-4
+                    ${isLargeTextMode ? "text-lg" : "text-md"}`}
+                >
+                    <button
+                        onClick={handleCloseBanner}
+                        className="absolute top-2 right-2 text-yellow-200 bg-yellow-700 hover:bg-yellow-900 rounded-4xl px-2 py-1 text-sm"
+                    >
+                        ✕
+                    </button>
+
+                    <p>
+                        ⚠ ต้องกดรับออเดอร์ภายใน5 นาที มิฉะนั้น<br />
+                        ระบบจะยกเลิกออเดอร์อัตโนมัติ</p>
+                    <p>⚠ แจ้งล่าช้าได้ภายใน 10 นาทีหลังรับออเดอร์</p>
+                    <p>⚠ แจ้งล่าช้าได้ภายใน 5 นาทีก่อนลูกค้าจะมารับ</p>
+                </div>
+            )}
 
             {navbarStatus === OrderStatus.completed ? (
                 <section className="flex flex-col gap-y-6">
@@ -282,7 +332,7 @@ function Page() {
                 </Button>
             )} */}
             <main>
-                {filterOrderStatus.map((order) => (
+                {filterTodayOrderStatus.map((order) => (
                     <Order
                         key={order.orderId}
                         orderId={order.orderId}
@@ -296,8 +346,8 @@ function Page() {
                         details={order.details}
                         userTel={order.userTel}
                         isLargeTextMode={isLargeTextMode}
-                        isDelayDisabled={isButtonDisabled(new Date(order.orderAt), 10)}
-                        isCancelledDisabled={isButtonDisabled(new Date(order.orderAt), 5)}
+                        isDelayDisabled={isButtonDisabled(new Date(order.orderAt), new Date(order.deliverAt), 10)}
+                        isRejectedDisabled={isButtonDisabled(new Date(order.orderAt), new Date(order.deliverAt), 5)}
                         className="mb-4"
                         selected="default"
                         onDelayUpdate={handleDelayOrder}
@@ -313,6 +363,7 @@ function Page() {
                 body={`• ต้องกดรับออเดอร์ภายใน 5 นาที มิฉะนั้นระบบจะยกเลิกอัตโนมัติ และร้านจะไม่ได้รับเงิน
                     • สามารถกดปฏิเสธออเดอร์ได้ภายใน 5 นาทีหลังจากลูกค้าสั่ง
                     • หลังจากรับออเดอร์แล้ว สามารถกด "แจ้งล่าช้า" ได้ภายใน 10 นาทีเท่านั้น
+                    • แจ้งล่าช้าได้ภายใน 5 นาทีก่อนลูกค้าจะมารับ
                     
                     กรุณาตรวจสอบออเดอร์และดำเนินการให้ทันเวลา`
                 }
