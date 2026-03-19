@@ -9,6 +9,7 @@ datasource db {
 model RoleRequest {
   requestId   String            @id @default(uuid())
   userId      String            @unique
+  username    String
   requestRole Role
   status      RoleRequestStatus
   createdAt   DateTime          @default(now())
@@ -118,7 +119,8 @@ model OrderMenu {
   quantity    Int
   menuName    String
   menuImg     String?
-  unitPrice   Float
+  unitPrice   Decimal @db.Decimal(10, 2)
+  maxDaily    Int
   orderId     String
   menuId      String
   menu        Menu    @relation("menuToOrderMenus", fields: [menuId], references: [menuId], onDelete: Cascade)
@@ -171,7 +173,7 @@ model Order {
 model User {
   userId        String         @id @default(uuid())
   email         String         @unique
-  name          String?
+  name          String
   password      String
   profileImg    String?
   role          Role           @default(user)
