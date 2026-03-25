@@ -201,7 +201,7 @@ export const Order = ({
                 <p className="noto-sans-bold text-sm">{details}</p>
             </section> */}
 
-            {isRefund && (
+            {/* {isRefund && (
                 <Button
                     variant={paymentStatus === 'refund_complete' ? "secondarySuccess" : "secondaryDanger"}
                     size="full"
@@ -209,7 +209,7 @@ export const Order = ({
                 >
                     <p className={clsx(isLargeTextMode ? "text-2xl mb-1 font-bold" : "text-lg")}>{paymentStatus === 'refund_complete' ? "คืนเงินแล้ว" : "ยังไม่คืนเงิน"}</p>
                 </Button>
-            )}
+            )} */}
 
             {status === OrderStatus.completed ? (
                 <Button
