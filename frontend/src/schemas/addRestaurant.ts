@@ -7,7 +7,7 @@ export const createRestaurantSchema = z.object({
             (f) =>
                 f === undefined ||
         (f instanceof FileList && (f.length === 0 || f.length === 1)),
-            { message: "Invalid file" }
+            { message: "ไฟล์ไม่ถูกต้อง" }
         )
         .optional(),
     name: z.string({ message: 'กรุณาใส่ชื่อร้านอาหารด้วยตัวอักษร' }),
@@ -18,7 +18,7 @@ export const createRestaurantSchema = z.object({
                 const [h, m] = time.split(':').map(Number);
                 return RegExp(/^\d{2}:\d{2}$/).test(time) && h >= 0 && h <= 23 && m >= 0 && m <= 59;
             },
-            { message: 'รูปแบบเวลาไม่ถูกต้อง (HH:mm)' }
+            { message: 'รูปแบบเวลาต้องเป็น (HH:mm)' }
         )
         .transform((timeString, ctx) => {
             try {
@@ -43,7 +43,7 @@ export const createRestaurantSchema = z.object({
                 const [h, m] = time.split(':').map(Number);
                 return RegExp(/^\d{2}:\d{2}$/).test(time) && h >= 0 && h <= 23 && m >= 0 && m <= 59;
             },
-            { message: 'รูปแบบเวลาไม่ถูกต้อง (HH:mm)' }
+            { message: 'รูปแบบเวลาต้องเป็น (HH:mm)' }
         )
         .transform((timeString, ctx) => {
             try {

@@ -10,7 +10,7 @@ export const createOrderSchema = z.object({
                 const [h, m] = time.split(':').map(Number);
                 return RegExp(/^\d{2}:\d{2}$/).test(time) && h >= 0 && h <= 23 && m >= 0 && m <= 59;
             },
-            { message: 'รูปแบบเวลารับอาหารไม่ถูกต้อง (HH:mm)' }
+            { message: 'รูปแบบเวลารับอาหารต้องเป็น (HH:mm)' }
         )
         .transform((timeString, ctx) => {
             // This transformation converts the "HH:mm" string into a Date object
@@ -59,7 +59,7 @@ export const createOrderSchema = z.object({
         if (file.size > 2 * 1024 * 1024) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message: "ไฟล์ต้องไม่เกิน 2MB",
+                message: "ขนาดไฟล์ต้องไม่เกิน 2MB",
               });
         }
     })
