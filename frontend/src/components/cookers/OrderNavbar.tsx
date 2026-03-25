@@ -103,7 +103,7 @@ export const OrderNavBar = ({
                     ${isLargeTextMode ? "text-lg py-3" : "text-sm"}
                 `}
             >
-                ยกเลิก
+                ถูกยกเลิก
             </button>
         </div>
     );

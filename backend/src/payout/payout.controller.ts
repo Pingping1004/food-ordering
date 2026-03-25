@@ -9,17 +9,11 @@ import {
   Query,
 } from '@nestjs/common';
 import { PayoutService } from './payout.service';
-import { calculatePayout } from './payout-calculator';
 import { UpdatePayoutDto } from './dto/update-payout.dto';
 
 @Controller('payout')
 export class PayoutController {
   constructor(private readonly payoutService: PayoutService) {}
-
-  @Post(':orderId')
-  createPayout(@Param('orderId') orderId: string) {
-    return this.payoutService.createPayout(orderId);
-  }
 
   @Get('weekly')
   findWeeklyPayout(

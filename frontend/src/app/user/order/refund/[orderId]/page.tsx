@@ -34,7 +34,6 @@ export default function RefundProcessingPage() {
         const fetchData = async () => {
             try {
                 const orderSecret = localStorage.getItem(`orderSecret:${orderId}`)
-                console.log("orderSecret from localStorage:", orderSecret)
                 const orderResponse = await api.get(`order/${orderId}`, {
                     headers: {
                         "x-order-secret": orderSecret
