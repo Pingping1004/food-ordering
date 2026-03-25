@@ -25,6 +25,7 @@ function Page() {
     const [showRuleBanner, setShowRuleBanner] = useState(true);
 
     const fetchingRef = useRef(false);
+    const pendingOrdersRef = useRef<Record<string, { order: OrderProps; showAt: number }>>({});
     const fetchNewOrders = async () => {
         if (fetchingRef.current) return
         fetchingRef.current = true
@@ -39,22 +40,39 @@ function Page() {
             const data = response.data
 
             if (data.orders.length > 0) {
-                setOrders(prev => {
-                    const next = { ...prev }
-
-                    for (const order of data.orders) {
-                        next[order.orderId] = order
+                 // Stage new orders into the pending buffer with a random delay
+                for (const order of data.orders) {
+                    if (!pendingOrdersRef.current[order.orderId]) {
+                        const delayMs = 1000 + Math.random() * 2000;
+                        pendingOrdersRef.current[order.orderId] = { order, showAt: Date.now() + delayMs }
                     }
-
-                    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
-                    for (const id in next) {
-                        if (new Date(next[id].orderAt).getTime() < cutoff) delete next[id]
-                    }
-
-                    return next
-                });
+                }
 
                 if (data.latestTimestamp) lastTimestampRef.current = data.latestTimestamp
+            }
+
+            const now = Date.now()
+            const ready = Object.entries(pendingOrdersRef.current)
+                .filter(([, { showAt }]) => now >= showAt)
+                .map(([id, { order }]) => ({ id, order }));
+
+            if (ready.length > 0) {
+                setOrders(prev => {
+                    const next = {...prev };
+
+                    for (const { id, order } of ready) {
+                        next[id] = order;
+                        delete pendingOrdersRef.current[id]
+                    }
+
+                    // Clean up orders older than 2 days
+                    const cutoff = Date.now() - 2 * 24 * 60 * 60 * 1000;
+                    for (const id in next) {
+                        if (new Date(next[id].orderAt).getTime() < cutoff) delete next[id];
+                    }
+
+                    return next;
+                })
             }
         } finally {
             setIsLoading(false)
@@ -161,14 +179,14 @@ function Page() {
         if (!cooker.restaurantId) return
         fetchNewOrders();
 
-        const interval = setInterval(() => { fetchNewOrders() }, 15000)
+        const interval = setInterval(() => { fetchNewOrders() }, 1500)
         return () => clearInterval(interval)
     }, [cooker.restaurantId])
 
     useEffect(() => {
         const interval = setInterval(() => {
             setNow(new Date());
-        }, 10000);
+        }, 1000);
 
         return () => clearInterval(interval);
     }, []);
@@ -192,13 +210,13 @@ function Page() {
     }, [ordersArray]);
 
     const dailyDone = useMemo(() => {
-        return ordersArray.filter((order) => (order.status === OrderStatus.completed && order.paymentStatus === "paid" && order.completedAt)).length;
+        return filterDailyOrders.filter((order) => (order.status === OrderStatus.completed && order.paymentStatus === "paid" && order.completedAt)).length;
     }, [filterDailyOrders]);
 
     const dailySales = useMemo(() => {
-        return ordersArray.filter((order) => order.paymentStatus === "paid" && order.status === OrderStatus.completed && order.completedAt)
+        return filterDailyOrders.filter((order) => order.paymentStatus === "paid" && order.status === OrderStatus.completed && order.completedAt)
             .reduce((total, order) => total + Number(order.totalAmount), 0);
-    }, [ordersArray]);
+    }, [filterDailyOrders]);
 
     const handleNavbarChange = (status: OrderStatus) => {
         setNavbarStatus(status);
