@@ -305,9 +305,9 @@ export class OrderService {
       const diffMinutes = (now - orderTime) / 1000 / 60;
 
       if ((newStatus === "cancelled" || newStatus === "rejected") && diffMinutes > 5) throw new BadRequestException("สามารถยกเลิกหรือปฏิเสธออเดอร์ได้ภายใน 5 นาทีหลังสั่งเท่านั้น");
-      if (order.status !== "accepted" && newStatus === "accepted") await this.handleInventoryDeduction(tx, order.orderMenus);
 
-      const updateData: Prisma.OrderUpdateInput = { status: newStatus }
+      const updateData: Prisma.OrderUpdateInput = { status: newStatus };
+
       if (newStatus === "cancelled") {
         updateData.cancelledAt = new Date();
         updateData.paymentStatus = "refund_pending";
@@ -318,15 +318,10 @@ export class OrderService {
         updateData.paymentStatus = "refund_pending";
       }
 
-      if (newStatus === "accepted") {
+      if (order.status !== "accepted" && newStatus === "accepted") {
         updateData.acceptAt = new Date();
-
-        try {
-          await this.payoutService.createPayout(order.orderId);
-        } catch (err) {
-          this.logger.error(`Payout failed for order ${order.orderId}`, err);
-          throw new Error(`Payout failed for order ${order.orderId}: ${err.message}`);
-        }
+        await this.handleInventoryDeduction(tx, order.orderMenus);
+        await this.payoutService.createPayoutTx(tx, order.orderId);
       }
 
       const result = await tx.order.updateMany({
@@ -335,11 +330,6 @@ export class OrderService {
       });
 
       if (result.count === 0) throw new ConflictException("ออเดอร์ถูกอัพเดทไปแล้ว")
-
-      if (order.status !== "accepted" && newStatus === "accepted") {
-        await this.handleInventoryDeduction(tx, order.orderMenus);
-        await this.payoutService.createPayoutTx(tx, order.orderId);
-      }
 
       const updatedOrder = await tx.order.findUnique({
         where: { orderId },
@@ -424,7 +414,7 @@ export class OrderService {
 
   @Cron('*/5 * * * *')
   async autoCompleteOrders() {
-    const bufferMinutes = 15;
+    const bufferMinutes = 10;
     const threshold = new Date(Date.now() - bufferMinutes * 60 * 1000);
 
     const result = await this.prisma.order.updateMany({
