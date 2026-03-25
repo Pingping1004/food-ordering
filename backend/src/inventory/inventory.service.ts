@@ -1,7 +1,6 @@
 import { Inject, Injectable, NotFoundException, forwardRef } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import moment from "moment";
-import { MenuService } from "src/menu/menu.service";
 import { clearMenuQuotaCache } from "src/menu/menuCache";
 import { PrismaService } from "src/prisma/prisma.service";
 
@@ -9,8 +8,6 @@ import { PrismaService } from "src/prisma/prisma.service";
 export class InventoryService {
     constructor(
         private readonly prisma: PrismaService,
-        @Inject(forwardRef(() => MenuService))
-        private readonly menuService: MenuService,
     ) { }
 
     private pendingQuotaRequests = new Map<string, Promise<Record<string, number>>>();
@@ -28,7 +25,7 @@ export class InventoryService {
             where: {
                 menuId_date: { menuId, date: today }
             },
-            update: {},
+            update: { dailyQuota: maxDaily },
             create: {
                 menuId,
                 date: today,
