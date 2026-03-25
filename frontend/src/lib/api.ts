@@ -47,41 +47,42 @@ export function normalizeError(err: unknown): Error {
     return new Error(JSON.stringify(err));
 }
 
-export const requestInterceptor = api.interceptors.request.use(
-    (config) => {
-        if (config.headers?.skipAuth === 'true') {
-            return config;
+export const requestInterceptor = api.interceptors.request.use((config) => {
+
+    if (config.headers?.skipAuth === 'true') {
+        delete config.headers['skipAuth'];
+        return config; // keep whatever headers are already set (including new token)
+    }
+
+    const accessToken = localStorage.getItem('accessToken');
+    if (accessToken && config.headers && !config.headers.Authorization) {
+        if (!config.headers) {
+            config.headers = new axios.AxiosHeaders();
+        } else if (!(config.headers instanceof AxiosHeaders)) {
+            config.headers = AxiosHeaders.from(config.headers);
         }
+        config.headers['Authorization'] = `Bearer ${accessToken}`;
+    }
 
-        const accessToken = localStorage.getItem('accessToken');
-        if (accessToken && config.headers && !config.headers.Authorization) {
-            if (!config.headers) {
-                config.headers = new axios.AxiosHeaders();
-            } else if (!(config.headers instanceof AxiosHeaders)) {
-                config.headers = AxiosHeaders.from(config.headers);
-            }
-            config.headers['Authorization'] = `Bearer ${accessToken}`;
+    const csrfToken = Cookies.get('XSRF-TOKEN');
+    if (!config.method) throw Error('Not found config method');
+
+    const isMutating = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(config.method.toUpperCase());
+    const isCsrfFetchRequest = config.url === '/csrf-token';
+
+    if (csrfToken && isMutating && !isCsrfFetchRequest) {
+        if (!config.headers) config.headers = new axios.AxiosHeaders();
+        else if (!(config.headers instanceof AxiosHeaders)) {
+            config.headers = AxiosHeaders.from(config.headers);
         }
-
-        const csrfToken = Cookies.get('XSRF-TOKEN');
-        if (!config.method) throw Error('Not found config method');
-
-        const isMutating = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(config.method.toUpperCase());
-        const isCsrfFetchRequest = config.url === '/csrf-token';
-
-        if (csrfToken && isMutating && !isCsrfFetchRequest) {
-            if (!config.headers) config.headers = new axios.AxiosHeaders();
-            else if (!(config.headers instanceof AxiosHeaders)) {
-                config.headers = AxiosHeaders.from(config.headers);
-            }
-            if (!config.headers['X-CSRF-TOKEN']) {
-                config.headers['X-CSRF-TOKEN'] = csrfToken;
-            }
+        if (!config.headers['X-CSRF-TOKEN']) {
+            config.headers['X-CSRF-TOKEN'] = csrfToken;
         }
+    }
 
-        config.withCredentials = true;
-        return config;
-    },
+    config.withCredentials = true;
+    return config;
+},
     (error) => {
         return Promise.reject(normalizeError(error))
     }
@@ -92,24 +93,15 @@ interface CustomAxiosRequestConfig extends AxiosRequestConfig {
 }
 
 export async function handleTokenRefresh(): Promise<{ accessToken: string }> {
-    const refreshToken = getRefreshToken();
-    if (!refreshToken) {
-        clearTokens();
-        return Promise.reject(new Error("Missing refresh token"));
-    }
-
     try {
-        const response = await api.post('/auth/refresh', { refreshToken }, {
-            headers: {
-                skipAuth: 'true',
-            }
+        const response = await api.post('/auth/refresh', {}, {
+            headers: { skipAuth: 'true' }
         });
 
-        const { accessToken, refreshToken: newRefreshToken } = response.data;
+        const { accessToken } = response.data;
         setAccessToken(accessToken);
-        setRefreshToken(newRefreshToken);
 
-        return accessToken;
+        return { accessToken };
     } catch (err: unknown) {
         clearTokens();
 
@@ -160,6 +152,10 @@ async function handleTokenRefresh401(originalRequest: CustomAxiosRequestConfig) 
 
         // Update request headers with new token
         updateAuthHeader(originalRequest, newAccessToken);
+
+        // Tell request interceptor to skip overwriting the header
+        if (!originalRequest.headers) originalRequest.headers = {};
+        originalRequest.headers['skipAuth'] = 'true';
 
         // Retry the original request
         return api(originalRequest);
