@@ -83,7 +83,27 @@ export default function DoneOrderPage() {
         const diffMinutes = (now - orderTime) / 1000 / 60
 
         return diffMinutes <= 5
-    })()
+    })();
+
+    const handleSubmitCancel = async () => {
+        try {
+            setLoading(true)
+
+            const orderSecret = localStorage.getItem(`orderSecret:${orderId}`)
+            await api.patch(`order/cancel/${orderId}`, { orderSecret })
+
+            router.push(`/user/order/refund/${orderId}`)
+        } catch (error: unknown) {
+            if (typeof error === 'object' && error !== null && 'response' in error) {
+                const err = error as { response: { status: number; data?: { message?: string, code?: string } } };
+                const backendMessage = err.response.data?.message;
+
+                toastDanger(backendMessage ?? "เกิดข้อผิดพลาดในการยกเลิกออเดอร์");
+            }
+        } finally {
+            setLoading(false)
+        }
+    }
 
     if (loading) return <LoadingPage />
     if (!order) return <div>ไม่พบออเดอร์ของคุณ</div>;
@@ -148,7 +168,7 @@ export default function DoneOrderPage() {
                     size="lg"
                     variant="secondaryDanger"
                     disabled={!canCancelOrder}
-                    onClick={() => router.push(`/user/order/request-refund/${orderId}`)}
+                    onClick={() => handleSubmitCancel()}
                 >
                     <p className="text-base">ยกเลิกคำสั่งซื้อ</p>
                 </Button>
