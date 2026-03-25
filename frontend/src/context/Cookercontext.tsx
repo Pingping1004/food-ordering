@@ -17,10 +17,7 @@ export interface Cooker extends Restaurant {
 
 export interface CookerContextType {
     cooker: Cooker;
-    orders: OrderProps[];
     setCooker: React.Dispatch<React.SetStateAction<Cooker | undefined>>;
-    setOrders: React.Dispatch<React.SetStateAction<OrderProps[]>>;
-    fetchOrders: () => void;
     loading: boolean;
     error: string | null;
 }
@@ -35,46 +32,28 @@ export const useCooker = () => {
 
 export const CookerProvider = ({ children }: { children: React.ReactNode }) => {
     const [cooker, setCooker] = useState<Cooker | undefined>(undefined);
-    const [orders, setOrders] = useState<OrderProps[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
     const params = useParams();
     const restaurantId = params.restaurantId;
 
     useEffect(() => {
-        const fetchData = async () => {
+        const fetchCookerData = async () => {
             try {
                 const cookerResponse = await api.get(`restaurant/${restaurantId}`);
                 setCooker(cookerResponse.data);
-
-                const orderResponse = await api.get(`order/get-orders/${restaurantId}`);
-                setOrders(orderResponse.data);
             } catch {
                 setError('โหลดข้อมูลร้านอาหารล้มเหลว');
             } finally {
                 setLoading(false);
             }
         }
-        fetchData();
-    }, [restaurantId]);
-
-    const fetchOrders = useCallback(async () => {
-        setLoading(true);
-        setError(null);
-
-        try {
-            const orderResponse = await api.get(`order/get-orders/${restaurantId}`);
-            setOrders(orderResponse.data);
-        } catch {
-            setError('โหลดข้อมูลร้านอาหารล้มเหลว');
-        } finally {
-            setLoading(false);
-        }
+        fetchCookerData();
     }, [restaurantId]);
 
     const contextValue = useMemo(() => ({
-        cooker: cooker!, setCooker, orders, setOrders, fetchOrders, loading, error
-    }), [cooker, setCooker, orders, setOrders, fetchOrders, loading, error]);
+        cooker: cooker!, setCooker, loading, error
+    }), [cooker, setCooker, loading, error]);
 
     if (loading) return <LoadingPage />
     if (error) return <div>{error}</div>;
