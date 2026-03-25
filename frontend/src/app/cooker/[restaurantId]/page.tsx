@@ -2,7 +2,7 @@
 
 import CookerHeader from "@/components/cookers/CookerHeader";
 import { Order, OrderProps } from "@/components/cookers/Order";
-import { OrderNavBar, OrderStatus } from "@/components/cookers/OrderNavbar";
+import { NavState, OrderNavBar, OrderStatus, PaymentStatus } from "@/components/cookers/OrderNavbar";
 import LoadingPage from "@/components/LoadingPage";
 import { Button } from "@/components/Button";
 import { CookerProvider, useCooker } from "@/context/Cookercontext";
@@ -18,7 +18,7 @@ function Page() {
     const [orders, setOrders] = useState<Record<string, OrderProps>>({});
     const lastTimestampRef = useRef<string | null>(null)
     const { cooker } = useCooker();
-    const [navbarStatus, setNavbarStatus] = useState<OrderStatus>(OrderStatus.sent);
+    const [navbarStatus, setNavbarStatus] = useState<NavState>("sent");
     const [showAutoCancelModal, setShowAutoCancelModal] = useState(false)
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [now, setNow] = useState(new Date());
@@ -26,13 +26,30 @@ function Page() {
 
     const fetchingRef = useRef(false);
     const pendingOrdersRef = useRef<Record<string, { order: OrderProps; showAt: number }>>({});
+
+    const fetchInitialOrders = async () => {
+        const response = await api.get(`/order/today/${cooker.restaurantId}`);
+        const data = response.data;
+
+        const mapped: Record<string, OrderProps> = {};
+
+        for (const order of data.orders) {
+            mapped[order.orderId] = order;
+        }
+
+        setOrders(mapped);
+
+        if (data.latestTimestamp) lastTimestampRef.current = data.latestTimestamp;
+
+        setIsLoading(false);
+    };
+
     const fetchNewOrders = async () => {
         if (fetchingRef.current) return
         fetchingRef.current = true
 
         try {
             const params = new URLSearchParams()
-
             if (lastTimestampRef.current) params.append("after", lastTimestampRef.current)
 
             const url = `/order/new/${cooker.restaurantId}` + (params.toString() ? `?${params.toString()}` : "");
@@ -40,7 +57,7 @@ function Page() {
             const data = response.data
 
             if (data.orders.length > 0) {
-                 // Stage new orders into the pending buffer with a random delay
+                // Stage new orders into the pending buffer with a random delay
                 for (const order of data.orders) {
                     if (!pendingOrdersRef.current[order.orderId]) {
                         const delayMs = 1000 + Math.random() * 2000;
@@ -58,7 +75,7 @@ function Page() {
 
             if (ready.length > 0) {
                 setOrders(prev => {
-                    const next = {...prev };
+                    const next = { ...prev };
 
                     for (const { id, order } of ready) {
                         next[id] = order;
@@ -176,12 +193,18 @@ function Page() {
     }, []);
 
     useEffect(() => {
-        if (!cooker.restaurantId) return
-        fetchNewOrders();
+        if (!cooker.restaurantId) return;
 
-        const interval = setInterval(() => { fetchNewOrders() }, 1500)
-        return () => clearInterval(interval)
-    }, [cooker.restaurantId])
+        let interval: any;
+        const init = async () => {
+            await fetchInitialOrders();
+            interval = setInterval(fetchNewOrders, 1500)
+        };
+
+        init();
+
+        return () => clearInterval(interval);
+    }, [cooker.restaurantId]);
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -199,14 +222,16 @@ function Page() {
             localStorage.setItem("cook_order_rules_seen", "true")
         }
     }, [])
-    
+
     const handleCloseBanner = () => { setShowRuleBanner(false) };
     const ordersArray = useMemo(() => Object.values(orders), [orders])
     const filterDailyOrders = useMemo(() => {
-        const yesterday = new Date()
-        yesterday.setDate(yesterday.getDate() - 1)
-
-        return ordersArray.filter((order) => order.paymentStatus === "paid" && new Date(order.orderAt) >= yesterday);
+        const startOfYesterday = new Date();
+        startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+        startOfYesterday.setHours(0, 0, 0, 0);
+    
+        return ordersArray.filter((order) => order.paymentStatus === PaymentStatus.paid || PaymentStatus.refund_pending || PaymentStatus.refund_complete &&
+         new Date(order.orderAt) >= startOfYesterday);
     }, [ordersArray]);
 
     const dailyDone = useMemo(() => {
@@ -218,7 +243,7 @@ function Page() {
             .reduce((total, order) => total + Number(order.totalAmount), 0);
     }, [filterDailyOrders]);
 
-    const handleNavbarChange = (status: OrderStatus) => {
+    const handleNavbarChange = (status: NavState) => {
         setNavbarStatus(status);
     };
 
@@ -232,9 +257,22 @@ function Page() {
         return elapsedMins > bufferMins && beforeDeliverMins > 5;
     }
 
+    const navToStatusMap: Record<NavState, OrderStatus[]> = {
+        sent: [OrderStatus.sent],
+        accepted: [OrderStatus.accepted],
+        completed: [OrderStatus.completed],
+        cancelled_group: [OrderStatus.cancelled, OrderStatus.rejected],
+    };
+
     const filterTodayOrderStatus: OrderProps[] = useMemo(() => {
-        return filterDailyOrders.filter(order => order.status === navbarStatus)
-            .sort((a, b) => new Date(a.deliverAt).getTime() - new Date(b.deliverAt).getTime());
+        const allowedStatuses = navToStatusMap[navbarStatus];
+        const filtered = filterDailyOrders.filter(order => allowedStatuses.includes(order.status));
+
+        if (navbarStatus === 'completed' || navbarStatus === 'cancelled_group') {
+            return filtered.sort((a, b) => new Date(b.orderAt).getTime() - new Date(a.orderAt).getTime());
+        }
+
+        return filtered.sort((a, b) => new Date(a.deliverAt).getTime() - new Date(b.deliverAt).getTime());
     }, [navbarStatus, filterDailyOrders]);
 
     if (!cooker.isApproved) {
@@ -247,6 +285,7 @@ function Page() {
                     width={300}
                     height={300}
                 />
+
                 <p className="noto-sans-regular text-secondary text-xl px-10">ทางแอดมินกำลังดำเนินพิจารณาการอนุมัติเปิดร้านอาหาร ใช้เวลา 1-2วัน</p>
             </div>
         )
@@ -312,43 +351,7 @@ function Page() {
                     </div>
                 </section>
             ) : ('')}
-            {/* {!isUpdateMode ? (
-                <section className="grid grid-cols-2 gap-4">
-                    <Button
-                        variant="danger"
-                        type="button"
-                        size="md"
-                        className="flex items-center justify-between"
-                        iconPosition="start"
-                        numberIcon={2}
-                        onClick={() => router.push("/issued-orders")}
-                    >
-                        ออเดอร์ที่มีปัญหา
-                    </Button>
 
-                    <Button
-                        variant="secondary"
-                        size="md"
-                        className="flex items-center justify-between"
-                        onClick={handleUpdateClick} // Trigger update mode
-                        type={"button"}                    >
-                        อัพเดทหลายออเดอร์
-                    </Button>
-                </section>
-            ) : (
-                <Button
-                    variant="primary"
-                    size="full"
-                    type="button"
-                    className="flex items-center justify-center"
-                    onClick={handleCompleteClick} // Complete update mode
-                >
-                    <div className="flex gap-x-2 noto-sans-bold text-sm">
-                        <span>({selectedCount})</span>
-                        <span>อัพเดทสถานะ</span>
-                    </div>
-                </Button>
-            )} */}
             <main>
                 {filterTodayOrderStatus.map((order) => (
                     <Order
