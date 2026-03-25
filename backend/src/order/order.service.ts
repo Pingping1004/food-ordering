@@ -188,14 +188,23 @@ export class OrderService {
     }
   }
 
-  async findRestaurantOrders(restaurantId: string) {
-    return this.prisma.order.findMany({
-      where: { restaurantId },
+  async findRestaurantTodayOrders(restaurantId: string) {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1)
+
+    const orders = await this.prisma.order.findMany({
+      where: { restaurantId, orderAt: { gte: yesterday } },
       include: { orderMenus: true },
       orderBy: {
         deliverAt: 'asc',
       },
     });
+
+    const latestTimestamp = orders.length > 0 
+      ? orders.reduce((latest, order) => 
+        order.orderAt > latest ? order.orderAt : latest, orders[0].orderAt) : new Date();
+
+    return { orders, latestTimestamp }
   }
 
   async getOrdersAfterTimeStamp(restaurantId: string, timeStamp?: Date) {
@@ -324,15 +333,9 @@ export class OrderService {
         await this.payoutService.createPayoutTx(tx, order.orderId);
       }
 
-      const result = await tx.order.updateMany({
-        where: { orderId, status: order.status },
-        data: updateData,
-      });
-
-      if (result.count === 0) throw new ConflictException("ออเดอร์ถูกอัพเดทไปแล้ว")
-
-      const updatedOrder = await tx.order.findUnique({
+      const updatedOrder = await tx.order.update({
         where: { orderId },
+        data: updateData,
         select: {
           orderId: true,
           status: true,
@@ -342,7 +345,7 @@ export class OrderService {
         }
       });
 
-      return { result, message: `อัพเดทสถานะออเดอร์เป็น ${updatedOrder?.status} สำเร็จ` };
+      return { result: updatedOrder, message: `อัพเดทสถานะออเดอร์เป็น ${updatedOrder?.status} สำเร็จ` };
     });
   }
 

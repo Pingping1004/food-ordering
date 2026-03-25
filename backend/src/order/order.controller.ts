@@ -54,9 +54,9 @@ export class OrderController {
     }
   }
 
-  @Get('get-orders/:restaurantId')
-  async findRestaurantOrders(@Param('restaurantId') restaurantId: string) {
-    return this.orderService.findRestaurantOrders(restaurantId);
+  @Get('today/:restaurantId')
+  async findRestaurantTodayOrders(@Param('restaurantId') restaurantId: string) {
+    return this.orderService.findRestaurantTodayOrders(restaurantId);
   }
 
   @Public()
