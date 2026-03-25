@@ -20,10 +20,6 @@ export default function RefundProcessingPage() {
     const hasRedirectedRef = useRef<boolean>(false);
 
     const totalAmount = order?.totalAmount;
-    const refundStatusText: Record<string, string> = {
-        refund_pending: "กำลังดำเนินการคืนเงิน",
-        refund_complete: "คืนเงินสำเร็จแล้ว"
-    };
 
     useEffect(() => {
         if (!orderId) {
@@ -60,15 +56,15 @@ export default function RefundProcessingPage() {
 
     return (
         <div className="flex flex-col w-full mx-auto p-6 items-center text-center space-y-8">
+            <h1 className="text-2xl noto-sans-bold text-primary">ส่งคำขอคืนเงินเรียบร้อย</h1>
 
-            <h1 className="text-xl noto-sans-bold text-primary">ส่งคำขอคืนเงินเรียบร้อย</h1>
-
-            <p className="text-secondary">ระบบได้รับคำขอคืนเงินของคุณแล้ว ทีมงานกำลังตรวจสอบและดำเนินการคืนเงินให้คุณ</p>
+            <p className="text-secondary">ระบบได้รับคำร้องของคุณแล้ว ทีมงานจะตรวจสอบและประสานงานกับร้านค้าให้</p>
 
             <div className="bg-gray-100 px-4 py-2 rounded-lg text-base">Order ID: <span className="font-medium">{orderId}</span></div>
 
             <p className="text-sm text-gray-500">
-                ระบบจะคืนเงินภายใน24ชั่วโมง หากมีข้อสงสัยสามารถ
+            กรุณาติดต่อร้านค้าโดยตรงเพื่อดำเนินการเรื่องการคืนเงิน
+            หากมีข้อสงสัยสามารถ
                 <a
                     href="https://forms.gle/BAciUJDqmALckUXY6"
                     target="_blank"
@@ -76,13 +72,6 @@ export default function RefundProcessingPage() {
                     className="text-info noto-sans-bold text-xs underline hover:text-info"
                 >ติดต่อแอดมินได้</a>
             </p>
-
-            <main 
-            className={clsx("text-3xl noto-sans-bold py-4", 
-                order.paymentStatus === "refund_complete" ? "text-success-main" : "text-primary-main")}
-            >
-                สถานะ: {refundStatusText[order.paymentStatus] ?? "กำลังตรวจสอบการคืนเงิน"}
-            </main>
 
             <section className="flex flex-col w-full justify-between gap-y-6">
                 <p className="noto-sans-bold text-lg text-primary">รายละเอียดออเดอร์</p>
@@ -102,16 +91,27 @@ export default function RefundProcessingPage() {
                 <h3 className="noto-sans-bold text-2xl">{totalAmount}</h3>
             </section>
 
-            <Button
-                type="button"
-                variant="secondary"
-                size="full"
-                onClick={() => router.push(`/user/restaurant`)}
-                className="px-4 py-2 rounded-lg border"
-            >
-                กลับหน้าหลัก
-            </Button>
+            <div className="flex w-full gap-x-4">
+                <Button
+                    type="button"
+                    variant="primary"
+                    size="full"
+                    onClick={() => router.push(`/user/restaurant`)}
+                    className="px-4 py-2 rounded-lg border"
+                >
+                    กลับหน้าหลัก
+                </Button>
 
+                <Button
+                    type="button"
+                    variant="secondaryDanger"
+                    size="full"
+                    onClick={() => window.open("https://forms.gle/WDyouigQHP1KjfMS9")}
+                    className="px-4 py-2 rounded-lg border"
+                >
+                    แจ้งปัญหาในการคืนเงิน
+                </Button>
+            </div>
         </div>
     );
 }
