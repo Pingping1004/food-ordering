@@ -13,7 +13,7 @@ export const setAccessToken = (token: string): void => {
 
     Cookies.set('access_token', token, {
         secure: true,
-        sameSite: 'Lax',
+        sameSite: 'None',
         expires: new Date(Date.now() + 60 * 30 * 1000),
     });
 }
