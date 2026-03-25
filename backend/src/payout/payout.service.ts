@@ -11,42 +11,7 @@ import moment from 'moment';
 export class PayoutService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly restaurantService: RestaurantService,
-    @Inject(forwardRef(() => OrderService))
-    private readonly orderService: OrderService,
   ) {}
-
-  async createPayout(orderId: string) {
-    const { restaurantId, totalAmount } = await this.orderService.findOneOrder(orderId);
-    if (await this.findExistingPayout(orderId)) throw new ConflictException("ออเดอร์นี้ถูกบันทึกไปแล้ว");
-
-    const { name } = await this.restaurantService.findRestaurant(restaurantId);
-    const { restaurantEarning, platformNetEarning, transactionFee } = calculatePayout(totalAmount, {
-      platformCommissionRate: new Decimal(0.1),
-      baseTransactionRate: new Decimal(0.02),
-      vatRate: new Decimal(0.07)
-    });
-
-    const now = new Date();
-    const { startDate, endDate } = calculateWeeklyInterval(now);
-
-    const result = await this.prisma.payout.create({
-      data: {
-        grossAmount: totalAmount,
-        restaurantRevenue: restaurantEarning,
-        platformFee: platformNetEarning,
-        transactionFee: transactionFee,
-        vat: new Decimal(0.07),
-        startDate,
-        endDate,
-        orderId,
-        restaurantId,
-        restaurantName: name,
-      },
-    });
-
-    return result;
-  }
 
   async createPayoutTx(tx: Prisma.TransactionClient, orderId: string) {
     const order = await tx.order.findUnique({
@@ -67,15 +32,13 @@ export class PayoutService {
     const existing = await tx.payout.findUnique({ where: { orderId } });
     if (existing) return existing;
 
-    const totalAmount = order.orderMenus.reduce((sum, item) => {
-      return sum + Number(item.unitPrice) * item.quantity;
-    }, 0);
+    const totalAmount = order.totalAmount;
     const totalAmountDecimal = new Prisma.Decimal(totalAmount);
 
     const payout = calculatePayout(totalAmountDecimal, {
       platformCommissionRate: new Decimal(0.1),
       baseTransactionRate: new Decimal(0.02),
-      vatRate: new Decimal(0.07),
+      vatRate: new Decimal(0),
     });
 
     return await tx.payout.create({
@@ -86,7 +49,7 @@ export class PayoutService {
         restaurantRevenue: payout.restaurantEarning,
         platformFee: payout.platformNetEarning,
         transactionFee: payout.transactionFee,
-        vat: new Decimal(0.07),
+        vat: new Decimal(0),
         restaurantName: order.restaurant.name,
         startDate: order.paidAt,
         endDate: new Date(),

@@ -30,22 +30,26 @@ export function calculatePayout(
 ): PayoutCalculationType {
 
   const userPaidAmount = totalPrice;
+  const transactionFee = new Decimal(process.env.PAYMENT_VERIFICATION_API_FEE ?? '0')
 
-  const grossPlatformCommission = userPaidAmount.mul(config.platformCommissionRate);
-  const baseFee = userPaidAmount.mul(config.baseTransactionRate);
-  const totalTransactionFee = baseFee.mul(new Decimal(1).plus(config.vatRate));
-  const restaurantEarning = userPaidAmount.minus(grossPlatformCommission);
-  const platformNetEarning = grossPlatformCommission.minus(totalTransactionFee);
+  // const grossPlatformCommission = userPaidAmount.mul(config.platformCommissionRate);
+  // const baseFee = userPaidAmount.mul(config.baseTransactionRate);
+  // const totalTransactionFee = baseFee.mul(new Decimal(1).plus(config.vatRate));
+  // const restaurantEarning = userPaidAmount.minus(grossPlatformCommission);
+  // const platformNetEarning = grossPlatformCommission.minus(totalTransactionFee);
+  // const platformNetEarning = userPaidAmount.minus(transactionFee);
+  const restaurantEarning = userPaidAmount;
+  const platformNetEarning = transactionFee.neg()
 
-  if (platformNetEarning.isNegative()) throw new Error("Invalid pricing: platform losing money");
+  // if (platformNetEarning.isNegative()) throw new Error("Invalid pricing: platform losing money");
 
   return {
     totalRevenue: userPaidAmount.toDecimalPlaces(2),
     // restaurantEarning: restaurantEarning.toDecimalPlaces(2),
-    restaurantEarning: userPaidAmount,
+    restaurantEarning: restaurantEarning.toDecimalPlaces(2),
     platformNetEarning: platformNetEarning.toDecimalPlaces(2),
-    grossPlatformCommission: grossPlatformCommission.toDecimalPlaces(2),
-    transactionFee: totalTransactionFee.toDecimalPlaces(2),
+    grossPlatformCommission: new Decimal(0),
+    transactionFee: transactionFee.toDecimalPlaces(2),
   };
 }
 
