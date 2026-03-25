@@ -19,6 +19,8 @@ export enum PaymentStatus {
     refund_complete = "refund_complete"
 }
 
+export type NavState = "sent" | "accepted" | "completed" | "cancelled_group";
+
 const orderNavbarVariants = cva(
     "flex w-full items-center justify-center -mx-6 min-w-lvw text-light text-sm",
     {
@@ -39,9 +41,9 @@ const orderNavbarVariants = cva(
 
 export type CookerNavbarProps = React.HTMLAttributes<HTMLDivElement> &
   VariantProps<typeof orderNavbarVariants> & {
-    status: OrderStatus;
+    status: NavState;
     isLargeTextMode?: boolean
-    onStatusUpdate: (navStatus: OrderStatus) => void;
+    onStatusUpdate: (navStatus: NavState) => void;
 };
 
 export const OrderNavBar = ({
@@ -50,60 +52,51 @@ export const OrderNavBar = ({
     isLargeTextMode = false,
     ...props
 }: CookerNavbarProps) => {
-    const [state, setState] = useState<OrderStatus>(OrderStatus.sent);
+    const [state, setState] = useState<NavState>("sent");
 
-    const handleClick = (newState: OrderStatus) => {
+    const handleClick = (newState: NavState) => {
         setState(newState);
         onStatusUpdate(newState);
     };
+
+    const baseBtn = `w-1/2 p-2 ${isLargeTextMode ? "text-lg py-3" : "text-sm"}`;
+    const active = "text-primary border-b-2 border-primary-main";
 
     return (
         <div
             className={clsx(
                 "text-center",
-                orderNavbarVariants({ variant: state }),
+                orderNavbarVariants(),
                 className
             )}
             {...props}
         >
             <button
-                onClick={() => handleClick(OrderStatus.sent)}
-                className={`w-1/2 p-2
-                    ${state === OrderStatus.sent ? "text-primary border-b-2 border-primary-main" : ""}
-                    ${isLargeTextMode ? "text-lg py-3" : "text-sm"}
-                `}
+                onClick={() => handleClick("sent")}
+                className={clsx(baseBtn, state === "sent" && active)}
             >
                 ออเดอร์ใหม่
             </button>
 
             <button
-                onClick={() => handleClick(OrderStatus.accepted)}
-                className={`w-1/2 p-2
-                    ${state === OrderStatus.accepted ? "text-primary border-b-2 border-primary-main" : ""}
-                    ${isLargeTextMode ? "text-lg py-3" : "text-sm"}
-                `}
+                onClick={() => handleClick("accepted")}
+                className={clsx(baseBtn, state === "accepted" && active)}
             >
                 รับแล้ว
             </button>
 
             <button
-                onClick={() => handleClick(OrderStatus.completed)}
-                className={`w-1/2 p-2
-                    ${state === OrderStatus.completed ? "text-primary border-b-2 border-primary-main" : ""}
-                    ${isLargeTextMode ? "text-lg py-3" : "text-sm"}
-                `}
+                onClick={() => handleClick("completed")}
+                className={clsx(baseBtn, state === "completed" && active)}
             >
                 เสร็จสิ้น
             </button>
 
             <button
-                onClick={() => handleClick(OrderStatus.cancelled)}
-                className={`w-1/2 p-2
-                    ${state === OrderStatus.cancelled ? "text-primary border-b-2 border-primary-main" : ""}
-                    ${isLargeTextMode ? "text-lg py-3" : "text-sm"}
-                `}
+                onClick={() => handleClick("cancelled_group")}
+                className={clsx(baseBtn, state === "cancelled_group" && active)}
             >
-                ถูกยกเลิก
+                ยกเลิก / ไม่รับ
             </button>
         </div>
     );
