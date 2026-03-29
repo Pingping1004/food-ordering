@@ -1,11 +1,9 @@
 "use client";
 
-import React, { useEffect, createContext, useContext, useState, useCallback, useMemo } from 'react';
+import { useEffect, createContext, useContext, useState, useMemo } from 'react';
 import { api } from '@/lib/api';
-import { Restaurant } from './MenuContext';
+import type { Restaurant } from '@/app/data/type';
 import { useParams } from 'next/navigation';
-import { OrderProps } from '@/components/cookers/Order';
-import LoadingPage from '@/components/LoadingPage';
 
 export interface Cooker extends Restaurant {
     email: string;
@@ -13,6 +11,11 @@ export interface Cooker extends Restaurant {
     adminSurname: string;
     adminTel: string;
     adminEmail: string;
+    paymentQr: string
+    openTime: string;
+    closeTime: string;
+    isTemporarilyClosed: boolean;
+    isApproved: boolean;
 };
 
 export interface CookerContextType {
@@ -34,10 +37,13 @@ export const CookerProvider = ({ children }: { children: React.ReactNode }) => {
     const [cooker, setCooker] = useState<Cooker | undefined>(undefined);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
+    
     const params = useParams();
     const restaurantId = params.restaurantId;
 
     useEffect(() => {
+        if (!restaurantId) return;
+
         const fetchCookerData = async () => {
             try {
                 const cookerResponse = await api.get(`restaurant/${restaurantId}`);
@@ -54,10 +60,6 @@ export const CookerProvider = ({ children }: { children: React.ReactNode }) => {
     const contextValue = useMemo(() => ({
         cooker: cooker!, setCooker, loading, error
     }), [cooker, setCooker, loading, error]);
-
-    if (loading) return <LoadingPage />
-    if (error) return <div>{error}</div>;
-    if (!cooker) return <div>ไม่พบร้านอาหาร</div>
 
     return (
         <CookerContext.Provider
