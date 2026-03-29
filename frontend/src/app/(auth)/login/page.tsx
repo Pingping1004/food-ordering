@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,8 +7,9 @@ import { loginSchema, loginSchemaType } from "@/schemas/auth/loginSchema";
 import Link from "next/link";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
-import { useAuth } from "@/context/Authcontext";
+import { useAuth } from "@/auth/auth.hooks";
 import { toastDanger } from "@/components/ui/Toast";
+import LoadingPage from "@/components/LoadingPage";
 
 export default function LoginPage() {
     const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<loginSchemaType>({
@@ -18,7 +18,7 @@ export default function LoginPage() {
     });
 
     const router = useRouter();
-    const { login } = useAuth();
+    const { login, initializing } = useAuth();
 
     const onError = (formErrors: typeof errors) => {
         const messages = Object.entries(formErrors)
@@ -29,21 +29,32 @@ export default function LoginPage() {
     };
 
     const submitForm = async (loginData: loginSchemaType) => {
-        const user = await login(loginData.email, loginData.password);
+        try {
+            const user = await login(loginData.email, loginData.password);
 
-        if (user.role === "admin") {
-            router.push('/admin/role-requests');
-        } else if (user.role === "user") {
-            router.push('/user/restaurant');
-        } else if (user.role === 'cooker') {
-            const restaurantId = user.restaurant?.restaurantId;
-            if (restaurantId) {
-                router.push(`/cooker/${restaurantId}`);
-            } else {
-                router.push(`/restaurant-register/${user.userId}`);
+            if (user.role === "admin") {
+                router.push('/admin/role-requests');
+            } else if (user.role === "user") {
+                router.push('/user/restaurant');
+            } else if (user.role === 'cooker') {
+                const restaurantId = user.restaurant?.restaurantId;
+                if (restaurantId) {
+                    router.push(`/cooker/${restaurantId}`);
+                } else {
+                    router.push(`/cooker/restaurant-register/${user.userId}`);
+                }
+            }
+        } catch (error: unknown) {
+            if (typeof error === 'object' && error !== null && 'response' in error) {
+                const err = error as { response: { status: number; data?: { message?: string, code?: string } } };
+                const backendMessage = err.response.data?.message;
+
+                toastDanger(backendMessage ?? "เกิดข้อผิดพลาด");
             }
         }
     };
+
+    if (initializing) return <LoadingPage />;
 
     return (
         <div className="container flex items-center justify-center min-w-screen min-h-screen">
@@ -94,16 +105,16 @@ export default function LoginPage() {
                                 >
                                     เข้าสู่ระบบ
                                 </Button>
-                                <p className="text-light noto-sans-regular text-sm">หรือ</p>
+                                <p className="text-light font-thai text-sm">หรือ</p>
                                 <Button type="button" size="full" variant="secondary" onClick={() => router.push('/user/restaurant')}>
                                     สั่งอาหารเลยโดยไม่ล็อกอิน!
                                 </Button>
                             </div>
-                            <p className="mt-6 text-base leading-relaxed text-gray-900">
+                            <p className="mt-6  leading-relaxed text-gray-900">
                                 ยังไม่เคยลงทะเบียน?{" "}
                                 <Link
                                     href="/signup"
-                                    className="font-[700] text-base text-blue-400 transition duration-500 hover:text-blue-600"
+                                    className="font-[700]  text-blue-400 transition duration-500 hover:text-blue-600"
                                 >
                                     สร้างบัญชีผู้ใช้
                                 </Link>
