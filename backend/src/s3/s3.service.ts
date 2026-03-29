@@ -2,6 +2,7 @@ import { Injectable, InternalServerErrorException, Logger } from "@nestjs/common
 import { S3Client, PutObjectCommand, PutObjectCommandInput, DeleteObjectCommandInput, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { v4 as uuidv4 } from 'uuid';
 import { extname } from "path";
+import sharp from "sharp";
 
 @Injectable()
 export class S3Service {
@@ -32,15 +33,34 @@ export class S3Service {
         });
     }
 
-    async uploadFile(file: Express.Multer.File): Promise<{ fileName: string; url: string}> {
-        const fileExtName = extname(file.originalname);
-        const uniqueFilename = `${uuidv4()}${fileExtName}`;
+    async uploadFile(file: Express.Multer.File): Promise<{ fileName: string; url: string }> {
+        const isImage = file.mimetype.startsWith('image/');
+
+        let uploadBuffer: Buffer;
+        let contentType: string;
+        let uniqueFilename: string;
+
+        if (isImage) {
+            uploadBuffer = await sharp(file.buffer)
+                .resize(500, 500, {
+                    fit: 'inside',
+                    withoutEnlargement: true,
+                })
+                .webp({ quality: 50 })
+                .toBuffer();
+            contentType = 'image/webp';
+            uniqueFilename = `${uuidv4()}.webp`; // always .webp for images
+        } else {
+            uploadBuffer = file.buffer;
+            contentType = file.mimetype;
+            uniqueFilename = `${uuidv4()}${extname(file.originalname)}`;
+        }
 
         const uploadParams: PutObjectCommandInput = {
             Bucket: process.env.S3_BUCKET_NAME,
             Key: uniqueFilename,
-            Body: file.buffer,
-            ContentType: file.mimetype,
+            Body: uploadBuffer,
+            ContentType: contentType,
             ACL: 'public-read',
         };
 

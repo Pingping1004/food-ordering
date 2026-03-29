@@ -4,8 +4,6 @@ import {
   ConflictException,
   BadRequestException,
   Logger,
-  Inject,
-  forwardRef,
 } from '@nestjs/common';
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -13,6 +11,7 @@ import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
 import moment from 'moment-timezone';
 import { UploadService } from 'src/upload/upload.service';
 import { clearRestaurantCache, getRestaurantCache, OpenRestaurant, RestaurantCache, setRestaurantCache } from './restaurantCache';
+import { DEFAULT_FALLBACK_IMG_URL } from 'src/constant/image';
 
 @Injectable()
 export class RestaurantService {
@@ -27,17 +26,16 @@ export class RestaurantService {
   async createRestaurant(
     createRestaurantDto: CreateRestaurantDto,
     userId: string,
-    paymentFile: Express.Multer.File, 
+    paymentFile: Express.Multer.File,
     file?: Express.Multer.File,
   ) {
     try {
       const existingRestaurant = await this.findExistingRestaurant(userId);
-      if (existingRestaurant)
-        throw new ConflictException(`ผู้ใช้ได้ลงทะเบียนกับร้าน: ${existingRestaurant.name}แล้ว`);
+      if (existingRestaurant) throw new ConflictException(`ผู้ใช้ได้ลงทะเบียนกับร้าน: ${existingRestaurant.name}แล้ว`);
 
-      const restaurantImgUrl = file ? (await this.uploadService.saveImage(file)).url : null;
+      const restaurantImgUrl = file ? (await this.uploadService.saveImage(file)).url : DEFAULT_FALLBACK_IMG_URL;
+
       const paymentQr = paymentFile ? (await this.uploadService.saveImage(paymentFile)).url : null;
-
       if (!paymentQr) throw new NotFoundException(`กรุณาอัพโหลดQR สำหรับให้ลูกค้าชำระเงิน`);
 
       let openTime: string = '';
@@ -99,7 +97,8 @@ export class RestaurantService {
     const cached = getRestaurantCache<OpenRestaurant[]>(cacheKey);
 
     if (cached) {
-      this.logger.debug("Restaurant lists cache hit!")
+      const start = Date.now();
+      this.logger.debug(`DB query took ${Date.now() - start}ms`);
       return cached
     }
 
@@ -159,18 +158,18 @@ export class RestaurantService {
         cached.openTime,
         cached.closeTime
       );
-  
+
       const isScheduledOpenTime = this.isTimeBetween(
         currentTimeString,
         cached.openTime,
         cached.closeTime
       );
-  
+
       const isActuallyOpen =
         isScheduledOpenDay &&
         isScheduledOpenTime &&
         !cached.isTemporarilyClosed;
-  
+
       return { ...cached, isActuallyOpen };
     }
 
@@ -274,7 +273,7 @@ export class RestaurantService {
       })
       .filter(restaurant => restaurant.isActuallyOpen);
 
-      setRestaurantCache(cacheKey, openRestaurants, 30 * 1000)
+    setRestaurantCache(cacheKey, openRestaurants, 30 * 1000)
 
     return openRestaurants;
   }

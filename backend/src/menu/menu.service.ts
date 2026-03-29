@@ -20,6 +20,7 @@ import { UploadService } from 'src/upload/upload.service';
 import { randomUUID } from 'crypto';
 import { InventoryService } from 'src/inventory/inventory.service';
 import { clearMenuCache, clearMenuQuotaCache, getMenuCache, getMenuQuotaCache, setMenuCache, setMenuQuotaCache } from './menuCache';
+import { DEFAULT_FALLBACK_IMG_URL } from 'src/constant/image';
 
 export interface MenusWithDisplayPrices {
     menuId: string;
@@ -85,17 +86,16 @@ export class MenuService implements OnModuleInit {
 
     async createSingleMenu(createMenuDto: CreateMenuDto, file: Express.Multer.File) {
         const existingName = await this.checkDuplicateMenuNameInRestaurant(createMenuDto.name, createMenuDto.restaurantId);
-        if (existingName)
-            throw new BadRequestException(`เมนู ${createMenuDto.name} มีอยู่แล้ว`);
+        if (existingName) throw new BadRequestException(`เมนู ${createMenuDto.name} มีอยู่แล้ว`);
 
-        const { url: menuImageUrl } = await this.uploadService.saveImage(file);
+        const menuImgUrl = file ? (await this.uploadService.saveImage(file)).url : DEFAULT_FALLBACK_IMG_URL;
         try {
             const newMenu: CreateMenuDto & { menuImg: string } = {
                 restaurantId: createMenuDto.restaurantId,
                 name: createMenuDto.name,
                 price: createMenuDto.price,
                 maxDaily: createMenuDto.maxDaily,
-                menuImg: menuImageUrl,
+                menuImg: menuImgUrl,
                 cookingTime: createMenuDto.cookingTime,
                 isAvailable: true,
             };
