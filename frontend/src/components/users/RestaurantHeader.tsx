@@ -1,6 +1,3 @@
-"use client";
-
-import React from 'react'
 import Image from 'next/image';
 
 interface RestaurantHeaderType {
@@ -22,16 +19,17 @@ export default function RestaurantHeader({ name, restaurantImg, openTime, closeT
                 width={74}
                 height={74}
                 alt="restaurant profile"
-                priority={true}
+                loading="lazy"
+                quality={50}
                 className=" object-cover aspect-square rounded-lg"
             />
             <div className="flex flex-col gap-y-2">
-                <h3 className="noto-sans-bold text-lg text-primary">{name}</h3>
-                <p className="noto-sans-bold text-xs text-secondary">เวลาเปิดขาย: {openTime} - {closeTime}</p>
-                <p className="noto-sans-bold text-xs text-secondary">เบอร์ติดต่อร้าน:{' '}
+                <h3 className="font-noto-thai text-bold text-lg text-primary">{name}</h3>
+                <p className="font-noto-thai text-bold text-xs text-secondary">เวลาเปิดขาย: {openTime} - {closeTime}</p>
+                <p className="font-noto-thai text-bold text-xs text-secondary">เบอร์ติดต่อร้าน:{' '}
                     <a
                         href={`tel:${adminTel}`}
-                        className="text-info noto-sans-bold text-xs underline hover:text-info"
+                        className="text-info font-noto-thai text-bold text-xs underline hover:text-info"
                     >{adminTel}</a>
                 </p>
             </div>
