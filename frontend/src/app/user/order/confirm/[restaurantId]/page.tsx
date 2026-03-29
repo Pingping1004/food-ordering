@@ -1,11 +1,11 @@
 "use client";
 
+import dynamic from 'next/dynamic';
 import { useCart } from '@/context/CartContext';
-import { MenuProvider, useMenu } from '@/context/MenuContext';
-import OrderList, { OrderMenuType } from '@/components/users/OrderList';
+import { MenuProvider } from '@/context/MenuContext';
+import { OrderMenuType } from '@/components/users/OrderList';
 import TimePickerInput from '@/components/ui/TimePicker';
 import { Button } from '@/components/Button';
-import { Input } from '@/components/Input';
 import { api } from '@/lib/api';
 import { useForm, Controller } from 'react-hook-form';
 import { createOrderSchema, CreateOrderSchemaType } from '@/schemas/addOrderSchema';
@@ -14,8 +14,12 @@ import { useRouter } from 'next/navigation';
 import { toastDanger } from '@/components/ui/Toast';
 import Image from 'next/image';
 import { toastSuccess } from '@/components/ui/Toast';
-import { useState } from 'react';
-import CountdownTimer from '@/components/Timer';
+import { useEffect, useMemo, useState } from 'react';
+import { useCooker } from '@/context/Cookercontext';
+
+const OrderList = dynamic(() => import("@/components/users/OrderList"), { ssr: false })
+const CountdownTimer = dynamic(() => import("@/components/Timer"))
+const Input = dynamic(() => import("@/components/Input"), { ssr: false })
 
 interface orderPaymentPayload {
     paymentSlipImg: string;
@@ -51,14 +55,13 @@ const slipErrorMap: Record<string, string> = {
 };
 
 function OrderConfirmContext() {
-    const { restaurant } = useMenu();
+    const { cooker } = useCooker();
     const { cart } = useCart();
     const [showQR, setShowQR] = useState(false);
     const [slipPreview, setSlipPreview] = useState<string | null>(null);
     const [paidAt, setPaidAt] = useState<Date | null>(null);
     const [expired, setExpired] = useState(false);
     const router = useRouter();
-    // const [click, setClick] = useState<number>(0);
 
     const {
         watch,
@@ -72,37 +75,73 @@ function OrderConfirmContext() {
         defaultValues: {
             paymentSlipImg: '',
             deliverAt: getBufferTime(),
-            restaurantId: restaurant?.restaurantId,
             userTel: '',
         },
         mode: "onChange",
     });
 
-    const paymentQrImageUrl = restaurant.paymentQr ?? "/picture.svg"
+    useEffect(() => {
+        if (cooker?.restaurantId) {
+            setValue("restaurantId", cooker.restaurantId);
+        }
+    }, [cooker, setValue]);
+
+    useEffect(() => {
+        return () => {
+            if (slipPreview) URL.revokeObjectURL(slipPreview);
+        };
+    }, [slipPreview]);
+
+    const totalAmount = useMemo(() => {
+        if (!cart) return 0;
+
+        return cart.reduce((total, item) => {
+            return total + item.unitPrice * item.quantity;
+        }, 0);
+    }, [cart]);
+    const formattedTotal = totalAmount.toFixed(2);
+
+    if (!cooker) {
+        toastDanger("ไม่พบข้อมูลร้านอาหาร");
+        return;
+    }
+
+    const paymentQrImageUrl = cooker.paymentQr ?? "/picture.svg"
     const paymentSlipImg = watch("paymentSlipImg");
-    const totalAmount = cart.reduce((total, value) => { return total + value.totalPrice }, 0)
     const isButtonDisabled = isSubmitting || !isValid || !isDirty || expired || cart.length === 0;
 
     const handleSlipUpload = (file: File) => {
-        const reader = new FileReader();
-
+        // 1. Validate size
         if (file.size > 2 * 1024 * 1024) {
             toastDanger("ไฟล์สลิปต้องไม่เกิน 2MB");
             return;
         }
 
+        if (!file.type.startsWith("image/")) {
+            toastDanger("กรุณาอัปโหลดไฟล์รูปภาพเท่านั้น");
+            return;
+        }
+
+        const reader = new FileReader();
+
         reader.onloadend = () => {
-            const base64DataUrl = (reader.result as string);
+            const base64DataUrl = reader.result as string;
 
             setValue("paymentSlipImg", base64DataUrl, {
                 shouldValidate: true,
                 shouldDirty: true,
             });
+
+            setPaidAt(new Date());
+            setExpired(false);
         };
 
-        setPaidAt(new Date())
-        reader.readAsDataURL(file)
-    }
+        reader.onerror = () => {
+            toastDanger("เกิดข้อผิดพลาดในการอ่านไฟล์");
+        };
+
+        reader.readAsDataURL(file);
+    };
 
     const submitOrder = async (data: CreateOrderSchemaType) => {
         try {
@@ -116,14 +155,14 @@ function OrderConfirmContext() {
                 return;
             }
 
-            if (!restaurant) {
+            if (!cooker) {
                 toastDanger("ไม่พบข้อมูลร้านอาหาร");
                 return;
             }
 
             const orderPaymentPayload: orderPaymentPayload = {
                 paymentSlipImg: paymentSlipImg,
-                restaurantId: restaurant.restaurantId,
+                restaurantId: cooker.restaurantId,
                 paidAt: paidAt ?? new Date(),
                 deliverAt: new Date(data.deliverAt),
                 orderMenus: cart.map((item) => ({
@@ -162,14 +201,14 @@ function OrderConfirmContext() {
             onSubmit={handleSubmit(submitOrder)}
         >
             <h3
-                className="flex w-full justify-center noto-sans-bold text-primary text-2xl"
+                className="flex w-full justify-center font-noto-thai text-bold text-primary text-2xl"
             >
-                {restaurant?.name}
+                {cooker.name}
             </h3>
 
             <div className="flex flex-col justify-between gap-y-6">
                 <div className="flex justify-between items-center">
-                    <p className="text-lg text-primary noto-sans-bold">สรุปออเดอร์</p>
+                    <p className="text-lg text-primary font-noto-thai text-bold">สรุปออเดอร์</p>
                     {/* <button onClick={handleCalculateTimeClick}>
                         <p className="text-info text-xs  underline">คำนวณเวลาได้รับอาหาร?</p>
                     </button> */}
@@ -178,8 +217,8 @@ function OrderConfirmContext() {
             </div>
 
             <div className="flex w-[calc(100%+3rem)] justify-between bg-primary-main text-white p-6 -mx-6">
-                <h3 className="noto-sans-bold text-2xl">ยอดรวมทั้งหมด</h3>
-                <h3 className="noto-sans-bold text-2xl">{totalAmount}</h3>
+                <h3 className="font-noto-thai text-bold text-2xl">ยอดรวมทั้งหมด</h3>
+                <h3 className="font-noto-thai text-bold text-2xl">{formattedTotal}</h3>
             </div>
 
             <Input
@@ -193,8 +232,8 @@ function OrderConfirmContext() {
 
             <div className="flex flex-col gap-y-4">
                 <div className="flex justify-between items-center">
-                    <h3 className="noto-sans-bold text-base">เลือกเวลารับอาหาร</h3>
-                    <p className="noto-sans-regular text-sm text-danger-main">
+                    <h3 className="font-noto-thai text-bold ">เลือกเวลารับอาหาร</h3>
+                    <p className="font-noto-thai text-sm text-danger-main">
                         ใช้เวลาจัดเตรียมขั้นต่ำ 5 นาที
                     </p>
                 </div>
@@ -245,7 +284,7 @@ function OrderConfirmContext() {
 
             {slipPreview && (
                 <div className="flex flex-col items-center gap-y-6">
-                    <h2 className="w-full noto-sans-bold text-start text-primary text-base">สลิปของคุณ</h2>
+                    <h2 className="w-full font-noto-thai text-bold text-start text-primary ">สลิปของคุณ</h2>
 
                     <Image
                         src={slipPreview}
@@ -273,14 +312,13 @@ function OrderConfirmContext() {
                     const previewUrl = URL.createObjectURL(file);
                     setSlipPreview(previewUrl);
 
-                    setValue("paymentSlipImg", file, { shouldValidate: true });
                     handleSlipUpload(file);
                 }}
             />
 
             <div className=" w-full px-6 z-50 flex">
                 <Button
-                    className="w-full noto-sans-bold py-4"
+                    className="w-full font-noto-thai text-bold py-4"
                     type="submit"
                     // disable when user doesn't complete the form
                     disabled={isButtonDisabled}
