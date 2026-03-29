@@ -8,7 +8,6 @@ import {
   Param,
   UseInterceptors,
   UploadedFile,
-  ParseFilePipe,
   Req,
   UseGuards,
   Logger,
@@ -64,7 +63,6 @@ export class RestaurantController {
   }
 
   @Public()
-  // @Roles([Role.user, Role.admin, Role.cooker])
   @Get()
   async findAllRestaurant() {
     return this.restaurantService.getOpenRestaurants();

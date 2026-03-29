@@ -16,7 +16,6 @@ import { PaymentStatus, OrderStatus, PaymentMethod, Order, Prisma, OrderMenu } f
 import { PaymentService } from 'src/payment/payment.service';
 import { Cron } from '@nestjs/schedule';
 import { v4 as uuidv4 } from 'uuid';
-import { calculateWeeklyInterval } from 'src/payout/payout-calculator';
 
 import { InventoryService } from 'src/inventory/inventory.service';
 import moment from 'moment-timezone';

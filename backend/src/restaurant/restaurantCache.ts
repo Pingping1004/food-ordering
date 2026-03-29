@@ -1,7 +1,6 @@
 import { DateWeek, RestaurantCategory } from "@prisma/client"
 import { CacheEntry } from "src/menu/menuCache"
 
-
 export interface RestaurantCache {
     restaurantId: string,
     restaurantImg: string | null,
