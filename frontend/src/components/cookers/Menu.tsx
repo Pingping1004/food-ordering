@@ -1,5 +1,3 @@
-"use client";
-
 import clsx from "clsx";
 import { VariantProps, cva } from "class-variance-authority";
 import React, { useCallback } from "react";
@@ -88,10 +86,10 @@ export const Menu = ({
                 />
                 <div className="flex w-full flex-col justify-between gap-y-2">
                     <div className="flex items-start justify-between gap-x-1">
-                        <h3 className="w-[140px] noto-sans-bold text-lg text-primary">{name}</h3>
+                        <h3 className="w-[140px] font-noto-thai text-bold text-lg text-primary">{name}</h3>
                         <div className="flex items-center gap-x-2">
-                            <p className="text-base text-light noto-sans-bold">{price}</p>
-                            <p className="text-base text-light">บาท</p>
+                            <p className=" text-light font-noto-thai text-bold">{price}</p>
+                            <p className=" text-light">บาท</p>
                         </div>
                     </div>
 
@@ -111,7 +109,7 @@ export const Menu = ({
                     size="md"
                     className="flex w-full"
                     type="button"
-                    onClick={() => router.push(`/edit-menu/${menuId}`)}
+                    onClick={() => router.push(`/cooker/restaurant/edit-menu/${menuId}`)}
                 >
                     แก้ไขเมนู
                 </Button>

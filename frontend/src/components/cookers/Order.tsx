@@ -1,15 +1,10 @@
-"use client";
-
-import React, { useEffect, useState } from "react";
-import Image from "next/image";
 import { Button } from "../Button";
 import { cva, VariantProps } from "class-variance-authority";
 import clsx from "clsx";
-import { api } from "@/lib/api";
 import { getTimeFormat } from "@/util/time";
-import { OrderStatus, PaymentStatus } from "./OrderNavbar";
+import { OrderStatus } from "./OrderNavbar";
 
-const orderVariants = cva("noto-sans-regular justify-center text-sm", {
+const orderVariants = cva("font-noto-thai justify-center text-sm", {
     variants: {
         variant: {
             sent: "",
@@ -77,9 +72,6 @@ export const Order = ({
     paymentStatus,
     isDelay = false,
     orderMenus = [],
-    completedAt,
-    cancelledAt,
-    refundAt,
     className,
     isLargeTextMode = false,
     isDelayDisabled = false,
@@ -88,8 +80,6 @@ export const Order = ({
     onStatusUpdate,
     ...props
 }: OrderProps) => {
-    const isRefund = (paymentStatus === "refund_complete" || paymentStatus === "refund_pending") && status === OrderStatus.cancelled
-
     return (
         <div
             className={clsx(
@@ -102,28 +92,10 @@ export const Order = ({
         >
             <header className="flex items-start justify-between">
                 <div className="flex grid-rows-2 text-left gap-x-2">
-                    {selected === true && (
-                        <Image
-                            src="/selected.svg"
-                            alt="Selected orders"
-                            width={18}
-                            height={18}
-                        />
-                    )}
-
-                    {selected === false && (
-                        <Image
-                            src="/non-select.svg"
-                            alt="Non-selected orders"
-                            width={18}
-                            height={18}
-                        />
-                    )}
-
                     <div className="flex flex-col gap-y-1">
                         <div className="flex justify-center gap-x-2">
                             <h3 className={clsx(
-                                "noto-sans-bold text-primary",
+                                "font-noto-thai text-bold text-primary",
                                 isLargeTextMode ? "text-3xl" : "text-xl"
                             )}>
                                 {orderId?.substring(0, 4)}
@@ -131,8 +103,8 @@ export const Order = ({
 
                             <p
                                 className={clsx(
-                                    "flex items-center noto-sans-bold text-secondary",
-                                    isLargeTextMode ? "text-base" : "text-sm"
+                                    "flex items-center font-noto-thai text-bold text-secondary",
+                                    isLargeTextMode ? "" : "text-sm"
                                 )}
                             >
                                 (<span className={clsx("mr-1", isLargeTextMode ? "text-xl" : "text-lg")}>เบอร์ติดต่อ:</span>
@@ -147,8 +119,8 @@ export const Order = ({
                         </div>
                         <p
                             className={clsx(
-                                "noto-sans-regular text-light",
-                                isLargeTextMode ? "text-base" : "text-sm"
+                                "font-noto-thai text-light",
+                                isLargeTextMode ? "" : "text-sm"
                             )}
                         >
                             สั่งเมื่อ {orderAt}
@@ -161,7 +133,7 @@ export const Order = ({
                 <div
                     className={clsx(
                         "w-1/2 text-secondary",
-                        isLargeTextMode ? "text-lg" : "text-base"
+                        isLargeTextMode ? "text-lg" : ""
                     )}
                 >
                     <p className="mb-2 text-primary">รายละเอียดออเดอร์:</p>
@@ -177,7 +149,7 @@ export const Order = ({
 
                 <div className="flex w-1/2 grid-cols-2 items-end justify-end md:gap-x-6 gap-x-4">
                     <div className="text-center">
-                        <p className={clsx(isLargeTextMode ? "text-base" : "text-sm")}>จัดส่ง:</p>
+                        <p className={clsx(isLargeTextMode ? "" : "text-sm")}>จัดส่ง:</p>
 
                         <h4
                             className={clsx("text-secondary", isLargeTextMode ? "text-2xl font-bold" : "text-xl")}
@@ -187,7 +159,7 @@ export const Order = ({
                     </div>
 
                     <div className="text-center">
-                        <p className={clsx(isLargeTextMode ? "text-base" : "text-sm")}>ราคา:</p>
+                        <p className={clsx(isLargeTextMode ? "" : "text-sm")}>ราคา:</p>
                         <h4
                             className={clsx("text-secondary", isLargeTextMode ? "text-2xl font-bold" : "text-xl")}
                         >
@@ -198,7 +170,7 @@ export const Order = ({
             </main>
 
             {/* <section>
-                <p className="noto-sans-bold text-sm">{details}</p>
+                <p className="font-noto-thai text-bold text-sm">{details}</p>
             </section> */}
 
             {/* {isRefund && (
@@ -266,3 +238,5 @@ export const Order = ({
         </div>
     )
 };
+
+export default Order

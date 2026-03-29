@@ -1,9 +1,8 @@
-"use client";
-
-import React from "react";
-import { usePathname, useRouter } from "next/navigation"; // Import usePathname
+import { usePathname, useRouter } from "next/navigation";
 import { Button } from "../Button";
-import Profile from "../Profile";
+import dynamic from "next/dynamic";
+
+const Profile = dynamic(() => import("@/components/Profile"))
 
 export interface Restaurant {
     restaurantId: string;
@@ -23,7 +22,7 @@ export default function CookerHeader({
     return (
         <header className="w-full flex items-center">
             <div className="flex items-center w-full">
-                <h1 className="w-2/5 noto-sans-bold md:text-2xl text-xl inline-block">{name}</h1>
+                <h1 className="w-2/5 font-noto-thai text-bold md:text-2xl text-xl inline-block">{name}</h1>
 
                 <div className="w-full flex justify-end items-center gap-x-6">
                     {/* Conditional rendering based on the current URL */}
@@ -32,7 +31,7 @@ export default function CookerHeader({
                             type="button"
                             variant="primary"
                             size="md"
-                            onClick={() => router.push(`/managed-menu/${restaurantId}`)}
+                            onClick={() => router.push(`/cooker/restaurant/managed-menu/${restaurantId}`)}
                         >
                             จัดการเมนู
                         </Button>
@@ -52,7 +51,7 @@ export default function CookerHeader({
                         <div className="flex items-center profile-icon">
                             {restaurantId ? (
                                 <button
-                                    onClick={() => router.push(`/restaurant/profile/${restaurantId}`)}
+                                    onClick={() => router.push(`/cooker/profile/${restaurantId}`)}
                                 >
                                     <Profile />
                                 </button>
@@ -60,7 +59,7 @@ export default function CookerHeader({
                                 <Button
                                     type="button"
                                     variant="secondaryDanger"
-                                    onClick={() => router.push(`/restaurant/profile/${restaurantId}`)}
+                                    onClick={() => router.push(`/cooker/profile/${restaurantId}`)}
                                 >
                                     ล็อกเอาท์
                                 </Button>

@@ -1,8 +1,6 @@
-"use client";
-
 import clsx from "clsx";
 import { cva, VariantProps } from "class-variance-authority";
-import React, { forwardRef, Ref, InputHTMLAttributes, SelectHTMLAttributes } from "react";
+import { forwardRef, Ref, InputHTMLAttributes, SelectHTMLAttributes } from "react";
 import { UseFormRegister, FieldValues, Path } from "react-hook-form";
 import { UploadIcon } from "./ui/UploadIcon";
 
@@ -12,7 +10,7 @@ interface Option {
 }
 
 const inputVariants = cva(
-    "flex items-center w-full px-0 py-2 text-lg noto-sans-regular outline-none border-b-2 placeholder:text-gray-400",
+    "flex items-center w-full px-0 py-2 text-lg font-noto-thai outline-none border-b-2 placeholder:text-gray-400",
     {
         variants: {
             variant: {
@@ -92,7 +90,7 @@ export const Input = forwardRef<HTMLInputElement | HTMLSelectElement, InputProps
             return (
                 <div className="flex flex-col w-full">
                     {label && <label htmlFor={name}
-                        className={clsx("mb-2 text-sm text-start noto-sans-regular", labelColorClass)}>{label}</label>}
+                        className={clsx("mb-2 text-sm text-start font-noto-thai", labelColorClass)}>{label}</label>}
                     <select
                         id={name}
                         name={name}
@@ -119,7 +117,7 @@ export const Input = forwardRef<HTMLInputElement | HTMLSelectElement, InputProps
             return (
                 <div className="flex flex-col w-full">
                     {label && <label htmlFor={name}
-                        className={clsx("mb-2 text-sm text-start noto-sans-regular", labelColorClass)}>{label}</label>}
+                        className={clsx("mb-2 text-sm text-start font-noto-thai", labelColorClass)}>{label}</label>}
                     <input
                         id={name}
                         type="file"
@@ -145,7 +143,7 @@ export const Input = forwardRef<HTMLInputElement | HTMLSelectElement, InputProps
         return (
             <div className="flex flex-col w-full">
                 {label && <label htmlFor={name}
-                    className={clsx("mb-2 text-sm text-start noto-sans-regular", labelColorClass)}>{label}</label>}
+                    className={clsx("mb-2 text-sm text-start font-noto-thai", labelColorClass)}>{label}</label>}
                 <input
                     id={name}
                     name={name}
@@ -162,3 +160,4 @@ export const Input = forwardRef<HTMLInputElement | HTMLSelectElement, InputProps
 );
 
 Input.displayName = "Input";
+export default Input

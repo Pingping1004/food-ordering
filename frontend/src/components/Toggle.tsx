@@ -20,7 +20,7 @@ export function Toggle({
 
     return (
         <div className={`flex flex-col items-start ${className}`}>
-            <Label className="text-[10px] text-primary noto-sans-regular">
+            <Label className="text-[10px] text-primary font-noto-thai">
                 {label}
             </Label>
             <Switch

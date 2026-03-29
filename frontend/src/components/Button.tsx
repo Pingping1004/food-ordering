@@ -1,9 +1,8 @@
 import { cva, VariantProps } from "class-variance-authority";
 import clsx from "clsx";
-import React from "react";
 import { IconNumber } from "./IconNumber";
 
-const button = cva("noto-sans-regular justify-center text-sm", {
+const button = cva("font-noto-thai justify-center text-sm", {
     variants: {
         variant: {
             primary: "bg-primary-main text-white border-1",
@@ -15,10 +14,10 @@ const button = cva("noto-sans-regular justify-center text-sm", {
             secondarySuccess: "bg-success-light text-success-main",
         },
         size: {
-            sm: "px-3 py-2 rounded-2xl text-xs noto-sans-regular",
+            sm: "px-3 py-2 rounded-2xl text-xs font-noto-thai",
             md: "px-5 py-2.5 rounded-2xl",
             lg: "px-6 py-3 rounded-2xl",
-            full: "w-full py-3 rounded-2xl noto-sans-bold!",
+            full: "w-full py-3 rounded-2xl font-noto-thai text-bold!",
             half: "w-1/2 py-2.5 rounded-2xl",
             select: "rounded-2xl p-3 border-1 border-[#006CFE]"
         },

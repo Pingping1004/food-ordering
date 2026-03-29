@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import { toastDanger } from "@/components/ui/Toast";
 import { Button } from "@/components/Button";
 import { useRouter } from "next/navigation";
+import LoadingPage from "@/components/LoadingPage";
 
 type Payout = {
     payoutId: string;
@@ -244,7 +245,7 @@ export default function PayoutLedgerPage() {
             {confirmToggle && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
-                        <h2 className="text-base font-bold text-slate-900 mb-1">ยืนยันการเปลี่ยนสถานะ</h2>
+                        <h2 className=" font-bold text-slate-900 mb-1">ยืนยันการเปลี่ยนสถานะ</h2>
                         <p className="text-sm text-slate-500 mb-5">
                             {confirmToggle.currentIsPaid
                                 ? "ต้องการเปลี่ยนสถานะเป็น รอดำเนินการ ใช่หรือไม่?"
@@ -374,7 +375,7 @@ export default function PayoutLedgerPage() {
                         <div className="flex items-center justify-center h-64">
                             <div className="flex flex-col items-center gap-3">
                                 <div className="w-8 h-8 border-2 border-slate-300 border-t-slate-800 rounded-full animate-spin" />
-                                <p className="text-sm text-slate-400">กำลังโหลด...</p>
+                                <LoadingPage />
                             </div>
                         </div>
                     ) : filtered.length === 0 ? (
@@ -410,7 +411,7 @@ export default function PayoutLedgerPage() {
                                                         {payout.orderId.substring(0, 8)}...
                                                     </td>
                                                     <td className="px-4 py-3">
-                                                        <p className="font-medium text-right text-slate-800 noto-sans-bold">{payout.restaurantName}</p>
+                                                        <p className="font-medium text-right text-slate-800 font-noto-thai text-bold">{payout.restaurantName}</p>
                                                     </td>
                                                     <td className="px-4 py-3 text-right font-semibold text-slate-800 tabular-nums">฿{fmt(payout.grossAmount)}</td>
                                                     <td className="px-4 py-3 text-right text-blue-600 tabular-nums">฿{fmt(Number(payout.platformFee))}</td>
@@ -556,7 +557,7 @@ export default function PayoutLedgerPage() {
                     )}
                 </div>
 
-                <p className="text-sm noto-sans-regular text-center text-slate-500">
+                <p className="text-sm font-noto-thai text-center text-slate-500">
                     รายการทางการเงินเป็นข้อมูลทางการเงินที่เป็นความลับ ห้ามเผยแพร่
                 </p>
             </div>

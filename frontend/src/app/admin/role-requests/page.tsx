@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { useAuth } from "@/auth/auth.hooks";
 import { Button } from "@/components/Button";
 import { toastDanger, toastSuccess } from "@/components/ui/Toast";
 import { useRouter } from "next/navigation";
+import LoadingPage from "@/components/LoadingPage";
 
 type RoleRequestStatus = "pending" | "accepted" | "rejected";
 
@@ -21,6 +23,7 @@ type RoleRequest = {
 export default function AdminRoleRequestsPage() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const { logout } = useAuth()
   const [roleRequests, setRoleRequests] = useState<RoleRequest[]>([]);
 
   const fetchData = useCallback(async () => {
@@ -28,7 +31,7 @@ export default function AdminRoleRequestsPage() {
     try {
       const res = await api.get("/request/all");
       setRoleRequests(res.data as RoleRequest[]);
-    } catch (err) {
+    } catch {
       toastDanger("โหลดรายการคำขอไม่สำเร็จ");
     } finally {
       setLoading(false);
@@ -65,17 +68,26 @@ export default function AdminRoleRequestsPage() {
   return (
     <div className="container mx-auto px-6 py-10">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl noto-sans-bold text-primary">คำขอเป็นร้านอาหาร</h1>
-        
-        <div>
-        <Button type="button" variant="secondary" onClick={() => router.push(`/admin/payout`)} disabled={loading}>
-          ตรวจสอบธุรกรรม
-        </Button>
+        <h1 className="text-2xl font-noto-thai text-bold text-primary">คำขอร้านอาหาร</h1>
+
+        <div className="flex justify-between gap-x-2">
+          <Button type="button" size="md" variant="secondary" onClick={() => router.push(`/admin/payout`)} disabled={loading}>
+            ดูธุรกรรม
+          </Button>
+
+          <Button
+            type="button"
+            size="md"
+            variant="secondaryDanger"
+            onClick={() => logout()}
+          >
+            ล็อกเอาท์
+          </Button>
         </div>
       </div>
 
       {loading ? (
-        <div className="text-secondary">กำลังโหลด...</div>
+        <LoadingPage />
       ) : roleRequests.length === 0 && !roleRequests ? (
         <div className="text-secondary">ไม่มีคำขอค้างอยู่</div>
       ) : (
@@ -111,18 +123,18 @@ export default function AdminRoleRequestsPage() {
               className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border rounded-xl p-4 bg-white"
             >
               <div className="flex flex-col">
-                <div className="flex justify-between text-primary noto-sans-bold">
+                <div className="flex justify-between text-primary font-noto-thai text-bold">
                   <h2 className="text-lg">ผู้ใช้: {r.username}</h2>
 
                   {r.status !== "pending" && (
                     <Button type="button" size="sm" variant={r.status === "accepted" ? "secondarySuccess" : "secondaryDanger"}>
-                    {r.status}
-                  </Button>
+                      {r.status}
+                    </Button>
                   )}
                 </div>
 
                 <div className="text-sm text-secondary">
-                  <h3 className="noto-sans-regular text-base">ส่งคำขอสำหรับเป็น: {r.requestRole}</h3>
+                  <h3 className="font-noto-thai ">ส่งคำขอสำหรับเป็น: {r.requestRole}</h3>
                 </div>
               </div>
 
@@ -145,4 +157,3 @@ export default function AdminRoleRequestsPage() {
     </div>
   );
 }
-

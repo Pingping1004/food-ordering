@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import Image from 'next/image';
@@ -114,19 +114,19 @@ export default function DoneOrderPage() {
 
     return (
         <div className="flex flex-col py-10 px-6 gap-y-10">
-            <h1 className="flex justify-center noto-sans-bold text-primary text-2xl">{restaurantName}</h1>
+            <h1 className="flex justify-center font-noto-thai text-bold text-primary text-2xl">{restaurantName}</h1>
 
             <main className="flex flex-col justify-center items-center gap-y-10">
                 <Image
                     src="/success.svg"
                     width={120}
                     height={120}
-                    priority
+                    loading="lazy"
                     alt="Success icon"
                 />
                 <div className="flex flex-col items-center gap-y-1">
-                    <h4 className="text-lg text-success noto-sans-regular">ส่งออเดอร์สำเร็จ</h4>
-                    <h1 className="text-2xl noto-sans-bold text-primary">ออเดอร์ {orderId?.substring(0, 4)}</h1>
+                    <h4 className="text-lg text-success font-noto-thai">ส่งออเดอร์สำเร็จ</h4>
+                    <h1 className="text-2xl font-noto-thai text-bold text-primary">ออเดอร์ {orderId?.substring(0, 4)}</h1>
                 </div>
             </main>
 
@@ -137,19 +137,19 @@ export default function DoneOrderPage() {
             </section>
 
             <section className="flex flex-col justify-between gap-y-6">
-                <p className="noto-sans-bold text-lg text-primary">รายละเอียดออเดอร์</p>
+                <p className="font-noto-thai text-bold text-lg text-primary">รายละเอียดออเดอร์</p>
                 <div>
                     {order.orderMenus.map((item) => (
                         <div key={item.menuName} className="flex justify-between gap-y-2">
-                            <p className="noto-sans-regular text-lg text-primary">{item.quantity}x{' '}-{' '}{item.menuName}</p>
-                            <p className="noto-sans-bold text-2xl text-primary">{item.unitPrice}</p>
+                            <p className="font-noto-thai text-lg text-primary">{item.quantity}x{' '}-{' '}{item.menuName}</p>
+                            <p className="font-noto-thai text-bold text-2xl text-primary">{item.unitPrice}</p>
                         </div>
                     ))}
                 </div>
             </section>
 
             {!canCancelOrder && (
-                <p className="text-base text-danger-main text-center">
+                <p className=" text-danger-main text-center">
                     การยกเลิกออเดอร์ทำได้ภายใน 5 นาทีหลังสั่งเท่านั้น
                 </p>
             )}
@@ -160,7 +160,7 @@ export default function DoneOrderPage() {
                     size="lg"
                     onClick={() => router.push('/user/restaurant')}
                 >
-                    <p className="text-base">กลับสู่หน้าหลัก</p>
+                    <p className="">กลับสู่หน้าหลัก</p>
                 </Button>
 
                 <Button
@@ -170,7 +170,7 @@ export default function DoneOrderPage() {
                     disabled={!canCancelOrder}
                     onClick={() => handleSubmitCancel()}
                 >
-                    <p className="text-base">ยกเลิกคำสั่งซื้อ</p>
+                    <p className="">ยกเลิกคำสั่งซื้อ</p>
                 </Button>
             </div>
         </div>
