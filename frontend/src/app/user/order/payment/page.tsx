@@ -1,8 +1,4 @@
-"use client";
-
-import { Input } from '@/components/Input';
 import Image from 'next/image';
-import React from 'react'
 
 function OrderPaymentPage() {
     const paymentQrImageUrl = "/picture.svg"

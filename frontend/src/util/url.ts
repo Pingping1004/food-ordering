@@ -1,5 +1,3 @@
-"use client";
-
 export function getFullImageUrl(relativePath: string | undefined, baseUrl: string): string | null {
     if (!relativePath) {
         return null;

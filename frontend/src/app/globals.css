@@ -62,126 +62,6 @@ body {
   }
 }
 
-.bg-primary {
-    background-color: #006CFE;
-}
-
-.gap-y-23 {
-  column-gap: 92px;
-}
-
-.text-primary-color {
-  color: #006CFE;
-}
-
-.text-primary {
-  color: #1E1E1E;
-}
-
-.text-secondary {
-  color: #5F5F5F;
-}
-
-.text-light {
-  color: #8A8A8A;
-  opacity: 1;
-}
-
-.text-lighter {
-  color: #B6B6B6;
-  opacity: 1;
-}
-
-.text-superLight {
-  color: #E1E1E1
-}
-
-.text-info {
-  color: #22AFFF
-}
-
-.text-success {
-  color: #45B858
-}
-
-.text-primary-light {
-  color: #84ADF3;
-}
-
-.border-color {
-  border-color: #E1E1E1;
-}
-
-.border-primary {
-  border-color: #006CFE
-}
-
-.poppins-thin {
-  font-family: "Poppins", sans-serif;
-  font-weight: 100;
-  font-style: normal;
-}
-
-.poppins-extralight {
-  font-family: "Poppins", sans-serif;
-  font-weight: 200;
-  font-style: normal;
-}
-
-.poppins-light {
-  font-family: "Poppins", sans-serif;
-  font-weight: 300;
-  font-style: normal;
-}
-
-.poppins-regular {
-  font-family: "Poppins", sans-serif;
-  font-weight: 400;
-  font-style: normal;
-}
-
-.poppins-medium {
-  font-family: "Poppins", sans-serif;
-  font-weight: 500;
-  font-style: normal;
-}
-
-.poppins-semibold {
-  font-family: "Poppins", sans-serif;
-  font-weight: 600;
-  font-style: normal;
-}
-
-.poppins-bold {
-  font-family: "Poppins", sans-serif;
-  font-weight: 700;
-  font-style: normal;
-}
-
-.poppins-extrabold {
-  font-family: "Poppins", sans-serif;
-  font-weight: 800;
-  font-style: normal;
-}
-
-.poppins-black {
-  font-family: "Poppins", sans-serif;
-  font-weight: 900;
-  font-style: normal;
-}
-
-.noto-sans-regular {
-  font-family: "Noto Sans Thai", sans-serif;
-  font-weight: 400;
-  font-style: normal;
-}
-
-.noto-sans-bold {
-  font-family: "Noto Sans Thai", sans-serif;
-  font-weight: 700;
-  font-style: normal;
-}
-
 :root {
   --radius: 0.625rem;
   --background: oklch(1 0 0);
@@ -259,3 +139,25 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* spacing utilities (only non-Tailwind standard) */
+.gap-y-23 { column-gap: 92px; }
+
+/* text colors */
+.text-primary-color { color: var(--primary); }
+.text-primary { color: var(--foreground); }
+.text-secondary { color: var(--secondary-foreground); }
+.text-light { color: #8A8A8A; }
+.text-lighter { color: #B6B6B6; }
+.text-superLight { color: #E1E1E1; }
+.text-info { color: #22AFFF; }
+.text-success { color: var(--success, #45B858); }
+.text-primary-light { color: #84ADF3; }
+
+.border-color { border-color: #E1E1E1; }
+.border-primary { border-color: var(--primary); }
+
+.font-poppins { font-family: var(--font-poppins) }
+.font-noto-thai { font-family: var(--font-noto-thai) }
+
+.bg-primary { background-color: var(--primary); }
