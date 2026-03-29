@@ -96,8 +96,10 @@ export const OrderNavBar = ({
                 onClick={() => handleClick("cancelled_group")}
                 className={clsx(baseBtn, state === "cancelled_group" && active)}
             >
-                ยกเลิก / ไม่รับ
+                ยกเลิก/ไม่รับ
             </button>
         </div>
     );
 };
+
+export default OrderNavBar
