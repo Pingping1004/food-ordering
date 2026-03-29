@@ -1,6 +1,5 @@
-'use client'
-
 import { useEffect } from "react"
+import { Button } from "../Button"
 
 type Props = {
   isOpen: boolean
@@ -59,12 +58,14 @@ export default function Modal({
 
           <p className="text-secondary whitespace-pre-line text-start">{body}</p>
 
-          <button
+          <Button
             onClick={onClose}
-            className="px-5 py-2 bg-primary-main text-white rounded-lg hover:bg-gray-800 font-bold"
+            type="button"
+            variant="primary"
+            size="full"
           >
             {confirmText}
-          </button>
+          </Button>
 
         </div>
       </div>
