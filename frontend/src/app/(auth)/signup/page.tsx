@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,7 +9,7 @@ import Link from "next/link";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { api } from "@/lib/api";
-import { useAuth } from "@/context/Authcontext";
+import { useAuth } from "@/auth/auth.hooks";
 import { toastSuccess, toastDanger } from "@/components/ui/Toast";
 
 export default function SignupPage() {
@@ -104,16 +104,16 @@ export default function SignupPage() {
                                 <Button variant="primary" size="full" type="submit" disabled={isSubmitting}>
                                     สร้างบัญชีผู้ใช้
                                 </Button>
-                                <p className="text-light noto-sans-regular text-sm">หรือ</p>
+                                <p className="text-light font-noto-thai text-sm">หรือ</p>
                                 <Button type="button" size="full" variant="secondary" onClick={() => router.push('/user/restaurant')}>
                                     สั่งอาหารเลยโดยไม่ล็อกอิน!
                                 </Button>
                             </div>
-                            <p className="mt-6 text-base leading-relaxed text-gray-900">
+                            <p className="mt-6  leading-relaxed text-gray-900">
                                 มีบัญชีอยู่แล้ว?{" "}
                                 <Link
                                     href="/login"
-                                    className="font-[700] text-base text-blue-400 transition duration-500 hover:text-blue-600"
+                                    className="font-[700]  text-blue-400 transition duration-500 hover:text-blue-600"
                                 >
                                     เข้าสู่ระบบ
                                 </Link>
