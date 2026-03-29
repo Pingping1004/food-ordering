@@ -1,6 +1,4 @@
-"use client";
-
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import "react-time-picker/dist/TimePicker.css";
 import "react-clock/dist/Clock.css";
 

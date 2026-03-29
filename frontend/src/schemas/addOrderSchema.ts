@@ -31,7 +31,7 @@ export const createOrderSchema = z.object({
         })
         .superRefine((deliverAtDate, ctx) => {
             const now = new Date();
-            const deliverHour = deliverAtDate.getHours();
+            // const deliverHour = deliverAtDate.getHours();
             // const timeBuffer = (deliverHour === 12) ? 19 : 9;
             const timeBuffer = 5;
             const minimumAllowedDeliverTime = new Date(now.getTime() + timeBuffer * 60 * 1000);

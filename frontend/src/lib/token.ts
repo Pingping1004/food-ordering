@@ -31,16 +31,6 @@ export const getCsrfToken = (): string | null => {
     return Cookies.get('XSRF-TOKEN') || null;
 }
 
-export const setCsrfToken = (token: string): void => {
-    if (!token) return
-
-    Cookies.set('XSRF-TOKEN', token, {
-        secure: true,
-        sameSite: 'None',
-        path: '/',
-    });
-}
-
 export const setRefreshToken = (token: string): void => {
     if (!token) return;
     Cookies.set('refresh_token', token);

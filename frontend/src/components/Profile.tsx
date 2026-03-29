@@ -1,4 +1,3 @@
-import React from "react";
 import Image from "next/image";
 
 export default function Profile({ profileSrc }: { readonly profileSrc?: string }) {
