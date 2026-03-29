@@ -5,8 +5,14 @@ type CountdownTimerProps = {
     onExpire?: () => void;
 }
 
+const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${minutes}:${secs.toString().padStart(2, "0")}`;
+};
+
 export default function CountdownTimer({ duration, onExpire }: CountdownTimerProps) {
-    const [timeLeft, setTimieLeft] = useState(duration);
+    const [timeLeft, setTimeLeft] = useState(duration);
 
     useEffect(() => {
         if (timeLeft <= 0) {
@@ -15,18 +21,15 @@ export default function CountdownTimer({ duration, onExpire }: CountdownTimerPro
         }
 
         const interval = setInterval(() => {
-            setTimieLeft((prev) => prev - 1);
+            setTimeLeft((prev) => prev - 1);
         }, 1000);
 
         return () => clearInterval(interval)
     }, [timeLeft, onExpire]);
 
-    const minutes = Math.floor(timeLeft / 60);
-    const seconds = timeLeft % 60;
-
     return (
         <div className="text-center font-semibold text-red-500">
-            กรุณาชำระเงินและยืนยันออเดอร์ภายใน:  {minutes}:{seconds.toString().padStart(2, "0")}
+            กรุณาชำระเงินและยืนยันออเดอร์ภายใน:  {formatTime(timeLeft)}
         </div>
     )
 }
