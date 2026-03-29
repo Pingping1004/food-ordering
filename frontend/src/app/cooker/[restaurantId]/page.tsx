@@ -1,17 +1,23 @@
-"use client";
+"use client"
 
-import CookerHeader from "@/components/cookers/CookerHeader";
-import { Order, OrderProps } from "@/components/cookers/Order";
-import { NavState, OrderNavBar, OrderStatus, PaymentStatus } from "@/components/cookers/OrderNavbar";
+import dynamic from "next/dynamic";
+import { OrderProps } from "@/components/cookers/Order";
+import { NavState, OrderStatus, PaymentStatus } from "@/components/cookers/OrderNavbar";
 import LoadingPage from "@/components/LoadingPage";
 import { Button } from "@/components/Button";
 import { CookerProvider, useCooker } from "@/context/Cookercontext";
 import { api } from "@/lib/api";
 import { getDateFormat, getTimeFormat } from "@/util/time";
-import Image from "next/image";
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { toastDanger, toastSuccess } from "@/components/ui/Toast";
-import Modal from "@/components/users/Modal";
+import { useParams } from "next/navigation";
+import { getParamId } from "@/util/param";
+
+const Modal = dynamic(() => import("../../../components/users/Modal"), { ssr: false })
+const WarningBanner = dynamic(() => import("../../../components/cookers/WarningBanner"), { ssr: false })
+const CookerHeader = dynamic(() => import("../../../components/cookers/CookerHeader"), { ssr: false })
+const Order = dynamic(() => import("../../../components/cookers/Order"), { ssr: false })
+const OrderNavBar = dynamic(() => import("../../../components/cookers/OrderNavbar"), { ssr: false })
 
 function Page() {
     const [isLargeTextMode, setIsLargeTextMode] = useState(false)
@@ -27,8 +33,11 @@ function Page() {
     const fetchingRef = useRef(false);
     const pendingOrdersRef = useRef<Record<string, { order: OrderProps; showAt: number }>>({});
 
-    const fetchInitialOrders = async () => {
-        const response = await api.get(`/order/today/${cooker.restaurantId}`);
+    const params = useParams();
+    const restaurantId = getParamId(params.restaurantId);
+
+    const fetchInitialOrders = useCallback(async () => {
+        const response = await api.get(`/order/today/${restaurantId}`);
         const data = response.data;
 
         const mapped: Record<string, OrderProps> = {};
@@ -42,9 +51,9 @@ function Page() {
         if (data.latestTimestamp) lastTimestampRef.current = data.latestTimestamp;
 
         setIsLoading(false);
-    };
+    }, [restaurantId]);
 
-    const fetchNewOrders = async () => {
+    const fetchNewOrders = useCallback(async () => {
         if (fetchingRef.current) return
         fetchingRef.current = true
 
@@ -52,7 +61,7 @@ function Page() {
             const params = new URLSearchParams()
             if (lastTimestampRef.current) params.append("after", lastTimestampRef.current)
 
-            const url = `/order/new/${cooker.restaurantId}` + (params.toString() ? `?${params.toString()}` : "");
+            const url = `/order/new/${restaurantId}` + (params.toString() ? `?${params.toString()}` : "");
             const response = await api.get(url)
             const data = response.data
 
@@ -95,7 +104,7 @@ function Page() {
             setIsLoading(false)
             fetchingRef.current = false
         }
-    }
+    }, [restaurantId]);
 
     const handleTextMode = () => {
         const newValue = !isLargeTextMode
@@ -193,9 +202,9 @@ function Page() {
     }, []);
 
     useEffect(() => {
-        if (!cooker.restaurantId) return;
+        if (!restaurantId) return;
 
-        let interval: any;
+        let interval: ReturnType<typeof setInterval>;
         const init = async () => {
             await fetchInitialOrders();
             interval = setInterval(fetchNewOrders, 1500)
@@ -204,7 +213,7 @@ function Page() {
         init();
 
         return () => clearInterval(interval);
-    }, [cooker.restaurantId]);
+    }, [restaurantId, fetchInitialOrders, fetchNewOrders]);
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -229,9 +238,9 @@ function Page() {
         const startOfYesterday = new Date();
         startOfYesterday.setDate(startOfYesterday.getDate() - 1);
         startOfYesterday.setHours(0, 0, 0, 0);
-    
+
         return ordersArray.filter((order) => order.paymentStatus === PaymentStatus.paid || PaymentStatus.refund_pending || PaymentStatus.refund_complete &&
-         new Date(order.orderAt) >= startOfYesterday);
+            new Date(order.orderAt) >= startOfYesterday);
     }, [ordersArray]);
 
     const dailyDone = useMemo(() => {
@@ -257,12 +266,12 @@ function Page() {
         return elapsedMins > bufferMins && beforeDeliverMins > 5;
     }
 
-    const navToStatusMap: Record<NavState, OrderStatus[]> = {
+    const navToStatusMap: Record<NavState, OrderStatus[]> = useMemo(() => ({
         sent: [OrderStatus.sent],
         accepted: [OrderStatus.accepted],
         completed: [OrderStatus.completed],
         cancelled_group: [OrderStatus.cancelled, OrderStatus.rejected],
-    };
+    }), []);
 
     const filterTodayOrderStatus: OrderProps[] = useMemo(() => {
         const allowedStatuses = navToStatusMap[navbarStatus];
@@ -273,30 +282,14 @@ function Page() {
         }
 
         return filtered.sort((a, b) => new Date(a.deliverAt).getTime() - new Date(b.deliverAt).getTime());
-    }, [navbarStatus, filterDailyOrders]);
-
-    if (!cooker.isApproved) {
-        return (
-            <div className="flex flex-col w-full h-screen justify-center text-center items-center gap-y-10">
-                <Image
-                    src="/processing.svg"
-                    alt="Processing icon"
-                    priority
-                    width={300}
-                    height={300}
-                />
-
-                <p className="noto-sans-regular text-secondary text-xl px-10">ทางแอดมินกำลังดำเนินพิจารณาการอนุมัติเปิดร้านอาหาร ใช้เวลา 1-2วัน</p>
-            </div>
-        )
-    }
+    }, [navbarStatus, filterDailyOrders, navToStatusMap]);
 
     if (isLoading) return <LoadingPage />
 
     return (
         <div
             className={`flex flex-col py-10 px-6 transition-all duration-200
-            ${isLargeTextMode ? "gap-y-14 text-lg" : "gap-y-10 text-base"}`}
+            ${isLargeTextMode ? "gap-y-14 text-lg" : "gap-y-10 "}`}
         >
             <CookerHeader
                 restaurantId={cooker.restaurantId}
@@ -322,23 +315,10 @@ function Page() {
             />
 
             {showRuleBanner && (
-                <div
-                    className={`relative bg-yellow-100 border border-yellow-300 text-yellow-800 rounded-lg p-4
-                    ${isLargeTextMode ? "text-lg" : "text-md"}`}
-                >
-                    <button
-                        onClick={handleCloseBanner}
-                        className="absolute top-2 right-2 text-yellow-200 bg-yellow-700 hover:bg-yellow-900 rounded-4xl px-2 py-1 text-sm"
-                    >
-                        ✕
-                    </button>
-
-                    <p>
-                        ⚠ ต้องกดรับออเดอร์ภายใน5 นาที มิฉะนั้น<br />
-                        ระบบจะยกเลิกออเดอร์อัตโนมัติ</p>
-                    <p>⚠ แจ้งล่าช้าได้ภายใน 10 นาทีหลังรับออเดอร์</p>
-                    <p>⚠ แจ้งล่าช้าได้ภายใน 5 นาทีก่อนลูกค้าจะมารับ</p>
-                </div>
+                <WarningBanner
+                    isLargeTextMode={isLargeTextMode}
+                    onClose={handleCloseBanner}
+                />
             )}
 
             {navbarStatus === OrderStatus.completed ? (
