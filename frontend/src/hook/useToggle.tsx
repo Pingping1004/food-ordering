@@ -1,5 +1,3 @@
-"use client";
-
 import { toastDanger } from "@/components/ui/Toast";
 import { useState } from "react";
 
