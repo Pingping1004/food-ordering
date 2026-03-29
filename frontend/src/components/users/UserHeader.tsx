@@ -1,9 +1,7 @@
-"use client";
-
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "../Button";
-import { useAuth } from "@/context/Authcontext";
+import { useAuth } from "@/auth/auth.hooks";
 import { api } from "@/lib/api";
 import axios from "axios";
 import { toastDanger, toastSuccess } from "@/components/ui/Toast";
@@ -45,7 +43,7 @@ export default function UserHeader() {
                 disabled: false,
                 onClick: () => {
                     if (restaurantId) router.push(`/cooker/${restaurantId}`);
-                    else router.push(`/restaurant-register/${user.userId}`);
+                    else router.push(`/cooker/restaurant-register/${user.userId}`);
                 },
             };
         }
@@ -85,7 +83,7 @@ export default function UserHeader() {
 
     return (
         <header className="flex justify-between items-center">
-            <h1 className="noto-sans-bold text-xl">วันนี้กินอะไรดี?</h1>
+            <h1 className="font-noto-thai text-bold text-xl">วันนี้กินอะไรดี?</h1>
 
             {user ? (
                 <div className="flex justify-between gap-x-2">
