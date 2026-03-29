@@ -1,5 +1,5 @@
 import axios, { AxiosRequestConfig, AxiosError, AxiosHeaders } from "axios";
-import { setAccessToken, getRefreshToken, setRefreshToken, clearTokens, removeAccessToken } from "./token";
+import { setAccessToken, clearTokens, removeAccessToken, getCsrfToken } from "./token";
 import Cookies from 'js-cookie';
 
 const baseBackendUrl = `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/api`;
@@ -47,42 +47,35 @@ export function normalizeError(err: unknown): Error {
     return new Error(JSON.stringify(err));
 }
 
-export const requestInterceptor = api.interceptors.request.use((config) => {
+export const requestInterceptor = api.interceptors.request.use(
+    async (config) => {
+        if (!config.method) throw Error('Not found config method');
 
-    if (config.headers?.skipAuth === 'true') {
-        delete config.headers['skipAuth'];
-        return config; // keep whatever headers are already set (including new token)
-    }
+        const method = config.method.toUpperCase();
+        const isMutating = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
+        const isCsrfFetchRequest = config.url === '/csrf-token';
 
-    const accessToken = localStorage.getItem('accessToken');
-    if (accessToken && config.headers && !config.headers.Authorization) {
-        if (!config.headers) {
-            config.headers = new axios.AxiosHeaders();
-        } else if (!(config.headers instanceof AxiosHeaders)) {
-            config.headers = AxiosHeaders.from(config.headers);
+        if (isMutating && !isCsrfFetchRequest) {
+            let csrfToken = Cookies.get('XSRF-TOKEN');
+
+            if (!csrfToken) {
+                await api.get('/csrf-token');
+                csrfToken = Cookies.get('XSRF-TOKEN');
+            }
+
+            if (csrfToken) {
+                if (!config.headers) config.headers = new AxiosHeaders();
+                else if (!(config.headers instanceof AxiosHeaders)) {
+                    config.headers = AxiosHeaders.from(config.headers);
+                }
+
+                config.headers.set('X-CSRF-TOKEN', csrfToken);
+            }
         }
-        config.headers['Authorization'] = `Bearer ${accessToken}`;
-    }
 
-    const csrfToken = Cookies.get('XSRF-TOKEN');
-    if (!config.method) throw Error('Not found config method');
-
-    const isMutating = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(config.method.toUpperCase());
-    const isCsrfFetchRequest = config.url === '/csrf-token';
-
-    if (csrfToken && isMutating && !isCsrfFetchRequest) {
-        if (!config.headers) config.headers = new axios.AxiosHeaders();
-        else if (!(config.headers instanceof AxiosHeaders)) {
-            config.headers = AxiosHeaders.from(config.headers);
-        }
-        if (!config.headers['X-CSRF-TOKEN']) {
-            config.headers['X-CSRF-TOKEN'] = csrfToken;
-        }
-    }
-
-    config.withCredentials = true;
-    return config;
-},
+        config.withCredentials = true;
+        return config;
+    },
     (error) => {
         return Promise.reject(normalizeError(error))
     }
@@ -176,6 +169,23 @@ api.interceptors.response.use(
     async (error: AxiosError) => {
         const originalRequest = error.config as CustomAxiosRequestConfig;
         const status = error.response?.status;
+
+        const isCsrfError =
+            status === 403 &&
+            (error.response?.data as any)?.code === 'INVALID_CSRF_TOKEN';
+
+        if (isCsrfError && !originalRequest._retry) {
+            originalRequest._retry = true;
+
+            try {
+                await fetchCsrfToken();
+
+                return api(originalRequest); // retry request
+            } catch (err) {
+                return Promise.reject(normalizeError(err));
+            }
+        }
+
         const isUnauthorized = status === 401;
         const isLoginRequest = originalRequest?.url?.includes('/auth/login');
         const isRefreshRequest = originalRequest?.url?.includes('/auth/refresh');
@@ -211,5 +221,6 @@ api.interceptors.response.use(
 );
 
 export async function fetchCsrfToken(): Promise<void> {
-    await api.get('/csrf-token');
+    const res = await api.get('/csrf-token');
+    console.log("CSRF token: ", res.data)
 }
