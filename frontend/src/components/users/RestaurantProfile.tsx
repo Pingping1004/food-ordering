@@ -1,4 +1,3 @@
-import React from 'react'
 import Image from 'next/image'
 import clsx from 'clsx'
 import { cva, VariantProps } from 'class-variance-authority'
@@ -35,6 +34,7 @@ export type RestaurantProfileProps = React.HTMLAttributes<HTMLDivElement> &
         // openTime: Date | string;
         // closeTime: Date | string;
         isOpen: boolean;
+        isPriority: boolean;
     }
 
 export const RestaurantProfile: React.FC<RestaurantProfileProps> = ({
@@ -44,13 +44,13 @@ export const RestaurantProfile: React.FC<RestaurantProfileProps> = ({
     restaurantImg,
     categories,
     isOpen,
+    isPriority,
     // openTime,
     // closeTime,
     className,
     ...props
 
 }: RestaurantProfileProps) => {
-    const src = restaurantImg ? `${restaurantImg}` : `/picture.svg`;
 
     const content = (
         <div className={clsx(
@@ -64,15 +64,19 @@ export const RestaurantProfile: React.FC<RestaurantProfileProps> = ({
                 <Image
                     width={163}
                     height={163}
-                    src={src}
+                    sizes="(max-width: 768px) 120px, 163px"
+                    src={restaurantImg}
+                    priority={isPriority}
+                    fetchPriority={isPriority ? "high" : "auto"}
+                    quality={50}
                     alt='Restaurant Profile'
                     className="rounded-lg object-cover aspect-square w-full h-full"
                 />
             </div>
 
             <div className="flex flex-col gap-y-2">
-                <h3 className="noto-sans-bold text-sm text-primary">{name.substring(0, 15)}</h3>
-                <p className="noto-sans-regular text-xs text-light">{categories.slice(0, 2).join(', ')}</p>
+                <h3 className="font-noto-thai text-bold text-sm text-primary">{name.substring(0, 15)}</h3>
+                <p className="font-noto-thai text-xs text-light">{categories.slice(0, 2).join(', ')}</p>
             </div>
         </div>
     );
@@ -87,3 +91,5 @@ export const RestaurantProfile: React.FC<RestaurantProfileProps> = ({
         return content;
     }
 };
+
+export default RestaurantProfile
