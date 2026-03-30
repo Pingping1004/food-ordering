@@ -71,7 +71,7 @@ model Restaurant {
   accountNumber       String
   bankAccount         String
   accountHolderFullName   String
-  paymentQr           String
+  paymentQr           String              @unique
 
   openDate            DateWeek[]
   userId              String               @unique
