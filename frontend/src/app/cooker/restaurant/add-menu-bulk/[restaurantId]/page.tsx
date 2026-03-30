@@ -216,12 +216,20 @@ export default function BulkAddMenuPage() {
             setParsedCsvData(null);
             setMenuImagePreviewUrls([]);
             setUploadedImageMetadata([]);
-        } catch(err) {
-            const error = err as { response: { status: number }}
-            if (error.response?.status === 409) {
-                toastDanger('ชื่อเมนูซ้ำกับเมนูที่มีอยู่แล้ว');
+        } catch(error: unknown) {
+            if (typeof error === 'object' && error !== null && 'response' in error) {
+                const err = error as { response: { status: number; data?: { message?: string, code?: string } } };
+
+                const backendMessage = err.response.data?.message;
+                const code = err.response?.data?.code;
+
+                if (code === "409") {
+                    toastDanger("ชื่อเมนูซ้ำกับที่มีอยู่แล้ว")
+                }
+
+                toastDanger(backendMessage ?? "เกิดข้อผิดพลาด");
+                setPageError(backendMessage ?? "เกิดข้อผิดพลาด");
             }
-            setPageError("พบข้อผิดพลาดในการสร้างเมนู กรุณาลองอีกครั้ง");
         } finally {
             setLoading(false);
         }
