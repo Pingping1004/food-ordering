@@ -71,7 +71,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
-      envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
+      envFilePath: process.env.NODE_ENV === 'production' ? '.env.production' : '.env.local'
     }),
     ScheduleModule.forRoot(),
     PayoutModule,
