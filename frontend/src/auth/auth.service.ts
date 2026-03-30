@@ -1,13 +1,14 @@
 import { api } from "@/lib/api"
 import { User } from "./auth.types"
 import axios from "axios"
+import Cookies from "js-cookie"
 
 export async function loginApi(email: string, password: string) {
     try {
         const res = await api.post("/auth/login", { email, password }, {
             headers: { skipAuth: "true" }
         });
-        
+
         return res.data
     } catch(err) {
         throw err;
@@ -48,9 +49,4 @@ export async function getProfileApi(): Promise<User> {
 
         throw err;
     }
-}
-
-export async function fetchCsrfTokenApi() {
-    const res = await api.get("/csrf-token")
-    return res.data.csrfToken
 }
