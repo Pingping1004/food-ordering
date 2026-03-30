@@ -87,6 +87,7 @@ async function bootstrap() {
       'Accept',
       'X-CSRF-Token',
       'x-csrf-token',
+      'XSRF-TOKEN',
       'X-Csrf-Token',
       'x-order-secret',
       'x-xsrf-token',
