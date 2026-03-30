@@ -5,11 +5,12 @@ import { Request, Response } from 'express';
 
 @Controller('csrf-token')
 export class CsrfController {
-  constructor(private readonly csrfTokenService: CsrfTokenService) {}
+  constructor(private readonly csrfTokenService: CsrfTokenService) { }
 
   @Get()
   @Public()
   getCsrfToken(@Req() req: Request, @Res() res: Response) {
+    const isProd = process.env.NODE_ENV === 'production';
     const origin = req.headers.origin;
     const allowedOrigins = [
       'https://promptserve.online',
@@ -19,7 +20,7 @@ export class CsrfController {
       process.env.FRONTEND_BASE_URL,
       process.env.NEXT_PUBLIC_BACKEND_API_URL,
       process.env.WEBHOOK_ENDPOINT,
-    ].map((origin) => origin?.replace(/\/$/, '')); // strip trailing slashesƒ
+    ].map((origin) => origin?.replace(/\/$/, ''));
 
     if (origin && allowedOrigins.includes(origin)) {
       res.setHeader('Access-Control-Allow-Origin', origin);
@@ -35,16 +36,22 @@ export class CsrfController {
       res.setHeader('Access-Control-Expose-Headers', 'Set-Cookie');
     }
 
+    const headerToken = req.headers['x-csrf-token'] as string;
+    if (headerToken && this.csrfTokenService.verifyToken(headerToken)) {
+      console.log('Reusing valid token from header');
+      return res.status(200).json({ csrfToken: headerToken });
+    }
+
     // Generate CSRF token and set it as cookie
     const token = this.csrfTokenService.generateToken();
 
     res.cookie('XSRF-TOKEN', token, {
       httpOnly: false,
-      secure: true,
-      sameSite: 'none',
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
       path: '/',
       maxAge: 1000 * 60 * 60 * 24, // 1 day
-      domain: '.promptserve.online',
+      domain: isProd ? '.promptserve.online' : undefined,
     });
 
     return res.status(200).json({ csrfToken: token });
