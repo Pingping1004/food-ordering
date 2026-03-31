@@ -17,19 +17,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const router = useRouter();
 
-    useEffect(() => {
-        if (initializing) return;
-
-        const verify = async () => {
-            const token = localStorage.getItem('accessToken');
-            if (!token) return
-
-            const isValid = await checkSessionValidity();
-            if (!isValid) handleLogoutSideEffects(true)
-        };
-        verify();
-    }, [router]);
-
     const handleLoginError = useCallback((err: unknown) => {
         const message = parseLoginErrorMessage(err);
         toastDanger(message)
@@ -44,6 +31,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         router.push('/login');
     }, [router]);
+
+    useEffect(() => {
+        if (initializing) return;
+
+        const verify = async () => {
+            const token = localStorage.getItem('accessToken');
+            if (!token) return
+
+            const isValid = await checkSessionValidity();
+            if (!isValid) handleLogoutSideEffects(true)
+        };
+        verify();
+    }, [router, handleLogoutSideEffects, initializing]);
 
     const login = useCallback(async (email: string, password: string): Promise<User> => {
         try {
@@ -83,7 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         init()
-    }, []);
+    }, [handleLogoutSideEffects]);
 
     const value = useMemo(() => ({
         user,
