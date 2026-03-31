@@ -12,7 +12,6 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { toastDanger, toastSuccess } from "@/components/ui/Toast";
 import { useParams } from "next/navigation";
 import { getParamId } from "@/util/param";
-import { List } from "react-window";
 
 const Modal = dynamic(() => import("../../../components/users/Modal"), { ssr: false })
 const WarningBanner = dynamic(() => import("../../../components/cookers/WarningBanner"), { ssr: false })
@@ -62,6 +61,7 @@ function Page() {
 
         if (document.hidden) {
             pollingIntervalRef.current = 8000;
+            fetchingRef.current = false;
             return;
         }
 
@@ -297,7 +297,7 @@ function Page() {
 
         if (!seen) {
             setShowAutoCancelModal(true)
-            localStorage.setItem("cook_order_rules_seen", "true")
+            localStorage.setItem("cook_large_text", "true")
         }
     }, [])
 
@@ -308,8 +308,13 @@ function Page() {
         startOfYesterday.setDate(startOfYesterday.getDate() - 1);
         startOfYesterday.setHours(0, 0, 0, 0);
 
-        return ordersArray.filter((order) => order.paymentStatus === PaymentStatus.paid || PaymentStatus.refund_pending || PaymentStatus.refund_complete &&
-            new Date(order.orderAt) >= startOfYesterday);
+        return ordersArray.filter((order) =>
+            (
+                order.paymentStatus === PaymentStatus.paid ||
+                order.paymentStatus === PaymentStatus.refund_pending ||
+                order.paymentStatus === PaymentStatus.refund_complete
+            ) && new Date(order.orderAt) >= startOfYesterday
+        );
     }, [ordersArray]);
 
     const dailyDone = useMemo(() => {
@@ -349,36 +354,6 @@ function Page() {
 
         return filtered.sort((a, b) => new Date(a.deliverAt).getTime() - new Date(b.deliverAt).getTime());
     }, [navbarStatus, filterDailyOrders, navToStatusMap]);
-
-    const Row = ({ index, style, ...props }: any) => {
-        const order = props.orders[index];
-
-        return (
-            <div style={style}>
-                <div className="pt-2 pb-2 px-2">
-                    <Order
-                        orderId={order.orderId}
-                        totalAmount={order.totalAmount}
-                        isDelay={order.isDelay}
-                        status={order.status}
-                        orderAt={`${getTimeFormat(order.orderAt)} ${getDateFormat(new Date(order.orderAt))}`}
-                        deliverAt={order.deliverAt}
-                        paymentStatus={order.paymentStatus}
-                        orderMenus={order.orderMenus}
-                        details={order.details}
-                        userTel={order.userTel}
-                        isLargeTextMode={props.isLargeTextMode}
-                        isDelayDisabled={props.isButtonDisabled(new Date(order.orderAt), new Date(order.deliverAt), 10)}
-                        isRejectedDisabled={props.isButtonDisabled(new Date(order.orderAt), new Date(order.deliverAt), 5)}
-                        selected="default"
-                        onDelayUpdate={props.onDelayUpdate}
-                        onStatusUpdate={props.onStatusUpdate}
-                        className="w-full h-full"
-                    />
-                </div>
-            </div>
-        );
-    };
 
     if (isLoading) return <LoadingPage />
 
@@ -429,20 +404,27 @@ function Page() {
             ) : ('')}
 
             <main>
-                <List
-                    rowCount={filterTodayOrderStatus.length}
-                    rowHeight={140}
-                    rowComponent={Row}
-                    rowProps={{
-                        orders: filterTodayOrderStatus,
-                        isLargeTextMode,
-                        isButtonDisabled,
-                        onDelayUpdate: handleDelayOrder,
-                        onStatusUpdate: handleUpdateStatus
-                    }}
-                    className="gap-y-4"
-                    style={{ height: 800, width: "100%" }}
-                />
+                {filterTodayOrderStatus.map((order) => (
+                    <Order
+                        orderId={order.orderId}
+                        totalAmount={order.totalAmount}
+                        isDelay={order.isDelay}
+                        status={order.status}
+                        orderAt={`${getTimeFormat(order.orderAt)} ${getDateFormat(new Date(order.orderAt))}`}
+                        deliverAt={order.deliverAt}
+                        paymentStatus={order.paymentStatus}
+                        orderMenus={order.orderMenus}
+                        details={order.details}
+                        userTel={order.userTel}
+                        isLargeTextMode={isLargeTextMode}
+                        isDelayDisabled={isButtonDisabled(new Date(order.orderAt), new Date(order.deliverAt), 10)}
+                        isRejectedDisabled={isButtonDisabled(new Date(order.orderAt), new Date(order.deliverAt), 5)}
+                        className="mb-4"
+                        selected="default"
+                        onDelayUpdate={handleDelayOrder}
+                        onStatusUpdate={handleUpdateStatus}
+                    />
+                ))}
             </main>
 
             <Modal
