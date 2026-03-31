@@ -38,7 +38,6 @@ export class CsrfController {
 
     const headerToken = req.headers['x-csrf-token'] as string;
     if (headerToken && this.csrfTokenService.verifyToken(headerToken)) {
-      console.log('Reusing valid token from header');
       return res.status(200).json({ csrfToken: headerToken });
     }
 

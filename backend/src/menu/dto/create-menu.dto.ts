@@ -41,10 +41,6 @@ export class CsvMenuItemData {
   @IsOptional()
   @IsString()
   originalFileName?: string;
-
-  // @IsOptional()
-  // @IsString()
-  // description?: string;
 }
 
 export class CreateMenuDto {
@@ -55,10 +51,6 @@ export class CreateMenuDto {
   @IsString()
   @IsNotEmpty()
   name: string;
-
-  // @IsNotEmpty()
-  // @IsString()
-  // menuImg: string;
 
   @IsNotEmpty()
   @IsPositive()
