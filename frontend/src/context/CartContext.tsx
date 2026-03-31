@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 export interface CartItem {
     menuId: string;
@@ -22,49 +22,44 @@ type CartContextType = {
 const CartContext = createContext<CartContextType | null>(null);
 
 export const CartProvider = ({ children }: { children: React.ReactNode }) => {
-    const [cart, setCart] = useState<CartItem[]>(() => {
-        if (typeof window === "undefined") return [];
-
-        try {
-            const stored = localStorage.getItem("cart");
-            return stored ? JSON.parse(stored) : [];
-        } catch {
-            return [];
-        }
-    });
+    const [cart, setCart] = useState<CartItem[]>([]);
+    const [hydrated, setHydrated] = useState(false);
+    const cartRef = useRef(cart);
 
     useEffect(() => {
+        try {
+            const stored = localStorage.getItem("cart");
+            if (stored) setCart(JSON.parse(stored));
+        } finally {
+            setHydrated(true);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!hydrated) return;
         localStorage.setItem("cart", JSON.stringify(cart));
-    }, [cart]);
+    }, [cart, hydrated]);
+
+    useEffect(() => { cartRef.current = cart }, [cart]);
 
     const addToCart = useCallback((menuId: string, menuName: string, unitPrice: number, menuImg: string, restaurantId: string) => {
-        let rejected = false;
+        const current = cartRef.current;
+        if (current.length > 0 && current[0].restaurantId !== restaurantId) {
+            return { success: false, reason: "คนละร้านอาหาร" };
+        }
 
         setCart((prev) => {
-            if (prev.length > 0 && prev[0].restaurantId !== restaurantId) {
-                rejected = true
-                return prev;
-            }
-
             const existingCartItem = prev.find((item) => item.menuId === menuId);
 
             if (existingCartItem) {
                 return prev.map((item) =>
                     item.menuId === menuId
-                        ? {
-                            ...item,
-                            quantity: item.quantity + 1
-                        }
+                        ? { ...item, quantity: item.quantity + 1 }
                         : item);
             }
 
-            return [
-                ...prev,
-                { menuId, menuName, unitPrice, menuImg, quantity: 1, restaurantId }
-            ];
+            return [...prev, { menuId, menuName, unitPrice, menuImg, quantity: 1, restaurantId }];
         });
-
-        if (rejected) return { success: false, reason: "คนละร้านอาหาร" };
 
         return { success: true }
     }, []);
