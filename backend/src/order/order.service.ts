@@ -12,14 +12,13 @@ import {
 import { CreateOrderDto, CreateOrderMenusDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { PrismaService } from '../prisma/prisma.service';
-import { PaymentStatus, OrderStatus, PaymentMethod, Order, Prisma, OrderMenu } from '@prisma/client';
+import { PaymentStatus, OrderStatus, Order, Prisma } from '@prisma/client';
 import { PaymentService } from 'src/payment/payment.service';
 import { Cron } from '@nestjs/schedule';
-import { v4 as uuidv4 } from 'uuid';
 
 import { InventoryService } from 'src/inventory/inventory.service';
 import moment from 'moment-timezone';
-import { PaymentPayload } from 'src/common/interface/accountType';
+import { PaymentPayload, toAccountType } from 'src/common/interface/accountType';
 import { RestaurantService } from 'src/restaurant/restaurant.service';
 import { Decimal } from '@prisma/client/runtime/client';
 import { PayoutService } from 'src/payout/payout.service';
@@ -113,7 +112,10 @@ export class OrderService {
     this.validateDeliveryTime(createOrderDto.deliverAt);
 
     const { totalAmount, validatedMenus } = await this.validateOrderMenus(createOrderDto.orderMenus, createOrderDto.restaurantId);
-    const { accountNumber } = await this.restaurantService.findRestaurant(createOrderDto.restaurantId);
+    const { accountNumber, bankAccount } = await this.restaurantService.findRestaurant(createOrderDto.restaurantId);
+
+    const accountType = toAccountType(bankAccount);
+    if (!accountType) throw new ConflictException("บัญชีธนาคารไม่ถูกต้อง")
 
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
     const paymentData: PaymentPayload = {
@@ -131,19 +133,19 @@ export class OrderService {
           checkDuplicate: true,
           checkReceiver: [
             {
-              accountType: "01004", // Later use the bank that is platform account
-              accountNumber: accountNumber.toString(), // Use the static accountNumber from platform account
+              accountType: accountType,
+              accountNumber: accountNumber.toString(),
             }
           ]
         }
       }
     }
 
-    // const paymentResult = await this.paymentService.verifyPayment(paymentData);
-    // if (!paymentResult?.data?.dateTime) throw new BadRequestException("ข้อมูลการชำระเงินไม่สมบูรณ์");
+    const paymentResult = await this.paymentService.verifyPayment(paymentData);
+    if (!paymentResult?.data?.dateTime) throw new BadRequestException("ข้อมูลการชำระเงินไม่สมบูรณ์");
 
-    // const paymentTime = new Date(paymentResult.data.dateTime)
-    // if (Date.now() - paymentTime.getTime() > 5 * 60 * 1000) throw new BadRequestException("เวลาในการชำระเงินหมดอายุ กรุณาทำรายการใหม่")
+    const paymentTime = new Date(paymentResult.data.dateTime)
+    if (Date.now() - paymentTime.getTime() > 5 * 60 * 1000) throw new BadRequestException("เวลาในการชำระเงินหมดอายุ กรุณาทำรายการใหม่")
 
     try {
       const order = await this.prisma.$transaction(async (tx) => {
@@ -154,11 +156,9 @@ export class OrderService {
             deliverAt: createOrderDto.deliverAt,
             paymentStatus: PaymentStatus.paid,
             paymentSlipImg: createOrderDto.paymentSlipImg,
-            // paidAt: new Date(paymentResult.data.dateTime),
-            paidAt: new Date(),
+            paidAt: paymentTime,
             userTel: createOrderDto.userTel,
-            // paymentId: paymentResult.data.transRef,
-            paymentId: uuidv4(),
+            paymentId: paymentResult.data.transRef,
             paymentGatewayStatus: 'verified',
             totalAmount: totalAmount,
             orderMenus: {
@@ -210,7 +210,7 @@ export class OrderService {
     const orders = await this.prisma.order.findMany({
       where: {
         restaurantId,
-        orderAt: { gt: timeStamp }
+        orderAt: { gte: timeStamp }
       },
       include: { orderMenus: true },
       orderBy: {
@@ -414,7 +414,7 @@ export class OrderService {
   }
 
 
-  @Cron('*/5 * * * *')
+  @Cron('*/10 * * * *')
   async autoCompleteOrders() {
     const bufferMinutes = 10;
     const threshold = new Date(Date.now() - bufferMinutes * 60 * 1000);
@@ -430,9 +430,9 @@ export class OrderService {
     if (result.count > 0) this.logger.log(`Auto completed ${result.count} orders`)
   }
 
-  @Cron('*/15 * * * *')
+  @Cron('*/5 * * * *')
   async autoCancelledOrders() {
-    const threshold = new Date(Date.now() - 15 * 60 * 1000);
+    const threshold = new Date(Date.now() - 5 * 60 * 1000);
     const result = await this.prisma.order.updateMany({
       where: {
         status: "sent",
