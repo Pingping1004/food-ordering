@@ -2,7 +2,7 @@ import React from 'react'
 import Image from 'next/image'
 import { CartItem, useCart } from '@/context/CartContext';
 import { Button } from '../Button';
-import { OrderStatus } from '../cookers/OrderNavbar';
+import type { OrderStatus } from '../cookers/OrderNavbar';
 
 export interface OrderType {
   orderId: string
@@ -21,7 +21,6 @@ export interface OrderMenuType {
   menuName: string;
   menuImg: string;
   unitPrice: number;
-  totalPrice: number;
 }
 
 interface CartListProps {
@@ -34,8 +33,6 @@ export default function OrderList({ items }: Readonly<CartListProps>) {
     return (
         <div>
             {items.map((menu) => {
-                const src = menu.menuImg ? `${menu.menuImg}` : '/picture.svg';
-
                 return (
                     <div
                         key={menu.menuId}
@@ -46,7 +43,7 @@ export default function OrderList({ items }: Readonly<CartListProps>) {
                                 <Image
                                     width={74}
                                     height={74}
-                                    src={src}
+                                    src={menu.menuImg}
                                     alt={menu.menuName}
                                     className="rounded-lg object-cover aspect-square w-full h-full"
                                 />
@@ -56,8 +53,8 @@ export default function OrderList({ items }: Readonly<CartListProps>) {
                                 <div className="flex justify-between">
 
                                     <div className="w-full">
-                                        <h4 className="text-primary noto-sans-bold text-sm">{menu.menuName}</h4>
-                                        <p className="text-light text-xs noto-sans-regular">{menu.unitPrice} บาท</p>
+                                        <h4 className="text-primary font-noto-thai text-bold text-sm">{menu.menuName}</h4>
+                                        <p className="text-light text-xs font-noto-thai">{menu.unitPrice} บาท</p>
                                     </div>
 
                                     <div className="flex items-center gap-x-2">

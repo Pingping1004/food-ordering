@@ -42,7 +42,7 @@ export class UploadController {
         @Res() res: Response,
     ) {
         if (!file) {
-            throw new BadRequestException('No image file provided for upload.');
+            throw new BadRequestException('ไม่พบรูปภาพที่ต้องการอัพโหลด');
         }
 
         try {
@@ -53,7 +53,7 @@ export class UploadController {
                 `Error during single image upload: ${error.message}`,
                 error.stack,
             );
-            throw new InternalServerErrorException(`Failed to upload image.`);
+            throw new InternalServerErrorException(`อัพโหลดรูปล้มเหลว`);
         }
     }
 
@@ -73,7 +73,7 @@ export class UploadController {
         @Res() res: Response,
     ) {
         if (!files || files.length === 0) {
-            throw new BadRequestException('No image files provided for upload.');
+            throw new BadRequestException('ไม่พบรูปภาพที่ต้องการอัพโหลด');
         }
 
         try {
@@ -84,7 +84,7 @@ export class UploadController {
                 `Error during bulk image upload: ${error.message}`,
                 error.stack,
             );
-            throw new InternalServerErrorException(`Failed to upload images.`);
+            throw new InternalServerErrorException(`อัพโหลดรูปล้มเหลว`);
         }
     }
 }

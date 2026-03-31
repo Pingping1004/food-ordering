@@ -8,36 +8,35 @@ import {
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
-import { UserService } from 'src/user/user.service';
-import { UpdateUserDto } from 'src/user/dto/update-user.dto';
 import moment from 'moment-timezone';
 import { UploadService } from 'src/upload/upload.service';
+import { clearRestaurantCache, getRestaurantCache, OpenRestaurant, RestaurantCache, setRestaurantCache } from './restaurantCache';
+import { DEFAULT_FALLBACK_IMG_URL } from 'src/constant/image';
 
 @Injectable()
 export class RestaurantService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly uploadService: UploadService,
-    private readonly userService: UserService,
   ) { }
 
   private readonly logger = new Logger('RestaurantService');
+  private pendingRestaurantRequests = new Map<string, Promise<RestaurantCache[]>>();
 
   async createRestaurant(
     createRestaurantDto: CreateRestaurantDto,
     userId: string,
+    paymentFile: Express.Multer.File,
     file?: Express.Multer.File,
   ) {
     try {
       const existingRestaurant = await this.findExistingRestaurant(userId);
-      if (existingRestaurant)
-        throw new ConflictException(
-          `User already register as restaurant: ${existingRestaurant.name}`,
-        );
+      if (existingRestaurant) throw new ConflictException(`ผู้ใช้ได้ลงทะเบียนกับร้าน: ${existingRestaurant.name}แล้ว`);
 
-      const restaurantImgUrl = file
-        ? (await this.uploadService.saveImage(file)).url
-        : null;
+      const restaurantImgUrl = file ? (await this.uploadService.saveImage(file)).url : DEFAULT_FALLBACK_IMG_URL;
+
+      const paymentQr = paymentFile ? (await this.uploadService.saveImage(paymentFile)).url : null;
+      if (!paymentQr) throw new NotFoundException(`กรุณาอัพโหลดQR สำหรับให้ลูกค้าชำระเงิน`);
 
       let openTime: string = '';
       let closeTime: string = '';
@@ -45,15 +44,17 @@ export class RestaurantService {
       if (typeof createRestaurantDto.openTime === 'string') {
         openTime = createRestaurantDto.openTime;
       } else if (createRestaurantDto.openTime instanceof Date) {
-        openTime = createRestaurantDto.openTime.toISOString().substring(11, 16);
+        openTime = moment(createRestaurantDto.openTime)
+          .tz('Asia/Bangkok')
+          .format('HH:mm');
       }
 
       if (typeof createRestaurantDto.closeTime === 'string') {
         closeTime = createRestaurantDto.closeTime;
       } else if (createRestaurantDto.closeTime instanceof Date) {
-        closeTime = createRestaurantDto.closeTime
-          .toISOString()
-          .substring(11, 16);
+        closeTime = moment(createRestaurantDto.closeTime)
+          .tz('Asia/Bangkok')
+          .format('HH:mm');
       }
 
       const newRestaurant = {
@@ -66,13 +67,14 @@ export class RestaurantService {
         openDate: createRestaurantDto.openDate,
         openTime: openTime,
         closeTime: closeTime,
-        isApproved: false,
+        isApproved: true,
         adminName: createRestaurantDto.adminName,
         adminSurname: createRestaurantDto.adminSurname,
         adminTel: createRestaurantDto.adminTel,
         adminEmail: createRestaurantDto.adminEmail,
         accountNumber: createRestaurantDto.accountNumber,
         bankAccount: createRestaurantDto.bankAccount,
+        paymentQr: paymentQr,
         accountHolderFullName: createRestaurantDto.accountHolderFullName,
       };
 
@@ -80,20 +82,61 @@ export class RestaurantService {
         data: newRestaurant,
       });
 
-      const updateDto: UpdateUserDto = { role: 'cooker' };
-      await this.userService.updateUser(userId, updateDto);
+      clearRestaurantCache("restaurants:all")
+      clearRestaurantCache("restaurants:open")
 
-      return { message: 'File uploaded successfully', result, imageUrl: restaurantImgUrl };
+      return { message: 'อัพโหลดไฟล์สำเร็จ', result, imageUrl: restaurantImgUrl };
     } catch (error) {
-      this.logger.error('Failed to create restaurant service: ', error);
+      this.logger.error('ลงทะเบียนร้านอาหารล้มเหลว: ', error);
       throw error;
     }
   }
 
-  async findAllRestaurant() {
-    return this.prisma.restaurant.findMany({
-      where: { isApproved: true },
-    });
+  async findAllRestaurant(): Promise<RestaurantCache[]> {
+    const cacheKey = "restaurants:all";
+    const cached = getRestaurantCache<OpenRestaurant[]>(cacheKey);
+
+    if (cached) {
+      const start = Date.now();
+      this.logger.debug(`DB query took ${Date.now() - start}ms`);
+      return cached
+    }
+
+    const pendingRequest = this.pendingRestaurantRequests.get(cacheKey);
+    if (pendingRequest) return pendingRequest;
+
+    const requestPromise = (async () => {
+      const restaurants = await this.prisma.restaurant.findMany({
+        where: { isApproved: true },
+        select: {
+          restaurantId: true,
+          restaurantImg: true,
+          name: true,
+          location: true,
+          categories: true,
+          openDate: true,
+          openTime: true,
+          closeTime: true,
+          avgCookingTime: true,
+          isTemporarilyClosed: true,
+          accountNumber: true,
+          bankAccount: true,
+          accountHolderFullName: true,
+          paymentQr: true,
+        }
+      });
+
+      setRestaurantCache(cacheKey, restaurants, 15 * 60 * 1000);
+      return restaurants
+    })();
+
+    this.pendingRestaurantRequests.set(cacheKey, requestPromise)
+
+    try {
+      return await requestPromise;
+    } finally {
+      this.pendingRestaurantRequests.delete(cacheKey)
+    }
   }
 
   async findExistingRestaurant(userId: string) {
@@ -105,15 +148,38 @@ export class RestaurantService {
   }
 
   async findRestaurant(restaurantId: string) {
+    const cacheKey = `restaurant:${restaurantId}`;
+    const cached = getRestaurantCache<RestaurantCache>(cacheKey);
+
+    const currentTimeString = moment().tz('Asia/Bangkok').format('HH:mm');
+
+    if (cached) {
+      const isScheduledOpenDay = this.isTodayOpen(
+        cached.openDate,
+        cached.openTime,
+        cached.closeTime
+      );
+
+      const isScheduledOpenTime = this.isTimeBetween(
+        currentTimeString,
+        cached.openTime,
+        cached.closeTime
+      );
+
+      const isActuallyOpen =
+        isScheduledOpenDay &&
+        isScheduledOpenTime &&
+        !cached.isTemporarilyClosed;
+
+      return { ...cached, isActuallyOpen };
+    }
+
     try {
-      const currentTimeString = moment().tz('Asia/Bangkok').format('HH:mm');
       const restaurant = await this.prisma.restaurant.findUnique({
         where: { restaurantId },
       });
 
-      if (!restaurant) {
-        throw new NotFoundException(`ไม่พบร้านอาหารที่มีID: ${restaurantId}`);
-      }
+      if (!restaurant) throw new NotFoundException(`ไม่พบร้านอาหารที่มีID: ${restaurantId}`);
 
       const isScheduledOpenDay = this.isTodayOpen(restaurant.openDate, restaurant.openTime, restaurant.closeTime);
       const isScheduledOpenTime = this.isTimeBetween(
@@ -126,22 +192,15 @@ export class RestaurantService {
       const isManuallyClosed = restaurant.isTemporarilyClosed;
       const isActuallyOpen = isOpen && !isManuallyClosed;
 
+      setRestaurantCache(cacheKey, restaurant, 15 * 60 * 1000);
       return { ...restaurant, isActuallyOpen };
     } catch (error) {
-      // Wrap Prisma errors or other errors if needed
       if (error.code === 'P2025') {
         // Prisma "Record not found"
         throw new NotFoundException(`ไม่พบร้านอาหารที่มีID: ${restaurantId}`);
       }
-      // Rethrow any other unexpected errors
       throw error;
     }
-  }
-
-  async findRestaurantByname(name: string) {
-    return this.prisma.restaurant.findUnique({
-      where: { name: name },
-    });
   }
 
   private isTimeBetween(now: string, open: string, close: string): boolean {
@@ -189,30 +248,35 @@ export class RestaurantService {
   }
 
   async getOpenRestaurants() {
+    const cacheKey = "restaurants:open";
+    const cached = getRestaurantCache<RestaurantCache[]>(cacheKey);
+
+    if (cached) return cached;
+
     const currentTimeString = moment().tz('Asia/Bangkok').format('HH:mm');
 
     const allRestaurants = await this.findAllRestaurant();
-    const openRestaurant = allRestaurants.map((restaurant) => {
-      const isScheduledOpenDay = this.isTodayOpen(restaurant.openDate, restaurant.openTime, restaurant.closeTime);
-      const isScheduledOpenTime = this.isTimeBetween(
-        currentTimeString,
-        restaurant.openTime,
-        restaurant.closeTime,
-      );
-      const isOpen = isScheduledOpenDay && isScheduledOpenTime;
-      const isManuallyClosed = restaurant.isTemporarilyClosed;
-      const isActuallyOpen = isOpen && !isManuallyClosed;
+    const openRestaurants = allRestaurants
+      .map(restaurant => {
+        const isScheduledOpenDay = this.isTodayOpen(restaurant.openDate, restaurant.openTime, restaurant.closeTime);
+        const isScheduledOpenTime = this.isTimeBetween(currentTimeString, restaurant.openTime, restaurant.closeTime);
+        const isOpen = isScheduledOpenDay && isScheduledOpenTime;
+        const isManuallyClosed = restaurant.isTemporarilyClosed;
+        const isActuallyOpen = isOpen && !isManuallyClosed;
 
-      return {
-        ...restaurant,
-        isScheduledOpenDay,
-        isScheduledOpenTime,
-        isOpen,
-        isActuallyOpen,
-      };
-    });
+        return {
+          ...restaurant,
+          isScheduledOpenDay,
+          isScheduledOpenTime,
+          isOpen,
+          isActuallyOpen,
+        };
+      })
+      .filter(restaurant => restaurant.isActuallyOpen);
 
-    return openRestaurant;
+    setRestaurantCache(cacheKey, openRestaurants, 30 * 1000)
+
+    return openRestaurants;
   }
 
   async updateRestaurant(
@@ -224,7 +288,13 @@ export class RestaurantService {
       const dataToUpdate: Partial<UpdateRestaurantDto> = {
         ...updateRestaurantDto,
       };
-      const existingRestaurant = await this.findRestaurant(restaurantId);
+
+      const existingRestaurant = await this.prisma.restaurant.findUnique({
+        where: { restaurantId },
+        select: { restaurantImg: true }
+      });
+
+      if (!existingRestaurant) throw new NotFoundException(`ไมพบร้านอาหาร`)
 
       if (file) {
         const { url } = await this.uploadService.saveImage(file);
@@ -249,19 +319,15 @@ export class RestaurantService {
         data: dataToUpdate,
       });
 
+      clearRestaurantCache(`restaurant:${restaurantId}`)
+      clearRestaurantCache(`restaurants:all`)
+      clearRestaurantCache("restaurants:open")
+
       return result;
     } catch (error) {
-      if (error.code === 'P2025') {
-        throw new NotFoundException(
-          `ไม่สามารถแก้ไขข้อมูลได้ เนื่องจากไม่พบร้านอาหารที่มีID: ${restaurantId}`,
-        );
-      }
-      if (error.code === 'P2002') {
-        // Unique constraint failed
-        throw new BadRequestException(
-          'ชื่อร้านอาหารนี้ถูกใช้ไปแล้ว โปรดใช้ชื่อใหม่',
-        );
-      }
+      if (error.code === 'P2025') throw new NotFoundException(`ไม่พบร้านอาหารที่มีID: ${restaurantId}`);
+      // Unique constraint failed
+      if (error.code === 'P2002') throw new BadRequestException('ชื่อร้านอาหารนี้ถูกใช้ไปแล้ว โปรดใช้ชื่อใหม่');
       throw error;
     }
   }
@@ -271,23 +337,22 @@ export class RestaurantService {
     updateRestaurantDto: UpdateRestaurantDto,
   ) {
     try {
-      await this.findRestaurant(restaurantId);
-
       const result = await this.prisma.restaurant.update({
         where: { restaurantId },
         data: { isTemporarilyClosed: updateRestaurantDto.isTemporarilyClosed },
       });
 
+      clearRestaurantCache(`restaurant:${restaurantId}`)
+      clearRestaurantCache(`restaurants:all`)
+      clearRestaurantCache("restaurants:open")
+
       return {
         result,
-        message: `Successfully update temporarilyClose status of restaurant ${result.name} to be ${result.isTemporarilyClosed}`,
+        message: `อัพเดทสถานะเปิด/ปิดชั่วคราวของร้านอาหาร ${result.name} เป็น ${result.isTemporarilyClosed} สำเร็จ`,
       };
     } catch (error) {
-      this.logger.error(
-        'Failed to update temporary close status of restaurant',
-        error.message,
-        error.stack,
-      );
+      this.logger.error('Failed to update temporary close status of restaurant', error.message, error.stack);
+      throw error
     }
   }
 
@@ -297,15 +362,12 @@ export class RestaurantService {
       select: { orderId: true, status: true },
     });
 
-    const allOrderDone = orders.every((order) => order.status === 'done');
-    if (!allOrderDone)
-      throw new BadRequestException(
-        'ไม่สามารถลบร้านอาหารในขณะที่ยังมีออเดอร์ค้างอยู่',
-      );
+    const allOrderDone = orders.every((order) => order.status === 'accepted');
+    if (!allOrderDone) throw new BadRequestException('ไม่สามารถลบร้านอาหารในขณะที่ยังมีออเดอร์ค้างอยู่');
 
     const orderIds = orders.map((order) => order.orderId);
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       await tx.orderMenu.deleteMany({
         where: {
           orderId: { in: orderIds },
@@ -315,7 +377,7 @@ export class RestaurantService {
       await tx.order.deleteMany({
         where: {
           restaurantId,
-          status: 'done',
+          status: 'accepted',
         },
       });
 
@@ -327,5 +389,11 @@ export class RestaurantService {
         where: { restaurantId },
       });
     });
+
+    clearRestaurantCache(`restaurant:${restaurantId}`)
+    clearRestaurantCache(`restaurants:all`)
+    clearRestaurantCache("restaurants:open")
+
+    return result
   }
 }

@@ -1,11 +1,9 @@
 "use client";
 
-import React, { useEffect, createContext, useContext, useState, useCallback, useMemo } from 'react';
+import { useEffect, createContext, useContext, useState, useMemo } from 'react';
 import { api } from '@/lib/api';
-import { Restaurant } from './MenuContext';
+import type { Restaurant } from '@/app/data/type';
 import { useParams } from 'next/navigation';
-import { OrderProps } from '@/components/cookers/Order';
-import LoadingPage from '@/components/LoadingPage';
 
 export interface Cooker extends Restaurant {
     email: string;
@@ -13,14 +11,16 @@ export interface Cooker extends Restaurant {
     adminSurname: string;
     adminTel: string;
     adminEmail: string;
+    paymentQr: string
+    openTime: string;
+    closeTime: string;
+    isTemporarilyClosed: boolean;
+    isApproved: boolean;
 };
 
 export interface CookerContextType {
     cooker: Cooker;
-    orders: OrderProps[];
     setCooker: React.Dispatch<React.SetStateAction<Cooker | undefined>>;
-    setOrders: React.Dispatch<React.SetStateAction<OrderProps[]>>;
-    fetchOrders: () => void;
     loading: boolean;
     error: string | null;
 }
@@ -35,50 +35,31 @@ export const useCooker = () => {
 
 export const CookerProvider = ({ children }: { children: React.ReactNode }) => {
     const [cooker, setCooker] = useState<Cooker | undefined>(undefined);
-    const [orders, setOrders] = useState<OrderProps[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
+    
     const params = useParams();
     const restaurantId = params.restaurantId;
 
     useEffect(() => {
-        const fetchData = async () => {
+        if (!restaurantId) return;
+
+        const fetchCookerData = async () => {
             try {
                 const cookerResponse = await api.get(`restaurant/${restaurantId}`);
                 setCooker(cookerResponse.data);
-
-                const orderResponse = await api.get(`order/get-orders/${restaurantId}`);
-                setOrders(orderResponse.data);
             } catch {
-                setError('Error fetching cooker context');
+                setError('โหลดข้อมูลร้านอาหารล้มเหลว');
             } finally {
                 setLoading(false);
             }
         }
-        fetchData();
-    }, [restaurantId]);
-
-    const fetchOrders = useCallback(async () => {
-        setLoading(true);
-        setError(null);
-
-        try {
-            const orderResponse = await api.get(`order/get-orders/${restaurantId}`);
-            setOrders(orderResponse.data);
-        } catch {
-            setError('Failed to load orders.');
-        } finally {
-            setLoading(false);
-        }
+        fetchCookerData();
     }, [restaurantId]);
 
     const contextValue = useMemo(() => ({
-        cooker: cooker!, setCooker, orders, setOrders, fetchOrders, loading, error
-    }), [cooker, setCooker, orders, setOrders, fetchOrders, loading, error]);
-
-    if (loading) return <LoadingPage />
-    if (error) return <div>{error}</div>;
-    if (!cooker) return <div>No Cooker found</div>
+        cooker: cooker!, setCooker, loading, error
+    }), [cooker, setCooker, loading, error]);
 
     return (
         <CookerContext.Provider

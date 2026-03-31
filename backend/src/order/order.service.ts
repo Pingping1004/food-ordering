@@ -1,309 +1,255 @@
 import {
   BadRequestException,
   Injectable,
+  Inject,
   NotFoundException,
-  InternalServerErrorException,
   ForbiddenException,
   Logger,
+  forwardRef,
+  UnauthorizedException,
   ConflictException,
 } from '@nestjs/common';
 import { CreateOrderDto, CreateOrderMenusDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { PrismaService } from '../prisma/prisma.service';
-import { PaymentStatus, OrderStatus, PaymentMethod } from '@prisma/client';
+import { PaymentStatus, OrderStatus, Order, Prisma } from '@prisma/client';
 import { PaymentService } from 'src/payment/payment.service';
-import { calculateWeeklyInterval } from 'src/payout/payout-calculator';
+import { Cron } from '@nestjs/schedule';
 
-import Decimal from 'decimal.js';
-import { PaymentPayload } from 'src/common/interface/payment-gateway';
+import { InventoryService } from 'src/inventory/inventory.service';
+import moment from 'moment-timezone';
+import { PaymentPayload, toAccountType } from 'src/common/interface/accountType';
+import { RestaurantService } from 'src/restaurant/restaurant.service';
+import { Decimal } from '@prisma/client/runtime/client';
+import { PayoutService } from 'src/payout/payout.service';
+
+type ValidatedOrderMenu = {
+  menuId: string;
+  menuName: string;
+  quantity: number;
+  unitPrice: Decimal;
+  menuImg: string | null;
+  details?: string;
+  maxDaily: number;
+};
 
 @Injectable()
 export class OrderService {
   constructor(
     private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => RestaurantService))
+    private readonly restaurantService: RestaurantService,
+    @Inject(forwardRef(() => InventoryService))
+    private readonly inventoryService: InventoryService,
     private readonly paymentService: PaymentService,
+    private readonly payoutService: PayoutService,
   ) { }
 
   private readonly logger = new Logger('OrderService');
 
-  private readonly statusTransitions = {
-    [OrderStatus.receive]: OrderStatus.cooking,
-    [OrderStatus.cooking]: OrderStatus.ready,
-    [OrderStatus.ready]: OrderStatus.done,
-    [OrderStatus.done]: null, // No further transition from DONE
-  };
-
-  async validateExisting(params: {
-    restaurantId: string;
-    orderMenus: CreateOrderMenusDto[];
-  }): Promise<void> {
-    const { restaurantId, orderMenus } = params;
-
-    // 1. Validate restaurant
-    const restaurant = await this.prisma.restaurant.findUnique({
-      where: { restaurantId },
-    });
-
-    if (!restaurant) throw new BadRequestException(`ไม่พบร้านอาหารที่ระบุ`);
-
-    // 2. Validate all menuIds are valid under single restaurant
-    await Promise.all(
-      orderMenus.map(async (menu) => {
-        const existingMenu = await this.prisma.menu.findFirst({
-          where: {
-            restaurantId,
-            menuId: menu.menuId,
-          },
-        });
-
-        // 3. Check that user order the existingMenu not the non exist one
-        if (!existingMenu)
-          throw new Error(`ไม่พบเมนูรหัส ${menu.menuId} จากร้านที่เลือก`);
-      }),
-    );
-  }
-
   async validateOrderMenus(
     orderMenus: CreateOrderMenusDto[],
     restaurantId: string,
-  ): Promise<number> {
-    let calculatedTotalAmount = 0;
-    const markupRate: number = 1 + Number(process.env.SELL_PRICE_MARKUP_RATE);
-
-    for (const item of orderMenus) {
-      const existingMenu = await this.prisma.menu.findUnique({
-        where: { menuId: item.menuId },
-      });
-
-      if (!existingMenu) {
-        throw new NotFoundException(
-          `Menu item with ID ${item.menuName} not found.`,
-        );
-      }
-
-      if (existingMenu.restaurantId !== restaurantId) {
-        throw new BadRequestException(
-          `Menu item ${item.menuName} does not belong to the selected restaurant.`,
-        );
-      }
-
-      const markupUnitPrice = (markupRate * existingMenu.price); // Calculated Price from backend
-      const actualTotalPrice = (markupUnitPrice * item.quantity); // Backend total price
-      const orderTotalPrice = (item.unitPrice * item.quantity); // Total price from user input
-
-      const toSatang = (amount: number) => Math.round(amount * 100);
-      const isEqual: boolean = toSatang(actualTotalPrice) === toSatang(orderTotalPrice);
-
-      if (!isEqual) {
-        this.logger.log(`Markup unit price: ${markupUnitPrice}`);
-        this.logger.log(`Unitprice: ${markupUnitPrice}`);
-
-        this.logger.log(`Order total price: ${orderTotalPrice}`);
-        this.logger.log(`Actual total price: ${actualTotalPrice}`);
-        throw new BadRequestException(
-          `Mismatched price for menu ${item.menuName}. Expected ${actualTotalPrice}, got ${orderTotalPrice}`,
-        );
-      }
-
-      if (existingMenu.name !== item.menuName) {
-        throw new NotFoundException(
-          `Name ${item.menuName} not found in the menu.`,
-        );
-      }
-
-      calculatedTotalAmount += item.unitPrice * item.quantity;
-    }
-    return calculatedTotalAmount;
-  }
-
-  validateDeliveryTime(deliverTime: Date | string, bufferMin: number = 10) {
-    const now = new Date();
-    const deliverAtDate = new Date(deliverTime);
-    const deliverHour = deliverAtDate.getHours();
-    const peakTimeBuffer = (deliverHour === 12) ? 10 : 0;
-    const minimumAllowedDeliveTime = new Date(now.getTime() + (bufferMin + peakTimeBuffer) * 60 * 1000);
-
-    if (deliverAtDate < minimumAllowedDeliveTime) {
-      throw new BadRequestException(`เวลารับอาหารต้องอยู่หลังจากเวลาปัจจุบัน ${bufferMin}นาที`);
-    }
-  }
-
-  async createOrderWithPayment(createOrderDto: CreateOrderDto, userId?: string) {
-    const calculatedTotalAmount = await this.validateOrderMenus(
-      createOrderDto.orderMenus,
-      createOrderDto.restaurantId,
-    );
-
-    return await this.prisma.$transaction(async (tx) => {
-      const order = await tx.order.create({
-        data: {
-          userId: userId || null,
-          restaurantId: createOrderDto.restaurantId,
-          deliverAt: createOrderDto.deliverAt,
-          isPaid: PaymentStatus.unpaid,
-          paymentMethod: createOrderDto.paymentMethod,
-          userTel: createOrderDto.userTel,
-          userEmail: createOrderDto.userEmail,
-          paymentGatewayStatus: 'pending',
-          totalAmount: calculatedTotalAmount,
-          orderMenus: {
-            create: createOrderDto.orderMenus.map((item) => ({
-              quantity: item.quantity,
-              menuName: item.menuName,
-              unitPrice: item.unitPrice,
-              menuImg: item.menuImg,
-              details: item.details,
-              totalPrice: new Decimal(item.unitPrice * item.quantity),
-              menu: { connect: { menuId: item.menuId } },
-            })),
-          },
-        },
-        include: {
-          orderMenus: true,
-        },
-      });
-
-      this.validateDeliveryTime(order.deliverAt, 5);
-
-      try {
-        const paymentPayload: PaymentPayload = {
-          // userId,
-          userEmail: createOrderDto.userEmail,
-          orderId: order.orderId,
-          amountInStang: Math.round(Number(order.totalAmount) * 100),
-          currency: 'thb',
-          method: PaymentMethod.promptpay,
-          restaurantId: order.restaurantId,
-        }
-
-        const paymentIntent = await this.paymentService.createPaymentCharge(paymentPayload);
-
-        await tx.order.update({
-          where: { orderId: order.orderId },
-          data: {
-            paymentGatewayChargeId: paymentIntent.id,
-            paymentGatewayStatus: 'created',
-          },
-        });
-
-        return {
-          orderId: order.orderId,
-          intentId: paymentIntent.id,
-          checkoutUrl: paymentIntent.url,
-          paymentGatewayIntentId: paymentIntent.payment_intent as string,
-          status: 'pending',
-        };
-      } catch (paymentError) {
-        this.logger.error('Error stack:', paymentError.stack);
-
-        await tx.order.update({
-          where: { orderId: order.orderId },
-          data: {
-            paymentGatewayStatus: 'failed_initiation',
-            paymentGatewayChargeId: null,
-          },
-        });
-
-        throw new InternalServerErrorException(`Payment initiation failed: ${paymentError.message || JSON.stringify(paymentError)}`);
-      }
-    });
-  }
-
-  async findRestaurantOrders(restaurantId: string) {
-    return this.prisma.order.findMany({
-      where: { restaurantId },
-      include: { orderMenus: true },
-      orderBy: {
-        deliverAt: 'desc',
+  ): Promise<{
+    totalAmount: Decimal;
+    validatedMenus: ValidatedOrderMenu[];
+  }> {
+    const menuIds = orderMenus.map((m) => m.menuId);
+    const menus = await this.prisma.menu.findMany({
+      where: {
+        menuId: { in: menuIds },
       },
     });
+
+    const menuMap = new Map(menus.map((m) => [m.menuId, m]));
+
+    const markupRate = new Decimal(process.env.SELL_PRICE_MARKUP_RATE ?? "0").plus(1);
+    let totalAmount = new Decimal(0);
+
+    const validatedMenus: ValidatedOrderMenu[] = [];
+
+    for (const item of orderMenus) {
+      const existingMenu = menuMap.get(item.menuId);
+
+      if (!existingMenu) throw new NotFoundException(`ไม่พบเมนู`);
+      if (existingMenu.restaurantId !== restaurantId) throw new BadRequestException(`เมนู ${item.menuName} ไม่ใช่ของร้านนี้`);
+
+      // SERVER calculates price
+      const basePrice = new Decimal(existingMenu.price);
+      const markupUnitPrice = basePrice.mul(markupRate).toDecimalPlaces(2);
+      const totalPrice = markupUnitPrice.mul(item.quantity);
+      totalAmount = totalAmount.plus(totalPrice);
+
+
+      validatedMenus.push({
+        menuId: item.menuId,
+        menuName: existingMenu.name,
+        quantity: item.quantity,
+        unitPrice: markupUnitPrice,
+        menuImg: existingMenu.menuImg ?? null,
+        details: item.details,
+        maxDaily: existingMenu.maxDaily
+      });
+    }
+
+    return {
+      totalAmount: totalAmount.toDecimalPlaces(2),
+      validatedMenus,
+    };
   }
 
-  async findOneOrder(orderId: string) {
+  validateDeliveryTime(deliverTime: Date) {
+    const nowBkk = moment().tz('Asia/Bangkok');
+    const deliverAtBkk = moment(deliverTime).tz('Asia/Bangkok');
+
+    const bufferMin = 5; // fixed 5-minute buffer at all times
+    const diffMinutes = deliverAtBkk.diff(nowBkk, 'minutes'); // whole-minute difference
+
+    if (diffMinutes < bufferMin) throw new BadRequestException(`เวลารับอาหารต้องอยู่หลังจากเวลาปัจจุบันอย่างน้อย ${bufferMin} นาที`);
+  }
+
+  async createOrder(createOrderDto: CreateOrderDto, userId?: string): Promise<Order> {
+    this.validateDeliveryTime(createOrderDto.deliverAt);
+
+    const { totalAmount, validatedMenus } = await this.validateOrderMenus(createOrderDto.orderMenus, createOrderDto.restaurantId);
+    const { accountNumber, bankAccount } = await this.restaurantService.findRestaurant(createOrderDto.restaurantId);
+
+    const accountType = toAccountType(bankAccount);
+    if (!accountType) throw new ConflictException("บัญชีธนาคารไม่ถูกต้อง")
+
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    const paymentData: PaymentPayload = {
+      payload: {
+        imageBase64: createOrderDto.paymentSlipImg,
+        checkCondition: {
+          checkAmount: {
+            type: "eq",
+            amount: totalAmount.toString(),
+          },
+          checkDate: {
+            type: "gte",
+            date: fiveMinutesAgo,
+          },
+          checkDuplicate: true,
+          checkReceiver: [
+            {
+              accountType: accountType,
+              accountNumber: accountNumber.toString(),
+            }
+          ]
+        }
+      }
+    }
+
+    const paymentResult = await this.paymentService.verifyPayment(paymentData);
+    if (!paymentResult?.data?.dateTime) throw new BadRequestException("ข้อมูลการชำระเงินไม่สมบูรณ์");
+
+    const paymentTime = new Date(paymentResult.data.dateTime)
+    if (Date.now() - paymentTime.getTime() > 5 * 60 * 1000) throw new BadRequestException("เวลาในการชำระเงินหมดอายุ กรุณาทำรายการใหม่")
+
+    try {
+      const order = await this.prisma.$transaction(async (tx) => {
+        const order = await tx.order.create({
+          data: {
+            userId: userId ?? null,
+            restaurantId: createOrderDto.restaurantId,
+            deliverAt: createOrderDto.deliverAt,
+            paymentStatus: PaymentStatus.paid,
+            paymentSlipImg: createOrderDto.paymentSlipImg,
+            paidAt: paymentTime,
+            userTel: createOrderDto.userTel,
+            paymentId: paymentResult.data.transRef,
+            paymentGatewayStatus: 'verified',
+            totalAmount: totalAmount,
+            orderMenus: {
+              create: validatedMenus.map((item) => ({
+                quantity: item.quantity,
+                menuName: item.menuName,
+                unitPrice: item.unitPrice,
+                menuImg: item.menuImg,
+                details: item.details,
+                maxDaily: item.maxDaily,
+                menu: { connect: { menuId: item.menuId } },
+              })),
+            },
+          },
+          include: { orderMenus: true },
+        });
+
+        return order;
+      });
+
+      return order;
+    } catch (error) {
+      if (error.code === "P2002") throw new BadRequestException("ชำระเงินซ้ำ/ใช้สลิปเก่า")
+
+      throw error
+    }
+  }
+
+  async findRestaurantTodayOrders(restaurantId: string) {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1)
+
+    const orders = await this.prisma.order.findMany({
+      where: { restaurantId, orderAt: { gte: yesterday } },
+      include: { orderMenus: true },
+      orderBy: {
+        deliverAt: 'asc',
+      },
+    });
+
+    const latestTimestamp = orders.length > 0 
+      ? orders.reduce((latest, order) => 
+        order.orderAt > latest ? order.orderAt : latest, orders[0].orderAt) : new Date();
+
+    return { orders, latestTimestamp }
+  }
+
+  async getOrdersAfterTimeStamp(restaurantId: string, timeStamp?: Date) {
+    const orders = await this.prisma.order.findMany({
+      where: {
+        restaurantId,
+        orderAt: { gte: timeStamp }
+      },
+      include: { orderMenus: true },
+      orderBy: {
+        orderAt: 'asc'
+      }
+    });
+
+    const latestTimestamp = orders.length > 0 ? orders[orders.length - 1].orderAt : timeStamp ?? null
+
+    return { orders, latestTimestamp }
+  }
+
+  async findOneOrder(orderId: string, orderSecret?: string) {
     try {
       const order = await this.prisma.order.findUnique({
         where: { orderId },
         include: { orderMenus: true },
       });
 
-      if (!order) throw new NotFoundException('ไม่พบออเดอร์ที่ค้นหา');
+      if (!order) throw new NotFoundException("ไม่พบออเดอร์ที่ค้นหา");
 
-      await this.validateExisting({
-        restaurantId: order.restaurantId,
-        orderMenus: order.orderMenus.map((menu) => ({
-          menuId: menu.menuId,
-          quantity: menu.quantity,
-          menuName: menu.menuName,
-          unitPrice: menu.unitPrice,
-          totalPrice: menu.totalPrice,
-          menuImg: menu.menuImg || '',
-        })),
-      });
+      // Only check secret if provided
+      if (orderSecret !== undefined && order.orderSecret !== orderSecret) throw new UnauthorizedException("ไม่สามารถเข้าถึงออเดอร์นี้ได้");
 
       return order;
+
     } catch (error) {
-      if (error.code === 'P2025') {
-        // Prisma "Record not found"
+      if (error.code === "P2025") {
         throw new NotFoundException(`ไม่พบออเดอร์ที่มีID: ${orderId}`);
       }
-
       throw error;
-    }
-  }
-
-  async findWeeklyOrderForRestaurant(restaurantId: string) {
-    const now = new Date();
-    const { startDate, endDate } = calculateWeeklyInterval(now);
-    try {
-      const orders = await this.prisma.order.findMany({
-        where: {
-          restaurantId,
-          deliverAt: {
-            gte: startDate,
-            lte: endDate,
-          },
-        },
-        orderBy: {
-          deliverAt: 'desc',
-        },
-        select: {
-          orderId: true,
-          totalAmount: true,
-          isPaid: true,
-          orderAt: true,
-          deliverAt: true,
-          status: true,
-        },
-      });
-
-      return orders;
-    } catch (error) {
-      this.logger.error(
-        'Error finding weekly orders: ',
-        error.message,
-        error.stack,
-      );
-      throw new InternalServerErrorException(
-        'Finding weekly orders failed. Please try again.',
-      );
     }
   }
 
   async updateOrder(orderId: string, updateOrderDto: UpdateOrderDto) {
     const order = await this.findOneOrder(orderId);
 
-    if (order.restaurantId !== updateOrderDto.restaurantId) {
-      throw new ForbiddenException(
-        'You do not have permission to update this order.',
-      );
-    }
-
-    if (
-      updateOrderDto.status &&
-      !Object.values(OrderStatus).includes(updateOrderDto.status)
-    ) {
-      throw new BadRequestException('Invalid order status');
-    }
+    if (order.restaurantId !== updateOrderDto.restaurantId) throw new ForbiddenException('คุณไม่ได้รับอนุญ่ติให้อัพเดทออเดอร์นี้');
+    if (updateOrderDto.status && !Object.values(OrderStatus).includes(updateOrderDto.status)) throw new BadRequestException('สถานะออดเอร์ไม่ถูกต้อง');
 
     return this.prisma.order.update({
       where: { orderId },
@@ -315,96 +261,191 @@ export class OrderService {
     });
   }
 
-  async updateDelay(orderId: string, updateOrderDto: UpdateOrderDto) {
+  async updateDelay(orderId: string, isDelay: boolean) {
     const order = await this.findOneOrder(orderId);
 
-    const updatedDeliverAt = order.deliverAt;
+    if (order.isDelay) throw new BadRequestException("ออเดอร์นี้ถูกแจ้งล่าช้าแล้ว");
+    if (!order.acceptAt) throw new BadRequestException("ออเดอร์นี้ยังไม่ได้รับ");
+
+    const now = Date.now();
+    const acceptedTime = new Date(order.acceptAt).getTime();
+    const diffMinutes = (now - acceptedTime) / 1000 / 60;
+
+    if (diffMinutes > 10) throw new BadRequestException("สามารถแจ้งล่าช้าได้ภายใน 10 นาทีหลังรับออเดอร์เท่านั้น");
+
+    const updatedDeliverAt = new Date(order.deliverAt);
     updatedDeliverAt.setMinutes(updatedDeliverAt.getMinutes() + 10);
 
     const result = await this.prisma.order.update({
       where: { orderId },
       data: {
-        isDelay: updateOrderDto.isDelay,
+        isDelay: isDelay,
         deliverAt: updatedDeliverAt,
       },
     });
 
-    return { result, message: `Successfully update delay status for 10 mins` };
+    return { result, message: `แจ้งส่งออเดอร์ล่าช้า10นาทีสำเร็จ` };
   }
 
-  async updateOrderPaymentStatus(orderId: string, status: PaymentStatus) {
-    try {
-      this.logger.log(`Update order payment status function is activated!`);
-      const updatePaymentOrder = await this.prisma.order.update({
+  async updateOrderStatus(orderId: string, newStatus: OrderStatus) {
+    const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
+      sent: ["accepted", "cancelled", "rejected"],
+      accepted: ["completed"],
+      cancelled: [],
+      rejected: [],
+      completed: []
+    };
+
+    return await this.prisma.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({
         where: { orderId },
-        data: {
-          isPaid: { set: status },
-        },
+        include: { orderMenus: true }
       });
 
-      this.logger.log(`Update payment status too: ${updatePaymentOrder.isPaid}`);
-      return updatePaymentOrder;
-    } catch (err) {
-      this.logger.log(`Failed to update order payment status ${err}`);
-    }
+      if (!order) throw new NotFoundException("ไม่พบออเดอร์");
+      if (order.status === newStatus) return { result: order, message: "สถานะเหมือนเดิม" };
+
+      const allowed = ORDER_TRANSITIONS[order.status];
+      if (!allowed || !allowed.includes(newStatus)) throw new BadRequestException(`ไม่สามารถเปลี่ยนสถานะจาก ${order.status} เป็น ${newStatus}`);
+
+      const now = Date.now();
+      const orderTime = new Date(order.orderAt).getTime();
+      const diffMinutes = (now - orderTime) / 1000 / 60;
+
+      if ((newStatus === "cancelled" || newStatus === "rejected") && diffMinutes > 5) throw new BadRequestException("สามารถยกเลิกหรือปฏิเสธออเดอร์ได้ภายใน 5 นาทีหลังสั่งเท่านั้น");
+
+      const updateData: Prisma.OrderUpdateInput = { status: newStatus };
+
+      if (newStatus === "cancelled") {
+        updateData.cancelledAt = new Date();
+        updateData.paymentStatus = "refund_pending";
+      }
+
+      if (newStatus === "rejected") {
+        updateData.rejectedAt = new Date();
+        updateData.paymentStatus = "refund_pending";
+      }
+
+      if (order.status !== "accepted" && newStatus === "accepted") {
+        updateData.acceptAt = new Date();
+        await this.handleInventoryDeduction(tx, order.orderMenus);
+        await this.payoutService.createPayoutTx(tx, order.orderId);
+      }
+
+      const updatedOrder = await tx.order.update({
+        where: { orderId },
+        data: updateData,
+        select: {
+          orderId: true,
+          status: true,
+          paymentStatus: true,
+          deliverAt: true,
+          isDelay: true
+        }
+      });
+
+      return { result: updatedOrder, message: `อัพเดทสถานะออเดอร์เป็น ${updatedOrder?.status} สำเร็จ` };
+    });
   }
 
-  // async updateOrderStatus(orderId: string) {
-  //   const order = await this.findOneOrder(orderId);
-  //   const nextStatus = this.statusTransitions[order.status];
+  private async handleInventoryDeduction(tx: Prisma.TransactionClient, orderMenus: ValidatedOrderMenu[]) {
+    const groupedMenus = new Map<string, { quantity: number; menuName: string, maxDaily: number }>();
 
-  //   if (order.isPaid === PaymentStatus.unpaid && 
-  //     (order.status === OrderStatus.ready || nextStatus === OrderStatus.done)
-  //   ) {
-  //     throw new ConflictException('Only paid order can be marked as done');
-  //   }
+    for (const item of orderMenus) {
+      const existing = groupedMenus.get(item.menuId);
 
-  //   const result = await this.prisma.order.update({
-  //     where: { orderId },
-  //     data: {
-  //       status: nextStatus,
-  //     },
-  //     select: { orderId: true, status: true, deliverAt: true },
-  //   });
-
-  //   return {
-  //     result,
-  //     message: `Successfully update order status to ${result.status} `,
-  //   };
-  // }
-
-  async updateOrderStatus(orderId: string) {
-    const order = await this.findOneOrder(orderId);
-
-    if (order.isPaid === PaymentStatus.unpaid) {
-      throw new ConflictException('Only paid order can be marked as done');
+      if (existing) {
+        existing.quantity += item.quantity;
+      } else {
+        groupedMenus.set(item.menuId, {
+          quantity: item.quantity,
+          menuName: item.menuName,
+          maxDaily: item.maxDaily,
+        });
+      }
     }
 
-    const result = await this.prisma.order.update({
-      where: { orderId },
-      data: {
-        status: OrderStatus.done,
-      },
-      select: { orderId: true, status: true, deliverAt: true },
-    });
+    const outOfStockMenus: string[] = [];
+    for (const [menuId, data] of groupedMenus.entries()) {
+      const result = await this.inventoryService.deductInventoryTx(tx, menuId, data.quantity, data.menuName, data.maxDaily);
 
-    return {
-      result,
-      message: `Successfully update order status to ${result.status} `,
-    };
+      if (result) outOfStockMenus.push(result);
+    }
+
+    if (outOfStockMenus.length > 0) throw new BadRequestException(`เมนุดังต่อไปนี้หมด: ${outOfStockMenus.join(", ")}`);
+  }
+
+  async cancelOrder(orderId: string, orderSecret: string) {
+    return await this.prisma.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({
+        where: { orderId },
+      });
+
+      if (!order) throw new NotFoundException("ไม่พบออเดอร์");
+
+      if (order.orderSecret !== orderSecret) throw new UnauthorizedException("ไม่สามารถยกเลิกออเดอร์ที่ไม่ใช่ของคุณได้")
+
+      if (order.status === "accepted") throw new BadRequestException("ร้านกำลังเตรียมอาหาร ไม่สามารถยกเลิกได้");
+      if (order.status === "completed") throw new BadRequestException("ไม่สามารถยกเลิกออเดอร์ที่เสร็จแล้ว");
+      if (order.status === "cancelled") throw new BadRequestException("ออเดอร์ถูกยกเลิกไปแล้ว");
+
+      const updatedorder = await tx.order.update({
+        where: { orderId },
+        data: {
+          status: "cancelled",
+          paymentStatus: "refund_pending",
+          cancelledAt: new Date()
+        },
+        select: { orderId: true, status: true, paymentStatus: true }
+      });
+
+      return { result: updatedorder, message: "ยกเลิกออเดอร์สำเร็จ" }
+    })
   }
 
   async removeOrder(orderId: string) {
     const order = await this.findOneOrder(orderId);
 
-    if (order.status !== OrderStatus.done) {
-      throw new BadRequestException(
-        'สามารถลบได้เฉพาะออเดอร์ที่มีสถ่านะเสร็จสมบูรณ์เรียบร้อยแล้วเท่านั้น',
-      );
-    }
+    if (order.status !== OrderStatus.accepted) throw new BadRequestException('สามารถลบได้เฉพาะออเดอร์ที่มีสถ่านะเสร็จสมบูรณ์เรียบร้อยแล้วเท่านั้น');
 
     return this.prisma.order.delete({
       where: { orderId },
     });
+  }
+
+
+  @Cron('*/10 * * * *')
+  async autoCompleteOrders() {
+    const bufferMinutes = 10;
+    const threshold = new Date(Date.now() - bufferMinutes * 60 * 1000);
+
+    const result = await this.prisma.order.updateMany({
+      where: {
+        status: 'accepted',
+        deliverAt: { lt: threshold }
+      },
+      data: { status: 'completed', completedAt: new Date() }
+    });
+
+    if (result.count > 0) this.logger.log(`Auto completed ${result.count} orders`)
+  }
+
+  @Cron('*/5 * * * *')
+  async autoCancelledOrders() {
+    const threshold = new Date(Date.now() - 5 * 60 * 1000);
+    const result = await this.prisma.order.updateMany({
+      where: {
+        status: "sent",
+        paymentStatus: "paid",
+        orderAt: { lt: threshold }
+      },
+      data: {
+        status: "cancelled",
+        paymentStatus: "refund_pending",
+        cancelledAt: new Date()
+      }
+    });
+
+    if (result.count > 0) this.logger.log(`Auto-cancelled ${result.count} orders`);
   }
 }

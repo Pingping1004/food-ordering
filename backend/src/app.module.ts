@@ -43,10 +43,15 @@ import { S3Module } from './s3/s3.module';
 import { S3Service } from './s3/s3.service';
 import { ConfigModule } from '@nestjs/config';
 import configuration from './config/configuration';
+import { InventoryModule } from './inventory/inventory.module';
+import { InventoryService } from './inventory/inventory.service';
+import { TokenCleanService } from './auth/jobs/tokenClean.job';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
     RestaurantModule,
+    InventoryModule,
     MenuModule,
     PrismaModule,
     OrderModule,
@@ -66,8 +71,9 @@ import configuration from './config/configuration';
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
-      envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
+      envFilePath: process.env.NODE_ENV === 'production' ? '.env.production' : '.env.local'
     }),
+    ScheduleModule.forRoot(),
     PayoutModule,
     AuthModule,
     UserModule,
@@ -91,6 +97,8 @@ import configuration from './config/configuration';
       provide: APP_FILTER,
       useClass: CatchEverythingFilter,
     },
+    InventoryService,
+    TokenCleanService,
     CsrfTokenService,
     AppService,
     RestaurantService,

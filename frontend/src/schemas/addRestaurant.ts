@@ -7,7 +7,7 @@ export const createRestaurantSchema = z.object({
             (f) =>
                 f === undefined ||
         (f instanceof FileList && (f.length === 0 || f.length === 1)),
-            { message: "Invalid file" }
+            { message: "ไฟล์ไม่ถูกต้อง" }
         )
         .optional(),
     name: z.string({ message: 'กรุณาใส่ชื่อร้านอาหารด้วยตัวอักษร' }),
@@ -18,7 +18,7 @@ export const createRestaurantSchema = z.object({
                 const [h, m] = time.split(':').map(Number);
                 return RegExp(/^\d{2}:\d{2}$/).test(time) && h >= 0 && h <= 23 && m >= 0 && m <= 59;
             },
-            { message: 'รูปแบบเวลาไม่ถูกต้อง (HH:mm)' }
+            { message: 'รูปแบบเวลาต้องเป็น (HH:mm)' }
         )
         .transform((timeString, ctx) => {
             try {
@@ -43,7 +43,7 @@ export const createRestaurantSchema = z.object({
                 const [h, m] = time.split(':').map(Number);
                 return RegExp(/^\d{2}:\d{2}$/).test(time) && h >= 0 && h <= 23 && m >= 0 && m <= 59;
             },
-            { message: 'รูปแบบเวลาไม่ถูกต้อง (HH:mm)' }
+            { message: 'รูปแบบเวลาต้องเป็น (HH:mm)' }
         )
         .transform((timeString, ctx) => {
             try {
@@ -70,8 +70,26 @@ export const createRestaurantSchema = z.object({
         .regex(/^\d{10}$/, { message: 'กรุณาระบุเบอร์โทรที่ถูกต้อง 10 หลัก' }),
     adminEmail: z.string().trim().email('กรุณาระบุอีเมลที่ถูกต้อง').optional().or(z.literal('')),
     bankAccount: z.string().trim().min(1, { message: 'กรุณาใส่ชื่อธนาคาร' }),
-    accountNumber: z.string().trim().min(1, { message: 'กรุณาใส่เลขบัญชีธนาคาร'}),
-    accountHolderFullName: z.string().trim().min(1, { message: 'กรุณาใส่ชื่อ-นามสกุลของบัญชีธนาคาร' })
+    accountNumber: z.string()
+        .min(1, { message: 'กรุณาใส่เลขบัญชีธนาคาร'})
+        .regex(/^[0-9]+$/, { message: "เลขบัญชีต้องเป็นตัวเลขเท่านั้น ห้ามเว้นวรรคหรือใส่สัญลักษณ์" }),
+    accountHolderFullName: z.string().trim().min(1, { message: 'กรุณาใส่ชื่อ-นามสกุลของบัญชีธนาคาร' }),
+    paymentQr: z.any().superRefine((file, ctx) => {
+        if (!file) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "กรุณาอัพโหลดQR",
+          });
+          return;
+        }
+      
+        if (file.size > 2 * 1024 * 1024) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "ไฟล์ต้องไม่เกิน 2MB",
+            });
+        }
+    })
 })
 
 export type CreateRestaurantSchemaType = z.infer<typeof createRestaurantSchema>

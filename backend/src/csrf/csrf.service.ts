@@ -12,9 +12,7 @@ export class CsrfTokenService {
 
     if (!envSecret) {
       if (process.env.NODE_ENV === 'production') {
-        this.logger.error(
-          'CRITICAL ERROR: CSRF_SECRET is not defined in production environment!',
-        );
+        this.logger.error('CRITICAL ERROR: CSRF_SECRET is not defined in production environment!');
         process.exit(1); // Exit process in production if critical secret is missing
       }
     } else {
@@ -37,12 +35,12 @@ export class CsrfTokenService {
     }
 
     const parts = token.split('-');
-    if (parts.length !== 2) {
-      return false;
-    }
+    if (parts.length !== 2) return false;
 
-    const salt = parts[0];
-    const incomingTokenHash = parts[1];
+    const dashIndex = token.indexOf('-');
+    if (dashIndex === -1) return false
+    const salt = token.slice(0, dashIndex);
+    const incomingTokenHash =token.slice(dashIndex + 1);
 
     const expectedTokenHash = crypto
       .createHmac('sha256', this.CSRF_SECRET)

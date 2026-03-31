@@ -1,23 +1,28 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Toaster } from "sonner";
+import { Noto_Sans_Thai, Poppins } from "next/font/google"
+import { AuthProvider } from "@/auth/auth.provider";
+import { AppToaster } from "@/components/ui/Toast";
 
-import { CartProvider } from "@/context/CartContext";
-import { AuthProvider } from "@/context/Authcontext";
-
-const geistSans = Geist({
-    variable: "--font-geist-sans",
-    subsets: ["latin"],
+const notoThai = Noto_Sans_Thai({
+    subsets: ["thai"],
+    weight: ["400", "700"],
+    variable: "--font-noto-thai",
+    display: "swap"
 });
 
-const geistMono = Geist_Mono({
-    variable: "--font-geist-mono",
+const poppins = Poppins({
     subsets: ["latin"],
+    weight: ["400", "600", "700"],
+    variable: "--font-poppins",
+    display: "swap",
 });
 
 export const metadata: Metadata = {
     title: "Promptserve",
+    icons: {
+        icon: "/favicon.svg",
+    },
     description: "Have your meal with no deailing with queue",
 };
 
@@ -28,36 +33,14 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="en">
-            <head>
-                {/* // Poppins google font api connected */}
-                <link rel="preconnect" href="https://fonts.googleapis.com" />
-                <link
-                    rel="preconnect"
-                    href="https://fonts.gstatic.com"
-                    crossOrigin="anonymous"
-                />
-
-                {/* // Noto Sans google font api connected */}
-                <link href='https://fonts.googleapis.com/css?family=Noto Sans Thai' rel='stylesheet'></link>
-
-                <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-
-                <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-                <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-                    </head>
-                    <body
-                        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-                    >
-                        <AuthProvider>
-                            <CartProvider>
-                                {children}
-                                <Toaster  
-                                    richColors 
-                                    position="top-center"
-                                />
-                            </CartProvider>
-                        </AuthProvider>
-                    </body>
-                </html>
-                );
+            <head></head>
+            
+            <body className={`${poppins.variable} ${notoThai.variable}`}>
+                <AuthProvider>
+                    {children}
+                    <AppToaster />
+                </AuthProvider>
+            </body>
+        </html>
+    );
 }

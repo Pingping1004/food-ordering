@@ -1,17 +1,17 @@
 import { z } from "zod";
 
 export const baseCreateMenuSchema = z.object({
-    name: z.string().min(1, "Name is required"),
-    price: z.coerce.number().min(1, "Price must be at least 1"),
-    maxDaily: z.coerce.number().min(1, "Max daily must be at least 1"),
-    cookingTime: z.coerce.number().min(1, "Cooking time must be at least 1"),
+    name: z.string().min(1, "กรุณากรอกชื่อเมนู"),
+    price: z.coerce.number().min(1, "ราคาต้องมากกว่าหรือเท่ากับ 1 บาท"),
+    maxDaily: z.coerce.number().min(1, "จำนวนสูงสุดต่อวันต้องมากกว่า 0"),
+    cookingTime: z.coerce.number().min(1, "เวลาทำอาหารต้องอย่างน้อย 1 นาที"),
     menuImg: z
         .any()
         .refine(
             (f) =>
                 f === undefined ||
-        (f instanceof FileList && (f.length === 0 || f.length === 1)),
-            { message: "Invalid file" }
+                (f instanceof FileList && (f.length === 0 || f.length === 1)),
+            { message: "อัปโหลดรูปได้เพียง 1 รูปเท่านั้น" }
         ),
     isAvailable: z.boolean().optional(),
 });
@@ -22,26 +22,28 @@ export const baseEditMenuSchema = z.object({
     menuImg: z.string().optional(),
     maxDaily: z.coerce
         .number()
-        .min(1, { message: "Max daily order must be a positive number" })
+        .min(1, { message: "จำนวนสูงสุดต่อวันต้องมากกว่า 0" })
         .optional(),
     cookingTime: z.coerce
         .number()
-        .min(1)
-        .max(10, { message: "Max cooking time must be between 1-10 minutes" })
+        .min(1, { message: "เวลาทำอาหารต้องอย่างน้อย 1 นาที" })
+        .max(10, { message: "เวลาทำอาหารต้องไม่เกิน 10 นาที" })
         .optional(),
     price: z.coerce
         .number()
-        .positive({ message: "Price must be a positive number" })
+        .positive({ message: "ราคาต้องมากกว่า 0" })
         .optional(),
     createdAt: z.coerce.date().optional(),
     isAvailable: z.boolean().optional(),
 });
 
 export const singleEditMenuSchema = baseEditMenuSchema.extend({
-    restaurantId: z.string().min(1, 'Restaurant ID is required').uuid(),
+    restaurantId: z.string()
+        .min(1, "ไม่พบรหัสร้านอาหาร")
+        .uuid("รหัสร้านอาหารไม่ถูกต้อง"),
     menuImg: z
         .union([
-            z.string(), // accept string URLs for existing images
+            z.string(),
             z.any().refine(
                 (file) => {
                     if (file === undefined) return true;
@@ -50,16 +52,18 @@ export const singleEditMenuSchema = baseEditMenuSchema.extend({
                     }
                     return false;
                 },
-                { message: 'Menu image must be a single file' }
+                { message: "อัปโหลดรูปได้เพียง 1 รูปเท่านั้น" }
             ),
         ])
         .optional(),
 });
 
-export type singleEditMenuSchemaType = z.infer<typeof singleEditMenuSchema>
+export type singleEditMenuSchemaType = z.infer<typeof singleEditMenuSchema>;
 
 export const singleCreateMenuSchema = baseCreateMenuSchema.extend({
-    restaurantId: z.string().min(1, 'Restaurant ID is required').uuid(),
+    restaurantId: z.string()
+        .min(1, "ไม่พบรหัสร้านอาหาร")
+        .uuid("รหัสร้านอาหารไม่ถูกต้อง"),
     menuImg: z
         .any()
         .refine(
@@ -70,37 +74,51 @@ export const singleCreateMenuSchema = baseCreateMenuSchema.extend({
                 }
                 return false;
             },
-            { message: 'Menu image must be a single file' }
+            { message: "อัปโหลดรูปได้เพียง 1 รูปเท่านั้น" }
         )
         .optional(),
 });
 
-export type SingleCreateMenuSchemaType = z.infer<typeof singleCreateMenuSchema>
+export type SingleCreateMenuSchemaType = z.infer<typeof singleCreateMenuSchema>;
 
 export const bulkUploadFormSchema = z.object({
     csvFile: z.any(),
     menuImgs: z.any(),
-    restaurantId: z.string().min(1, "Restaurant ID is required").uuid(),
+    restaurantId: z.string()
+        .min(1, "ไม่พบรหัสร้านอาหาร")
+        .uuid("รหัสร้านอาหารไม่ถูกต้อง"),
 });
 
 export type BulkUploadFormValues = z.infer<typeof bulkUploadFormSchema>;
 
 export const csvMenuItemSchema = z.object({
-    name: z.string().min(1, "Menu name is required."),
-    // description: z.string().optional(), // Description can be empty
-    price: z.coerce.number().min(0.01, "Price must be a number greater than 0."), // Coerce string to number
-    maxDaily: z.coerce.number().int().min(0, "Max daily must be a non-negative integer.").optional().default(0), // Coerce string to number, allow 0
-    cookingTime: z.coerce.number().int().min(1, "Cooking time must be an integer at least 1.").optional().default(1), // Coerce string to number
-    isAvailable: z.coerce.boolean().optional().default(true), // Coerce string to boolean, default to true
-    // This field is for the original filename from the user's computer, used for matching
-    originalImageFileNameCsv: z.string().optional(), // This column might be empty if no image
+    name: z.string().min(1, "กรุณากรอกชื่อเมนู"),
+    price: z.coerce
+        .number()
+        .min(0.01, "ราคาต้องมากกว่า 0 บาท"),
+    maxDaily: z.coerce
+        .number()
+        .int()
+        .min(0, "จำนวนต่อวันต้องเป็นตัวเลข 0 หรือมากกว่า")
+        .optional()
+        .default(0),
+    cookingTime: z.coerce
+        .number()
+        .int()
+        .min(1, "เวลาทำอาหารต้องอย่างน้อย 1 นาที")
+        .optional()
+        .default(1),
+    isAvailable: z.coerce.boolean().optional().default(true),
+    originalImageFileNameCsv: z.string().optional(),
 });
 
 export type CsvMenuItemSchemaType = z.infer<typeof csvMenuItemSchema>;
 
-export const finalBulkMenuPayloadSchema = z.array(baseCreateMenuSchema.extend({
-    imageFileName: z.string().optional(),
-    originalFileName: z.string().optional(),
-}));
+export const finalBulkMenuPayloadSchema = z.array(
+    baseCreateMenuSchema.extend({
+        imageFileName: z.string().optional(),
+        originalFileName: z.string().optional(),
+    })
+);
 
 export type FinalBulkMenuPayloadType = z.infer<typeof finalBulkMenuPayloadSchema>;

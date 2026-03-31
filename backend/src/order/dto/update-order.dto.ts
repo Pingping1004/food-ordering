@@ -14,8 +14,7 @@ import {
   ArrayMinSize,
   ArrayMaxSize,
 } from 'class-validator';
-import { PaymentMethod, OrderStatus } from '@prisma/client';
-import { CreatePaymentDto } from 'src/payment/dto/create-payment.dto';
+import { PaymentMethod, OrderStatus, PaymentStatus } from '@prisma/client';
 import { CreateOrderDto, CreateOrderMenusDto } from './create-order.dto';
 import { PartialType } from '@nestjs/swagger';
 
@@ -54,6 +53,14 @@ export class UpdateOrderDto extends PartialType(CreateOrderDto) {
   @IsUUID()
   restaurantId?: string;
 
+  @IsString()
+  @IsOptional()
+  userTel: string;
+
+  @IsEnum(PaymentStatus)
+  @IsOptional()
+  paymentStatus: PaymentStatus;
+
   @IsDate()
   @IsOptional()
   @Type(() => Date)
@@ -64,9 +71,35 @@ export class UpdateOrderDto extends PartialType(CreateOrderDto) {
   @Type(() => Date)
   deliverAt?: Date;
 
+  @IsDate()
   @IsOptional()
-  @IsString()
-  details?: string;
+  @Type(() => Date)
+  acceptAt?: Date;
+
+  @IsDate()
+  @IsOptional()
+  @Type(() => Date)
+  completedAt?: Date;
+
+  @IsDate()
+  @IsOptional()
+  @Type(() => Date)
+  paidAt?: Date;
+
+  @IsDate()
+  @IsOptional()
+  @Type(() => Date)
+  cancelledAt?: Date;
+
+  @IsDate()
+  @IsOptional()
+  @Type(() => Date)
+  rejectedAt?: Date;
+
+  @IsDate()
+  @IsOptional()
+  @Type(() => Date)
+  refundAt?: Date;
 
   @IsOptional()
   @IsBoolean()
@@ -83,18 +116,10 @@ export class UpdateOrderDto extends PartialType(CreateOrderDto) {
   orderMenus?: UpdateOrderMenusDto[];
 
   @IsOptional()
-  @Type(() => CreatePaymentDto)
-  paymentDetails: CreatePaymentDto;
-
-  @IsOptional() // Could be null if no payment initiated or failed initiation
-  @IsString()
-  omiseChargeId?: string;
-
-  @IsOptional()
   @IsEnum(PaymentMethod)
   paymentMethod?: PaymentMethod;
 
-  @IsOptional() // Could be null if no payment initiated or before first update
-  @IsString() // Use string as Omise provides various statuses
+  @IsOptional()
+  @IsString()
   paymentGatewayStatus?: string;
 }

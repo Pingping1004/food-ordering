@@ -1,43 +1,58 @@
 "use client";
 
-import { RestaurantProfile } from "@/components/users/RestaurantProfile";
-import React, { useEffect, useState } from "react";
-import { Restaurant } from "@/context/MenuContext";
+import dynamic from "next/dynamic";
+import { useMemo, useState } from "react";
+import UserHeader from "@/components/users/UserHeader";
+import type { Restaurant } from "@/app/data/type";
 import { api } from "@/lib/api";
-import UserHeader from "@/components/users/Header";
-import LoadingPage from "@/components/LoadingPage";
+import RestaurantProfile from "../../../components/users/RestaurantProfile";
+import useSWR from "swr";
+import { Button } from "@/components/Button";
+
+const Modal = dynamic(() => import("../../../components/users/Modal"), { ssr: false });
+
+const fetcher = (url: string): Promise<Restaurant[]> =>
+    api.get(url).then(res => res.data);
 
 export default function UserHomePage() {
-    const [data, setData] = useState<Restaurant[] | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
+    const [showModal, setShowModal] = useState(() => {
+        if (typeof window === "undefined") return false;
+        return !localStorage.getItem("order-before-lunch-modal");
+    });
+    const [visibleCount, setVisibleCount] = useState(6);
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const response = await api.get<Restaurant[]>(`/restaurant`);
-                setData(response.data)
-            } catch {
-                setError('Error fetching data');
-            } finally {
-                setLoading(false);
-            }
-        };
+    const { data: restaurants = [] } = useSWR<Restaurant[]>(
+        "/restaurant",
+        fetcher,
+        {
+            fallbackData: [],
+            revalidateOnFocus: false,
+            dedupingInterval: 60000,
+            keepPreviousData: true,
+        }
+    );
 
-        fetchData();
-    }, []);
-
-    if (loading) return <LoadingPage />
-    if (error) return <div>{error}</div>;
-    if (!data) return <div>No Data found</div>
+    const visibleRestaurants = useMemo(
+        () => restaurants.slice(0, visibleCount),
+        [restaurants, visibleCount]
+    );
 
     return (
-        <div className="flex flex-col gap-y-10 py-10 px-6">
-            <UserHeader />
-            <div className="grid md:grid-cols-4 lg:grid-cols-6 grid-cols-2 gap-x-4 gap-y-6">
-                {data.map((restaurant) => {
+        <>
+            {showModal && (
+                <Modal
+                    isOpen={showModal}
+                    onClose={() => setShowModal(false)}
+                    title="สั่งอาหารก่อน 11:45"
+                    body="กรุณาสั่งอาหารก่อนเวลา 11:45 น. เพื่อให้ร้านอาหารสามารถเตรียมอาหารของคุณได้ทันเวลา"
+                    confirmText="เข้าใจแล้ว"
+                />
+            )}
 
-                    return (
+            <div className="flex flex-col gap-y-10 py-10 px-6">
+                <UserHeader />
+                <div className="grid md:grid-cols-4 lg:grid-cols-6 grid-cols-2 gap-x-4 gap-y-6">
+                    {visibleRestaurants.map((restaurant, i) => (
                         <RestaurantProfile
                             key={restaurant.restaurantId}
                             name={restaurant.name}
@@ -45,11 +60,22 @@ export default function UserHomePage() {
                             restaurantId={restaurant.restaurantId}
                             restaurantImg={restaurant.restaurantImg}
                             isOpen={restaurant.isActuallyOpen}
+                            isPriority={i < 4}
                             variant={restaurant.isActuallyOpen ? "isOpen" : "isClose"}
                         />
-                    );
-                })}
+                    ))}
+                </div>
+
+                {visibleCount < restaurants.length && (
+                    <Button
+                        onClick={() => setVisibleCount(prev => prev + 12)}
+                        type="button"
+                        variant="secondary"
+                    >
+                        โหลดเพิ่ม
+                    </Button>
+                )}
             </div>
-        </div>
-    )
+        </>
+    );
 }

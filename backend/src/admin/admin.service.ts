@@ -36,9 +36,9 @@ export class AdminService {
       include: { user: true },
     });
 
-    if (!request) throw new NotFoundException('Role request not found');
+    if (!request) throw new NotFoundException('ไม่พบคำขอ');
     if (request.status !== RoleRequestStatus.pending)
-      throw new BadRequestException('This request has already been processed');
+      throw new BadRequestException('คำขอนี้ถูกดำเนินการไปแล้ว');
 
     return this.prisma.$transaction(async (tx) => {
       // Update user role
@@ -63,7 +63,7 @@ export class AdminService {
     });
 
     if (!request || request.status !== RoleRequestStatus.pending)
-      throw new BadRequestException('This request has already been processed');
+      throw new BadRequestException('คำขอนี้ถูกดำเนินการไปแล้ว');
 
     return this.prisma.roleRequest.update({
       where: { requestId },

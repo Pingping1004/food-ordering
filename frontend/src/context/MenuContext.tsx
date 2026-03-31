@@ -1,115 +1,82 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react'
-import { useParams } from 'next/navigation';
-import { api } from '@/lib/api';
-import { RestaurantCategory } from "@/components/users/RestaurantProfile";
-import LoadingPage from '@/components/LoadingPage';
-
-export interface Restaurant {
-    // [x: string]: any;
-    restaurantId: string;
-    name: string;
-    image: string;
-    restaurantImg: string;
-    categories: RestaurantCategory[];
-    openTime: string;
-    closeTime: string;
-    isOpen: boolean;
-    isActuallyOpen: boolean;
-    isTemporarilyClosed: boolean;
-    isApproved: boolean;
-    adminTel: string;
-};
+import { createContext, useContext, useEffect, useMemo, useState, useCallback } from "react";
+import { useParams } from "next/navigation";
+import { api } from "@/lib/api";
 
 export interface Menu {
     menuId: string;
     name: string;
-    menuImg?: string;
+    menuImg: string;
     sellPriceDisplay: number;
     price: number;
     maxDaily: number;
     cookingTime: number;
     isAvailable: boolean;
+    isOrderable: boolean;
     restaurantId: string;
 }
 
-export interface MenuContextType {
-    restaurant: Omit<Restaurant, 'email'>;
+type MenuContextType = {
     menus: Menu[] | null;
-    setMenus: React.Dispatch<React.SetStateAction<Menu[] | null>>;
     loading: boolean;
     error: string | null;
-}
+    refetch: () => Promise<void>;
 
-export const MenuContext = createContext<MenuContextType | null>(null);
+    updateMenu: (menuId: string, updater: (menu: Menu) => Menu) => void;
+    deleteMenuLocal: (menuId: string) => void;
+};
+
+const MenuContext = createContext<MenuContextType | null>(null);
 
 export const useMenu = () => {
-    const context = useContext(MenuContext);
-    
-    if (!context) throw new Error("useMenuContext must be used within MenuProvider");
-    return context;
+    const ctx = useContext(MenuContext);
+    if (!ctx) throw new Error("useMenu must be used within MenuProvider");
+    return ctx;
 };
 
 export const MenuProvider = ({ children }: { children: React.ReactNode }) => {
     const params = useParams();
-    const restaurantId = Array.isArray(params.restaurantId)
-        ? params.restaurantId[0]
-        : params.restaurantId;
+    const restaurantId = params.restaurantId as string;
 
-    const [restaurant, setRestaurant] = useState<Restaurant>({
-        restaurantId: '',
-        name: '',
-        image: '',
-        restaurantImg: '',
-        categories: [],
-        openTime: '',
-        closeTime: '',
-        isOpen: true,
-        isActuallyOpen: true,
-        isTemporarilyClosed: false,
-        isApproved: false,
-        adminTel: '',
-    });
     const [menus, setMenus] = useState<Menu[] | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const contextValue = useMemo(() => ({
-        restaurant,
-        menus,
-        setMenus,
-        loading,
-        error,
-    }), [restaurant, menus, setMenus, loading, error]);
 
-    useEffect(() => {
+    const fetchMenus = useCallback(async () => {
         if (!restaurantId) return;
-        const fetchData = async () => {
-            try {
-                const menuResponse = await api.get(`menu/${restaurantId}`);
-                setMenus(menuResponse.data);
 
-                const restaurantResponse = await api.get(`restaurant/${restaurantId}`);
-                setRestaurant(restaurantResponse.data);
-            } catch {
-                setError('Error fetching menu context');
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchData();
+        try {
+            setLoading(true);
+            const res = await api.get(`menu/${restaurantId}`);
+            setMenus(res.data);
+            setError(null);
+        } catch {
+            setError("Failed to fetch menus");
+        } finally {
+            setLoading(false);
+        }
     }, [restaurantId]);
 
-    if (loading) return <LoadingPage />;
-    if (error) return <div>{error}</div>;
-    if (!menus) return <div>No Data found</div>
+    const updateMenu = useCallback((menuId: string, updater: (menu: Menu) => Menu) => {
+        setMenus(prev =>
+            prev?.map(menu =>
+                menu.menuId === menuId ? updater(menu) : menu
+            ) || null
+        );
+    }, []);
 
-    return (
-        <MenuContext.Provider
-            value={contextValue}
-        >
-            {children}
-        </MenuContext.Provider>
-    )
-}
+    const deleteMenuLocal = useCallback((menuId: string) => {
+        setMenus(prev => prev?.filter(menu => menu.menuId !== menuId) || null);
+    }, []);
+
+    useEffect(() => {
+        fetchMenus();
+    }, [fetchMenus]);
+
+    const value = useMemo(() => ({
+        menus, loading, error, refetch: fetchMenus, updateMenu, deleteMenuLocal
+    }), [menus, loading, error, fetchMenus, deleteMenuLocal, updateMenu]);
+
+    return <MenuContext.Provider value={value}>{children}</MenuContext.Provider>;
+};

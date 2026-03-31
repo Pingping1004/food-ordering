@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import Image from 'next/image';
@@ -24,7 +24,12 @@ export default function FailedOrderPage() {
         }
         const fetchData = async () => {
             try {
-                const orderResponse = await api.get(`order/${orderId}`);
+                const orderSecret = localStorage.getItem(`orderSecret:${orderId}`)
+                const orderResponse = await api.get(`order/${orderId}`, {
+                    headers: {
+                        "x-order-secret": orderSecret
+                    }
+                });
                 setOrder(orderResponse.data);
 
                 const newRestaurantId = orderResponse.data.restaurantId;
@@ -48,7 +53,7 @@ export default function FailedOrderPage() {
 
     return (
         <div className="flex flex-col py-10 px-6 gap-y-23">
-            <h1 className="flex justify-center noto-sans-bold text-primary text-2xl">{restaurantName}</h1>
+            <h1 className="flex justify-center font-noto-thai text-bold text-primary text-2xl">{restaurantName}</h1>
 
             <div className="flex flex-col justify-center items-center gap-y-10">
                 <Image
@@ -58,13 +63,13 @@ export default function FailedOrderPage() {
                     alt="Failed icon"
                 />
                 <div className="flex flex-col items-center gap-y-1">
-                    <h4 className="text-lg text-success noto-sans-regular">ชำระเงินล้มเหลว</h4>
-                    <h1 className="text-2xl noto-sans-bold text-primary">ออเดอร์ {orderId?.substring(0, 4)}</h1>
+                    <h4 className="text-lg text-success font-noto-thai">ชำระเงินล้มเหลว</h4>
+                    <h1 className="text-2xl font-noto-thai text-bold text-primary">ออเดอร์ {orderId?.substring(0, 4)}</h1>
                 </div>
             </div>
 
             <div>
-        Aside section
+                Aside section
             </div>
         </div>
     )

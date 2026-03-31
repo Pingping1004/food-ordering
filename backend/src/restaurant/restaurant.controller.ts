@@ -8,13 +8,14 @@ import {
   Param,
   UseInterceptors,
   UploadedFile,
-  ParseFilePipe,
   Req,
   UseGuards,
   Logger,
   InternalServerErrorException,
+  UploadedFiles,
+  BadRequestException,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
 import { imageFileFilter } from '../utils/file-upload.utils'
 
 import { RestaurantService } from './restaurant.service';
@@ -31,36 +32,37 @@ import { Public } from 'src/decorators/public.decorator';
 @Roles([Role.user, Role.admin, Role.cooker])
 @Controller('restaurant')
 export class RestaurantController {
-  constructor(private readonly restaurantService: RestaurantService) {}
+  constructor(private readonly restaurantService: RestaurantService) { }
 
   private readonly logger = new Logger('RestaurantController');
+
   @Post()
-  @UseInterceptors(
-    FileInterceptor('restaurantImg', {
-      storage: null,
-      fileFilter: imageFileFilter,
-    }),
-  )
+  @UseInterceptors(FileFieldsInterceptor([
+    { name: 'restaurantImg', maxCount: 1 },
+    { name: 'paymentQr', maxCount: 1 },
+  ]))
   async createRestaurant(
     @Req() req: any,
     @Body() createRestaurantDto: CreateRestaurantDto,
-    @UploadedFile(
-      new ParseFilePipe({
-        fileIsRequired: false,
-      }),
-    )
-    file?: Express.Multer.File,
+    @UploadedFiles() files?: {
+      paymentQr?: Express.Multer.File[],
+      restaurantImg?: Express.Multer.File[],
+    },
   ) {
+    const paymentQr = files?.paymentQr?.[0];
+  
+    if (!paymentQr) throw new BadRequestException('กรุณาอัพโหลด QR');
+  
     const userId = req.user.userId;
     return this.restaurantService.createRestaurant(
       createRestaurantDto,
       userId,
-      file,
+      paymentQr,
+      files.restaurantImg?.[0],
     );
   }
 
   @Public()
-  // @Roles([Role.user, Role.admin, Role.cooker])
   @Get()
   async findAllRestaurant() {
     return this.restaurantService.getOpenRestaurants();
@@ -94,12 +96,9 @@ export class RestaurantController {
         file,
       );
     } catch (error) {
-      this.logger.error(
-        `Failed to update restaurant ${restaurantId} in controller:`,
-        error,
-      );
+      this.logger.error(`Failed to update restaurant ${restaurantId} in controller: `, error);
 
-      throw new InternalServerErrorException('Failed to update restaurant');
+      throw new InternalServerErrorException('อัพเดทร้านอาหรรล้มเหลว');
     }
   }
 

@@ -9,10 +9,12 @@ import {
   UseGuards,
   Req,
   Logger,
+  Query,
+  NotFoundException,
+  Headers,
 } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
-import { UpdateOrderDto } from './dto/update-order.dto';
 import { Request } from 'express';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from '../decorators/role.decorator';
@@ -20,6 +22,7 @@ import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
 import { Role, User } from '@prisma/client';
 import { CsrfGuard } from 'src/guards/csrf.guard';
 import { Public } from 'src/decorators/public.decorator';
+import { UpdateOrderDto } from './dto/update-order.dto';
 
 @Controller('order')
 @UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
@@ -30,44 +33,37 @@ export class OrderController {
   private readonly logger = new Logger('OrderController');
 
   @Public()
-  @Post('create')
+  @Post('verify-and-create-order')
   async createOrder(
     @Body() createOrderDto: CreateOrderDto,
     @Req() req: Request & { user?: User },
   ) {
     try {
       const userId = req.user?.userId || undefined;
-      if (!userId && !createOrderDto.userEmail) throw new Error('User ID is required to create an order');
 
-      // const result = await this.orderService.createOrderWithPayment(userId, createOrderDto);
-      const result = await this.orderService.createOrderWithPayment(createOrderDto, userId);
+      const result = await this.orderService.createOrder(createOrderDto, userId);
       return result;
     } catch (error) {
-      this.logger.error(
-        'Error in createOrder controller function: ',
-        error.message,
-        error.stack,
-      );
+      this.logger.error('Error in createOrder controller function: ', error.message, error.stack);
       throw error;
     }
   }
 
-  @Get('get-orders/:restaurantId')
-  async findRestaurantOrders(@Param('restaurantId') restaurantId: string) {
-    return this.orderService.findRestaurantOrders(restaurantId);
+  @Get('today/:restaurantId')
+  async findRestaurantTodayOrders(@Param('restaurantId') restaurantId: string) {
+    return this.orderService.findRestaurantTodayOrders(restaurantId);
   }
 
   @Public()
   @Get(':orderId')
-  async findOneOrder(@Param('orderId') orderId: string) {
-    return this.orderService.findOneOrder(orderId);
+  async findOneOrder(@Param('orderId') orderId: string, @Headers('x-order-secret') orderSecret: string) {
+    return this.orderService.findOneOrder(orderId, orderSecret);
   }
 
-  @Get('weekly/:restaurantId')
-  async findWeeklyOrdersForRestaurant(
-    @Param('restaurantId') restaurantId: string,
-  ) {
-    return this.orderService.findWeeklyOrderForRestaurant(restaurantId);
+  @Get('new/:restaurantId')
+  async getNewOrders(@Param('restaurantId') restaurantId: string, @Query('after') after?: Date) {
+    const timestamp = after ? new Date(after) : undefined
+    return this.orderService.getOrdersAfterTimeStamp(restaurantId, timestamp)
   }
 
   @Patch(':orderId')
@@ -83,12 +79,27 @@ export class OrderController {
     @Param('orderId') orderId: string,
     @Body() updateOrderDto: UpdateOrderDto,
   ) {
-    return this.orderService.updateDelay(orderId, updateOrderDto);
+    if (!updateOrderDto.isDelay) throw new NotFoundException('ไม่พบสถานะออเดอร์ที่ต้องการแก้ไข')
+
+    return this.orderService.updateDelay(orderId, updateOrderDto.isDelay);
   }
 
-  @Patch('update-status/:orderId')
-  async updateOrderStatus(@Param('orderId') orderId: string) {
-    return this.orderService.updateOrderStatus(orderId);
+  @Public()
+  @Patch('cancel/:orderId')
+  async cancelOrder(@Param('orderId') orderId: string, @Body('orderSecret') orderSecret: string) {
+    if (!orderId) throw new NotFoundException("ไม่พบออเดอร์ไอดี")
+
+    return this.orderService.cancelOrder(orderId, orderSecret);
+  }
+
+  @Patch('reject/:orderId')
+  async rejectOrder(@Param('orderId') orderId: string) {
+    return this.orderService.updateOrderStatus(orderId, "rejected");
+  }
+
+  @Patch('accept/:orderId')
+  async acceptOrder(@Param('orderId') orderId: string) {
+    return this.orderService.updateOrderStatus(orderId, "accepted");
   }
 
   @Delete(':orderId')

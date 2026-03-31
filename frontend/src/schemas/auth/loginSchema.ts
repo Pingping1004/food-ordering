@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
 export const loginSchema = z.object({
-    email: z.string().trim().email('Invalid email address'),
-    password: z.string().trim().min(4, 'Password must be at least 4 characters'),
+    email: z.string().trim().email('อีเมลไม่ถูกต้อง'),
+    password: z.string().trim().min(4, 'รหัสผ่านต้องมีความยาวมากกว่า4ตัวอักษร'),
 });
 
 export type loginSchemaType = z.infer<typeof loginSchema>;

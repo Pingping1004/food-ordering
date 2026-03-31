@@ -3,37 +3,29 @@ import { CreatePayoutDto } from './create-payout.dto';
 import {
   IsOptional,
   IsDate,
-  IsNumber,
+  IsBoolean,
   IsNotEmpty,
-  IsUUID,
+  IsNumber,
+  IsPositive,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class UpdatePayoutDto extends PartialType(CreatePayoutDto) {
-  @IsNumber()
-  @IsOptional()
-  restaurantRevenue?: number;
-
-  @IsNumber()
-  @IsOptional()
-  platformFee?: number;
-
-  @IsDate()
-  @IsOptional()
-  paidAt: string;
-
-  @IsDate()
-  @IsOptional()
-  startDate?: Date;
-
-  @IsDate()
-  @IsOptional()
-  endDate?: Date;
-
-  @IsUUID()
+  @IsBoolean()
   @IsNotEmpty()
-  orderId: string;
+  isPaid: boolean
 
-  @IsUUID()
-  @IsNotEmpty()
-  restaurantId: string;
+  @IsOptional()
+  @IsPositive()
+  @IsNumber()
+  @Type(() => Number)
+  refundAmount?: number;
+
+  @IsDate()
+  @IsOptional()
+  paidAt?: string;
+
+  @IsDate()
+  @IsOptional()
+  refundAt?: string;
 }

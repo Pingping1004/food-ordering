@@ -54,7 +54,7 @@ export class MenuController {
     @UploadedFile() file: Express.Multer.File,
   ) {
     if (!createMenuDto.restaurantId)
-      throw new NotFoundException('RestaurantId not found in create mneu controller');
+      throw new NotFoundException('ไม่พบร้านอาหารที่ต้องการสร้างเมนู');
 
     try {
       const menuData: CreateMenuDto = { ...createMenuDto };
@@ -63,7 +63,7 @@ export class MenuController {
       return result;
     } catch (error) {
       this.logger.error(`Create menu controller failed: ${error}`);
-      throw new InternalServerErrorException('Failed to create single menu');
+      throw new InternalServerErrorException(`สร้างเมนู ${createMenuDto.name}ล้มเหลว`);
     }
   }
 
@@ -77,21 +77,12 @@ export class MenuController {
   async createBulkMenus(@Body() payload: CreateBulkMenusJsonPayload) {
     this.logger.log(`Req body for bulk menus: `, payload);
 
-    if (
-      !payload.createMenuDto ||
-      !Array.isArray(payload.createMenuDto) ||
-      payload.createMenuDto.length === 0
-    ) {
-      throw new BadRequestException(
-        'The request body must contain a non-empty "createMenuDto" array.',
-      );
+    if (!payload.createMenuDto || !Array.isArray(payload.createMenuDto) || payload.createMenuDto.length === 0) {
+      throw new BadRequestException('ไม่พบข้อมูลสำหรับการสร้างเมนู');
     }
 
     try {
-      const result = await this.menuService.createBulkMenus(
-        payload.restaurantId,
-        payload.createMenuDto,
-      );
+      const result = await this.menuService.createBulkMenus(payload.restaurantId, payload.createMenuDto);
       return result;
     } catch (error) {
       this.logger.error('Bulk menu creation failed in controller: ', error);
@@ -127,23 +118,18 @@ export class MenuController {
     @UploadedFile() file?: Express.Multer.File,
   ) {
     const restaurantId = updateMenuDto.restaurantId;
-    if (!restaurantId)
-      throw new NotFoundException(
-        'RestaurantId not found in update menu controller',
-      );
+    if (!restaurantId) throw new NotFoundException('ไม่พบร้านอาหารที่ต้องการแก้ไขเมนู');
 
     try {
-      if (!menuId)
-        throw new BadRequestException('Menu ID is required in URL params');
+      if (!menuId) throw new BadRequestException('ไม่พบเมนูไอดี');
 
       const menuData: UpdateMenuDto = { ...updateMenuDto };
-
       const result = await this.menuService.updateMenu(menuId, menuData, file);
 
       return result;
     } catch (error) {
       this.logger.error('Single menu update failed in controller: ', error);
-      throw new InternalServerErrorException('Failed to update single menu');
+      throw new InternalServerErrorException('แก้ไขเมนูล้มเหลว');
     }
   }
 
@@ -165,23 +151,17 @@ export class MenuController {
     let parsedUpdateMenuDtos: UpdateMenuDto[];
 
     if (!menuIds || menuIds.length === 0) {
-      throw new BadRequestException('At least one menuId is required for bulk update.');
+      throw new BadRequestException('ไม่พบเมนูที่ต้องการแก้ไข');
     }
 
     try {
       try {
         parsedUpdateMenuDtos = JSON.parse(updateMenuDto);
 
-        if (!Array.isArray(parsedUpdateMenuDtos)) {
-          throw new BadRequestException(
-            'UpdateMenuDto field must be a JSON array',
-          );
-        }
+        if (!Array.isArray(parsedUpdateMenuDtos)) throw new BadRequestException('รูปแบบไม่ถูกต้อง');
       } catch (parseError) {
         this.logger.error('Failed to parse updateMenuDto:', parseError);
-        throw new BadRequestException(
-          'Invalida JSON format for updateMenuDto field',
-        );
+        throw new BadRequestException('รูปแบบข้อมูลไม่ถูกต้อง');
       }
 
       parsedUpdateMenuDtos.forEach((dto) => {
@@ -201,7 +181,7 @@ export class MenuController {
       return result;
     } catch (error) {
       this.logger.error('Bulk menu update failed in controller: ', error);
-      throw new InternalServerErrorException('Failed to update bulk menu');
+      throw new InternalServerErrorException('แก้ไขเมนูล้มเหบว');
     }
   }
 

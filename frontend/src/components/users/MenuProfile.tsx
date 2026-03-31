@@ -1,4 +1,3 @@
-import React from "react";
 import clsx from "clsx";
 import { cva, VariantProps } from "class-variance-authority";
 import Image from "next/image";
@@ -21,7 +20,7 @@ export type MenuProfileProps = React.HTMLAttributes<HTMLDivElement> &
     VariantProps<typeof menuProfileVariant> & {
         menuId: string;
         name: string;
-        menuImg?: string;
+        menuImg: string;
         totalPrice?: number;
         sellPriceDisplay: number;
         // unitPrice: number;
@@ -29,6 +28,7 @@ export type MenuProfileProps = React.HTMLAttributes<HTMLDivElement> &
         // cookingTime: number;
         // isAvailable: boolean;
         restaurantId: string;
+        isPriority: boolean;
     }
 
 export default function MenuProfile({
@@ -44,10 +44,10 @@ export default function MenuProfile({
     // cookingTime, //
     // isAvailable, //
     restaurantId, //
+    isPriority,
     ...props
 }: MenuProfileProps) {
     const { getQuantity, addToCart, removeFromCart } = useCart();
-    const src = menuImg ? `${menuImg}` : `/picture.svg`;
     const quantity = getQuantity(menuId) > 0 ? `${getQuantity(menuId)}` : '';
 
     return (
@@ -64,16 +64,20 @@ export default function MenuProfile({
                 <Image
                     width={183}
                     height={183}
-                    src={src}
+                    sizes="(max-width: 768px) 120px, 183px"
+                    src={menuImg}
+                    priority={isPriority}
+                    fetchPriority={isPriority ? "high" : "auto"}
+                    quality={50}
                     alt="Menu profile"
                     className="rounded-lg object-cover aspect-auto w-full h-full"
                 />
             </div>
 
             <div className="flex flex-col gap-y-2 w-full">
-                <h3 className="noto-sans-bold text-sm text-primary">{name.substring(0, 21)}</h3>
+                <h3 className="font-noto-thai text-bold text-sm text-primary">{name}</h3>
                 <div className="flex justify-between items-center text-sm">
-                    <p className="text-light noto-sans-regular">{sellPriceDisplay}</p>
+                    <p className="text-light font-noto-thai">{sellPriceDisplay} บาท</p>
 
                     <div className="flex items=center gap-x-2">
                         <Button
@@ -84,7 +88,7 @@ export default function MenuProfile({
                         >
                             -
                         </Button>
-                        <p className="flex text-secondary noto-sans-bold items-center">{quantity}</p>
+                        <p className="flex text-secondary font-noto-thai text-bold items-center">{quantity}</p>
                         <Button
                             type="button"
                             size="sm"

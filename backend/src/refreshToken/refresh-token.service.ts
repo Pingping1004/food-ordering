@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { RefreshToken } from '@prisma/client';
+import type { RefreshToken } from '@prisma/client';
 
 @Injectable()
 export class RefreshTokenService {
   constructor(private readonly prisma: PrismaService) { }
 
-  async createRefreshtToken(data: {
+  async createRefreshToken(data: {
     token: string;
     jti: string;
     userId: string;
@@ -29,23 +29,6 @@ export class RefreshTokenService {
     return token ?? undefined;
   }
 
-  async markTokenAsUsed(jti: string): Promise<void> {
-    await this.prisma.refreshToken.update({
-      where: { jti },
-      data: { isUsed: true },
-    });
-  }
-
-  async invalidateAllUserRefreshTokens(UserId: string): Promise<void> {
-    await this.prisma.refreshToken.updateMany({
-      where: {
-        userId: UserId,
-        isRevoked: false,
-      },
-      data: { isRevoked: true },
-    });
-  }
-
   async updateTokenExpiry(jti: string, newExpiry: Date): Promise<void> {
     await this.prisma.refreshToken.update({
       where: { jti },
@@ -56,13 +39,6 @@ export class RefreshTokenService {
   async revokeToken(jti: string): Promise<void> {
     await this.prisma.refreshToken.update({
       where: { jti },
-      data: { isRevoked: true },
-    });
-  }
-
-  async revokeAllUserToken(userId: string): Promise<void> {
-    await this.prisma.refreshToken.updateMany({
-      where: { userId, isRevoked: false },
       data: { isRevoked: true },
     });
   }

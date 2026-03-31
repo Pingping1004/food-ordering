@@ -10,16 +10,10 @@ import {
 } from '@nestjs/common';
 import { PayoutService } from './payout.service';
 import { UpdatePayoutDto } from './dto/update-payout.dto';
-import { calculatePayout } from './payout-calculator';
 
 @Controller('payout')
 export class PayoutController {
   constructor(private readonly payoutService: PayoutService) {}
-
-  @Post(':orderId')
-  createPayout(@Param('orderId') orderId: string) {
-    return this.payoutService.createPayout(orderId);
-  }
 
   @Get('weekly')
   findWeeklyPayout(
@@ -34,23 +28,18 @@ export class PayoutController {
     return this.payoutService.findPayout(payoutId);
   }
 
-  @Get()
-  calculatePayout(@Query('amount') amount: number) {
-    return calculatePayout(amount);
+  @Get('today')
+  getTodayPayout() {
+    return this.payoutService.getTodayPayout();
   }
 
   @Get()
-  findAllPayout(payoutId?: string) {
+  findAllPayout() {
     return this.payoutService.findAllPayout();
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updatePayoutDto: UpdatePayoutDto) {
-    return this.payoutService.update(+id, updatePayoutDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.payoutService.remove(+id);
+  @Patch('update/:payoutId')
+  updatePayout(@Param('payoutId') payoutId: string, @Body() updatePayoutDto: UpdatePayoutDto) {
+    return this.payoutService.updatePayout(payoutId, updatePayoutDto.isPaid)
   }
 }

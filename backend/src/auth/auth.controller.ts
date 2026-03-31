@@ -68,7 +68,6 @@ export class AuthController {
 
     res.cookie('access_token', accessToken, {
       httpOnly: true,
-      // secure: process.env.NODE_ENV === 'production',
       secure: true,
       sameSite: 'none',
       maxAge: 30 * 60 * 1000,
@@ -76,7 +75,6 @@ export class AuthController {
 
     res.cookie('refresh_token', refreshToken, {
       httpOnly: true,
-      // secure: process.env.NODE_ENV === 'production',
       secure: true,
       sameSite: 'none',
       maxAge: 7 * 24 * 60 * 60 * 1000,
@@ -99,6 +97,7 @@ export class AuthController {
     };
   }
 
+  @Public()
   @Post('refresh')
   async refresh(
     @Req() req: Request,
@@ -106,7 +105,7 @@ export class AuthController {
   ) {
     const refreshToken = req.cookies['refresh_token'] || req.body.refreshToken;
     if (!refreshToken)
-      throw new UnauthorizedException('No refresh token provided');
+      throw new UnauthorizedException('ไม่พบโทเคน');
 
     const result = await this.authService.refresh(refreshToken);
     res.cookie('access_token', result.accessToken, {

@@ -1,65 +1,71 @@
 import Cookies from 'js-cookie';
 
+let csrfTokenMemory: string | null = null;
+let csrfFetchPromise: Promise<string> | null = null;
+
 export const getAccessToken = (): string | null => {
-    const accessToken = Cookies.get('access_token');
-    if (!accessToken) {
-        return null;
-    }
-    return accessToken;
+    return localStorage.getItem('accessToken');
 };
 
 export const setAccessToken = (token: string): void => {
     if (!token) return;
+    localStorage.setItem('accessToken', token);
+};
 
-    Cookies.set('access_token', token, {
-        secure: true,
-        sameSite: 'Lax',
-        expires: new Date(Date.now() + 60 * 30 * 1000),
-    });
-}
+export const removeAccessToken = (): void => {
+    localStorage.removeItem('accessToken');
+};
 
 export const getRefreshToken = (): string | null => {
-    const refreshToken = Cookies.get('refresh_token');
-    if (!refreshToken) {
-        return null;
-    }
-
-    return refreshToken;
-}
-
-export const getCsrfToken = (): string | null => {
-    return Cookies.get('XSRF-TOKEN') || null;
-}
-
-export const setCsrfToken = (token: string): void => {
-    if (!token) return
-
-    Cookies.set('XSRF-TOKEN', token, {
-        secure: true,
-        sameSite: 'None',
-        path: '/',
-    });
-}
+    return Cookies.get('refresh_token') || null;
+};
 
 export const setRefreshToken = (token: string): void => {
     if (!token) return;
     Cookies.set('refresh_token', token);
-}
-
-export const removeAccessToken = (): void => {
-    Cookies.remove('access_token');
-}
+};
 
 export const removeRefreshToken = (): void => {
     Cookies.remove('refresh_token');
-}
+};
 
-export const removeCsrfToken = (): void => {
-    Cookies.remove('XSRF-TOKEN');
-}
+export const getCsrfToken = (): string | null => {
+    return csrfTokenMemory;
+};
+
+export const setCsrfToken = (token: string): void => {
+    csrfTokenMemory = token;
+};
+
+export const clearCsrfToken = (): void => {
+    csrfTokenMemory = null;
+    csrfFetchPromise = null;
+};
+
+export const fetchOrGetCsrfToken = (
+    fetcher: () => Promise<string>
+): Promise<string> => {
+    if (csrfTokenMemory) return Promise.resolve(csrfTokenMemory);
+
+    if (csrfFetchPromise) return csrfFetchPromise;
+
+    csrfFetchPromise = fetcher()
+        .then(token => {
+            csrfTokenMemory = token;
+            csrfFetchPromise = null;
+            return token;
+        })
+        .catch(err => {
+            csrfFetchPromise = null;
+            throw err;
+        });
+
+    return csrfFetchPromise;
+};
 
 export const clearTokens = (): void => {
-    Cookies.remove('access_token');
+    localStorage.removeItem('accessToken');
     Cookies.remove('refresh_token');
     Cookies.remove('XSRF-TOKEN');
-}
+    clearCsrfToken();
+};

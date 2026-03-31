@@ -43,6 +43,7 @@ export class UserController {
   }
 
   @Post('request-role')
+  @Roles([Role.user])
   async createRoleRequest(@Req() req, @Body('role') requestRole: Role) {
     const userId = req.user.userId;
 

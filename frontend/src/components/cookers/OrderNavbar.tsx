@@ -3,100 +3,103 @@ import clsx from "clsx";
 import { cva, VariantProps } from "class-variance-authority";
 
 export enum OrderStatus {
+  sent = "sent",
   accepted = "accepted",
+  cancelled = "cancelled",
   rejected = "rejected",
-  receive = "receive",
-  cooking = "cooking",
-  ready = "ready",
-  done = "done",
+  completed = "completed",
 }
+
+export enum PaymentStatus {
+    paid = "paid",
+    unpaid = "unpaid",
+    verifying = "verifying",
+    failed = "failed",
+    refund_pending = "refund_pending",
+    refund_complete = "refund_complete"
+}
+
+export type NavState = "sent" | "accepted" | "completed" | "cancelled_group";
 
 const orderNavbarVariants = cva(
     "flex w-full items-center justify-center -mx-6 min-w-lvw text-light text-sm",
     {
         variants: {
             variant: {
-                receive: "",
-                cooking: "",
-                ready: "",
-                done: "",
+                sent: "",
                 accepted: "",
+                cancelled: "",
                 rejected: "",
+                completed: ""
             },
         },
         defaultVariants: {
-            variant: "receive",
+            variant: "sent",
         },
     }
 );
 
 export type CookerNavbarProps = React.HTMLAttributes<HTMLDivElement> &
   VariantProps<typeof orderNavbarVariants> & {
-    status: OrderStatus;
-    onStatusUpdate: (navStatus: OrderStatus) => void;
+    status: NavState;
+    isLargeTextMode?: boolean
+    onStatusUpdate: (navStatus: NavState) => void;
 };
 
 export const OrderNavBar = ({
     className,
     onStatusUpdate,
+    isLargeTextMode = false,
     ...props
 }: CookerNavbarProps) => {
-    const [state, setState] = useState<OrderStatus>(OrderStatus.receive);
+    const [state, setState] = useState<NavState>("sent");
 
-    const handleClick = (newState: OrderStatus) => {
+    const handleClick = (newState: NavState) => {
         setState(newState);
         onStatusUpdate(newState);
     };
+
+    const baseBtn = `w-1/2 p-2 ${isLargeTextMode ? "text-lg py-3" : "text-sm"}`;
+    const active = "text-primary border-b-2 font-noto-thai font-bold border-primary-main";
 
     return (
         <div
             className={clsx(
                 "text-center",
-                orderNavbarVariants({ variant: state }),
+                orderNavbarVariants(),
                 className
             )}
             {...props}
         >
             <button
-                onClick={() => handleClick(OrderStatus.receive)}
-                className={
-                    state === OrderStatus.receive
-                        ? "w-1/2 text-primary p-2 border-b-2 border-primary-main"
-                        : "w-1/2 p-2"
-                }
+                onClick={() => handleClick("sent")}
+                className={clsx(baseBtn, state === "sent" && active)}
             >
-        ออเดอร์ใหม่
+                ออเดอร์ใหม่
             </button>
-            {/* <button
-                onClick={() => handleClick(OrderStatus.cooking)}
-                className={
-                    state === OrderStatus.cooking
-                        ? "w-1/4 text-primary p-2 border-b-2 border-primary-main"
-                        : "w-1/4 p-2"
-                }
-            >
-        กำลังปรุง
-            </button> */}
-            {/* <button
-                onClick={() => handleClick(OrderStatus.ready)}
-                className={
-                    state === OrderStatus.ready
-                        ? "w-1/2 text-primary p-2 border-b-2 border-primary-main"
-                        : "w-1/2 p-2"
-                }
-            >
-        พร้อมเสิร์ฟ
-            </button> */}
+
             <button
-                onClick={() => handleClick(OrderStatus.done)}
-                className={
-                    state === OrderStatus.done
-                        ? "w-1/2 text-primary p-2 border-b-2 border-primary-main"
-                        : "w-1/2 p-2"
-                }
+                onClick={() => handleClick("accepted")}
+                className={clsx(baseBtn, state === "accepted" && active)}
             >
-        เสร็จ
+                รับแล้ว
+            </button>
+
+            <button
+                onClick={() => handleClick("completed")}
+                className={clsx(baseBtn, state === "completed" && active)}
+            >
+                เสร็จสิ้น
+            </button>
+
+            <button
+                onClick={() => handleClick("cancelled_group")}
+                className={clsx(baseBtn, state === "cancelled_group" && active)}
+            >
+                ยกเลิก/ไม่รับ
             </button>
         </div>
     );
 };
+
+export default OrderNavBar

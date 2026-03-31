@@ -21,6 +21,7 @@ import {
   authRateLimit,
   paymentRateLimit,
   orderRateLimit,
+  orderFetchingLimit
 } from './rateLimiting.middleware';
 import './auth/jobs/tokenClean.job';
 
@@ -61,6 +62,8 @@ async function bootstrap() {
     'https://api.promptserve.online',
     'https://promptserve-mvp.onrender.com',
     'https://localhost:8000',
+    'https://localhost:3000',
+    'http://localhost:3000',
     process.env.FRONTEND_BASE_URL,
     process.env.NEXT_PUBLIC_BACKEND_API_URL,
     process.env.WEBHOOK_ENDPOINT,
@@ -85,7 +88,9 @@ async function bootstrap() {
       'Accept',
       'X-CSRF-Token',
       'x-csrf-token',
+      'XSRF-TOKEN',
       'X-Csrf-Token',
+      'x-order-secret',
       'x-xsrf-token',
       'Authorization',
       'skipauth',
@@ -106,6 +111,7 @@ async function bootstrap() {
   app.use('/api/auth', authRateLimit);
   app.use('/api/payment', paymentRateLimit);
   app.use('/api/order/create', orderRateLimit);
+  app.use('/api/order/new', orderFetchingLimit)
 
   app.getHttpAdapter().get('/health', (req: Request, res: Response) => {
     res.send('OK');
@@ -121,8 +127,7 @@ async function bootstrap() {
 
   const APP_GLOBAL_SECRET = assertEnvVar('APP_GLOBAL_SECRET');
   if (!APP_GLOBAL_SECRET) {
-    const errorMessage =
-      '❌ CRITICAL: APP_GLOBAL_SECRET is missing. Cannot start the server.';
+    const errorMessage = '❌ CRITICAL: APP_GLOBAL_SECRET is missing. Cannot start the server.';
     logger.error(errorMessage);
 
     setTimeout(() => {

@@ -4,12 +4,12 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model RoleRequest {
   requestId   String            @id @default(uuid())
   userId      String            @unique
+  username    String
   requestRole Role
   status      RoleRequestStatus
   createdAt   DateTime          @default(now())
@@ -31,13 +31,17 @@ model RefreshToken {
 
 model Payout {
   payoutId          String     @id @default(uuid())
+  grossAmount       Decimal    @db.Decimal(10, 2)
   restaurantRevenue Decimal    @db.Decimal(10, 2)
   platformFee       Decimal    @db.Decimal(10, 2)
   transactionFee    Decimal    @db.Decimal(10, 2)
+  vat               Decimal    @db.Decimal(10, 2)
+  refundAmount      Decimal?    @db.Decimal(10, 2)
   isPaid            Boolean    @default(false)
   startDate         DateTime
   endDate           DateTime
   paidAt            DateTime?
+  refundAt            DateTime?
   createdAt         DateTime   @default(now())
   orderId           String     @unique
   restaurantName    String
@@ -64,9 +68,10 @@ model Restaurant {
   adminTel            String
   adminEmail          String
 
-  accountNumber       String?             @default("0000000000")
-  bankAccount         String?             @default("TEST ACCOUNT")
-  accountHolderFullName   String?         @default("TEST BANK")
+  accountNumber       String
+  bankAccount         String
+  accountHolderFullName   String
+  paymentQr           String              @unique
 
   openDate            DateWeek[]
   userId              String               @unique
@@ -91,6 +96,8 @@ model Menu {
   isAvailable  Boolean     @default(true)
   restaurantId String
   restaurant   Restaurant  @relation("RestaurantMenus", fields: [restaurantId], references: [restaurantId], onDelete: Cascade)
+
+  inventories   Inventory[]
   orderMenus   OrderMenu[] @relation("menuToOrderMenus")
 
   @@unique([restaurantId, name])
@@ -99,13 +106,25 @@ model Menu {
   @@index([cookingTime])
 }
 
+model Inventory {
+  id          String    @id @default(uuid())
+  menuId      String
+  date        DateTime
+  remaining   Int
+  dailyQuota  Int
+
+  menu        Menu      @relation(fields: [menuId], references: [menuId], onDelete: Cascade)
+
+  @@unique([menuId, date])
+}
+
 model OrderMenu {
   orderMenuId String  @id @default(uuid())
   quantity    Int
   menuName    String
   menuImg     String?
-  unitPrice   Float
-  totalPrice  Decimal   @db.Decimal(10, 2)
+  unitPrice   Decimal @db.Decimal(10, 2)
+  maxDaily    Int
   orderId     String
   menuId      String
   menu        Menu    @relation("menuToOrderMenus", fields: [menuId], references: [menuId], onDelete: Cascade)
@@ -117,29 +136,39 @@ model OrderMenu {
 
 model Order {
   orderId              String      @id @default(uuid())
-  status               OrderStatus @default(receive)
+  orderSecret          String?      @default(uuid())    @unique
+  status               OrderStatus @default(sent)
   userTel              String
-  userEmail           String
   orderAt              DateTime    @default(now())
+  acceptAt             DateTime?
   deliverAt            DateTime
-  isPaid               PaymentStatus      @default(unpaid)
+  paymentStatus        PaymentStatus      @default(unpaid)
   isDelay              Boolean     @default(false)
   totalAmount          Decimal    @db.Decimal(10, 2)
-  paidAt               DateTime?
-  paymentGatewayChargeId        String?     @unique @map("omise_charge_id")
-  paymentMethod    String?     @map("payment_method_type")
+
+  paidAt               DateTime
+  paymentId            String      @unique
+  paymentSlipImg       String
+  paymentMethod        String?     @map("payment_method_type")
   paymentGatewayStatus String?     @map("payment_gateway_status")
+  
+  completedAt          DateTime?
+  cancelledAt          DateTime?
+  rejectedAt           DateTime?
+  refundAt             DateTime?
+
   restaurantId         String
   restaurant           Restaurant  @relation("restaurantToOrder", fields: [restaurantId], references: [restaurantId], onDelete: Cascade)
   orderMenus           OrderMenu[] @relation("OrderToMenu")
+  
   payoutId             String?
   payout               Payout?     @relation("OrderToPayout")
   userId               String?
-  user                 User?          @relation("OrderToUser", fields: [userId], references: [userId], onDelete: Cascade)
+  user                 User?       @relation("OrderToUser", fields: [userId], references: [userId], onDelete: Cascade)
 
   @@index([restaurantId])
+  @@index([restaurantId, orderAt])
   @@index([status])
-  @@index([isPaid])
   @@index([orderAt])
   @@index([payoutId])
   @@index([userTel])
@@ -148,7 +177,7 @@ model Order {
 model User {
   userId        String         @id @default(uuid())
   email         String         @unique
-  name          String?
+  name          String
   password      String
   profileImg    String?
   role          Role           @default(user)
@@ -187,11 +216,11 @@ enum PaymentMethod {
 }
 
 enum OrderStatus {
-  receive
-  cooking
-  ready
-  done
+  sent
+  accepted
+  cancelled
   rejected
+  completed
 }
 
 enum Role {
@@ -204,8 +233,10 @@ enum Role {
 enum PaymentStatus {
   paid
   unpaid
-  processing
-  rejected
+  verifying
+  failed
+  refund_pending
+  refund_complete
 }
 
 enum RestaurantCategory {
