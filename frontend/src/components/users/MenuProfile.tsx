@@ -77,7 +77,7 @@ export default function MenuProfile({
             <div className="flex flex-col gap-y-2 w-full">
                 <h3 className="font-noto-thai text-bold text-sm text-primary">{name}</h3>
                 <div className="flex justify-between items-center text-sm">
-                    <p className="text-light font-noto-thai">{sellPriceDisplay}</p>
+                    <p className="text-light font-noto-thai">{sellPriceDisplay} บาท</p>
 
                     <div className="flex items=center gap-x-2">
                         <Button
