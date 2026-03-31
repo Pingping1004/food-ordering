@@ -60,7 +60,7 @@ export const OrderNavBar = ({
     };
 
     const baseBtn = `w-1/2 p-2 ${isLargeTextMode ? "text-lg py-3" : "text-sm"}`;
-    const active = "text-primary border-b-2 border-primary-main";
+    const active = "text-primary border-b-2 font-noto-thai font-bold border-primary-main";
 
     return (
         <div

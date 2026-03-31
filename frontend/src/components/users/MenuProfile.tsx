@@ -75,7 +75,7 @@ export default function MenuProfile({
             </div>
 
             <div className="flex flex-col gap-y-2 w-full">
-                <h3 className="font-noto-thai text-bold text-sm text-primary">{name.substring(0, 21)}</h3>
+                <h3 className="font-noto-thai text-bold text-sm text-primary">{name}</h3>
                 <div className="flex justify-between items-center text-sm">
                     <p className="text-light font-noto-thai">{sellPriceDisplay}</p>
 

@@ -15,8 +15,8 @@ export type AccountType =
   | "01098" // SME Bank
   | "01034" // BAAC
   | "01035" // EXIM Bank
-  | "01030" // Government Savings Bank
-  | "01033" // Government Housing Bank
+  | "01030" // Government Savings Bank(Aomsin)
+  | "01033" // Government Housing Bank(ธอส)
   | "01066" // Islamic Bank of Thailand
   | "02001" // PromptPay (Phone Number)
   | "02003" // PromptPay (Citizen ID / Tax ID)

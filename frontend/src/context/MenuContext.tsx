@@ -7,7 +7,7 @@ import { api } from "@/lib/api";
 export interface Menu {
     menuId: string;
     name: string;
-    menuImg?: string;
+    menuImg: string;
     sellPriceDisplay: number;
     price: number;
     maxDaily: number;

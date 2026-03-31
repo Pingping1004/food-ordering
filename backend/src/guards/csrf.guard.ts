@@ -34,7 +34,6 @@ export class CsrfGuard implements CanActivate {
 
     const csrfHeader = request.header('x-csrf-token') as string;
 
-    // And verify the token's integrity using the CsrfTokenService
     if (!csrfHeader || !this.csrfTokenService.verifyToken(csrfHeader)) {
       throw new ForbiddenException({
         statusCode: HttpStatus.FORBIDDEN,
