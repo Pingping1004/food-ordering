@@ -1,5 +1,10 @@
 import axios, { AxiosRequestConfig, AxiosError, AxiosHeaders } from "axios";
-import { setAccessToken, clearTokens, removeAccessToken, clearCsrfToken, fetchOrGetCsrfToken, getCsrfToken } from "./token";
+import { setAccessToken, clearTokens, removeAccessToken, clearCsrfToken, fetchOrGetCsrfToken } from "./token";
+
+type ApiErrorResponse = {
+    message?: string;
+    code?: string;
+};
 
 const baseBackendUrl = `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/api`;
 
@@ -164,9 +169,7 @@ api.interceptors.response.use(
         const status = error.response?.status;
 
         // handle CSRF error — clear token and retry once
-        const isCsrfError =
-            status === 403 &&
-            (error.response?.data as any)?.code === 'INVALID_CSRF_TOKEN';
+        const isCsrfError = status === 403 && (error.response?.data as ApiErrorResponse)?.code === 'INVALID_CSRF_TOKEN';
 
         if (isCsrfError && !originalRequest._retry) {
             originalRequest._retry = true;
