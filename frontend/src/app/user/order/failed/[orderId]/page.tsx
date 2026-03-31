@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
-import Image from 'next/image';
 import LoadingPage from '@/components/LoadingPage';
+import { ErrorIcon } from '@/components/ui/icon/error';
 
 export default function FailedOrderPage() {
     const searchParams = useSearchParams();
@@ -56,12 +56,8 @@ export default function FailedOrderPage() {
             <h1 className="flex justify-center font-noto-thai text-bold text-primary text-2xl">{restaurantName}</h1>
 
             <div className="flex flex-col justify-center items-center gap-y-10">
-                <Image
-                    src="/fail.svg"
-                    width={120}
-                    height={120}
-                    alt="Failed icon"
-                />
+                <ErrorIcon />
+
                 <div className="flex flex-col items-center gap-y-1">
                     <h4 className="text-lg text-success font-noto-thai">ชำระเงินล้มเหลว</h4>
                     <h1 className="text-2xl font-noto-thai text-bold text-primary">ออเดอร์ {orderId?.substring(0, 4)}</h1>

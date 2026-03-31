@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import Image from 'next/image';
 import { getParamId } from '@/util/param';
 import { OrderMenuType } from '@/components/users/OrderList';
 import { OrderStatus, PaymentStatus } from '@/components/cookers/OrderNavbar';
@@ -11,6 +10,7 @@ import { Button } from '@/components/Button';
 import { getTimeFormat } from '@/util/time';
 import LoadingPage from '@/components/LoadingPage';
 import { toastDanger } from '@/components/ui/Toast';
+import { SuccessIcon } from '@/components/ui/icon/success';
 
 export interface Order {
     orderMenus: OrderMenuType[];
@@ -117,13 +117,8 @@ export default function DoneOrderPage() {
             <h1 className="flex justify-center font-noto-thai text-bold text-primary text-2xl">{restaurantName}</h1>
 
             <main className="flex flex-col justify-center items-center gap-y-10">
-                <Image
-                    src="/success.svg"
-                    width={120}
-                    height={120}
-                    loading="lazy"
-                    alt="Success icon"
-                />
+                <SuccessIcon />
+                
                 <div className="flex flex-col items-center gap-y-1">
                     <h4 className="text-lg text-success font-noto-thai">ส่งออเดอร์สำเร็จ</h4>
                     <h1 className="text-2xl font-noto-thai text-bold text-primary">ออเดอร์ {orderId?.substring(0, 4)}</h1>
