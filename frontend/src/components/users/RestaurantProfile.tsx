@@ -75,8 +75,8 @@ export const RestaurantProfile: React.FC<RestaurantProfileProps> = ({
             </div>
 
             <div className="flex flex-col gap-y-2">
-                <h3 className="font-noto-thai text-bold text-sm text-primary">{name}</h3>
-                <p className="font-noto-thai text-xs text-light">{categories.slice(0, 2).join(', ')}</p>
+                <h3 className="font-noto-thai text-bold text-md text-primary">{name}</h3>
+                {/* <p className="font-noto-thai text-xs text-light">{categories.slice(0, 2).join(', ')}</p> */}
             </div>
         </div>
     );

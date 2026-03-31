@@ -11,7 +11,6 @@ import {
   Logger,
   Query,
   NotFoundException,
-  BadRequestException,
   Headers,
 } from '@nestjs/common';
 import { OrderService } from './order.service';
@@ -45,11 +44,7 @@ export class OrderController {
       const result = await this.orderService.createOrder(createOrderDto, userId);
       return result;
     } catch (error) {
-      this.logger.error(
-        'Error in createOrder controller function: ',
-        error.message,
-        error.stack,
-      );
+      this.logger.error('Error in createOrder controller function: ', error.message, error.stack);
       throw error;
     }
   }

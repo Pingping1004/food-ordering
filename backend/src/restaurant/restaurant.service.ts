@@ -120,6 +120,7 @@ export class RestaurantService {
           avgCookingTime: true,
           isTemporarilyClosed: true,
           accountNumber: true,
+          bankAccount: true,
           accountHolderFullName: true,
           paymentQr: true,
         }

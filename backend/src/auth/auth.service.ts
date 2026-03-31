@@ -86,17 +86,16 @@ export class AuthService {
       },
     );
 
+    const refreshExpiresIn = 7 * 24 * 60 * 60;
+    const refreshTokenExpiresAt = new Date(Date.now() + refreshExpiresIn * 1000)
     const refreshToken = await this.jwtService.signAsync(
       { ...payload, jti } as RefreshTokenPayload,
       {
-        expiresIn: '7d',
+        expiresIn: `${refreshExpiresIn}s`,
       },
     );
 
-    const refreshTokenExpiresAt = new Date(
-      Date.now() + 7 * 24 * 60 * 60 * 1000,
-    );
-    await this.refreshTokenService.createRefreshtToken({
+    await this.refreshTokenService.createRefreshToken({
       token: refreshToken,
       jti,
       userId: payload.sub,
@@ -107,7 +106,7 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  async login(loginDto: LoginDto) { 
+  async login(loginDto: LoginDto) {
     this.csrfTokenService.generateToken();
     const validationResult = await this.validateUser(loginDto.email, loginDto.password);
     if (!validationResult) throw new NotFoundException('ไม่พบผลการยืนยัน');
@@ -154,11 +153,9 @@ export class AuthService {
       if (!payload.jti || !payload.sub) throw new UnauthorizedException('โทเคนไม่ถูกต้อง');
 
       const storedToken = await this.refreshTokenService.findTokenByJti(payload.jti);
+
       if (!storedToken || storedToken.isRevoked) throw new UnauthorizedException('Refresh token ไม่ถูกต้อง');
       if (storedToken.expiresAt < new Date()) throw new UnauthorizedException('Refresh token หมดอายุ');
-
-      const newExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-      await this.refreshTokenService.updateTokenExpiry(payload.jti, newExpiry);
 
       const user = await this.userService.findOneUser(payload.sub);
       if (!user) {
@@ -173,6 +170,7 @@ export class AuthService {
       };
 
       const { accessToken, refreshToken: newRefreshToken } = await this.generateToken(newAccessTokenPayload);
+      await this.refreshTokenService.revokeToken(payload.jti);
 
       return {
         accessToken,

@@ -13,6 +13,7 @@ export interface RestaurantCache {
     avgCookingTime: number,
     isTemporarilyClosed: boolean,
     accountNumber: string,
+    bankAccount: string,
     accountHolderFullName: string,
 }
 

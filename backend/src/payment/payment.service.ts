@@ -1,9 +1,9 @@
 import {
-    BadRequestException,
     HttpException,
     HttpStatus,
     Injectable,
     Logger,
+    NotFoundException,
 } from '@nestjs/common';
 import axios, { AxiosError } from 'axios';
 import { PaymentPayload } from 'src/common/interface/accountType';
@@ -18,10 +18,13 @@ export class PaymentService {
     ) { }
 
     async verifyPayment(data: PaymentPayload) {
+        if (!process.env.SLIP_VERIFY_SECRET) throw new NotFoundException("SLIP_VERIFY_SECRET key missing");
+        this.logger.log("Secret:", process.env.SLIP_VERIFY_SECRET);
+
         try {
             const response = await axios.post("https://connect.slip2go.com/api/verify-slip/qr-base64/info", data, {
                 headers: {
-                    Authorization: `Bearer ${process.env.SLIP_VEERIFY_SECRET}`
+                    Authorization: `Bearer ${process.env.SLIP_VERIFY_SECRET}`
                 },
             });
     

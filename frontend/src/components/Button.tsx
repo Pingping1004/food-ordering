@@ -7,7 +7,7 @@ const button = cva("font-noto-thai justify-center text-sm", {
         variant: {
             primary: "bg-primary-main text-white border-1",
             secondary: "bg-primary-light text-primary-main",
-            tertiary: "border-1 border-primary text-primary-color text-sm",
+            tertiary: "border-1 border-primary-main text-primary-main text-sm",
             danger: "bg-danger-main text-white",
             success: "bg-success-main text-white",
             secondaryDanger: "bg-danger-light text-danger-main",
