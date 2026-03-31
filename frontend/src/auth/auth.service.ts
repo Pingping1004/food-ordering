@@ -1,7 +1,6 @@
 import { api } from "@/lib/api"
 import { User } from "./auth.types"
 import axios from "axios"
-import Cookies from "js-cookie"
 
 export async function loginApi(email: string, password: string) {
     try {
