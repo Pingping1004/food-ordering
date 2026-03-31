@@ -28,7 +28,7 @@ type MenuProps = React.HtmlHTMLAttributes<HTMLDivElement> &
         restaurantid: string;
         menuId: string;
         name: string;
-        menuImg?: string;
+        menuImg: string;
         maxDaily: number;
         cookingTime: number;
         price: number;
@@ -54,7 +54,6 @@ export const Menu = ({
 
 
     const router = useRouter();
-    const src = menuImg ?? '/picture.svg';
 
     const handleToggleClick = useCallback((checked: boolean) => {
         // Pass the new checked state directly to the parent
@@ -78,7 +77,7 @@ export const Menu = ({
         >
             <header className="flex items-center">
                 <Image
-                    src={src}
+                    src={menuImg}
                     alt={name}
                     width={96}
                     height={96}

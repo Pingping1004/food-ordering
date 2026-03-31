@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useEffect, useRef, useState } from 'react'
-import { MenuProvider, useMenu } from '@/context/MenuContext'
+import { useMenu } from '@/context/MenuContext'
 import { useCart } from '@/context/CartContext';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/Button';
@@ -12,7 +12,7 @@ import { useCooker } from '@/context/Cookercontext';
 const MenuProfile = dynamic(() => import("../../../../components/users/MenuProfile"), { ssr: false })
 const RestaurantHeader = dynamic(() => import("@/components/users/RestaurantHeader"))
 
-function MenuContext() {
+function MenuContextPage() {
     const { menus } = useMenu();
     const { cooker } = useCooker();
     const { cart } = useCart();
@@ -89,8 +89,6 @@ function MenuContext() {
 
 export default function UserMenuPage() {
     return (
-        <MenuProvider>
-            <MenuContext />
-        </MenuProvider>
+        <MenuContextPage />
     );
 }

@@ -10,12 +10,10 @@ interface RestaurantHeaderType {
 }
 
 export default function RestaurantHeader({ name, restaurantImg, openTime, closeTime, adminTel }: Readonly<RestaurantHeaderType>) {
-    const src = restaurantImg ? `${restaurantImg}` : `/picture.svg`;
-
     return (
         <div className="flex w-full gap-x-6 px-6 py-4 border-1 border-color rounded-lg">
             <Image
-                src={src}
+                src={restaurantImg}
                 width={74}
                 height={74}
                 alt="restaurant profile"

@@ -4,7 +4,7 @@ import { useState, useCallback, useRef } from 'react'
 import CookerHeader from '@/components/cookers/CookerHeader'
 import { Button } from '@/components/Button'
 import { Menu as MenuComponent } from '@/components/cookers/Menu'
-import { useMenu, MenuProvider, Menu as MenuType } from '@/context/MenuContext';
+import { useMenu, Menu as MenuType } from '@/context/MenuContext';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useCooker } from '@/context/Cookercontext';
@@ -125,8 +125,6 @@ function Page() {
 
 export default function ManageMenuPage() {
     return (
-        <MenuProvider>
-            <Page />
-        </MenuProvider>
+        <Page />
     )
 }

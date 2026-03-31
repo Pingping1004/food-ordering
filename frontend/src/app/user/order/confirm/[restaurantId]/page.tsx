@@ -2,7 +2,6 @@
 
 import dynamic from 'next/dynamic';
 import { useCart } from '@/context/CartContext';
-import { MenuProvider } from '@/context/MenuContext';
 import { OrderMenuType } from '@/components/users/OrderList';
 import TimePickerInput from '@/components/ui/TimePicker';
 import { Button } from '@/components/Button';
@@ -106,7 +105,7 @@ function OrderConfirmContext() {
         return;
     }
 
-    const paymentQrImageUrl = cooker.paymentQr ?? "/picture.svg"
+    const paymentQrImageUrl = cooker.paymentQr
     const paymentSlipImg = watch("paymentSlipImg");
     let isButtonDisabled = isSubmitting || !isValid || !isDirty || expired || cart.length === 0;
 
@@ -336,8 +335,6 @@ function OrderConfirmContext() {
 export default function OrderConfirmPage() {
 
     return (
-        <MenuProvider>
-            <OrderConfirmContext />
-        </MenuProvider>
+        <OrderConfirmContext />
     );
 }

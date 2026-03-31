@@ -5,7 +5,7 @@ import { OrderProps } from "@/components/cookers/Order";
 import { NavState, OrderStatus, PaymentStatus } from "@/components/cookers/OrderNavbar";
 import LoadingPage from "@/components/LoadingPage";
 import { Button } from "@/components/Button";
-import { CookerProvider, useCooker } from "@/context/Cookercontext";
+import { useCooker } from "@/context/Cookercontext";
 import { api } from "@/lib/api";
 import { getDateFormat, getTimeFormat } from "@/util/time";
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
@@ -447,8 +447,6 @@ function Page() {
 
 export default function CookerHomePage() {
     return (
-        <CookerProvider>
-            <Page />
-        </CookerProvider>
+        <Page />
     )
 }
