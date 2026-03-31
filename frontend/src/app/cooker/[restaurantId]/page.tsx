@@ -10,7 +10,7 @@ import { api } from "@/lib/api";
 import { getDateFormat, getTimeFormat } from "@/util/time";
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { toastDanger, toastSuccess } from "@/components/ui/Toast";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import { getParamId } from "@/util/param";
 
 const Modal = dynamic(() => import("../../../components/users/Modal"), { ssr: false })
@@ -38,6 +38,9 @@ function Page() {
     const params = useParams();
     const restaurantId = getParamId(params.restaurantId);
 
+    const segments = usePathname().split("/").filter(Boolean);
+    const isOrderPage = Boolean(restaurantId) && segments.length === 2;
+
     const fetchInitialOrders = useCallback(async () => {
         const response = await api.get(`/order/today/${restaurantId}`);
         const data = response.data;
@@ -58,12 +61,6 @@ function Page() {
     const fetchNewOrders = useCallback(async () => {
         if (fetchingRef.current) return
         fetchingRef.current = true;
-
-        if (document.hidden) {
-            pollingIntervalRef.current = 8000;
-            fetchingRef.current = false;
-            return;
-        }
 
         try {
             const url = lastTimestampRef.current
@@ -225,6 +222,14 @@ function Page() {
         ordersRef.current = orders;
     }, [orders]);
 
+    const canPoll = () => {
+        return (
+            !document.hidden &&
+            isOrderPage &&
+            restaurantId
+        );
+    };
+
     useEffect(() => {
         if (!restaurantId) return;
 
@@ -234,7 +239,9 @@ function Page() {
         const loop = async () => {
             if (!isMounted || document.hidden) return;
 
-            await fetchNewOrders();
+            if (canPoll()) {
+                await fetchNewOrders();
+            }
 
             timeoutId = setTimeout(loop, pollingIntervalRef.current);
         };
@@ -254,7 +261,7 @@ function Page() {
 
     useEffect(() => {
         const handleVisibility = () => {
-            if (!document.hidden) {
+            if (!document.hidden && isOrderPage) {
                 fetchNewOrders();
             }
         };
@@ -265,6 +272,12 @@ function Page() {
             document.removeEventListener("visibilitychange", handleVisibility);
         };
     }, [fetchNewOrders]);
+
+    useEffect(() => {
+        if (!isOrderPage) {
+            fetchingRef.current = false;
+        }
+    }, [isOrderPage]);
 
     useEffect(() => {
         const interval = setInterval(() => {
