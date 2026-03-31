@@ -12,6 +12,8 @@ import { LoginDto } from './dto/login.dto';
 import { Request, Response } from 'express';
 import { Public } from 'src/decorators/public.decorator';
 import { CsrfTokenService } from 'src/csrf/csrf.service';
+import { accessTokenCookieOptions, clearAccessToken, clearRefreshToken, csrfCookieOptions, refreshTokenCookieOptions } from './cookie-options.helper';
+import { RefreshTokenService } from 'src/refreshToken/refresh-token.service';
 
 // Extend the Request interface to include csrfToken
 declare module 'express-serve-static-core' {
@@ -25,7 +27,8 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly csrfTokenService: CsrfTokenService,
-  ) {}
+    private readonly refreshTokenService: RefreshTokenService,
+  ) { }
 
   @Public()
   @Post('signup')
@@ -33,22 +36,13 @@ export class AuthController {
     @Body() signupDto: SignupDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const { user, accessToken, refreshToken } =
-      await this.authService.register(signupDto);
+    const { user, accessToken, refreshToken } = await this.authService.register(signupDto);
 
-    res.cookie('access_token', accessToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'none',
-      maxAge: 30 * 60 * 1000,
-    });
+    res.cookie('access_token', accessToken, accessTokenCookieOptions);
+    res.cookie('refresh_token', refreshToken, refreshTokenCookieOptions);
 
-    res.cookie('refresh_token', refreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'none',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    const csrfTokenForClient = this.csrfTokenService.generateToken()
+    res.cookie('XSRF-TOKEN', csrfTokenForClient, csrfCookieOptions);
 
     return {
       message: 'Signup successful',
@@ -63,37 +57,17 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
     @Req() req: Request,
   ) {
-    const { user, accessToken, refreshToken } =
-      await this.authService.login(loginDto);
+    const { user, accessToken, refreshToken } = await this.authService.login(loginDto);
 
-    res.cookie('access_token', accessToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'none',
-      maxAge: 30 * 60 * 1000,
-    });
+    res.cookie('access_token', accessToken, accessTokenCookieOptions);
+    res.cookie('refresh_token', refreshToken, refreshTokenCookieOptions);
 
-    res.cookie('refresh_token', refreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'none',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-
-    const csrfTokenForClient = this.csrfTokenService.generateToken(); // Use your service to generate the token
-    res.cookie('XSRF-TOKEN', csrfTokenForClient, {
-      httpOnly: false,
-      secure: true,
-      sameSite: 'none',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: '/',
-      domain: '.promptserve.online',
-    });
+    const csrfTokenForClient = this.csrfTokenService.generateToken();
+    res.cookie('XSRF-TOKEN', csrfTokenForClient, csrfCookieOptions);
 
     return {
       message: 'Login successful',
       user: user,
-      accessToken,
     };
   }
 
@@ -103,37 +77,29 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const refreshToken = req.cookies['refresh_token'] || req.body.refreshToken;
+    const refreshToken = req.cookies['refresh_token']
     if (!refreshToken)
       throw new UnauthorizedException('ไม่พบโทเคน');
 
     const result = await this.authService.refresh(refreshToken);
-    res.cookie('access_token', result.accessToken, {
-      httpOnly: true,
-      secure:
-        process.env.NODE_ENV === 'production' ||
-        process.env.NODE_ENV === 'development_https',
-      sameSite: 'lax',
-      expires: new Date(Date.now() + 30 * 60 * 1000),
-      path: '/',
-    });
-    res.cookie('refresh_token', result.refreshToken, {
-      httpOnly: true,
-      secure:
-        process.env.NODE_ENV === 'production' ||
-        process.env.NODE_ENV === 'development_https',
-      sameSite: 'lax',
-      expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      path: '/',
-    });
+    res.cookie('access_token', result.accessToken, accessTokenCookieOptions);
+    res.cookie('refresh_token', result.refreshToken, refreshTokenCookieOptions);
 
-    return { accessToken: result.accessToken, user: result.user };
+    return { message: 'Token refreshed', user: result.user };
   }
 
   @Post('/logout')
-  async logout(@Req() req, @Res({ passthrough: true }) res: Response) {
-    res.clearCookie('access_token');
-    res.clearCookie('refresh_token');
-    return { message: `Logout successful` };
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    // ADD server-side invalidation
+    const refreshToken = req.cookies['refresh_token'];
+    if (refreshToken) {
+      await this.refreshTokenService.revokeToken(refreshToken);
+    }
+
+    res.clearCookie('access_token', clearAccessToken);
+    res.clearCookie('refresh_token', clearRefreshToken);
+    res.clearCookie('XSRF-TOKEN', { path: '/', domain: clearAccessToken.domain });
+
+    return { message: 'Logout successful' };
   }
 }

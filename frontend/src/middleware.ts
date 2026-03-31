@@ -1,19 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import type { UserRole } from "./auth/auth.types"
 
-function base64UrlDecode(str: string) {
-  str = str.replace(/-/g, "+").replace(/_/g, "/");
-  const pad = str.length % 4;
-  if (pad) str += "=".repeat(4 - pad);
-
-  return atob(str);
-}
-
-function getRole(token?: string): UserRole | null {
+function getRoleFromToken(token?: string): UserRole | null {
   if (!token) return null
 
   try {
-    const payload = JSON.parse(base64UrlDecode(token.split(".")[1]))
+    const payload = JSON.parse(
+      Buffer.from(token.split(".")[1], "base64").toString()
+    )
 
     return payload.role
   } catch {
@@ -25,7 +19,7 @@ export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
   const token = req.cookies.get("access_token")?.value;
-  const role = getRole(token)
+  const role = getRoleFromToken(token)
 
   // cooker
   if (pathname.startsWith("/cooker")) {
