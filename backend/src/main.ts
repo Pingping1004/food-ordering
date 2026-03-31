@@ -21,6 +21,7 @@ import {
   authRateLimit,
   paymentRateLimit,
   orderRateLimit,
+  orderFetchingLimit
 } from './rateLimiting.middleware';
 import './auth/jobs/tokenClean.job';
 
@@ -110,6 +111,7 @@ async function bootstrap() {
   app.use('/api/auth', authRateLimit);
   app.use('/api/payment', paymentRateLimit);
   app.use('/api/order/create', orderRateLimit);
+  app.use('/api/order/new', orderFetchingLimit)
 
   app.getHttpAdapter().get('/health', (req: Request, res: Response) => {
     res.send('OK');

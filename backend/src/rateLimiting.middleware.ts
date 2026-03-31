@@ -1,11 +1,11 @@
 import rateLimit from 'express-rate-limit';
 
 export const globalRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 1000,
+  windowMs: 1 * 60 * 1000,
+  max: 500,
   message: {
     error: 'รีเควสจากIP เกินขีดจำกัด กรุณาลองใหม่อีกครั้ง',
-    retryAfter: '15 minutes'
+    retryAfter: '1 minutes'
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -39,9 +39,18 @@ export const paymentRateLimit = rateLimit({
 
 export const orderRateLimit = rateLimit({
   windowMs: 1 * 60 * 1000,
-  max: 5,
+  max: 30,
   message: {
-    error: 'จำนวนรีเควสในการาั่งออเดอร์เกินขีดจำกัด กรุณาลองใหม่อีกครั้ง',
+    error: 'จำนวนรีเควสในการสั่งออเดอร์เกินขีดจำกัด กรุณาลองใหม่อีกครั้ง',
+    retryAfter: '1 minute'
+  }
+});
+
+export const orderFetchingLimit = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 300,
+  message: {
+    error: 'จำนวนรีเควสในการดึงข้อมูลออเดอร์เกินขีดจำกัด กรุณาลองใหม่อีกครั้ง',
     retryAfter: '1 minute'
   }
 });
