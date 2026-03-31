@@ -1,7 +1,6 @@
 import { Inject, Injectable, NotFoundException, forwardRef } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import moment from "moment";
-import { clearMenuQuotaCache } from "src/menu/menuCache";
 import { PrismaService } from "src/prisma/prisma.service";
 
 @Injectable()
@@ -70,6 +69,11 @@ export class InventoryService {
                 select: {
                     menuId: true,
                     remaining: true,
+                    menu: {
+                        select: {
+                            name: true
+                        }
+                    }
                 }
             })
 
@@ -89,5 +93,40 @@ export class InventoryService {
         } finally {
             this.pendingQuotaRequests.delete(requestKey)
         }
+    }
+
+    async syncInventoryQuotaTx(tx: Prisma.TransactionClient, menuId: string, newMaxDaily: number) {
+        const today = moment().tz('Asia/Bangkok').startOf('day').toDate();
+
+        const inventory = await this.prisma.inventory.findUnique({
+            where: {
+                menuId_date: { menuId, date: today }
+            }
+        });
+
+        if (!inventory) {
+            await tx.inventory.create({
+                data: {
+                    menuId,
+                    date: today,
+                    dailyQuota: newMaxDaily,
+                    remaining: newMaxDaily
+                }
+            });
+            return;
+        }
+
+        const diff = newMaxDaily - inventory.dailyQuota;
+        const newRemaining = Math.max(0, inventory.remaining + diff);
+
+        await tx.inventory.update({
+            where: {
+                menuId_date: { menuId, date: today }
+            },
+            data: {
+                dailyQuota: newMaxDaily,
+                remaining: newRemaining
+            }
+        });
     }
 }
