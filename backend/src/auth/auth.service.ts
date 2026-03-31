@@ -95,8 +95,9 @@ export class AuthService {
       },
     );
 
+    const hashedToken = await bcrypt.hash(refreshToken, 10);
     await this.refreshTokenService.createRefreshToken({
-      token: refreshToken,
+      token: hashedToken,
       jti,
       userId: payload.sub,
       expiresAt: refreshTokenExpiresAt,
@@ -156,6 +157,9 @@ export class AuthService {
 
       if (!storedToken || storedToken.isRevoked) throw new UnauthorizedException('Refresh token ไม่ถูกต้อง');
       if (storedToken.expiresAt < new Date()) throw new UnauthorizedException('Refresh token หมดอายุ');
+
+      const isMatch = await bcrypt.compare(refreshToken, storedToken.token);
+      if (!isMatch) throw new UnauthorizedException();
 
       const user = await this.userService.findOneUser(payload.sub);
       if (!user) {
