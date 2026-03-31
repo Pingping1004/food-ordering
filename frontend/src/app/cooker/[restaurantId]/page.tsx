@@ -406,6 +406,7 @@ function Page() {
             <main>
                 {filterTodayOrderStatus.map((order) => (
                     <Order
+                        key={order.orderId}
                         orderId={order.orderId}
                         totalAmount={order.totalAmount}
                         isDelay={order.isDelay}
