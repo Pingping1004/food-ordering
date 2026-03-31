@@ -481,9 +481,15 @@ export class MenuService implements OnModuleInit {
             updateData.menuImg = url;
         }
 
-        const result = await this.prisma.menu.update({
-            where: { menuId },
-            data: updateData,
+        const result = await this.prisma.$transaction(async (tx) => {
+            const updatedMenu = await tx.menu.update({
+                where: { menuId },
+                data: updateData,
+            });
+
+            if (updateData.maxDaily !== undefined) await this.inventoryService.syncInventoryQuotaTx(tx, menuId, updateData.maxDaily);
+
+            return updatedMenu;
         });
 
         this.invalidateRestaurantMenuCache(existingMenu.restaurantId);
