@@ -44,10 +44,7 @@ export class AuthController {
     const csrfTokenForClient = this.csrfTokenService.generateToken()
     res.cookie('XSRF-TOKEN', csrfTokenForClient, csrfCookieOptions);
 
-    return {
-      message: 'Signup successful',
-      user: user,
-    };
+    return { message: 'Signup successful', user: user };
   }
 
   @Public()
@@ -55,7 +52,6 @@ export class AuthController {
   async login(
     @Body() loginDto: LoginDto,
     @Res({ passthrough: true }) res: Response,
-    @Req() req: Request,
   ) {
     const { user, accessToken, refreshToken } = await this.authService.login(loginDto);
 
@@ -65,10 +61,7 @@ export class AuthController {
     const csrfTokenForClient = this.csrfTokenService.generateToken();
     res.cookie('XSRF-TOKEN', csrfTokenForClient, csrfCookieOptions);
 
-    return {
-      message: 'Login successful',
-      user: user,
-    };
+    return { message: 'Login successful', user: user };
   }
 
   @Public()

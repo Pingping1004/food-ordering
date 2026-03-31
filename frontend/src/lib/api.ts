@@ -57,15 +57,15 @@ export const requestInterceptor = api.interceptors.request.use(
         }
 
         // attach access token
-        const accessToken = localStorage.getItem('accessToken');
-        if (accessToken && config.headers && !config.headers.Authorization) {
-            if (!config.headers) {
-                config.headers = new axios.AxiosHeaders();
-            } else if (!(config.headers instanceof AxiosHeaders)) {
-                config.headers = AxiosHeaders.from(config.headers);
-            }
-            config.headers['Authorization'] = `Bearer ${accessToken}`;
-        }
+        // const accessToken = localStorage.getItem('accessToken');
+        // if (accessToken && config.headers && !config.headers.Authorization) {
+        //     if (!config.headers) {
+        //         config.headers = new axios.AxiosHeaders();
+        //     } else if (!(config.headers instanceof AxiosHeaders)) {
+        //         config.headers = AxiosHeaders.from(config.headers);
+        //     }
+        //     config.headers['Authorization'] = `Bearer ${accessToken}`;
+        // }
 
         if (!config.method) throw Error('Not found config method');
 

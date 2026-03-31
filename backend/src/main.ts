@@ -94,6 +94,7 @@ async function bootstrap() {
       'x-xsrf-token',
       'Authorization',
       'skipauth',
+      'skipAuth',
       'stripe-signature'
     ],
     exposedHeaders: ['Set-Cookie'],
