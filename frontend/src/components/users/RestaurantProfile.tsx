@@ -42,7 +42,6 @@ export const RestaurantProfile: React.FC<RestaurantProfileProps> = ({
     variant,
     name,
     restaurantImg,
-    categories,
     isOpen,
     isPriority,
     // openTime,
