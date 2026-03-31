@@ -31,6 +31,7 @@ export default function LoginPage() {
     const submitForm = async (loginData: loginSchemaType) => {
         try {
             const user = await login(loginData.email, loginData.password);
+            document.cookie = `role=${user.role}; path=/`;
 
             if (user.role === "admin") {
                 router.push('/admin/role-requests');
