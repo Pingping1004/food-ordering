@@ -36,7 +36,7 @@ export interface MenusWithDisplayPrices {
 
 export interface BulkCreateMenuResult {
     message: string;
-    createdMenus: Menu[]; // Successfully created menu items
+    createdMenus: Menu[];
     failedMenus: { item: CsvMenuItemData; error: string }[]; // Items that failed with their original data and error
     totalAttempted: number;
     totalCreated: number;
@@ -365,6 +365,9 @@ export class MenuService implements OnModuleInit {
                     isAvailable: true,
                     cookingTime: true,
                     maxDaily: true,
+                },
+                orderBy: {
+                    name: "asc"
                 },
             });
 
