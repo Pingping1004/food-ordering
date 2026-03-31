@@ -12,6 +12,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { toastDanger, toastSuccess } from "@/components/ui/Toast";
 import { useParams } from "next/navigation";
 import { getParamId } from "@/util/param";
+import { List } from "react-window";
 
 const Modal = dynamic(() => import("../../../components/users/Modal"), { ssr: false })
 const WarningBanner = dynamic(() => import("../../../components/cookers/WarningBanner"), { ssr: false })
@@ -27,10 +28,12 @@ function Page() {
     const [navbarStatus, setNavbarStatus] = useState<NavState>("sent");
     const [showAutoCancelModal, setShowAutoCancelModal] = useState(false)
     const [isLoading, setIsLoading] = useState<boolean>(true);
-    const [now, setNow] = useState(new Date());
+    const [now, setNow] = useState(Date.now());
     const [showRuleBanner, setShowRuleBanner] = useState(true);
 
-    const fetchingRef = useRef(false);
+    const ordersRef = useRef<Record<string, OrderProps>>({});
+    const fetchingRef = useRef<boolean>(false);
+    const pollingIntervalRef = useRef(3000)
     const pendingOrdersRef = useRef<Record<string, { order: OrderProps; showAt: number }>>({});
 
     const params = useParams();
@@ -55,32 +58,56 @@ function Page() {
 
     const fetchNewOrders = useCallback(async () => {
         if (fetchingRef.current) return
-        fetchingRef.current = true
+        fetchingRef.current = true;
+
+        if (document.hidden) {
+            pollingIntervalRef.current = 8000;
+            return;
+        }
 
         try {
-            const params = new URLSearchParams()
-            if (lastTimestampRef.current) params.append("after", lastTimestampRef.current)
-
-            const url = `/order/new/${restaurantId}` + (params.toString() ? `?${params.toString()}` : "");
+            const url = lastTimestampRef.current
+                ? `/order/new/${restaurantId}?after=${lastTimestampRef.current}`
+                : `/order/new/${restaurantId}`;
             const response = await api.get(url)
             const data = response.data
 
-            if (data.orders.length > 0) {
-                // Stage new orders into the pending buffer with a random delay
-                for (const order of data.orders) {
-                    if (!pendingOrdersRef.current[order.orderId]) {
-                        const delayMs = 1000 + Math.random() * 2000;
-                        pendingOrdersRef.current[order.orderId] = { order, showAt: Date.now() + delayMs }
-                    }
-                }
+            if (data.latestTimestamp) lastTimestampRef.current = data.latestTimestamp;
 
-                if (data.latestTimestamp) lastTimestampRef.current = data.latestTimestamp
+            // No new orders → slow down polling
+            if (!data.orders || data.orders.length === 0) {
+                pollingIntervalRef.current = Math.min(
+                    pollingIntervalRef.current + 1000,
+                    8000
+                );
+                return;
             }
 
+            // New orders → speed up polling
+            pollingIntervalRef.current = 3000;
             const now = Date.now()
-            const ready = Object.entries(pendingOrdersRef.current)
-                .filter(([, { showAt }]) => now >= showAt)
-                .map(([id, { order }]) => ({ id, order }));
+
+            // Stage new orders (with dedup protection)
+            for (const order of data.orders) {
+                if (
+                    !pendingOrdersRef.current[order.orderId] &&
+                    !ordersRef.current[order.orderId]
+                ) {
+                    const delayMs = 1000 + Math.random() * 2000;
+                    pendingOrdersRef.current[order.orderId] = {
+                        order,
+                        showAt: now + delayMs,
+                    };
+                }
+            }
+
+            const ready: { id: string; order: OrderProps }[] = [];
+            const cutoff = Date.now() - 10000;
+            for (const [id, val] of Object.entries(pendingOrdersRef.current)) {
+                if (now >= val.showAt || val.showAt < cutoff) {
+                    ready.push({ id, order: val.order });
+                }
+            }
 
             if (ready.length > 0) {
                 setOrders(prev => {
@@ -91,17 +118,10 @@ function Page() {
                         delete pendingOrdersRef.current[id]
                     }
 
-                    // Clean up orders older than 2 days
-                    const cutoff = Date.now() - 2 * 24 * 60 * 60 * 1000;
-                    for (const id in next) {
-                        if (new Date(next[id].orderAt).getTime() < cutoff) delete next[id];
-                    }
-
                     return next;
-                })
+                });
             }
         } finally {
-            setIsLoading(false)
             fetchingRef.current = false
         }
     }, [restaurantId]);
@@ -202,26 +222,75 @@ function Page() {
     }, []);
 
     useEffect(() => {
+        ordersRef.current = orders;
+    }, [orders]);
+
+    useEffect(() => {
         if (!restaurantId) return;
 
-        let interval: ReturnType<typeof setInterval>;
+        let isMounted = true;
+        let timeoutId: NodeJS.Timeout;
+
+        const loop = async () => {
+            if (!isMounted || document.hidden) return;
+
+            await fetchNewOrders();
+
+            timeoutId = setTimeout(loop, pollingIntervalRef.current);
+        };
+
         const init = async () => {
             await fetchInitialOrders();
-            interval = setInterval(fetchNewOrders, 1500)
+            loop();
         };
 
         init();
 
-        return () => clearInterval(interval);
+        return () => {
+            isMounted = false;
+            if (timeoutId) clearTimeout(timeoutId)
+        };
     }, [restaurantId, fetchInitialOrders, fetchNewOrders]);
 
     useEffect(() => {
+        const handleVisibility = () => {
+            if (!document.hidden) {
+                fetchNewOrders();
+            }
+        };
+
+        document.addEventListener("visibilitychange", handleVisibility);
+
+        return () => {
+            document.removeEventListener("visibilitychange", handleVisibility);
+        };
+    }, [fetchNewOrders]);
+
+    useEffect(() => {
         const interval = setInterval(() => {
-            setNow(new Date());
-        }, 1000);
+            setNow(Date.now());
+        }, 3000);
 
         return () => clearInterval(interval);
     }, []);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setOrders(prev => {
+                const next = { ...prev }
+                const cutoff = Date.now() - 2 * 24 * 60 * 60 * 1000;
+
+                for (const id in next) {
+                    if (new Date(next[id].orderAt).getTime() < cutoff) {
+                        delete next[id]
+                    }
+                }
+                return next
+            })
+        }, 60_000)
+
+        return () => clearInterval(interval)
+    }, [])
 
     useEffect(() => {
         const seen = localStorage.getItem("cook_order_rules_seen")
@@ -257,14 +326,11 @@ function Page() {
     };
 
     const isButtonDisabled = (orderAt: Date, deliverAt: Date, bufferMins: number): boolean => {
-        const elapsedMs = now.getTime() - new Date(orderAt).getTime();
-        const elapsedMins = elapsedMs / 1000 / 60;
-
-        const beforeDeliverMs = new Date(deliverAt).getTime() - now.getTime();
-        const beforeDeliverMins = beforeDeliverMs / 1000 / 60;
+        const elapsedMins = (now - new Date(orderAt).getTime()) / 60000;
+        const beforeDeliverMins = (new Date(deliverAt).getTime() - now) / 60000;
 
         return elapsedMins > bufferMins && beforeDeliverMins > 5;
-    }
+    };
 
     const navToStatusMap: Record<NavState, OrderStatus[]> = useMemo(() => ({
         sent: [OrderStatus.sent],
@@ -283,6 +349,36 @@ function Page() {
 
         return filtered.sort((a, b) => new Date(a.deliverAt).getTime() - new Date(b.deliverAt).getTime());
     }, [navbarStatus, filterDailyOrders, navToStatusMap]);
+
+    const Row = ({ index, style, ...props }: any) => {
+        const order = props.orders[index];
+
+        return (
+            <div style={style}>
+                <div className="pt-2 pb-2 px-2">
+                    <Order
+                        orderId={order.orderId}
+                        totalAmount={order.totalAmount}
+                        isDelay={order.isDelay}
+                        status={order.status}
+                        orderAt={`${getTimeFormat(order.orderAt)} ${getDateFormat(new Date(order.orderAt))}`}
+                        deliverAt={order.deliverAt}
+                        paymentStatus={order.paymentStatus}
+                        orderMenus={order.orderMenus}
+                        details={order.details}
+                        userTel={order.userTel}
+                        isLargeTextMode={props.isLargeTextMode}
+                        isDelayDisabled={props.isButtonDisabled(new Date(order.orderAt), new Date(order.deliverAt), 10)}
+                        isRejectedDisabled={props.isButtonDisabled(new Date(order.orderAt), new Date(order.deliverAt), 5)}
+                        selected="default"
+                        onDelayUpdate={props.onDelayUpdate}
+                        onStatusUpdate={props.onStatusUpdate}
+                        className="w-full h-full"
+                    />
+                </div>
+            </div>
+        );
+    };
 
     if (isLoading) return <LoadingPage />
 
@@ -333,28 +429,20 @@ function Page() {
             ) : ('')}
 
             <main>
-                {filterTodayOrderStatus.map((order) => (
-                    <Order
-                        key={order.orderId}
-                        orderId={order.orderId}
-                        totalAmount={order.totalAmount}
-                        isDelay={order.isDelay}
-                        status={order.status}
-                        orderAt={`${getTimeFormat(order.orderAt)} ${getDateFormat(new Date(order.orderAt))}`}
-                        deliverAt={order.deliverAt}
-                        paymentStatus={order.paymentStatus}
-                        orderMenus={order.orderMenus}
-                        details={order.details}
-                        userTel={order.userTel}
-                        isLargeTextMode={isLargeTextMode}
-                        isDelayDisabled={isButtonDisabled(new Date(order.orderAt), new Date(order.deliverAt), 10)}
-                        isRejectedDisabled={isButtonDisabled(new Date(order.orderAt), new Date(order.deliverAt), 5)}
-                        className="mb-4"
-                        selected="default"
-                        onDelayUpdate={handleDelayOrder}
-                        onStatusUpdate={handleUpdateStatus}
-                    />
-                ))}
+                <List
+                    rowCount={filterTodayOrderStatus.length}
+                    rowHeight={140}
+                    rowComponent={Row}
+                    rowProps={{
+                        orders: filterTodayOrderStatus,
+                        isLargeTextMode,
+                        isButtonDisabled,
+                        onDelayUpdate: handleDelayOrder,
+                        onStatusUpdate: handleUpdateStatus
+                    }}
+                    className="gap-y-4"
+                    style={{ height: 800, width: "100%" }}
+                />
             </main>
 
             <Modal
