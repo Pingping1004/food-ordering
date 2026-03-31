@@ -24,6 +24,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   }
 
   async onModuleInit() {
+    this.logger.log("Database URL: ", process.env.DATABASE_URL);
+
     const maxRetries = 5;
     let attempt = 0;
 
