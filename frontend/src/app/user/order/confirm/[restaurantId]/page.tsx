@@ -56,7 +56,7 @@ const slipErrorMap: Record<string, string> = {
 
 function OrderConfirmContext() {
     const { cooker } = useCooker();
-    const { cart } = useCart();
+    const { cart, clearCart } = useCart();
     const [showQR, setShowQR] = useState(false);
     const [slipPreview, setSlipPreview] = useState<string | null>(null);
     const [paidAt, setPaidAt] = useState<Date | null>(null);
@@ -108,7 +108,7 @@ function OrderConfirmContext() {
 
     const paymentQrImageUrl = cooker.paymentQr ?? "/picture.svg"
     const paymentSlipImg = watch("paymentSlipImg");
-    const isButtonDisabled = isSubmitting || !isValid || !isDirty || expired || cart.length === 0;
+    let isButtonDisabled = isSubmitting || !isValid || !isDirty || expired || cart.length === 0;
 
     const handleSlipUpload = (file: File) => {
         // 1. Validate size
@@ -175,9 +175,12 @@ function OrderConfirmContext() {
                 userTel: data.userTel,
             }
 
+            isButtonDisabled = true;
+
             const response = await api.post(`/order/verify-and-create-order`, orderPaymentPayload);
             const result = response.data;
             localStorage.setItem(`orderSecret:${result.orderId}`, result.orderSecret);
+            clearCart()
 
 
             toastSuccess("ชำระเงินสำเร็จและสร้างออเดอร์เรียบร้อย");
