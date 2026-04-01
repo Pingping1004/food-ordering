@@ -142,6 +142,7 @@ export class OrderService {
     }
 
     const paymentResult = await this.paymentService.verifyPayment(paymentData);
+    this.logger.log("Payment result: ", paymentResult);
     if (!paymentResult?.data?.dateTime) throw new BadRequestException("ข้อมูลการชำระเงินไม่สมบูรณ์");
 
     const paymentTime = new Date(paymentResult.data.dateTime)
