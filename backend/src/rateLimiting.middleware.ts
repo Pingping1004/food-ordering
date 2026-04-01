@@ -20,10 +20,10 @@ export const globalRateLimit = rateLimit({
 
 export const authRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: 10,
   message: {
     error: 'รีเควสในการลงทะเบียน/เข้าสู่ระบบเกินขีดจำกัด กรุณาลองใหม่อีกครั้ง',
-    retryAfter: '15 minutes'
+    retryAfter: '1 minutes'
   },
   skipSuccessfulRequests: true,
 });
@@ -33,7 +33,7 @@ export const paymentRateLimit = rateLimit({
   max: 5,
   message: {
     error: 'รีเควสในการชำระเงินเกินขีดจำกัด กรุณาลองใหม่อีกครั้ง',
-    retryAfter: '5 minutes'
+    retryAfter: '1 minutes'
   }
 });
 
