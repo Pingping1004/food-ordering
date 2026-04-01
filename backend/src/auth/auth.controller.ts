@@ -5,6 +5,7 @@ import {
   Req,
   Res,
   UnauthorizedException,
+  Logger,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { SignupDto } from './dto/signup.dto';
@@ -14,6 +15,7 @@ import { Public } from 'src/decorators/public.decorator';
 import { CsrfTokenService } from 'src/csrf/csrf.service';
 import { accessTokenCookieOptions, clearAccessToken, clearRefreshToken, csrfCookieOptions, refreshTokenCookieOptions } from './cookie-options.helper';
 import { RefreshTokenService } from 'src/refreshToken/refresh-token.service';
+import { JwtService } from '@nestjs/jwt';
 
 // Extend the Request interface to include csrfToken
 declare module 'express-serve-static-core' {
@@ -26,9 +28,12 @@ declare module 'express-serve-static-core' {
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
+    private readonly jwtService: JwtService,
     private readonly csrfTokenService: CsrfTokenService,
     private readonly refreshTokenService: RefreshTokenService,
   ) { }
+
+  private readonly logger = new Logger('AuthController');
 
   @Public()
   @Post('signup')
@@ -85,7 +90,12 @@ export class AuthController {
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const refreshToken = req.cookies['refresh_token'];
     if (refreshToken) {
-      await this.refreshTokenService.revokeToken(refreshToken);
+      try {
+        const payload = this.jwtService.decode(refreshToken) as { jti: string };
+        if (payload?.jti) await this.refreshTokenService.revokeToken(payload.jti);
+      } catch (error) {
+        this.logger.warn("Logout error: ", error.message);
+      }
     }
 
     res.clearCookie('access_token', clearAccessToken);
