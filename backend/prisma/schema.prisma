@@ -89,7 +89,7 @@ model Menu {
   menuId       String      @id @default(uuid())
   name         String
   menuImg      String
-  price        Int
+  price        Decimal     @db.Decimal(10, 2)
   maxDaily     Int         @default(100)
   cookingTime  Int?
   createdAt    DateTime    @default(now())

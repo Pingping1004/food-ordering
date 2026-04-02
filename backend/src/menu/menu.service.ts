@@ -302,16 +302,12 @@ export class MenuService implements OnModuleInit {
         return menu;
     }
 
-    private calculateDisplayPrice(menu: Partial<Menu>) {
-        if (!menu.price) throw new NotFoundException('ไม่สามารถคำนวณราคาของเมนูได้');
+    private calculateDisplayPrice(menu: Pick<Menu, 'price'>) {
+        if (menu.price === null) throw new NotFoundException('ไม่สามารถคำนวณราคาของเมนูได้');
 
         const priceInSatang = new Decimal(menu.price);
-
-        const sellingPriceInSatang =
-            priceInSatang.times(new Decimal(1).plus(this.markupRate));
-
-        const platformFeeInSatang =
-            sellingPriceInSatang.times(this.commissionRate);
+        const sellingPriceInSatang = priceInSatang.times(new Decimal(1).plus(this.markupRate));
+        const platformFeeInSatang = sellingPriceInSatang.times(this.commissionRate);
 
         return {
             sellPriceDisplay: sellingPriceInSatang.toNumber(),
