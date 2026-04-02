@@ -6,6 +6,7 @@ import {
   IsBoolean,
   IsNotEmpty,
   IsUUID,
+  Matches,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 
@@ -40,10 +41,11 @@ export class UpdateMenuDto {
   cookingTime?: number;
 
   @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @IsPositive()
-  @Type(() => Number)
-  price?: number;
+  @IsString()
+  @Matches(/^\d+(\.\d{1,2})?$/, {
+    message: 'price must be a valid number with up to 2 decimal places'
+  })
+  price?: string;
 
   @IsOptional()
   @Transform(({ value }) => value === 'true' || value === true )
