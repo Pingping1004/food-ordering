@@ -9,6 +9,7 @@ import { clearTokens } from "@/lib/token"
 import { useRouter } from "next/navigation"
 import { checkSessionValidity, initSession } from "./auth.session"
 import { User } from "./auth.types"
+import { startInactivityWatcher, stopInactivityWatcher } from "@/lib/inactivity"
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
@@ -44,6 +45,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
         verify();
     }, [router, handleLogoutSideEffects, initializing]);
+
+    useEffect(() => {
+        if (!user) {
+            stopInactivityWatcher();
+            return;
+        }
+
+        // Only start watching when user is logged in
+        startInactivityWatcher({
+            onLogout: () => {
+                stopInactivityWatcher();
+                logout(); // your existing logout function
+            },
+            tokenExpiresInSeconds: 1800,
+        });
+
+        return () => stopInactivityWatcher(); // cleanup on unmount
+    }, [user]); // restarts when user logs in/out
 
     const login = useCallback(async (email: string, password: string): Promise<User> => {
         try {
