@@ -13,7 +13,7 @@ import { LoginDto } from './dto/login.dto';
 import { Request, Response } from 'express';
 import { Public } from 'src/decorators/public.decorator';
 import { CsrfTokenService } from 'src/csrf/csrf.service';
-import { accessTokenCookieOptions, clearAccessToken, clearRefreshToken, csrfCookieOptions, refreshTokenCookieOptions } from './cookie-options.helper';
+import { accessTokenCookieOptions, clearAccessToken, clearRefreshToken, csrfCookieOptions, refreshTokenCookieOptions } from '../utils/cookie-options.helper';
 import { RefreshTokenService } from 'src/refreshToken/refresh-token.service';
 import { JwtService } from '@nestjs/jwt';
 
