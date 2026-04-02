@@ -28,7 +28,7 @@ export class PaymentService {
             });
     
             const result = response.data
-            this.logger.debug(`Payment account response data: ${result}`)
+            this.logger.debug(`Payment account response data: ${JSON.stringify(result, null, 2)}`)
 
             if (result.code !== "200200") throw new HttpException({ message: result.message, code: result.code }, HttpStatus.BAD_REQUEST);
           
@@ -38,8 +38,15 @@ export class PaymentService {
             if (error instanceof HttpException) throw error;
 
             const err = error as AxiosError;
+            const errorLog = {
+                message: err.message,
+                status: err.response?.status,
+                statusText: err.response?.statusText,
+                data: err.response?.data,
+                headers: err.response?.headers,
+            };
         
-            this.logger.warn("ยืนยันการชำระเงินล้มเหลว:", err.response?.data || err.message);
+            this.logger.warn(`ยืนยันการชำระเงินล้มเหลว: ${JSON.stringify(errorLog, null, 2)}`);
             throw new HttpException({ message: err.message }, HttpStatus.BAD_REQUEST);
         }
     }
