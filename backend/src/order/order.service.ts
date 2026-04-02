@@ -141,7 +141,8 @@ export class OrderService {
       }
     }
 
-    this.logger.debug("Sending data: ", accountType, accountNumber.toString());
+    this.logger.debug(`Sending account type: ${accountType}`);
+    this.logger.debug(`Sending account number${accountNumber.toString()}`)
 
     const paymentResult = await this.paymentService.verifyPayment(paymentData);
     this.logger.log("Payment result: ", paymentResult);

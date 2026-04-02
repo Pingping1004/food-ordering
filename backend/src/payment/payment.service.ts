@@ -19,7 +19,6 @@ export class PaymentService {
 
     async verifyPayment(data: PaymentPayload) {
         if (!process.env.SLIP_VERIFY_SECRET) throw new NotFoundException("SLIP_VERIFY_SECRET key missing");
-        this.logger.log("Secret:", process.env.SLIP_VERIFY_SECRET);
 
         try {
             const response = await axios.post("https://connect.slip2go.com/api/verify-slip/qr-base64/info", data, {
@@ -29,7 +28,7 @@ export class PaymentService {
             });
     
             const result = response.data
-            this.logger.debug("Payment account response data: ", response.data.receiver)
+            this.logger.debug(`Payment account response data: ${result}`)
 
             if (result.code !== "200200") throw new HttpException({ message: result.message, code: result.code }, HttpStatus.BAD_REQUEST);
           
