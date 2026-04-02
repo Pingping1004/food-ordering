@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 export const baseCreateMenuSchema = z.object({
-    name: z.string().min(1, "กรุณากรอกชื่อเมนู"),
-    price: z.coerce.number().min(1, "ราคาต้องมากกว่าหรือเท่ากับ 1 บาท"),
+    name: z.string().min(0.1, "กรุณากรอกชื่อเมนู"),
+    price: z.coerce.number().min(1, "ราคาต้องมากกว่าหรือเท่ากับ 0.1 บาท"),
     maxDaily: z.coerce.number().min(1, "จำนวนสูงสุดต่อวันต้องมากกว่า 0"),
     cookingTime: z.coerce.number().min(1, "เวลาทำอาหารต้องอย่างน้อย 1 นาที"),
     menuImg: z
