@@ -29,7 +29,7 @@ export class PaymentService {
             });
     
             const result = response.data
-            this.logger.debug("Payment account response data: ", response.data.receiver.account.proxy)
+            this.logger.debug("Payment account response data: ", response.data.receiver)
 
             if (result.code !== "200200") throw new HttpException({ message: result.message, code: result.code }, HttpStatus.BAD_REQUEST);
           
