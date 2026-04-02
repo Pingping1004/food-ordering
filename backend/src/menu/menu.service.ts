@@ -26,7 +26,7 @@ export interface MenusWithDisplayPrices {
     menuId: string;
     name: string;
     menuImg?: string;
-    price: number;
+    price: Decimal;
     restaurantId: string;
     maxDaily: number;
     isAvailable: boolean;
@@ -448,16 +448,40 @@ export class MenuService implements OnModuleInit {
         }
     }
 
-    omitUnchangedFields<T extends object>(original: T, updates: Partial<T>): Partial<T> {
-        const changedFields: Partial<T> = {};
+    omitUnchangedMenuFields(original: Menu, updates: Partial<Menu>): Partial<Menu> {
+        const changedFields: Partial<Menu> = {};
 
         for (const key in updates) {
-            if (updates[key] !== undefined && updates[key] !== original[key]) changedFields[key] = updates[key];
+            const newValue = updates[key];
+            const oldValue = original[key];
 
-            if (key === 'menuImg' && typeof updates[key] === 'string' && updates[key] === '/') continue
+            if (newValue === undefined) continue;
+
+            // skip invalid menuImg
+            if (key === 'menuImg' && newValue === '/') continue;
+
+            // Decimal comparison
+            if (newValue instanceof Decimal && oldValue instanceof Decimal) {
+                if (!newValue.equals(oldValue)) changedFields[key] = newValue;
+                continue;
+            }
+
+            // normal comparison
+            if (newValue !== oldValue) changedFields[key] = newValue;
         }
 
         return changedFields;
+    }
+
+    private mapDtoToMenuUpdate(dto: UpdateMenuDto): Partial<Menu> {
+        return {
+            name: dto.name,
+            menuImg: dto.menuImg,
+            maxDaily: dto.maxDaily,
+            cookingTime: dto.cookingTime,
+            isAvailable: dto.isAvailable,
+            price: dto.price != null ? new Decimal(dto.price) : undefined,
+        };
     }
 
     async updateMenu(menuId: string, updateMenuDto: UpdateMenuDto, file?: Express.Multer.File) {
@@ -466,13 +490,12 @@ export class MenuService implements OnModuleInit {
         await this.isOwnerOfSingleMenu(updateMenuDto.restaurantId, menuId);
 
         const existingMenu = await this.findMenu(menuId);
-        const updateData = this.omitUnchangedFields(existingMenu, updateMenuDto);
+        const transformedUpdate = this.mapDtoToMenuUpdate(updateMenuDto)
+        const updateData = this.omitUnchangedMenuFields(existingMenu, transformedUpdate);
 
         // filter undefined explicitly
         Object.keys(updateData).forEach((key) => {
-            if (updateData[key] === undefined) {
-                delete updateData[key];
-            }
+            if (updateData[key] === undefined) delete updateData[key];
         });
 
         if (file) {
