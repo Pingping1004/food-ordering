@@ -1,29 +1,6 @@
-export type AccountType =
-  | "01002" // Bangkok Bank
-  | "01004" // Kasikorn Bank
-  | "01006" // Krung Thai Bank
-  | "01011" // TMB Thanachart Bank
-  | "01014" // Siam Commercial Bank (SCB)
-  | "01025" // Krungsri Bank
-  | "01069" // Kiatnakin Phatra Bank
-  | "01022" // CIMB Thai Bank
-  | "01067" // TISCO Bank
-  | "01024" // UOB Bank
-  | "01071" // Thai Credit Bank
-  | "01073" // Land and Houses Bank
-  | "01070" // ICBC Thai
-  | "01098" // SME Bank
-  | "01034" // BAAC
-  | "01035" // EXIM Bank
-  | "01030" // Government Savings Bank(Aomsin)
-  | "01033" // Government Housing Bank(ธอส)
-  | "01066" // Islamic Bank of Thailand
-  | "02001" // PromptPay (Phone Number)
-  | "02003" // PromptPay (Citizen ID / Tax ID)
-  | "02004" // PromptPay (E-Wallet)
-  | "03000" // Merchant QR (K+ Shop, Mae Manee, Be Merchant, TTB Smart Shop)
-  | "04000"; // TrueMoney Wallet
+import { AccountType } from '@prisma/client';
 
+type BankCode = (typeof BANK_CODE_MAP)[AccountType];
 export interface PaymentPayload {
   payload: {
     imageBase64: string;
@@ -36,14 +13,14 @@ export interface PaymentPayload {
         amount: string;
       };
 
-      checkDate: {
+      checkDate?: {
         type?: "eq" | "gte" | "lte";
-        date: Date;
+        date?: Date;
       };
 
       checkReceiver?: {
-        accountType?: AccountType;
-        accountNumber: string;
+        accountType?: BankCode;
+        accountNumber?: string;
         accountNameTH?: string;
         accountNameEN?: string;
       }[];
@@ -51,49 +28,47 @@ export interface PaymentPayload {
   }
 }
 
-const BANK_NAME_MAP: Record<string, AccountType> = {
-  // Thai names
-  "กรุงเทพ": "01002",
-  "กสิกร": "01004",
-  "กสิกรไทย": "01004",
-  "กรุงไทย": "01006",
-  "ทหารไทยธนชาต": "01011",
-  "ttb": "01011",
-  "ไทยพาณิชย์": "01014",
-  "scb": "01014",
-  "กรุงศรี": "01025",
-  "เกียรตินาคินภัทร": "01069",
-  "cimb": "01022",
-  "tisco": "01067",
-  "uob": "01024",
-  "ไทยเครดิต": "01071",
-  "แลนด์แอนด์เฮ้าส์": "01073",
-  "lh": "01073",
-  "icbc": "01070",
-  "sme": "01098",
-  "ธกส": "01034",
-  "เพื่อการส่งออก": "01035",
-  "exim": "01035",
-  "ออมสิน": "01030",
-  "อาคารสงเคราะห์": "01033",
-  "ธอส": "01033",
-  "อิสลาม": "01066",
-  "พร้อมเพย์": "02001",
-  "truemoney": "04000",
-  "ทรูมันนี่": "04000",
-};
+export const BANK_CODE_MAP = {
+  BANGKOK_BANK: "01002",
+  KASIKORN_BANK: "01004",
+  KRUNG_THAI_BANK: "01006",
+  TTB: "01011",
+  SCB: "01014",
+  KRUNGSRI: "01025",
+  KKP: "01069",
+  CIMB_THAI: "01022",
+  TISCO: "01067",
+  UOB: "01024",
+  THAI_CREDIT: "01071",
+  LH_BANK: "01073",
+  ICBC_THAI: "01070",
+  SME_BANK: "01098",
+  BAAC: "01034",
+  EXIM: "01035",
+  GSB: "01030",
+  GHB: "01033",
+  ISLAMIC_BANK: "01066",
+
+  PROMPTPAY_PHONE: "02001",
+  PROMPTPAY_ID: "02003",
+  PROMPTPAY_EWALLET: "02004",
+
+  MERCHANT_QR: "03000",
+  TRUEMONEY_WALLET: "04000",
+} satisfies Record<AccountType, string>;
+
+const CODE_TO_ENUM: Record<string, AccountType> = Object.fromEntries(
+  Object.entries(BANK_CODE_MAP).map(([key, value]) => [value, key])
+) as Record<string, AccountType>;
 
 export const toAccountType = (value: string): AccountType | null => {
   if (!value) return null;
 
   const normalized = value.trim().toLowerCase();
-  const VALID_ACCOUNT_TYPES = new Set<AccountType>(Object.values(BANK_NAME_MAP));
+  if (Object.values(toAccountType).includes(value as AccountType)) return value as AccountType;
 
-  // direct code match e.g. "01004"
-  if (VALID_ACCOUNT_TYPES.has(value as AccountType)) {
-    return value as AccountType;
-  }
+  if (CODE_TO_ENUM[value]) return CODE_TO_ENUM[value];
+  if (BANK_CODE_MAP[normalized]) return BANK_CODE_MAP[normalized];
 
-  // name match e.g. "กสิกร", "SCB"
-  return BANK_NAME_MAP[normalized] ?? BANK_NAME_MAP[value.trim()] ?? null;
+  return null;
 };

@@ -1,3 +1,4 @@
+import { ACCOUNT_TYPES } from "@/common/bank-type.enum";
 import { z } from "zod";
 
 export const createRestaurantSchema = z.object({
@@ -69,7 +70,7 @@ export const createRestaurantSchema = z.object({
         .trim()
         .regex(/^\d{10}$/, { message: 'กรุณาระบุเบอร์โทรที่ถูกต้อง 10 หลัก' }),
     adminEmail: z.string().trim().email('กรุณาระบุอีเมลที่ถูกต้อง').optional().or(z.literal('')),
-    bankAccount: z.string().trim().min(1, { message: 'กรุณาใส่ชื่อธนาคาร' }),
+    bankAccount: z.enum(ACCOUNT_TYPES as [string, ...string[]], { message: 'กรุณาเลือกประเภทบัญชีที่ถูกต้อง'}),
     accountNumber: z.string()
         .min(1, { message: 'กรุณาใส่เลขบัญชีธนาคาร'})
         .regex(/^[0-9]+$/, { message: "เลขบัญชีต้องเป็นตัวเลขเท่านั้น ห้ามเว้นวรรคหรือใส่สัญลักษณ์" }),

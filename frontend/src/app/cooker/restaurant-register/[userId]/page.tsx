@@ -15,6 +15,7 @@ import { getCurrentTime, getApproxCloseTime } from '@/util/time';
 import { useToggle } from '@/hook/useToggle';
 import { useRouter } from 'next/navigation';
 import { toastDanger, toastSuccess } from '@/components/ui/Toast';
+import { ACCOUNT_TYPE_OPTIONS, AccountTypeCode } from '@/common/bank-type.enum';
 
 export default function RestaurantRegisterPage() {
     const { user } = useAuth();
@@ -353,8 +354,9 @@ export default function RestaurantRegisterPage() {
 
                     <div className="grid grid-cols-2 gap-x-4">
                         <Input
-                            type="text"
+                            type="select"
                             label="ธนาคาร"
+                            options={ACCOUNT_TYPE_OPTIONS}
                             placeholder="กสิกร, กรุงไทย, ฯลฯ"
                             {...register('bankAccount')}
                             error={errors.bankAccount?.message}
@@ -383,8 +385,7 @@ export default function RestaurantRegisterPage() {
 
                     <Image
                         src={slipPreview ?? "/picture.svg"}
-                        // const paymentQrImageUrl = "/picture.svg"
-                        alt="Payment slip preview"
+                        alt="รูปสลิปชำระเงิน"
                         width={250}
                         height={250}
                         className="object-cover aspect-square"

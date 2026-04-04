@@ -1,4 +1,4 @@
-import { DateWeek, RestaurantCategory } from "@prisma/client"
+import { AccountType, DateWeek, RestaurantCategory } from "@prisma/client"
 import { CacheEntry } from "src/menu/menuCache"
 
 export interface RestaurantCache {
@@ -13,7 +13,7 @@ export interface RestaurantCache {
     avgCookingTime: number,
     isTemporarilyClosed: boolean,
     accountNumber: string,
-    bankAccount: string,
+    bankAccount: AccountType,
     accountHolderFullName: string,
 }
 

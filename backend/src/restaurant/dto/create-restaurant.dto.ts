@@ -8,7 +8,7 @@ import {
   IsNumber,
   IsDate,
 } from 'class-validator';
-import { DateWeek, RestaurantCategory } from '@prisma/client';
+import { AccountType, DateWeek, RestaurantCategory } from '@prisma/client';
 import { Type, Transform } from 'class-transformer';
 
 export class CreateRestaurantDto {
@@ -80,8 +80,8 @@ export class CreateRestaurantDto {
   accountNumber: string;
 
   @IsNotEmpty()
-  @IsString()
-  bankAccount: string;
+  @IsEnum(AccountType)
+  bankAccount: AccountType;
 
   @IsOptional()
   @IsString()
