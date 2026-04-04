@@ -18,7 +18,7 @@ import { Cron } from '@nestjs/schedule';
 
 import { InventoryService } from 'src/inventory/inventory.service';
 import moment from 'moment-timezone';
-import { PaymentPayload, toAccountType } from 'src/common/interface/accountType';
+import { BANK_CODE_MAP, PaymentPayload, toAccountType } from 'src/common/interface/accountType';
 import { RestaurantService } from 'src/restaurant/restaurant.service';
 import { Decimal } from '@prisma/client/runtime/client';
 import { PayoutService } from 'src/payout/payout.service';
@@ -112,10 +112,10 @@ export class OrderService {
     this.validateDeliveryTime(createOrderDto.deliverAt);
 
     const { totalAmount, validatedMenus } = await this.validateOrderMenus(createOrderDto.orderMenus, createOrderDto.restaurantId);
-    const { accountNumber, bankAccount } = await this.restaurantService.findRestaurant(createOrderDto.restaurantId);
+    const { accountNumber, bankAccount, accountHolderFullName } = await this.restaurantService.findRestaurant(createOrderDto.restaurantId);
 
-    const accountType = toAccountType(bankAccount);
-    if (!accountType) throw new ConflictException("บัญชีธนาคารไม่ถูกต้อง")
+    const accountTypeCode = BANK_CODE_MAP[bankAccount];
+    if (!accountTypeCode) throw new ConflictException("ไม่พบข้อมูลบัญชีธนาคาร")
 
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
     const paymentData: PaymentPayload = {
@@ -130,10 +130,11 @@ export class OrderService {
             type: "gte",
             date: fiveMinutesAgo,
           },
-          checkDuplicate: true,
+          checkDuplicate: false,
           checkReceiver: [
             {
-              accountType: accountType,
+              accountType: accountTypeCode,
+              accountNameTH: accountHolderFullName,
               accountNumber: accountNumber.toString(),
             }
           ]
@@ -141,8 +142,7 @@ export class OrderService {
       }
     }
 
-    this.logger.debug(`Sending account type: ${accountType}`);
-    this.logger.debug(`Sending account number${accountNumber.toString()}`)
+    this.logger.debug(`Sending account receiver info: ${JSON.stringify(paymentData.payload.checkCondition.checkReceiver, null, 2)}`)
 
     const paymentResult = await this.paymentService.verifyPayment(paymentData);
     this.logger.log("Payment result: ", paymentResult);
