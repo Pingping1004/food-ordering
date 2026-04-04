@@ -29,7 +29,6 @@ interface orderPaymentPayload {
     orderMenus: OrderMenuType[];
 }
 
-// Fixed 5-minute buffer at all times
 const getRequiredBufferMinutes = (): number => 5;
 
 const getBufferTime = (): string => {
@@ -245,7 +244,7 @@ function OrderConfirmContext() {
                         control={control}
                         render={({ field }) => (
                             <TimePickerInput
-                                {...field} // This correctly passes value, onChange, name, onBlur
+                                {...field}
                             />
                         )}
                     />
