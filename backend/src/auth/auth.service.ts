@@ -66,7 +66,8 @@ export class AuthService {
     }
 
     if (!isPasswordValid) {
-      return null;
+      this.logger.log("Password incorrect")
+      return { errorType: 'INCORRECT_PASSWORD' };
     }
 
     const { password, ...result } = user;
@@ -110,10 +111,10 @@ export class AuthService {
   async login(loginDto: LoginDto) {
     this.csrfTokenService.generateToken();
     const validationResult = await this.validateUser(loginDto.email, loginDto.password);
-    if (!validationResult) throw new NotFoundException('ไม่พบผลการยืนยัน');
+    if (!validationResult) throw new NotFoundException('รหัสผ่านหรืออีเมลไม่ถูกต้อง');
 
     if (validationResult.errorType) {
-      this.logger.log(`Login failed: Email '${loginDto.email}' not found.`);
+      this.logger.warn(`Login failed: Email '${loginDto.email}' not found.`);
       throw new UnauthorizedException(`ไม่พบอีเมล '${loginDto.email}'`);
     }
 
