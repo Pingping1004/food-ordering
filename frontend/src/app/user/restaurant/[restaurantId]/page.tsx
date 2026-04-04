@@ -40,7 +40,8 @@ function MenuContextPage() {
     }, [cooker]);
 
     return (
-        <div className="flex flex-col gap-y-10 py-10 px-6">
+        <div className="relative min-h-screen pb-10">
+            <div className="flex flex-col gap-y-10 py-10 px-6">
             <RestaurantHeader
                 restaurantId={cooker?.restaurantId ?? ""}
                 name={cooker?.name ?? ""}
@@ -83,6 +84,7 @@ function MenuContextPage() {
                     เช็คออเดอร์ของคุณ
                 </Button>
             )}
+        </div>
         </div>
     )
 }
