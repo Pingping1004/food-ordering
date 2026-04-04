@@ -5,8 +5,8 @@ import { UseFormRegister, FieldValues, Path } from "react-hook-form";
 import { UploadIcon } from "./ui/UploadIcon";
 
 interface Option {
-  key: string;
-  value: string;
+    key: string;
+    value: string;
 }
 
 const inputVariants = cva(
@@ -26,41 +26,41 @@ const inputVariants = cva(
 );
 
 export type BaseInputProps<TFieldValues extends FieldValues = FieldValues> = Omit<
-  React.InputHTMLAttributes<HTMLInputElement | HTMLSelectElement>,
-  "name" | "value" | "onChange" | "onBlur" | "type" | "options" | "accept" | "tel"
+    React.InputHTMLAttributes<HTMLInputElement | HTMLSelectElement>,
+    "name" | "value" | "onChange" | "onBlur" | "type" | "options" | "accept" | "tel"
 > &
-  VariantProps<typeof inputVariants> & {
-    label?: string;
-    name: Path<TFieldValues> | string;
-    placeholder?: string;
-    register?: UseFormRegister<TFieldValues>;
-    validation?: object;
-    type?: "text" | "email" | "password" | "select" | "file" | "number" | "tel"; // Added "file" type
-    onChange?: (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
-    options?: { key: string; value: string }[];
-    error?: string;
-    className?: string;
-    value?: string | number;
-    accept?: string; // For file input, specify accepted file types
-    onBlur?: React.FocusEventHandler<HTMLInputElement | HTMLSelectElement>;
-    ref?: React.Ref<HTMLInputElement | HTMLSelectElement>;
-  };
+    VariantProps<typeof inputVariants> & {
+        label?: string;
+        name: Path<TFieldValues> | string;
+        placeholder?: string;
+        register?: UseFormRegister<TFieldValues>;
+        validation?: object;
+        type?: "text" | "email" | "password" | "select" | "file" | "number" | "tel"; // Added "file" type
+        onChange?: (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+        options?: { key: string; value: string }[];
+        error?: string;
+        className?: string;
+        value?: string | number;
+        accept?: string; // For file input, specify accepted file types
+        onBlur?: React.FocusEventHandler<HTMLInputElement | HTMLSelectElement>;
+        ref?: React.Ref<HTMLInputElement | HTMLSelectElement>;
+    };
 
 export type InputProps<TFieldValues extends FieldValues = FieldValues> =
-  // For type="select" inputs
-  | (BaseInputProps<TFieldValues> & {
-    type: "select"; // Discriminator
-    options: Option[]; // Required for select type
-  } & SelectHTMLAttributes<HTMLSelectElement>) // Include standard <select> attributes
-  // For type="file" inputs
-  | (BaseInputProps<TFieldValues> & {
-    type: "file"; // Discriminator
-    accept?: string; // 'accept' attribute specific to file inputs
-  } & InputHTMLAttributes<HTMLInputElement>) // Include standard <input type="file"> attributes
-  // For all other <input> types (e.g., text, number, email, password)
-  | (BaseInputProps<TFieldValues> & {
-    type?: Exclude<InputHTMLAttributes<HTMLInputElement>['type'], "select" | "file">; // Type can be text, number, etc.
-  } & InputHTMLAttributes<HTMLInputElement>);
+    // For type="select" inputs
+    | (BaseInputProps<TFieldValues> & {
+        type: "select"; // Discriminator
+        options: Option[]; // Required for select type
+    } & SelectHTMLAttributes<HTMLSelectElement>) // Include standard <select> attributes
+    // For type="file" inputs
+    | (BaseInputProps<TFieldValues> & {
+        type: "file"; // Discriminator
+        accept?: string; // 'accept' attribute specific to file inputs
+    } & InputHTMLAttributes<HTMLInputElement>) // Include standard <input type="file"> attributes
+    // For all other <input> types (e.g., text, number, email, password)
+    | (BaseInputProps<TFieldValues> & {
+        type?: Exclude<InputHTMLAttributes<HTMLInputElement>['type'], "select" | "file">; // Type can be text, number, etc.
+    } & InputHTMLAttributes<HTMLInputElement>);
 
 export const Input = forwardRef<HTMLInputElement | HTMLSelectElement, InputProps>(
     (
@@ -101,11 +101,21 @@ export const Input = forwardRef<HTMLInputElement | HTMLSelectElement, InputProps
                         <option value="" disabled hidden>
                             {placeholder || "Select an option"}
                         </option>
-                        {options.map((option) => (
-                            <option key={option.value} value={option.value}>
-                                {option.key}
-                            </option>
-                        ))}
+                        {options.map((option) => {
+                            if (option.value.startsWith("divider")) {
+                                return (
+                                    <option key={option.value} disabled>
+                                        {option.key}
+                                    </option>
+                                );
+                            }
+
+                            return (
+                                <option key={option.value} value={option.value}>
+                                    {option.key}
+                                </option>
+                            );
+                        })}
                     </select>
                     {error && <span className="text-sm text-danger-main">{error}</span>}
                 </div>
