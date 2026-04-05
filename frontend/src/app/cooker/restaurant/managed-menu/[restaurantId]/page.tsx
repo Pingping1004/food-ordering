@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useMemo } from 'react'
 import CookerHeader from '@/components/cookers/CookerHeader'
 import { Button } from '@/components/Button'
 import { Menu as MenuComponent } from '@/components/cookers/Menu'
@@ -8,16 +8,29 @@ import { useMenu, Menu as MenuType } from '@/context/MenuContext';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useCooker } from '@/context/Cookercontext';
+import Input from '@/components/Input';
 
 function Page() {
     const [, setMenus] = useState<MenuType[]>([]);
-    const { menus, deleteMenuLocal, updateMenu } = useMenu();
+    const { menus, deleteMenuLocal, updateMenu, refetch } = useMenu();
     const { cooker } = useCooker();
     const restaurantId = cooker?.restaurantId;
     const [, setError] = useState<string | null>(null);
     const [, setPatchingMenuId] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState("");
     const currentRequestRef = useRef<number | null>(null);
     const router = useRouter();
+
+    const filteredMenus = useMemo(() => {
+        if (!menus) return [];
+
+        const query = searchQuery.trim().toLowerCase();
+
+        return menus.filter(menu => {
+            if (!query) return true;
+            return menu.name.toLowerCase().includes(query);
+        });
+    }, [menus, searchQuery]);
 
     const handleMenuAvailabilityChange = useCallback(async (menuId: string, newIsAvailable: boolean) => {
         if (!menus || !restaurantId) return;
@@ -46,9 +59,7 @@ function Page() {
 
             if (currentRequestRef.current !== requestId) return;
 
-            const confirmed = typeof res.data.isAvailable === "boolean"
-                ? res.data.isAvailable
-                : newIsAvailable;
+            const confirmed = typeof res.data.isAvailable === "boolean" ? res.data.isAvailable : newIsAvailable;
 
             updateMenu(menuId, (menu) => ({
                 ...menu,
@@ -73,7 +84,7 @@ function Page() {
         try {
             await api.delete(`/menu/${menuId}`);
         } catch {
-            setMenus(backup);
+            await refetch()
             setError(`Failed to delete menu ${menuId}`);
         }
     }, [menus, deleteMenuLocal, setMenus]);
@@ -89,6 +100,15 @@ function Page() {
                 closeTime={cooker.closeTime}
             />
 
+            <Input
+                type="text"
+                name="menuSearchQuery"
+                placeholder="ค้นหาเมนู..."
+                value={searchQuery || ""}
+                onChange={(e => setSearchQuery(e.target.value))}
+                className="w-full px-4 py-2 border rounded-lg"
+            />
+
             <Button
                 type="button"
                 size="full"
@@ -97,10 +117,10 @@ function Page() {
                 <p>เพิ่มรายการอาหาร</p>
             </Button>
 
-            <h2 className="font-noto-thai text-bold text-lg">จัดการเมนู</h2>
+            <h2 className="font-noto-thai font-bold text-lg">จัดการเมนู</h2>
 
             <div className="flex flex-col gap-y-6">
-                {menus?.map((menu) => {
+                {filteredMenus?.map((menu) => {
                     return (
                         <MenuComponent
                             restaurantid={cooker.restaurantId}
@@ -117,6 +137,10 @@ function Page() {
                         />
                     )
                 })}
+
+                {filteredMenus.length === 0 && (
+                    <p className="text-center py-8 text-lg font-noto-thai text-gray-500">ไม่พบเมนูที่ค้นหา</p>
+                )}
             </div>
 
         </div>

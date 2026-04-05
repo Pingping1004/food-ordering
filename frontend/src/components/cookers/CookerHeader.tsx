@@ -22,7 +22,7 @@ export default function CookerHeader({
     return (
         <header className="w-full flex items-center">
             <div className="flex items-center w-full">
-                <h1 className="w-2/5 font-noto-thai text-bold md:text-2xl text-xl inline-block">{name}</h1>
+                <h1 className="w-2/5 font-noto-thai font-bold md:text-3xl text-2xl inline-block">{name}</h1>
 
                 <div className="w-full flex justify-end items-center gap-x-6">
                     {/* Conditional rendering based on the current URL */}
