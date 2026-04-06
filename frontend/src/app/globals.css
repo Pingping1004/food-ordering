@@ -152,6 +152,7 @@ body {
 .text-superLight { color: #E1E1E1; }
 .text-info { color: #22AFFF; }
 .text-success { color: var(--success, #45B858); }
+.text-danger { color: #FF3632 }
 .text-primary-light { color: #84ADF3; }
 
 .border-color { border-color: #E1E1E1; }
