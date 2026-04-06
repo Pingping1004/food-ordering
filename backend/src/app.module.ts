@@ -54,6 +54,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     InventoryModule,
     MenuModule,
     PrismaModule,
+    PaymentModule,
     OrderModule,
     PaymentModule,
     UploadModule,
