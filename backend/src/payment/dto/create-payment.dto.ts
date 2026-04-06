@@ -1,38 +1,15 @@
-import { PaymentMethod } from '@prisma/client';
-import { Type } from 'class-transformer';
-import {
-  IsNotEmpty,
-  IsNumber,
-  IsOptional,
-  Min,
-  IsString,
-  IsEnum,
-} from 'class-validator';
+import { IsNotEmpty, IsString } from 'class-validator';
 
 export class CreatePaymentDto {
   @IsNotEmpty()
-  @IsNumber()
-  @Min(1)
-  @Type(() => Number)
-  amount: number;
+  @IsString()
+  restaurantId: string;
 
   @IsNotEmpty()
   @IsString()
   orderId: string;
 
-  @IsOptional()
-  @IsString()
-  currency?: string;
-
   @IsNotEmpty()
-  @IsEnum(PaymentMethod)
-  paymentMethod: string;
-
-  @IsOptional()
   @IsString()
-  platformType: string;
-
-  @IsString()
-  @IsNotEmpty()
-  qrDownloadUri: string;
+  paymentSlipImg: string;
 }

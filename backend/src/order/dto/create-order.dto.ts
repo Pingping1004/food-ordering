@@ -78,18 +78,9 @@ export class CreateOrderDto {
   @Type(() => CreateOrderMenusDto)
   orderMenus: CreateOrderMenusDto[];
 
-  @IsNotEmpty()
-  @IsDate()
-  @Type(() => Date)
-  paidAt: Date
-
   @IsOptional() // Could be null if no payment initiated or failed initiation
   @IsString()
   paymentId?: string;
-
-  @IsNotEmpty()
-  @IsString()
-  paymentSlipImg: string;
 
   @IsOptional()
   @IsString()

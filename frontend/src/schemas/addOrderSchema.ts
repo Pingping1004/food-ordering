@@ -47,22 +47,6 @@ export const createOrderSchema = z.object({
     userTel: z.string()
         .trim()
         .regex(/^\d{10}$/, { message: 'กรุณาระบุเบอร์โทรที่ถูกต้อง 10 หลัก' }),
-    paymentSlipImg: z.any().superRefine((file, ctx) => {
-        if (!file) {
-            ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: "กรุณาอัพโหลดสลิป",
-            });
-            return;
-        }
-          
-        if (file.size > 2 * 1024 * 1024) {
-            ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: "ขนาดไฟล์ต้องไม่เกิน 2MB",
-              });
-        }
-    })
 });
 
 export type CreateOrderSchemaType = z.infer<typeof createOrderSchema>

@@ -146,9 +146,9 @@ model Order {
   isDelay              Boolean     @default(false)
   totalAmount          Decimal    @db.Decimal(10, 2)
 
-  paidAt               DateTime
-  paymentId            String      @unique
-  paymentSlipImg       String
+  paidAt               DateTime?
+  paymentId            String?      @unique
+  paymentSlipImg       String?
   paymentMethod        String?     @map("payment_method_type")
   paymentGatewayStatus String?     @map("payment_gateway_status")
   

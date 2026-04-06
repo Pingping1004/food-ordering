@@ -2,7 +2,6 @@ import { forwardRef, Module } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { OrderController } from './order.controller';
 import { PrismaService } from '../prisma/prisma.service';
-import { PaymentService } from 'src/payment/payment.service';
 import { ConfigService } from '@nestjs/config';
 import { PayoutModule } from 'src/payout/payout.module';
 import { CsrfModule } from 'src/csrf/csrf.module';
@@ -21,7 +20,7 @@ import { RestaurantModule } from 'src/restaurant/restaurant.module';
     forwardRef(() => RestaurantModule)
   ],
   controllers: [OrderController],
-  providers: [OrderService, PrismaService, PaymentService, ConfigService],
+  providers: [OrderService, PrismaService, ConfigService],
   exports: [OrderService],
 })
 export class OrderModule {}

@@ -6,12 +6,17 @@ import { OrderModule } from 'src/order/order.module';
 import { UserModule } from 'src/user/user.module';
 import { PayoutModule } from 'src/payout/payout.module';
 import { CsrfModule } from 'src/csrf/csrf.module';
+import { RestaurantModule } from 'src/restaurant/restaurant.module';
+import { PrismaModule } from 'src/prisma/prisma.module';
 
 @Module({
   imports: [
     forwardRef(() => OrderModule),
     UserModule,
     PayoutModule,
+    RestaurantModule,
+    PrismaModule,
+    OrderModule,
     CsrfModule,
   ],
   controllers: [PaymentController],
