@@ -15,7 +15,7 @@ import { getCurrentTime, getApproxCloseTime } from '@/util/time';
 import { useToggle } from '@/hook/useToggle';
 import { useRouter } from 'next/navigation';
 import { toastDanger, toastSuccess } from '@/components/ui/Toast';
-import { ACCOUNT_TYPE_OPTIONS, AccountTypeCode } from '@/common/bank-type.enum';
+import { ACCOUNT_TYPE_OPTIONS } from '@/common/bank-type.enum';
 
 export default function RestaurantRegisterPage() {
     const { user } = useAuth();
@@ -52,7 +52,7 @@ export default function RestaurantRegisterPage() {
             adminSurname: '',
             adminTel: '',
             adminEmail: '',
-            paymentQr: ''
+            paymentQr: '',
         },
         mode: 'onChange',
     });
@@ -383,13 +383,15 @@ export default function RestaurantRegisterPage() {
                 <div className="flex flex-col items-center gap-y-6">
                     <h2 className="w-full font-noto-thai text-bold text-start text-primary ">สลิปของคุณ</h2>
 
-                    <Image
-                        src={slipPreview ?? "/picture.svg"}
-                        alt="รูปสลิปชำระเงิน"
-                        width={250}
-                        height={250}
-                        className="object-cover aspect-square"
-                    />
+                    {slipPreview && (
+                        <Image
+                            src={slipPreview}
+                            alt="รูปสลิปชำระเงิน"
+                            width={250}
+                            height={250}
+                            className="object-cover aspect-square"
+                        />
+                    )}
 
                     <Input
                         type="file"
