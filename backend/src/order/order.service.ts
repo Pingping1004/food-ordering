@@ -7,21 +7,17 @@ import {
   Logger,
   forwardRef,
   UnauthorizedException,
-  ConflictException,
 } from '@nestjs/common';
 import { CreateOrderDto, CreateOrderMenusDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentStatus, OrderStatus, Order, Prisma } from '@prisma/client';
-import { PaymentService } from 'src/payment/payment.service';
 import { Cron } from '@nestjs/schedule';
 
 import { InventoryService } from 'src/inventory/inventory.service';
 import moment from 'moment-timezone';
-import { BANK_CODE_MAP, PaymentPayload, toAccountType } from 'src/common/interface/accountType';
 import { RestaurantService } from 'src/restaurant/restaurant.service';
 import { Decimal } from '@prisma/client/runtime/client';
-import { PayoutService } from 'src/payout/payout.service';
 
 type ValidatedOrderMenu = {
   menuId: string;
@@ -41,8 +37,6 @@ export class OrderService {
     private readonly restaurantService: RestaurantService,
     @Inject(forwardRef(() => InventoryService))
     private readonly inventoryService: InventoryService,
-    private readonly paymentService: PaymentService,
-    private readonly payoutService: PayoutService,
   ) { }
 
   private readonly logger = new Logger('OrderService');
@@ -112,44 +106,6 @@ export class OrderService {
     this.validateDeliveryTime(createOrderDto.deliverAt);
 
     const { totalAmount, validatedMenus } = await this.validateOrderMenus(createOrderDto.orderMenus, createOrderDto.restaurantId);
-    const { accountNumber, bankAccount, accountHolderFullName } = await this.restaurantService.findRestaurant(createOrderDto.restaurantId);
-
-    const accountTypeCode = BANK_CODE_MAP[bankAccount];
-    if (!accountTypeCode) throw new ConflictException("ไม่พบข้อมูลบัญชีธนาคาร")
-
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-    const paymentData: PaymentPayload = {
-      payload: {
-        imageBase64: createOrderDto.paymentSlipImg,
-        checkCondition: {
-          checkAmount: {
-            type: "eq",
-            amount: totalAmount.toString(),
-          },
-          checkDate: {
-            type: "gte",
-            date: fiveMinutesAgo,
-          },
-          checkDuplicate: false,
-          checkReceiver: [
-            {
-              accountType: accountTypeCode,
-              accountNameTH: accountHolderFullName,
-              accountNumber: accountNumber.toString(),
-            }
-          ]
-        }
-      }
-    }
-
-    this.logger.debug(`Sending account receiver info: ${JSON.stringify(paymentData.payload.checkCondition.checkReceiver, null, 2)}`)
-
-    const paymentResult = await this.paymentService.verifyPayment(paymentData);
-    this.logger.log("Payment result: ", paymentResult);
-    if (!paymentResult?.data?.dateTime) throw new BadRequestException("ข้อมูลการชำระเงินไม่สมบูรณ์");
-
-    const paymentTime = new Date(paymentResult.data.dateTime)
-    if (Date.now() - paymentTime.getTime() > 5 * 60 * 1000) throw new BadRequestException("เวลาในการชำระเงินหมดอายุ กรุณาทำรายการใหม่")
 
     try {
       const order = await this.prisma.$transaction(async (tx) => {
@@ -159,10 +115,7 @@ export class OrderService {
             restaurantId: createOrderDto.restaurantId,
             deliverAt: createOrderDto.deliverAt,
             paymentStatus: PaymentStatus.paid,
-            paymentSlipImg: createOrderDto.paymentSlipImg,
-            paidAt: paymentTime,
             userTel: createOrderDto.userTel,
-            paymentId: paymentResult.data.transRef,
             paymentGatewayStatus: 'verified',
             totalAmount: totalAmount,
             orderMenus: {
@@ -231,13 +184,20 @@ export class OrderService {
     try {
       const order = await this.prisma.order.findUnique({
         where: { orderId },
-        include: { orderMenus: true },
+        include: { 
+          orderMenus: true,
+          restaurant: {
+            select: {
+              paymentQr: true,
+            }
+          }
+         },
       });
 
       if (!order) throw new NotFoundException("ไม่พบออเดอร์ที่ค้นหา");
 
       // Only check secret if provided
-      if (orderSecret !== undefined && order.orderSecret !== orderSecret) throw new UnauthorizedException("ไม่สามารถเข้าถึงออเดอร์นี้ได้");
+      // if (orderSecret || order.orderSecret !== orderSecret) throw new UnauthorizedException("ไม่สามารถเข้าถึงออเดอร์นี้ได้");
 
       return order;
 
@@ -262,6 +222,21 @@ export class OrderService {
         deliverAt: updateOrderDto.deliverAt,
         isDelay: updateOrderDto.isDelay,
       },
+    });
+  }
+
+  async updateOrderPaymentTx(tx: Prisma.TransactionClient,orderId: string, paymentSlipImg?: string, paymentGatewayStatus?: string, paymentId?: string, paidAt?: Date) {
+    const existing = await this.findOneOrder(orderId);
+    if (existing.paymentGatewayStatus === "verified") return existing;
+
+    return await tx.order.update({
+      where: { orderId },
+      data: {
+        paymentGatewayStatus: paymentGatewayStatus,
+        paymentId: paymentId,
+        paymentSlipImg: paymentSlipImg,
+        paidAt: paidAt,
+      }
     });
   }
 
@@ -333,7 +308,6 @@ export class OrderService {
       if (order.status !== "accepted" && newStatus === "accepted") {
         updateData.acceptAt = new Date();
         await this.handleInventoryDeduction(tx, order.orderMenus);
-        await this.payoutService.createPayoutTx(tx, order.orderId);
       }
 
       const updatedOrder = await tx.order.update({

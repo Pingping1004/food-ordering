@@ -1,19 +1,19 @@
-import { ConflictException, forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { calculatePayout, calculateWeeklyInterval } from './payout-calculator';
-import { OrderService } from 'src/order/order.service';
-import { Order, Payout, Prisma } from '@prisma/client';
+import { Payout, Prisma } from '@prisma/client';
 import Decimal from 'decimal.js';
-import { RestaurantService } from 'src/restaurant/restaurant.service';
 import moment from 'moment';
+import { OrderService } from 'src/order/order.service';
 
 @Injectable()
 export class PayoutService {
   constructor(
+    private readonly orderService: OrderService,
     private readonly prisma: PrismaService,
   ) {}
 
-  async createPayoutTx(tx: Prisma.TransactionClient, orderId: string) {
+  async createPayoutTx(tx: Prisma.TransactionClient, orderId: string, paidAt: Date) {
     const order = await tx.order.findUnique({
       where: { orderId },
       include: {
@@ -28,9 +28,6 @@ export class PayoutService {
     });
 
     if (!order) throw new NotFoundException("ไม่พบออดดอร์สำหรับไอดี: ", orderId);
-
-    const existing = await tx.payout.findUnique({ where: { orderId } });
-    if (existing) return existing;
 
     const totalAmount = order.totalAmount;
     const totalAmountDecimal = new Prisma.Decimal(totalAmount);
@@ -51,7 +48,7 @@ export class PayoutService {
         transactionFee: payout.transactionFee,
         vat: new Decimal(0),
         restaurantName: order.restaurant.name,
-        startDate: order.paidAt,
+        startDate: paidAt,
         endDate: new Date(),
       }
     })

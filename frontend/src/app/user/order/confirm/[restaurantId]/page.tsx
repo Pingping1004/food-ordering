@@ -11,19 +11,15 @@ import { createOrderSchema, CreateOrderSchemaType } from '@/schemas/addOrderSche
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { toastDanger } from '@/components/ui/Toast';
-import Image from 'next/image';
 import { toastSuccess } from '@/components/ui/Toast';
 import { useEffect, useMemo, useState } from 'react';
 import { useCooker } from '@/context/Cookercontext';
 
 const OrderList = dynamic(() => import("@/components/users/OrderList"), { ssr: false })
-const CountdownTimer = dynamic(() => import("@/components/Timer"))
 const Input = dynamic(() => import("@/components/Input"), { ssr: false })
 
-interface orderPaymentPayload {
-    paymentSlipImg: string;
+export interface OrderPayload {
     restaurantId: string;
-    paidAt: Date;
     deliverAt: Date;
     userTel: string;
     orderMenus: OrderMenuType[];
@@ -55,23 +51,17 @@ const slipErrorMap: Record<string, string> = {
 function OrderConfirmContext() {
     const { cooker } = useCooker();
     const { cart, clearCart } = useCart();
-    const [showQR, setShowQR] = useState(false);
-    const [slipPreview, setSlipPreview] = useState<string | null>(null);
-    const [paidAt, setPaidAt] = useState<Date | null>(null);
-    const [expired, setExpired] = useState(false);
     const router = useRouter();
 
     const {
-        watch,
         control,
         handleSubmit,
         register,
         setValue,
-        formState: { errors, isSubmitting, isValid, isDirty }
+        formState: { errors, isSubmitting, isValid, isDirty, isLoading }
     } = useForm({
         resolver: zodResolver(createOrderSchema),
         defaultValues: {
-            paymentSlipImg: '',
             deliverAt: getBufferTime(),
             userTel: '',
         },
@@ -83,12 +73,6 @@ function OrderConfirmContext() {
             setValue("restaurantId", cooker.restaurantId);
         }
     }, [cooker, setValue]);
-
-    useEffect(() => {
-        return () => {
-            if (slipPreview) URL.revokeObjectURL(slipPreview);
-        };
-    }, [slipPreview]);
 
     const totalAmount = useMemo(() => {
         if (!cart) return 0;
@@ -104,42 +88,7 @@ function OrderConfirmContext() {
         return;
     }
 
-    const paymentQrImageUrl = cooker.paymentQr
-    const paymentSlipImg = watch("paymentSlipImg");
-    let isButtonDisabled = isSubmitting || !isValid || !isDirty || expired || cart.length === 0;
-
-    const handleSlipUpload = (file: File) => {
-        // 1. Validate size
-        if (file.size > 2 * 1024 * 1024) {
-            toastDanger("ไฟล์สลิปต้องไม่เกิน 2MB");
-            return;
-        }
-
-        if (!file.type.startsWith("image/")) {
-            toastDanger("กรุณาอัปโหลดไฟล์รูปภาพเท่านั้น");
-            return;
-        }
-
-        const reader = new FileReader();
-
-        reader.onloadend = () => {
-            const base64DataUrl = reader.result as string;
-
-            setValue("paymentSlipImg", base64DataUrl, {
-                shouldValidate: true,
-                shouldDirty: true,
-            });
-
-            setPaidAt(new Date());
-            setExpired(false);
-        };
-
-        reader.onerror = () => {
-            toastDanger("เกิดข้อผิดพลาดในการอ่านไฟล์");
-        };
-
-        reader.readAsDataURL(file);
-    };
+    let isButtonDisabled = isSubmitting || !isValid || !isDirty || isLoading || cart.length === 0;
 
     const submitOrder = async (data: CreateOrderSchemaType) => {
         try {
@@ -148,20 +97,13 @@ function OrderConfirmContext() {
                 return;
             }
 
-            if (!paymentSlipImg) {
-                toastDanger("กรุณาอัพโหลดสลิปก่อนสั่งอาหาร");
-                return;
-            }
-
             if (!cooker) {
                 toastDanger("ไม่พบข้อมูลร้านอาหาร");
                 return;
             }
 
-            const orderPaymentPayload: orderPaymentPayload = {
-                paymentSlipImg: paymentSlipImg,
+            const orderPaymentPayload: OrderPayload = {
                 restaurantId: cooker.restaurantId,
-                paidAt: paidAt ?? new Date(),
                 deliverAt: new Date(data.deliverAt),
                 orderMenus: cart.map((item) => ({
                     menuId: item.menuId,
@@ -175,14 +117,14 @@ function OrderConfirmContext() {
 
             isButtonDisabled = true;
 
-            const response = await api.post(`/order/verify-and-create-order`, orderPaymentPayload);
+            const response = await api.post(`/order/create`, orderPaymentPayload);
             const result = response.data;
             localStorage.setItem(`orderSecret:${result.orderId}`, result.orderSecret);
-            clearCart()
+            clearCart();
 
 
             toastSuccess("ชำระเงินสำเร็จและสร้างออเดอร์เรียบร้อย");
-            router.push(`/user/order/done/${result.orderId}`);
+            router.push(`/user/order/wait/${result.orderId}`);
 
         } catch (error: unknown) {
             if (typeof error === 'object' && error !== null && 'response' in error) {
@@ -195,6 +137,8 @@ function OrderConfirmContext() {
             }
         }
     }
+
+    const paymentTimeBuffer = new Date(new Date().getTime() + 5 * 60 * 1000);
 
     return (
         <form
@@ -211,7 +155,7 @@ function OrderConfirmContext() {
                 <div className="flex justify-between items-center">
                     <p className="text-lg text-primary font-noto-thai text-bold">สรุปออเดอร์</p>
                     {/* <button onClick={handleCalculateTimeClick}>
-                        <p className="text-info text-xs  underline">คำนวณเวลาได้รับอาหาร?</p>
+                        <p className="text-info text-xs underline">คำนวณเวลาได้รับอาหาร?</p>
                     </button> */}
                 </div>
                 <OrderList items={cart} />
@@ -234,8 +178,11 @@ function OrderConfirmContext() {
             <div className="flex flex-col gap-y-4">
                 <div className="flex justify-between items-center">
                     <h3 className="font-noto-thai text-bold ">เลือกเวลารับอาหาร</h3>
-                    <p className="font-noto-thai text-sm text-danger-main">
-                        ใช้เวลาจัดเตรียมขั้นต่ำ 5 นาที
+                    <p className="font-noto-thai text-base font-semibold text-danger-main">
+                        รับอาหารได้หลัง {paymentTimeBuffer.toLocaleTimeString("th-TH", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                        })}
                     </p>
                 </div>
                 <div>
@@ -249,82 +196,21 @@ function OrderConfirmContext() {
                         )}
                     />
                     {errors.deliverAt && (
-                        <p className="text-red-500 text-sm z-50">
+                        <p className="text-red-500 font-noto-thai font-semibold text-base z-50">
                             กรุณาเลือกเวลาจัดส่งหลังเวลาปัจจุบันอย่างน้อย 5 นาที
                         </p>
                     )}
                 </div>
             </div>
 
-            <div className="flex flex-col gap-y-6">
-                <div className="flex flex-col w-full justify-center items-center gap-y-6">
-                    {showQR && (
-                        <>
-                            <Image
-                                src={paymentQrImageUrl}
-                                alt="Payment QR picture"
-                                width={300}
-                                height={300}
-                                className="object-cover aspect-square rounded-lg"
-                            />
-                        </>
-                    )}
-
-                    <CountdownTimer duration={300} onExpire={() => setExpired(true)} />
-
-                    <Button
-                        type="button"
-                        variant="secondary"
-                        size="lg"
-                        onClick={() => setShowQR(prev => !prev)}
-                    >
-                        {showQR ? "Hide Payment QR" : "Show Payment QR"}
-                    </Button>
-                </div>
-            </div>
-
-            {slipPreview && (
-                <div className="flex flex-col items-center gap-y-6">
-                    <h2 className="w-full font-noto-thai text-bold text-start text-primary ">สลิปของคุณ</h2>
-
-                    <Image
-                        src={slipPreview}
-                        alt="Payment slip preview"
-                        width={250}
-                        height={250}
-                        className="object-cover aspect-square"
-                    />
-                </div>
-            )}
-
-            <Input
-                type="file"
-                variant={paymentSlipImg ? "success" : "primary"}
-                label={paymentSlipImg ? "อัพโหลดสลิปสำเร็จ" : "ยังไม่ได้อัพโหลดสลิป"}
-                placeholder="อัพโหลดสลิปชำระเงิน"
-                id="paymentSlipImg"
-                accept="image/*"
-                error={errors.paymentSlipImg?.message as string | undefined}
-                {...register('paymentSlipImg')}
-                onChange={(e) => {
-                    const file = (e.target as HTMLInputElement).files?.[0];
-                    if (!file) return;
-
-                    const previewUrl = URL.createObjectURL(file);
-                    setSlipPreview(previewUrl);
-
-                    handleSlipUpload(file);
-                }}
-            />
-
-            <div className=" w-full px-6 z-50 flex">
+            <div className=" w-full z-50 flex">
                 <Button
                     className="w-full font-noto-thai text-bold py-4"
                     type="submit"
-                    // disable when user doesn't complete the form
+                    size="full"
                     disabled={isButtonDisabled}
                 >
-                    {isSubmitting ? "กำลังส่งคำสั่งซื้อ..." : "ยืนยันออเดอร์พร้อมชำระเงิน"}
+                    {isSubmitting ? "กำลังส่งคำสั่งซื้อ..." : "ส่งออเดอร์ไปยังร้าน"}
                 </Button>
             </div>
         </form>
