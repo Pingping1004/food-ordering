@@ -13,12 +13,16 @@ import { toastDanger } from '@/components/ui/Toast';
 import { SuccessIcon } from '@/components/ui/icon/success';
 
 export interface Order {
+    restaurantId: string;
     orderMenus: OrderMenuType[];
     status: OrderStatus;
     orderAt: string;
     deliverAt: string;
     paymentStatus: PaymentStatus
     totalAmount: number
+    restaurant: {
+        paymentQr: string
+    }
 }
 
 export default function DoneOrderPage() {
@@ -27,7 +31,6 @@ export default function DoneOrderPage() {
     const orderId = getParamId(params.orderId);
 
     const [restaurantName, setRestaurantName] = useState<string | null>(null);
-    const [, setRestaurantId] = useState<string | null>(null);
     const [order, setOrder] = useState<Order>();
     const { orderMenus = [] } = order || {};
     const [loading, setLoading] = useState(true);
@@ -47,7 +50,7 @@ export default function DoneOrderPage() {
                 const orderResponse = await api.get(`order/${orderId}`, {
                     headers: {
                         "x-order-secret": orderSecret
-                    }
+                    } 
                 });
                 setOrder(orderResponse.data);
 
@@ -59,7 +62,6 @@ export default function DoneOrderPage() {
                 }
 
                 const newRestaurantId = orderResponse.data.restaurantId;
-                setRestaurantId(newRestaurantId);
                 const restaurantResponse = await api.get(`restaurant/${newRestaurantId}`);
 
                 const newRestaurantName = restaurantResponse.data.name;
@@ -85,26 +87,6 @@ export default function DoneOrderPage() {
         return diffMinutes <= 5
     })();
 
-    const handleSubmitCancel = async () => {
-        try {
-            setLoading(true)
-
-            const orderSecret = localStorage.getItem(`orderSecret:${orderId}`)
-            await api.patch(`order/cancel/${orderId}`, { orderSecret })
-
-            router.push(`/user/order/refund/${orderId}`)
-        } catch (error: unknown) {
-            if (typeof error === 'object' && error !== null && 'response' in error) {
-                const err = error as { response: { status: number; data?: { message?: string, code?: string } } };
-                const backendMessage = err.response.data?.message;
-
-                toastDanger(backendMessage ?? "เกิดข้อผิดพลาดในการยกเลิกออเดอร์");
-            }
-        } finally {
-            setLoading(false)
-        }
-    }
-
     if (loading) return <LoadingPage />
     if (!order) return <div>ไม่พบออเดอร์ของคุณ</div>;
     if (orderMenus.length === 0) {
@@ -118,7 +100,7 @@ export default function DoneOrderPage() {
 
             <main className="flex flex-col justify-center items-center gap-y-10">
                 <SuccessIcon />
-                
+
                 <div className="flex flex-col items-center gap-y-1">
                     <h4 className="text-lg text-success font-noto-thai">ส่งออเดอร์สำเร็จ</h4>
                     <h1 className="text-2xl font-noto-thai text-bold text-primary">ออเดอร์ {orderId?.substring(0, 4)}</h1>
@@ -143,31 +125,13 @@ export default function DoneOrderPage() {
                 </div>
             </section>
 
-            {!canCancelOrder && (
-                <p className=" text-danger-main text-center">
-                    การยกเลิกออเดอร์ทำได้ภายใน 5 นาทีหลังสั่งเท่านั้น
-                </p>
-            )}
-
-            <div className="grid grid-cols-2 gap-x-4">
-                <Button
-                    type="button"
-                    size="lg"
-                    onClick={() => router.push('/user/restaurant')}
-                >
-                    <p className="">กลับสู่หน้าหลัก</p>
-                </Button>
-
-                <Button
-                    type="button"
-                    size="lg"
-                    variant="secondaryDanger"
-                    disabled={!canCancelOrder}
-                    onClick={() => handleSubmitCancel()}
-                >
-                    <p className="">ยกเลิกคำสั่งซื้อ</p>
-                </Button>
-            </div>
+            <Button
+                type="button"
+                size="lg"
+                onClick={() => router.push('/user/restaurant')}
+            >
+                <p className="">กลับสู่หน้าหลัก</p>
+            </Button>
         </div>
     )
 }
