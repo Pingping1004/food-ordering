@@ -28,7 +28,7 @@ export interface PaymentPayload {
   }
 }
 
-export const BANK_CODE_MAP = {
+export const BANK_CODE_MAP: Record<AccountType, string> = {
   BANGKOK_BANK: "01002",
   KASIKORN_BANK: "01004",
   KRUNG_THAI_BANK: "01006",
@@ -55,7 +55,7 @@ export const BANK_CODE_MAP = {
 
   MERCHANT_QR: "03000",
   TRUEMONEY_WALLET: "04000",
-} satisfies Record<AccountType, string>;
+}
 
 const CODE_TO_ENUM: Record<string, AccountType> = Object.fromEntries(
   Object.entries(BANK_CODE_MAP).map(([key, value]) => [value, key])
