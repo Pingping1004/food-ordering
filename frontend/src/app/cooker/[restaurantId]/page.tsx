@@ -12,6 +12,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { toastDanger, toastSuccess } from "@/components/ui/Toast";
 import { useParams, usePathname } from "next/navigation";
 import { getParamId } from "@/util/param";
+import { useOrderSounds } from "@/hook/useOrderSounds";
 
 const Modal = dynamic(() => import("../../../components/users/Modal"), { ssr: false })
 const WarningBanner = dynamic(() => import("../../../components/cookers/WarningBanner"), { ssr: false })
@@ -24,6 +25,7 @@ function Page() {
     const [orders, setOrders] = useState<Record<string, OrderProps>>({});
     const lastTimestampRef = useRef<string | null>(null)
     const { cooker } = useCooker();
+    const { playNewOrderSound, playPaymentSound } = useOrderSounds();
     const [navbarStatus, setNavbarStatus] = useState<NavState>("sent");
     const [showAutoCancelModal, setShowAutoCancelModal] = useState(false)
     const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -73,33 +75,43 @@ function Page() {
 
             // No new orders → slow down polling
             if (!data.orders || data.orders.length === 0) {
-                pollingIntervalRef.current = Math.min(
-                    pollingIntervalRef.current + 1000,
-                    8000
-                );
-                return;
-            }
+                pollingIntervalRef.current = Math.min(pollingIntervalRef.current + 1000, 8000);
+            } else {
+                // New orders → speed up polling
+                pollingIntervalRef.current = 3000;
+                const now = Date.now()
 
-            // New orders → speed up polling
-            pollingIntervalRef.current = 3000;
-            const now = Date.now()
+                // Stage new orders (with dedup protection)
+                for (const order of data.orders) {
+                    const existingOrder = ordersRef.current[order.orderId];
 
-            // Stage new orders (with dedup protection)
-            for (const order of data.orders) {
-                if (
-                    !pendingOrdersRef.current[order.orderId] &&
-                    !ordersRef.current[order.orderId]
-                ) {
-                    const delayMs = 1000 + Math.random() * 2000;
-                    pendingOrdersRef.current[order.orderId] = {
-                        order,
-                        showAt: now + delayMs,
-                    };
+                    if (existingOrder) {
+                        const justPaid = order.paymentStatus === "paid" && existingOrder.paymentStatus !== "paid"
+
+                        setOrders(prev => ({
+                            ...prev,
+                            [order.orderId]: { ...prev[order.orderId], ...order }
+                        }));
+
+                        if (justPaid) playPaymentSound();
+                    } else {
+                        if (!pendingOrdersRef.current[order.orderId]) {
+                            const delayMs = 1000 + Math.random() * 2000;
+                            pendingOrdersRef.current[order.orderId] = {
+                                order,
+                                showAt: now + delayMs,
+                            };
+                        } else {
+                            pendingOrdersRef.current[order.orderId].order = order;
+                        }
+                    }
                 }
             }
 
+            const now = Date.now();
+            const cutoff = now - 10000;
             const ready: { id: string; order: OrderProps }[] = [];
-            const cutoff = Date.now() - 10000;
+
             for (const [id, val] of Object.entries(pendingOrdersRef.current)) {
                 if (now >= val.showAt || val.showAt < cutoff) {
                     ready.push({ id, order: val.order });
@@ -107,6 +119,8 @@ function Page() {
             }
 
             if (ready.length > 0) {
+                playNewOrderSound();
+
                 setOrders(prev => {
                     const next = { ...prev };
 
@@ -121,7 +135,7 @@ function Page() {
         } finally {
             fetchingRef.current = false
         }
-    }, [restaurantId]);
+    }, [restaurantId, playNewOrderSound, playPaymentSound]);
 
     const handleTextMode = () => {
         const newValue = !isLargeTextMode
@@ -230,6 +244,11 @@ function Page() {
         );
     };
 
+    const fetchNewOrdersRef = useRef(fetchNewOrders);
+    useEffect(() => {
+        fetchNewOrdersRef.current = fetchNewOrders;
+    }, [fetchNewOrders]);
+
     useEffect(() => {
         if (!restaurantId) return;
 
@@ -237,27 +256,24 @@ function Page() {
         let timeoutId: NodeJS.Timeout;
 
         const loop = async () => {
-            if (!isMounted || document.hidden) return;
+            if (!isMounted) return;
 
-            if (canPoll()) {
-                await fetchNewOrders();
-            }
-
-            timeoutId = setTimeout(loop, pollingIntervalRef.current);
+            if (!document.hidden && restaurantId) await fetchNewOrdersRef.current();
+            if (isMounted) timeoutId = setTimeout(loop, pollingIntervalRef.current);
         };
 
         const init = async () => {
             await fetchInitialOrders();
-            loop();
+            if (isMounted) loop();
         };
 
         init();
 
         return () => {
             isMounted = false;
-            if (timeoutId) clearTimeout(timeoutId)
+            clearTimeout(timeoutId)
         };
-    }, [restaurantId, fetchInitialOrders, fetchNewOrders]);
+    }, [restaurantId, fetchInitialOrders]);
 
     useEffect(() => {
         const handleVisibility = () => {
@@ -321,13 +337,7 @@ function Page() {
         startOfYesterday.setDate(startOfYesterday.getDate() - 1);
         startOfYesterday.setHours(0, 0, 0, 0);
 
-        return ordersArray.filter((order) =>
-            (
-                order.paymentStatus === PaymentStatus.paid ||
-                order.paymentStatus === PaymentStatus.refund_pending ||
-                order.paymentStatus === PaymentStatus.refund_complete
-            ) && new Date(order.orderAt) >= startOfYesterday
-        );
+        return ordersArray.filter((order) => new Date(order.orderAt) >= startOfYesterday);
     }, [ordersArray]);
 
     const dailyDone = useMemo(() => {
@@ -343,11 +353,18 @@ function Page() {
         setNavbarStatus(status);
     };
 
-    const isButtonDisabled = (orderAt: Date, deliverAt: Date, bufferMins: number): boolean => {
+    const isRejectedDisabled = (orderAt: Date, deliverAt: Date): boolean => {
         const elapsedMins = (now - new Date(orderAt).getTime()) / 60000;
         const beforeDeliverMins = (new Date(deliverAt).getTime() - now) / 60000;
 
-        return elapsedMins > bufferMins && beforeDeliverMins > 5;
+        return elapsedMins > 3 || beforeDeliverMins < 5;
+    };
+
+    const isDelayDisabled = (acceptedAt: Date, deliverAt: Date): boolean => {
+        const elapsedMins = (now - new Date(acceptedAt).getTime()) / 60000;
+        const beforeDeliverMins = (new Date(deliverAt).getTime() - now) / 60000;
+
+        return elapsedMins > 5 || beforeDeliverMins < 5;
     };
 
     const navToStatusMap: Record<NavState, OrderStatus[]> = useMemo(() => ({
@@ -409,7 +426,7 @@ function Page() {
                 <section className="flex flex-col gap-y-6">
                     <h1 className={`${isLargeTextMode ? "text-3xl" : "text-2xl"} font-bold text-primary`}>สรุปรายวัน</h1>
                     <div className="flex justify-between items-center">
-                        <h2 className={`${isLargeTextMode ? "text-2xl" : "text-xl"} font-bold text-primary`}>ยอดขายรวม: {dailySales}</h2>
+                        <h2 className={`${isLargeTextMode ? "text-2xl" : "text-xl"} font-bold text-primary`}>ยอดขายรวม: {dailySales.toFixed(2)}</h2>
 
                         <p className={`${isLargeTextMode ? "text-2xl" : "text-xl"} text-secondary`}>ออเดอร์วันนี้: {dailyDone}</p>
                     </div>
@@ -431,10 +448,9 @@ function Page() {
                         details={order.details}
                         userTel={order.userTel}
                         isLargeTextMode={isLargeTextMode}
-                        isDelayDisabled={isButtonDisabled(new Date(order.orderAt), new Date(order.deliverAt), 10)}
-                        isRejectedDisabled={isButtonDisabled(new Date(order.orderAt), new Date(order.deliverAt), 5)}
+                        isDelayDisabled={isDelayDisabled(new Date(order.acceptAt ?? order.orderAt), new Date(order.deliverAt))}
+                        isRejectedDisabled={isRejectedDisabled(new Date(order.orderAt), new Date(order.deliverAt))}
                         className="mb-4"
-                        selected="default"
                         onDelayUpdate={handleDelayOrder}
                         onStatusUpdate={handleUpdateStatus}
                     />
@@ -445,10 +461,9 @@ function Page() {
                 isOpen={showAutoCancelModal}
                 onClose={() => setShowAutoCancelModal(false)}
                 title="กฎการจัดการออเดอร์"
-                body={`• ต้องกดรับออเดอร์ภายใน 5 นาที มิฉะนั้นระบบจะยกเลิกอัตโนมัติ และร้านจะไม่ได้รับเงิน
-                    • สามารถกดปฏิเสธออเดอร์ได้ภายใน 5 นาทีหลังจากลูกค้าสั่ง
-                    • หลังจากรับออเดอร์แล้ว สามารถกด "แจ้งล่าช้า" ได้ภายใน 10 นาทีเท่านั้น
-                    • แจ้งล่าช้าได้ภายใน 5 นาทีก่อนลูกค้าจะมารับ
+                body={`• ต้องกดรับออเดอร์ภายใน 3 นาที มิฉะนั้นระบบจะยกเลิกอัตโนมัติ
+                    • สามารถกดปฏิเสธออเดอร์ได้ภายใน 3 นาทีหลังจากลูกค้าสั่ง
+                    • แจ้งล่าช้าได้ภายใน 5นาทีหลังรับออเดอร์และ5นาทีก่อนลูกค้าจะมารับ
                     
                     กรุณาตรวจสอบออเดอร์และดำเนินการให้ทันเวลา`
                 }

@@ -92,18 +92,21 @@ export class OrderService {
     };
   }
 
-  validateDeliveryTime(deliverTime: Date) {
+  async validateDeliveryTime(restaurantId: string, deliverTime: Date) {
     const nowBkk = moment().tz('Asia/Bangkok');
     const deliverAtBkk = moment(deliverTime).tz('Asia/Bangkok');
 
-    const bufferMin = 5; // fixed 5-minute buffer at all times
-    const diffMinutes = deliverAtBkk.diff(nowBkk, 'minutes'); // whole-minute difference
+    const { avgCookingTime } = await this.restaurantService.findRestaurant(restaurantId);
+    const ACCEPT_WINDOW_MINS = 3;
+    const PAYMENT_WINDOW_MINS = 3;
+    const bufferMins = avgCookingTime + ACCEPT_WINDOW_MINS + PAYMENT_WINDOW_MINS;
+    const diffMinutes = deliverAtBkk.diff(nowBkk, 'minutes');
 
-    if (diffMinutes < bufferMin) throw new BadRequestException(`เวลารับอาหารต้องอยู่หลังจากเวลาปัจจุบันอย่างน้อย ${bufferMin} นาที`);
+    if (diffMinutes < bufferMins) throw new BadRequestException(`เวลารับอาหารต้องอยู่หลังจากเวลาปัจจุบันอย่างน้อย ${bufferMins} นาที`);
   }
 
   async createOrder(createOrderDto: CreateOrderDto, userId?: string): Promise<Order> {
-    this.validateDeliveryTime(createOrderDto.deliverAt);
+    await this.validateDeliveryTime(createOrderDto.restaurantId, createOrderDto.deliverAt);
 
     const { totalAmount, validatedMenus } = await this.validateOrderMenus(createOrderDto.orderMenus, createOrderDto.restaurantId);
 
@@ -114,9 +117,9 @@ export class OrderService {
             userId: userId ?? null,
             restaurantId: createOrderDto.restaurantId,
             deliverAt: createOrderDto.deliverAt,
-            paymentStatus: PaymentStatus.paid,
+            paymentStatus: PaymentStatus.unpaid,
             userTel: createOrderDto.userTel,
-            paymentGatewayStatus: 'verified',
+            updatedAt: new Date(),
             totalAmount: totalAmount,
             orderMenus: {
               create: validatedMenus.map((item) => ({
@@ -156,9 +159,8 @@ export class OrderService {
       },
     });
 
-    const latestTimestamp = orders.length > 0 
-      ? orders.reduce((latest, order) => 
-        order.orderAt > latest ? order.orderAt : latest, orders[0].orderAt) : new Date();
+    const latestTimestamp = orders.length > 0 ? orders.reduce((latest, order) => 
+        order.updatedAt > latest ? order.updatedAt : latest, orders[0].updatedAt) : new Date();
 
     return { orders, latestTimestamp }
   }
@@ -167,7 +169,7 @@ export class OrderService {
     const orders = await this.prisma.order.findMany({
       where: {
         restaurantId,
-        orderAt: { gte: timeStamp }
+        updatedAt: { gt: timeStamp }
       },
       include: { orderMenus: true },
       orderBy: {
@@ -175,7 +177,7 @@ export class OrderService {
       }
     });
 
-    const latestTimestamp = orders.length > 0 ? orders[orders.length - 1].orderAt : timeStamp ?? null
+    const latestTimestamp = orders.length > 0 ? orders[orders.length - 1].updatedAt : timeStamp ?? null
 
     return { orders, latestTimestamp }
   }
@@ -225,8 +227,9 @@ export class OrderService {
     });
   }
 
-  async updateOrderPaymentTx(tx: Prisma.TransactionClient,orderId: string, paymentSlipImg?: string, paymentGatewayStatus?: string, paymentId?: string, paidAt?: Date) {
-    const existing = await this.findOneOrder(orderId);
+  async updateOrderPaymentTx(tx: Prisma.TransactionClient,orderId: string, paymentStatus: PaymentStatus, paymentSlipImg?: string, paymentGatewayStatus?: string, paymentId?: string, paidAt?: Date) {
+    const existing = await tx.order.findUnique({ where: { orderId }});
+    if (!existing) throw new NotFoundException("ไม่พบออเดอร์");
     if (existing.paymentGatewayStatus === "verified") return existing;
 
     return await tx.order.update({
@@ -234,6 +237,7 @@ export class OrderService {
       data: {
         paymentGatewayStatus: paymentGatewayStatus,
         paymentId: paymentId,
+        paymentStatus: paymentStatus,
         paymentSlipImg: paymentSlipImg,
         paidAt: paidAt,
       }
@@ -400,6 +404,7 @@ export class OrderService {
     const result = await this.prisma.order.updateMany({
       where: {
         status: 'accepted',
+        completedAt: new Date(),
         deliverAt: { lt: threshold }
       },
       data: { status: 'completed', completedAt: new Date() }
@@ -414,13 +419,13 @@ export class OrderService {
     const result = await this.prisma.order.updateMany({
       where: {
         status: "sent",
-        paymentStatus: "paid",
+        paymentStatus: "unpaid",
         orderAt: { lt: threshold }
       },
       data: {
         status: "cancelled",
         paymentStatus: "refund_pending",
-        cancelledAt: new Date()
+        cancelledAt: new Date(),
       }
     });
 
