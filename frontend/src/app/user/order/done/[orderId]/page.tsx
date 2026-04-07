@@ -17,6 +17,7 @@ export interface Order {
     orderMenus: OrderMenuType[];
     status: OrderStatus;
     orderAt: string;
+    acceptAt: string;
     deliverAt: string;
     paymentStatus: PaymentStatus
     totalAmount: number
