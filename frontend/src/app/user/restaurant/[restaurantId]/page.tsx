@@ -57,14 +57,16 @@ function MenuContextPage() {
     return (
         <div className="relative min-h-screen pb-10">
             <div className="flex flex-col gap-y-10 py-10 px-6">
-                <RestaurantHeader
-                    restaurantId={cooker?.restaurantId}
-                    name={cooker?.name}
-                    restaurantImg={cooker?.restaurantImg}
-                    openTime={cooker?.openTime}
-                    closeTime={cooker?.closeTime}
-                    adminTel={cooker?.adminTel}
-                />
+                {cooker && (
+                    <RestaurantHeader
+                        restaurantId={cooker?.restaurantId}
+                        name={cooker?.name}
+                        restaurantImg={cooker?.restaurantImg}
+                        openTime={cooker?.openTime}
+                        closeTime={cooker?.closeTime}
+                        adminTel={cooker?.adminTel}
+                    />
+                )}
 
                 <h3 className="font-noto-thai text-bold  text-primary">เมนูสำหรับคุณ</h3>
 
