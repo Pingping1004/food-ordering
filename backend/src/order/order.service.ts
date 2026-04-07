@@ -159,8 +159,8 @@ export class OrderService {
       },
     });
 
-    const latestTimestamp = orders.length > 0 ? orders.reduce((latest, order) => 
-        order.updatedAt > latest ? order.updatedAt : latest, orders[0].updatedAt) : new Date();
+    const latestTimestamp = orders.length > 0 ? orders.reduce((latest, order) =>
+      order.updatedAt > latest ? order.updatedAt : latest, orders[0].updatedAt) : new Date();
 
     return { orders, latestTimestamp }
   }
@@ -186,14 +186,14 @@ export class OrderService {
     try {
       const order = await this.prisma.order.findUnique({
         where: { orderId },
-        include: { 
+        include: {
           orderMenus: true,
           restaurant: {
             select: {
               paymentQr: true,
             }
           }
-         },
+        },
       });
 
       if (!order) throw new NotFoundException("ไม่พบออเดอร์ที่ค้นหา");
@@ -227,8 +227,8 @@ export class OrderService {
     });
   }
 
-  async updateOrderPaymentTx(tx: Prisma.TransactionClient,orderId: string, paymentStatus: PaymentStatus, paymentSlipImg?: string, paymentGatewayStatus?: string, paymentId?: string, paidAt?: Date) {
-    const existing = await tx.order.findUnique({ where: { orderId }});
+  async updateOrderPaymentTx(tx: Prisma.TransactionClient, orderId: string, paymentStatus: PaymentStatus, paymentSlipImg?: string, paymentGatewayStatus?: string, paymentId?: string, paidAt?: Date) {
+    const existing = await tx.order.findUnique({ where: { orderId } });
     if (!existing) throw new NotFoundException("ไม่พบออเดอร์");
     if (existing.paymentGatewayStatus === "verified") return existing;
 
@@ -273,7 +273,7 @@ export class OrderService {
   async updateOrderStatus(orderId: string, newStatus: OrderStatus) {
     const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
       sent: ["accepted", "cancelled", "rejected"],
-      accepted: ["completed"],
+      accepted: ["completed", "cancelled"],
       cancelled: [],
       rejected: [],
       completed: []
@@ -301,12 +301,10 @@ export class OrderService {
 
       if (newStatus === "cancelled") {
         updateData.cancelledAt = new Date();
-        updateData.paymentStatus = "refund_pending";
       }
 
       if (newStatus === "rejected") {
         updateData.rejectedAt = new Date();
-        updateData.paymentStatus = "refund_pending";
       }
 
       if (order.status !== "accepted" && newStatus === "accepted") {
@@ -365,7 +363,7 @@ export class OrderService {
 
       if (!order) throw new NotFoundException("ไม่พบออเดอร์");
 
-      if (order.orderSecret !== orderSecret) throw new UnauthorizedException("ไม่สามารถยกเลิกออเดอร์ที่ไม่ใช่ของคุณได้")
+      // if (order.orderSecret !== orderSecret) throw new UnauthorizedException("ไม่สามารถยกเลิกออเดอร์ที่ไม่ใช่ของคุณได้")
 
       if (order.status === "accepted") throw new BadRequestException("ร้านกำลังเตรียมอาหาร ไม่สามารถยกเลิกได้");
       if (order.status === "completed") throw new BadRequestException("ไม่สามารถยกเลิกออเดอร์ที่เสร็จแล้ว");
@@ -375,7 +373,6 @@ export class OrderService {
         where: { orderId },
         data: {
           status: "cancelled",
-          paymentStatus: "refund_pending",
           cancelledAt: new Date()
         },
         select: { orderId: true, status: true, paymentStatus: true }
@@ -413,22 +410,39 @@ export class OrderService {
     if (result.count > 0) this.logger.log(`Auto completed ${result.count} orders`)
   }
 
-  @Cron('*/5 * * * *')
+  @Cron('*/3 * * * *')
   async autoCancelledOrders() {
-    const threshold = new Date(Date.now() - 5 * 60 * 1000);
-    const result = await this.prisma.order.updateMany({
+    const now = new Date();
+
+    // cooker didn't accept within 3 mins
+    const sentThreshold = new Date(Date.now() - 3 * 60 * 1000);
+    const sentResult = await this.prisma.order.updateMany({
       where: {
         status: "sent",
         paymentStatus: "unpaid",
-        orderAt: { lt: threshold }
+        orderAt: { lt: sentThreshold }
       },
       data: {
-        status: "cancelled",
-        paymentStatus: "refund_pending",
-        cancelledAt: new Date(),
+        status: "rejected",
+        rejectedAt: now,
       }
     });
 
-    if (result.count > 0) this.logger.log(`Auto-cancelled ${result.count} orders`);
+    // user didn't pay within 3 mins of acceptance
+    const acceptedThreshold = new Date(Date.now() - 3 * 60 * 1000);
+    const acceptedResult = await this.prisma.order.updateMany({
+      where: {
+        status: "accepted",
+        paymentStatus: "unpaid",
+        acceptAt: { lt: acceptedThreshold }
+      },
+      data: {
+        status: "cancelled",
+        cancelledAt: now,
+      }
+    });
+
+    const total = sentResult.count + acceptedResult.count;
+    if (total > 0) this.logger.log(`Auto-cancelled ${total} orders (${sentResult.count} unaccepted, ${acceptedResult.count} unpaid)`);
   }
 }
