@@ -30,7 +30,6 @@ function OrderWaitPage() {
             try {
                 const res = await api.get(`/order/${orderId}`);
                 const data = res.data;
-                console.log("status:", data.status, OrderStatus.cancelled);
 
                 setOrder(data);
                 setLoading(false);

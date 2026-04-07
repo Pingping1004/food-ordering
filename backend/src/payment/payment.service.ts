@@ -40,8 +40,6 @@ export class PaymentService {
 
             const acceptAtDate = new Date((acceptAt))
             const bufferMinsLater = new Date(acceptAtDate.getTime() + 11 * 60 * 1000);
-            console.log("Order At: ", JSON.stringify(acceptAtDate));
-            console.log("Buffer time: ", JSON.stringify(toThaiDate(bufferMinsLater)))
 
             const paymentData: PaymentPayload = {
                 payload: {
@@ -81,7 +79,6 @@ export class PaymentService {
 
             if (!result?.data?.dateTime) throw new BadRequestException("ข้อมูลการชำระเงินไม่สมบูรณ์");
             const paidAt = new Date(result.data.dateTime);
-            console.log("Paid at: ", paidAt)
 
             // if (Date.now() - paidAt.getTime() > 11 * 60 * 1000) throw new BadRequestException("เวลาในการชำระเงินหมดอายุ กรุณาทำรายการใหม่")
             if (paidAt < acceptAt || paidAt > bufferMinsLater) throw new BadRequestException("Invalid slip time");
