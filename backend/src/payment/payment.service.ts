@@ -7,6 +7,7 @@ import {
     Logger,
     NotFoundException,
 } from '@nestjs/common';
+import { PaymentStatus } from '@prisma/client';
 import axios, { AxiosError } from 'axios';
 import { BANK_CODE_MAP, PaymentPayload } from 'src/common/interface/accountType';
 import { OrderService } from 'src/order/order.service';
@@ -31,14 +32,15 @@ export class PaymentService {
 
         try {
             const { accountNumber, bankAccount, accountHolderFullName } = await this.restaurantService.findRestaurant(restaurantId);
-            const { orderAt, totalAmount } = await this.orderService.findOneOrder(orderId);
+            const { acceptAt, totalAmount } = await this.orderService.findOneOrder(orderId);
 
             const accountTypeCode = BANK_CODE_MAP[bankAccount];
             if (!accountTypeCode) throw new ConflictException("ไม่พบข้อมูลบัญชีธนาคาร")
+            if (!acceptAt) throw new ConflictException("ออเดอร์ยังไม่ถูกรับโดยร้านอาหร")
 
-            const orderAtDate = new Date((orderAt))
-            const bufferMinsLater = new Date(orderAtDate.getTime() + 11 * 60 * 1000);
-            console.log("Order At: ", JSON.stringify(orderAtDate));
+            const acceptAtDate = new Date((acceptAt))
+            const bufferMinsLater = new Date(acceptAtDate.getTime() + 11 * 60 * 1000);
+            console.log("Order At: ", JSON.stringify(acceptAtDate));
             console.log("Buffer time: ", JSON.stringify(toThaiDate(bufferMinsLater)))
 
             const paymentData: PaymentPayload = {
@@ -51,7 +53,7 @@ export class PaymentService {
                         },
                         checkDate: {
                             type: "gte",
-                            date: toThaiDate(orderAtDate),
+                            date: toThaiDate(acceptAtDate),
                         },
                         checkDuplicate: true,
                         checkReceiver: [
@@ -81,11 +83,11 @@ export class PaymentService {
             const paidAt = new Date(result.data.dateTime);
             console.log("Paid at: ", paidAt)
 
-            if (Date.now() - paidAt.getTime() > 11 * 60 * 1000) throw new BadRequestException("เวลาในการชำระเงินหมดอายุ กรุณาทำรายการใหม่")
-            if (paidAt < orderAt || paidAt > bufferMinsLater) throw new BadRequestException("Invalid slip time");
+            // if (Date.now() - paidAt.getTime() > 11 * 60 * 1000) throw new BadRequestException("เวลาในการชำระเงินหมดอายุ กรุณาทำรายการใหม่")
+            if (paidAt < acceptAt || paidAt > bufferMinsLater) throw new BadRequestException("Invalid slip time");
 
             await this.prisma.$transaction(async (tx) => {
-                await this.orderService.updateOrderPaymentTx(tx, orderId, paymentSlipImg, 'verified', result.data.transRef, paidAt)
+                await this.orderService.updateOrderPaymentTx(tx, orderId, PaymentStatus.paid, paymentSlipImg, 'verified', result.data.transRef, paidAt)
                 await this.payoutService.createPayoutTx(tx, orderId, paidAt)
             });
 
