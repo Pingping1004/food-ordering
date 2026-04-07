@@ -199,9 +199,6 @@ export class OrderService {
 
       if (!order) throw new NotFoundException("ไม่พบออเดอร์ที่ค้นหา");
 
-      // Only check secret if provided
-      // if (orderSecret || order.orderSecret !== orderSecret) throw new UnauthorizedException("ไม่สามารถเข้าถึงออเดอร์นี้ได้");
-
       return order;
 
     } catch (error) {
@@ -363,10 +360,8 @@ export class OrderService {
       });
 
       if (!order) throw new NotFoundException("ไม่พบออเดอร์");
+      if (order.orderSecret !== orderSecret) throw new UnauthorizedException("ไม่สามารถยกเลิกออเดอร์ที่ไม่ใช่ของคุณได้")
 
-      // if (order.orderSecret !== orderSecret) throw new UnauthorizedException("ไม่สามารถยกเลิกออเดอร์ที่ไม่ใช่ของคุณได้")
-
-      if (order.status === "accepted") throw new BadRequestException("ร้านกำลังเตรียมอาหาร ไม่สามารถยกเลิกได้");
       if (order.status === "completed") throw new BadRequestException("ไม่สามารถยกเลิกออเดอร์ที่เสร็จแล้ว");
       if (order.status === "cancelled") throw new BadRequestException("ออเดอร์ถูกยกเลิกไปแล้ว");
 

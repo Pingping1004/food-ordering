@@ -3,7 +3,7 @@ import { z } from "zod";
 export const createOrderSchema = (avgCookingTime: number) => z.object({
     restaurantId: z.string().uuid('ไอดีร้านอาหารไม่ถูกต้อง'),
     deliverAt: z.string() // It receives a string from TimePickerInput
-        .min(1, 'กรุณาเลือกเวลารับอาหารขั้นต่ำ 10 นาทีหลังสั่ง') // Basic validation for non-empty string
+        .min(1, `กรุณาเลือกเวลารับอาหารขั้นต่ำ ${5 + avgCookingTime} นาทีหลังสั่ง`) // Basic validation for non-empty string
         .refine(
             (time) => {
                 // More robust validation for HH:mm format
@@ -31,7 +31,7 @@ export const createOrderSchema = (avgCookingTime: number) => z.object({
             const now = new Date();
             // const deliverHour = deliverAtDate.getHours();
             // const timeBuffer = (deliverHour === 12) ? 19 : 9;
-            const timeBuffer = 6;
+            const timeBuffer = 6 + avgCookingTime;
             const minimumAllowedDeliverTime = new Date(now.getTime() + timeBuffer * 60 * 1000);
 
             if (deliverAtDate < minimumAllowedDeliverTime) {

@@ -33,6 +33,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         router.push('/login');
     }, [router]);
 
+    const logout = useCallback(async () => {
+        await logoutApi()
+        handleLogoutSideEffects(true);
+    }, [handleLogoutSideEffects]);
+
     useEffect(() => {
         if (initializing) return;
 
@@ -62,8 +67,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             freshLogin: true,
         });
 
-        return () => stopInactivityWatcher(); // cleanup on unmount
-    }, [user]); // restarts when user logs in/out
+        return () => stopInactivityWatcher();
+    }, [user, logout]);
 
     const login = useCallback(async (email: string, password: string): Promise<User> => {
         try {
@@ -78,11 +83,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             throw err;
         }
     }, [handleLoginError]);
-
-    const logout = useCallback(async () => {
-        await logoutApi()
-        handleLogoutSideEffects(true);
-    }, [handleLogoutSideEffects]);
 
     useEffect(() => {
         async function init() {

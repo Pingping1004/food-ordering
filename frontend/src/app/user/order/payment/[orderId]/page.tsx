@@ -11,7 +11,7 @@ import { getParamId } from '@/util/param';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import type { Order } from '../../done/[orderId]/page';
 import LoadingPage from '@/components/LoadingPage';
@@ -46,7 +46,6 @@ function OrderPaymentPage() {
     const [expired, setExpired] = useState(false);
     const [loading, setLoading] = useState(true);
     const [order, setOrder] = useState<Order>();
-    const [deadline,] = useState(() => Date.now() + 5 * 60 * 1000);
 
     useEffect(() => {
         if (!orderId) {
@@ -58,9 +57,7 @@ function OrderPaymentPage() {
             try {
                 const orderSecret = localStorage.getItem(`orderSecret:${orderId}`)
                 const orderResponse = await api.get(`order/${orderId}`, {
-                    headers: {
-                        "x-order-secret": orderSecret
-                    }
+                    headers: { "x-order-secret": orderSecret }
                 });
                 setOrder(orderResponse.data);
             } finally {
@@ -86,10 +83,9 @@ function OrderPaymentPage() {
         setExpired(true);
         try {
             const orderSecret = localStorage.getItem(`orderSecret:${orderId}`)
+            console.log("Order secret: ", orderSecret);
             await api.patch(`/order/cancel/${orderId}`, {
-                headers: {
-                    "x-order-secret": orderSecret
-                }
+                orderSecret: orderSecret
             });
         } catch { }
 
@@ -209,7 +205,7 @@ function OrderPaymentPage() {
                             className="object-cover aspect-square rounded-lg"
                         />
 
-                        <CountdownTimer duration={20} onExpire={handleExpire} />
+                        <CountdownTimer duration={10} onExpire={handleExpire} />
                     </div>
 
                     <h2 className="flex flex-col w-full items-center font-noto-thai text-3xl font-semibold">{Number(order.totalAmount).toFixed(2)} บาท</h2>

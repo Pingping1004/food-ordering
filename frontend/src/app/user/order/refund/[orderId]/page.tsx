@@ -30,9 +30,7 @@ export default function RefundProcessingPage() {
             try {
                 const orderSecret = localStorage.getItem(`orderSecret:${orderId}`)
                 const orderResponse = await api.get(`order/${orderId}`, {
-                    headers: {
-                        "x-order-secret": orderSecret
-                    }
+                    headers: { "x-order-secret": orderSecret }
                 });
                 setOrder(orderResponse.data);
 

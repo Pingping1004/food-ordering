@@ -4,15 +4,14 @@ import { useState, useCallback, useRef, useMemo } from 'react'
 import CookerHeader from '@/components/cookers/CookerHeader'
 import { Button } from '@/components/Button'
 import { Menu as MenuComponent } from '@/components/cookers/Menu'
-import { useMenu, Menu as MenuType } from '@/context/MenuContext';
+import { useMenu } from '@/context/MenuContext';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useCooker } from '@/context/Cookercontext';
 import Input from '@/components/Input';
 
 function Page() {
-    const [, setMenus] = useState<MenuType[]>([]);
-    const { menus, deleteMenuLocal, updateMenu, refetch } = useMenu();
+    const { menus, deleteMenuLocal, updateMenu } = useMenu();
     const { cooker } = useCooker();
     const restaurantId = cooker?.restaurantId;
     const [, setError] = useState<string | null>(null);
@@ -87,7 +86,7 @@ function Page() {
             backup.forEach(menu => updateMenu(menu.menuId, () => menu))
             setError(`Failed to delete menu ${menuId}`);
         }
-    }, [menus, deleteMenuLocal, setMenus]);
+    }, [menus, deleteMenuLocal, updateMenu]);
 
     if (!cooker) return null;
 

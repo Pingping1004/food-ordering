@@ -236,14 +236,6 @@ function Page() {
         ordersRef.current = orders;
     }, [orders]);
 
-    const canPoll = () => {
-        return (
-            !document.hidden &&
-            isOrderPage &&
-            restaurantId
-        );
-    };
-
     const fetchNewOrdersRef = useRef(fetchNewOrders);
     useEffect(() => {
         fetchNewOrdersRef.current = fetchNewOrders;
@@ -287,7 +279,7 @@ function Page() {
         return () => {
             document.removeEventListener("visibilitychange", handleVisibility);
         };
-    }, [fetchNewOrders]);
+    }, [fetchNewOrders, isOrderPage]);
 
     useEffect(() => {
         if (!isOrderPage) {

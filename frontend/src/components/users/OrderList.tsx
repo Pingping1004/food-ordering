@@ -71,7 +71,7 @@ export default function OrderList({ items }: Readonly<CartListProps>) {
                                             type="button"
                                             size="sm"
                                             variant="success"
-                                            onClick={() => addToCart(menu.menuId, menu.menuName, menu.unitPrice, menu.menuImg, menu.restaurantId)}
+                                            onClick={() => addToCart(menu.menuId, menu.menuName, menu.unitPrice, menu.menuImg, menu.isAvailable, menu.restaurantId)}
                                         >
                       +
                                         </Button>

@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import Image from "next/image";
 import { api } from "@/lib/api";
 import { Button } from "@/components/Button";
-import { MenuItem } from "../../add-menu/[restaurantId]/page";
+import type { Menu } from "@/context/MenuContext";
 import { saveAs } from 'file-saver';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -29,7 +29,7 @@ type CsvDummyRow = {
     originalImageFileNameCsv: string;
 };
 
-interface ServerMenuItem extends MenuItem {
+interface ServerMenuItem extends Menu {
     name: string;
     description?: string;
     maxDaily: number;

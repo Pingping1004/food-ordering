@@ -55,10 +55,6 @@ function OrderConfirmContext() {
     const { cart, clearCart } = useCart();
     const router = useRouter();
 
-    if (!cooker) {
-        toastDanger("ไม่พบข้อมูลร้านอาหาร");
-        return;
-    }
     const schema = useMemo(() => createOrderSchema(cooker.avgCookingTime ?? 0), [cooker.avgCookingTime]);
 
     const {
@@ -89,24 +85,25 @@ function OrderConfirmContext() {
             return total + item.unitPrice * item.quantity;
         }, 0);
     }, [cart]);
+
     const formattedTotal = totalAmount.toFixed(2);
-
-    // if (!cooker) {
-    //     toastDanger("ไม่พบข้อมูลร้านอาหาร");
-    //     return;
-    // }
-
     let isButtonDisabled = isSubmitting || !isValid || !isDirty || isLoading || cart.length === 0;
+
+    if (!cooker) {
+        toastDanger("ไม่พบข้อมูลร้านอาหาร");
+        return;
+    }
+
+    if (cart.length === 0 && !isSubmitting && !isSubmitted) {
+        toastDanger("กรุณาเลือกเมนูที่จะสั่ง")
+        setTimeout(() => router.replace(`/user/restaurant`));
+        return;
+    }
 
     const submitOrder = async (data: CreateOrderSchemaType) => {
         try {
             if (!cart || cart.length === 0) {
                 toastDanger('ตะกร้าสินค้าว่างเปล่า กรุณาเพิ่มรายการอาหาร');
-                return;
-            }
-
-            if (!cooker) {
-                toastDanger("ไม่พบข้อมูลร้านอาหาร");
                 return;
             }
 
@@ -144,12 +141,6 @@ function OrderConfirmContext() {
                 toastDanger(code ? slipErrorMap[code] ?? backendMessage ?? "เกิดข้อผิดพลาด" : backendMessage ?? "เกิดข้อผิดพลาด");
             }
         }
-    }
-
-    if (cart.length === 0 && !isSubmitting && !isSubmitted) {
-        toastDanger("กรุณาเลือกเมนูที่จะสั่ง")
-        setTimeout(() => router.replace(`/user/restaurant`));
-        return;
     }
 
     return (

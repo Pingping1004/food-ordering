@@ -13,14 +13,6 @@ import { toastDanger } from '@/components/ui/Toast';
 import { Menu, useMenu } from '@/context/MenuContext';
 import { getParamId } from '@/util/param';
 
-export type MenuItem = Omit<SingleCreateMenuSchemaType, "menuImg"> & {
-    menuId: string;
-    createdAt: Date;
-    isAvailable: boolean;
-    menuImg?: string;
-    price: number;
-};
-
 export default function AddMenuPage() {
     const { addMenuOptimistic, confirmMenu, rejectMenu } = useMenu();
     const params = useParams();
@@ -36,7 +28,7 @@ export default function AddMenuPage() {
     const [apiSuccessMessage, setApiSuccessMessage] = useState<string | null>(null);
 
     // State to hold successfully created menu items (if you want to display them locally)
-    const [, setCreatedMenusList] = useState<MenuItem[]>([]);
+    const [, setCreatedMenusList] = useState<Menu[]>([]);
 
 
     const {
@@ -132,12 +124,12 @@ export default function AddMenuPage() {
                 return;
             }
 
-            const response = await api.post<MenuItem>(`/menu/single`, formData, {
+            const response = await api.post<Menu>(`/menu/single`, formData, {
                     headers: { 'Content-Type': 'multipart/form-data' },
                 }
             );
 
-            const createdMenuItem: MenuItem = response.data;
+            const createdMenuItem: Menu = response.data;
             confirmMenu(tempId, response.data);
             setApiSuccessMessage(`Menu "${createdMenuItem.name}" created successfully!`);
 
