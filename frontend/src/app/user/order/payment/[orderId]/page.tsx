@@ -188,6 +188,11 @@ function OrderPaymentPage() {
     const paymentImgUrl = order.restaurant.paymentQr;
     const isButtonDisabled = isSubmitting || expired || isLoading || !paymentSlipImg;
 
+    const PAYMENT_WINDOW_MINS = 3;
+    const paymentDeadline = new Date(
+        new Date(order.acceptAt).getTime() + PAYMENT_WINDOW_MINS * 60 * 1000
+    );
+
     return (
         <form className="flex flex-col justify-center items-center py-10 px-6 gap-y-6" onSubmit={handleSubmit(handlePayment)}>
             <div className="flex flex-col gap-y-6">
@@ -204,7 +209,7 @@ function OrderPaymentPage() {
                             className="object-cover aspect-square rounded-lg"
                         />
 
-                        <CountdownTimer duration={180} onExpire={handleExpire} />
+                        <CountdownTimer deadline={paymentDeadline} onExpire={handleExpire} />
                     </div>
 
                     <h2 className="flex flex-col w-full items-center font-noto-thai text-3xl font-semibold">{Number(order.totalAmount).toFixed(2)} บาท</h2>

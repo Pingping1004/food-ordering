@@ -261,6 +261,7 @@ export const Order = ({
                             size={lg ? "lg" : "md"}
                             className="w-full"
                             type="button"
+                            disabled={new Date().getTime() - new Date(orderAt).getTime() > 3}
                             onClick={handleAccept}
                         >
                             <ScaledText large={lg}>รับออเดอร์</ScaledText>
