@@ -83,7 +83,6 @@ function OrderPaymentPage() {
         setExpired(true);
         try {
             const orderSecret = localStorage.getItem(`orderSecret:${orderId}`)
-            console.log("Order secret: ", orderSecret);
             await api.patch(`/order/cancel/${orderId}`, {
                 orderSecret: orderSecret
             });
@@ -205,11 +204,11 @@ function OrderPaymentPage() {
                             className="object-cover aspect-square rounded-lg"
                         />
 
-                        <CountdownTimer duration={10} onExpire={handleExpire} />
+                        <CountdownTimer duration={180} onExpire={handleExpire} />
                     </div>
 
                     <h2 className="flex flex-col w-full items-center font-noto-thai text-3xl font-semibold">{Number(order.totalAmount).toFixed(2)} บาท</h2>
-                    <p className="flex flex-col w-full items-center font-bold font-noto-thai text-center">ยิ่งจ่ายเร็ว ร้านเริ่มทำอาหารได้ทันที</p>
+                    <p className="flex flex-col w-full items-center text-xl font-bold font-noto-thai text-center">ยิ่งจ่ายเร็ว ร้านเริ่มทำอาหารได้ทันที</p>
                 </div>
 
                 {slipPreview && (

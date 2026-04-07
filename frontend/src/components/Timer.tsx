@@ -28,8 +28,8 @@ export default function CountdownTimer({ duration, onExpire }: CountdownTimerPro
     }, [timeLeft, onExpire]);
 
     return (
-        <div className="text-center font-semibold text-red-500">
-            กรุณาชำระเงินและยืนยันออเดอร์ภายใน:  {formatTime(timeLeft)}
+        <div className="text-center text-xl font-semibold text-red-500">
+            กรุณาชำระเงินภายใน: {formatTime(timeLeft)}
         </div>
     )
 }
