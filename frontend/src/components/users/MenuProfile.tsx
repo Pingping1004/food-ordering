@@ -26,7 +26,7 @@ export type MenuProfileProps = React.HTMLAttributes<HTMLDivElement> &
         // unitPrice: number;
         // maxDaily: number;
         // cookingTime: number;
-        // isAvailable: boolean;
+        isAvailable: boolean;
         restaurantId: string;
         isPriority: boolean;
     }
@@ -42,7 +42,7 @@ export default function MenuProfile({
     sellPriceDisplay,
     // maxDaily, //
     // cookingTime, //
-    // isAvailable, //
+    isAvailable,
     restaurantId, //
     isPriority,
     ...props
@@ -93,7 +93,7 @@ export default function MenuProfile({
                             type="button"
                             size="sm"
                             variant="success"
-                            onClick={() => addToCart(menuId, name, sellPriceDisplay, menuImg || "", restaurantId)}
+                            onClick={() => addToCart(menuId, name, sellPriceDisplay, menuImg, isAvailable, restaurantId)}
                         >
                             +
                         </Button>

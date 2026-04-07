@@ -66,6 +66,7 @@ export class OrderService {
       const existingMenu = menuMap.get(item.menuId);
 
       if (!existingMenu) throw new NotFoundException(`ไม่พบเมนู`);
+      if (!existingMenu.isAvailable) throw new BadRequestException("เมนูนี้ไม่พร้อมให้บริการ");
       if (existingMenu.restaurantId !== restaurantId) throw new BadRequestException(`เมนู ${item.menuName} ไม่ใช่ของร้านนี้`);
 
       // SERVER calculates price

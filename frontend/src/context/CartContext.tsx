@@ -7,13 +7,14 @@ export interface CartItem {
     menuName: string;
     unitPrice: number;
     menuImg: string;
+    isAvailable: boolean;
     quantity: number;
     restaurantId: string;
 };
 
 type CartContextType = {
     cart: CartItem[];
-    addToCart: (menuId: string, menuName: string, unitPrice: number, menuImg: string, restaurantId: string) => void;
+    addToCart: (menuId: string, menuName: string, unitPrice: number, menuImg: string, isAvailable: boolean, restaurantId: string) => void;
     removeFromCart: (menuId: string) => void;
     getQuantity: (menuId: string) => number;
     clearCart: () => void;
@@ -42,11 +43,13 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
     useEffect(() => { cartRef.current = cart }, [cart]);
 
-    const addToCart = useCallback((menuId: string, menuName: string, unitPrice: number, menuImg: string, restaurantId: string) => {
+    const addToCart = useCallback((menuId: string, menuName: string, unitPrice: number, menuImg: string, isAvailable: boolean, restaurantId: string) => {
         const current = cartRef.current;
         if (current.length > 0 && current[0].restaurantId !== restaurantId) {
             return { success: false, reason: "คนละร้านอาหาร" };
         }
+
+        if (!isAvailable) return { success: false, reason: "เมนูนี้ไม่พร้อมให้บริการ" }
 
         setCart((prev) => {
             const existingCartItem = prev.find((item) => item.menuId === menuId);
@@ -58,7 +61,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
                         : item);
             }
 
-            return [...prev, { menuId, menuName, unitPrice, menuImg, quantity: 1, restaurantId }];
+            return [...prev, { menuId, menuName, unitPrice, menuImg, isAvailable, quantity: 1, restaurantId }];
         });
 
         return { success: true }

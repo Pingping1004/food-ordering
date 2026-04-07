@@ -90,7 +90,7 @@ function MenuContextPage() {
                             sellPriceDisplay={menu.sellPriceDisplay}
                             // maxDaily={menu.maxDaily}
                             // cookingTime={menu.cookingTime}
-                            // isAvailable={menu.isAvailable}
+                            isAvailable={menu.isAvailable}
                             restaurantId={menu.restaurantId}
                             isPriority={i === 0}
                             variant={(menu.isAvailable && isNowOpen) ? "on" : "off"}
