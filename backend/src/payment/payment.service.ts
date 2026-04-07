@@ -39,7 +39,7 @@ export class PaymentService {
             if (!acceptAt) throw new ConflictException("ออเดอร์ยังไม่ถูกรับโดยร้านอาหร")
 
             const acceptAtDate = new Date((acceptAt))
-            const bufferMinsLater = new Date(acceptAtDate.getTime() + 11 * 60 * 1000);
+            const bufferMinsLater = new Date(acceptAtDate.getTime() + 3 * 60 * 1000);
 
             const paymentData: PaymentPayload = {
                 payload: {

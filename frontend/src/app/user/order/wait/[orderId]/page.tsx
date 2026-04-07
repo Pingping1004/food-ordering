@@ -63,7 +63,7 @@ function OrderWaitPage() {
     if (!order) return <div>ไม่พบออเดอร์ของคุณ</div>;
     if (loading) <LoadingPage />
 
-    const futureTime = new Date(new Date(order.orderAt).getTime() + 5 * 60 * 1000);
+    const futureTime = new Date(new Date(order.orderAt).getTime() + 3 * 60 * 1000);
 
     return (
         <div className="flex flex-col items-center justify-center min-h-screen gap-6">

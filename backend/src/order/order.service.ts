@@ -306,6 +306,8 @@ export class OrderService {
       }
 
       if (order.status !== "accepted" && newStatus === "accepted") {
+        const ACCEPT_WINDOW_MS = 3 * 60 * 1000;
+        if (Date.now() - order.orderAt.getTime() > ACCEPT_WINDOW_MS) throw new BadRequestException("เลยเวลาที่กำหนดในการรับออเดอร์")
         updateData.acceptAt = new Date();
         await this.handleInventoryDeduction(tx, order.orderMenus);
       }
