@@ -76,17 +76,6 @@ export default function DoneOrderPage() {
         fetchData();
     }, [orderId, router]);
 
-    const canCancelOrder = (() => {
-        if (!order) return false
-
-        const orderTime = new Date(order.orderAt).getTime()
-        const now = Date.now()
-
-        const diffMinutes = (now - orderTime) / 1000 / 60
-
-        return diffMinutes <= 5
-    })();
-
     if (loading) return <LoadingPage />
     if (!order) return <div>ไม่พบออเดอร์ของคุณ</div>;
     if (orderMenus.length === 0) {
