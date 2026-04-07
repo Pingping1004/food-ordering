@@ -14,6 +14,7 @@ export interface Cooker extends Restaurant {
     paymentQr: string
     openTime: string;
     closeTime: string;
+    avgCookingTime: number;
     isTemporarilyClosed: boolean;
     isApproved: boolean;
 };

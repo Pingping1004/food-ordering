@@ -1,9 +1,9 @@
 import { z } from "zod";
 
-export const createOrderSchema = z.object({
+export const createOrderSchema = (avgCookingTime: number) => z.object({
     restaurantId: z.string().uuid('ไอดีร้านอาหารไม่ถูกต้อง'),
     deliverAt: z.string() // It receives a string from TimePickerInput
-        .min(1, 'กรุณาเลือกเวลารับอาหารขั้นต่ำ 5 นาทีหลังสั่ง') // Basic validation for non-empty string
+        .min(1, 'กรุณาเลือกเวลารับอาหารขั้นต่ำ 10 นาทีหลังสั่ง') // Basic validation for non-empty string
         .refine(
             (time) => {
                 // More robust validation for HH:mm format
@@ -13,8 +13,6 @@ export const createOrderSchema = z.object({
             { message: 'รูปแบบเวลารับอาหารต้องเป็น (HH:mm)' }
         )
         .transform((timeString, ctx) => {
-            // This transformation converts the "HH:mm" string into a Date object
-            // with the CURRENT DATE and the specified time.
             try {
                 const [hours, minutes] = timeString.split(':').map(Number);
                 const today = new Date(); // Get today's date (e.g., June 24, 2025)
@@ -33,7 +31,7 @@ export const createOrderSchema = z.object({
             const now = new Date();
             // const deliverHour = deliverAtDate.getHours();
             // const timeBuffer = (deliverHour === 12) ? 19 : 9;
-            const timeBuffer = 5;
+            const timeBuffer = 6;
             const minimumAllowedDeliverTime = new Date(now.getTime() + timeBuffer * 60 * 1000);
 
             if (deliverAtDate < minimumAllowedDeliverTime) {
@@ -49,4 +47,4 @@ export const createOrderSchema = z.object({
         .regex(/^\d{10}$/, { message: 'กรุณาระบุเบอร์โทรที่ถูกต้อง 10 หลัก' }),
 });
 
-export type CreateOrderSchemaType = z.infer<typeof createOrderSchema>
+export type CreateOrderSchemaType = z.infer<ReturnType<typeof createOrderSchema>>

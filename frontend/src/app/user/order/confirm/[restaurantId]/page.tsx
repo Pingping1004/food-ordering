@@ -12,7 +12,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { toastDanger } from '@/components/ui/Toast';
 import { toastSuccess } from '@/components/ui/Toast';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useCooker } from '@/context/Cookercontext';
 
 const OrderList = dynamic(() => import("@/components/users/OrderList"), { ssr: false })
@@ -25,12 +25,14 @@ export interface OrderPayload {
     orderMenus: OrderMenuType[];
 }
 
-const getRequiredBufferMinutes = (): number => 5;
+const ACCEPT_WINDOW_MINS = 3;
+const PAYMENT_WINDOW_MINS = 3;
+const SYSTEM_BUFFER_MINS = ACCEPT_WINDOW_MINS + PAYMENT_WINDOW_MINS;
 
-const getBufferTime = (): string => {
+const getBufferTime = (cookingTime: number): string => {
     const now = new Date();
-    const bufferMins = getRequiredBufferMinutes() + 1;
-    const minimumAllowedDeliverTime = new Date(now.getTime() + bufferMins * 60 * 1000);
+    const totalMins = SYSTEM_BUFFER_MINS + cookingTime;
+    const minimumAllowedDeliverTime = new Date(now.getTime() + totalMins * 60 * 1000);
     const hours = minimumAllowedDeliverTime.getHours().toString().padStart(2, '0');
     const minutes = minimumAllowedDeliverTime.getMinutes().toString().padStart(2, '0');
     return `${hours}:${minutes}`;
@@ -53,16 +55,22 @@ function OrderConfirmContext() {
     const { cart, clearCart } = useCart();
     const router = useRouter();
 
+    if (!cooker) {
+        toastDanger("ไม่พบข้อมูลร้านอาหาร");
+        return;
+    }
+    const schema = useMemo(() => createOrderSchema(cooker.avgCookingTime ?? 0), [cooker.avgCookingTime]);
+
     const {
         control,
         handleSubmit,
         register,
         setValue,
-        formState: { errors, isSubmitting, isValid, isDirty, isLoading }
+        formState: { errors, isSubmitting, isSubmitted, isValid, isDirty, isLoading }
     } = useForm({
-        resolver: zodResolver(createOrderSchema),
+        resolver: zodResolver(schema),
         defaultValues: {
-            deliverAt: getBufferTime(),
+            deliverAt: getBufferTime(cooker.avgCookingTime + 1),
             userTel: '',
         },
         mode: "onChange",
@@ -83,10 +91,10 @@ function OrderConfirmContext() {
     }, [cart]);
     const formattedTotal = totalAmount.toFixed(2);
 
-    if (!cooker) {
-        toastDanger("ไม่พบข้อมูลร้านอาหาร");
-        return;
-    }
+    // if (!cooker) {
+    //     toastDanger("ไม่พบข้อมูลร้านอาหาร");
+    //     return;
+    // }
 
     let isButtonDisabled = isSubmitting || !isValid || !isDirty || isLoading || cart.length === 0;
 
@@ -138,7 +146,11 @@ function OrderConfirmContext() {
         }
     }
 
-    const paymentTimeBuffer = new Date(new Date().getTime() + 5 * 60 * 1000);
+    if (cart.length === 0 && !isSubmitting && !isSubmitted) {
+        toastDanger("กรุณาเลือกเมนูที่จะสั่ง")
+        setTimeout(() => router.replace(`/user/restaurant`));
+        return;
+    }
 
     return (
         <form
@@ -179,10 +191,7 @@ function OrderConfirmContext() {
                 <div className="flex justify-between items-center">
                     <h3 className="font-noto-thai text-bold ">เลือกเวลารับอาหาร</h3>
                     <p className="font-noto-thai text-base font-semibold text-danger-main">
-                        รับอาหารได้หลัง {paymentTimeBuffer.toLocaleTimeString("th-TH", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                        })}
+                        รับอาหารได้หลัง {getBufferTime(cooker.avgCookingTime)}
                     </p>
                 </div>
                 <div>
@@ -197,7 +206,7 @@ function OrderConfirmContext() {
                     />
                     {errors.deliverAt && (
                         <p className="text-red-500 font-noto-thai font-semibold text-base z-50">
-                            กรุณาเลือกเวลาจัดส่งหลังเวลาปัจจุบันอย่างน้อย 5 นาที
+                            กรุณาเลือกเวลาจัดส่งหลังเวลาปัจจุบันอย่างน้อย {6 + cooker.avgCookingTime} นาที
                         </p>
                     )}
                 </div>
