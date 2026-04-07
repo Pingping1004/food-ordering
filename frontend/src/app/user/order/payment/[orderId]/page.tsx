@@ -23,7 +23,7 @@ export interface OrderPaymentPayload {
 }
 
 function OrderPaymentPage() {
-    const { cart, clearCart } = useCart();
+    const { clearCart } = useCart();
     const router = useRouter();
     const params = useParams();
     const orderId = getParamId(params.orderId);
@@ -196,7 +196,7 @@ function OrderPaymentPage() {
     return (
         <form className="flex flex-col justify-center items-center py-10 px-6 gap-y-6" onSubmit={handleSubmit(handlePayment)}>
             <div className="flex flex-col gap-y-6">
-                <h2 className="text-2xl font-semibold">ชำระเงินออเดอร์ {orderId?.substring(0, 4)}</h2>
+                <h2 className="text-2xl font-semibold text-center">ชำระเงินออเดอร์ {orderId?.substring(0, 4)}</h2>
 
                 <div className="flex flex-col gap-y-6">
                     <div className="flex flex-col w-full justify-center items-center gap-y-6">
@@ -213,6 +213,7 @@ function OrderPaymentPage() {
                     </div>
 
                     <h2 className="flex flex-col w-full items-center font-noto-thai text-3xl font-semibold">{Number(order.totalAmount).toFixed(2)} บาท</h2>
+                    <p className="flex flex-col w-full items-center font-bold font-noto-thai text-center">ยิ่งจ่ายเร็ว ร้านเริ่มทำอาหารได้ทันที</p>
                 </div>
 
                 {slipPreview && (
