@@ -152,6 +152,7 @@ model Order {
   paymentMethod        String?     @map("payment_method_type")
   paymentGatewayStatus String?     @map("payment_gateway_status")
   
+  updatedAt            DateTime    @updatedAt
   completedAt          DateTime?
   cancelledAt          DateTime?
   rejectedAt           DateTime?
