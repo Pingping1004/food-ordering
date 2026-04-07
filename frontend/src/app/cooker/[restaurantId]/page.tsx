@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { OrderProps } from "@/components/cookers/Order";
-import { NavState, OrderStatus, PaymentStatus } from "@/components/cookers/OrderNavbar";
+import { NavState, OrderStatus } from "@/components/cookers/OrderNavbar";
 import LoadingPage from "@/components/LoadingPage";
 import { Button } from "@/components/Button";
 import { useCooker } from "@/context/Cookercontext";
