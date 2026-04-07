@@ -10,6 +10,8 @@ import { Input } from '@/components/Input';
 import { api } from '@/lib/api';
 import { singleCreateMenuSchema, SingleCreateMenuSchemaType } from '@/schemas/addMenuSchema'; // Adjust path
 import { toastDanger } from '@/components/ui/Toast';
+import { Menu, useMenu } from '@/context/MenuContext';
+import { getParamId } from '@/util/param';
 
 export type MenuItem = Omit<SingleCreateMenuSchemaType, "menuImg"> & {
     menuId: string;
@@ -19,15 +21,8 @@ export type MenuItem = Omit<SingleCreateMenuSchemaType, "menuImg"> & {
     price: number;
 };
 
-function getParamId(param: string | string[] | undefined): string | undefined {
-    if (Array.isArray(param)) {
-        return param[0]; // Take the first element if it's an array
-    }
-    // Ensure it's treated as string | undefined, not ParamValue
-    return typeof param === 'string' ? param : undefined;
-}
-
 export default function AddMenuPage() {
+    const { addMenuOptimistic, confirmMenu, rejectMenu } = useMenu();
     const params = useParams();
     const restaurantId = getParamId(params.restaurantId);
     const router = useRouter();
@@ -42,7 +37,7 @@ export default function AddMenuPage() {
 
     // State to hold successfully created menu items (if you want to display them locally)
     const [, setCreatedMenusList] = useState<MenuItem[]>([]);
-    
+
 
     const {
         register,
@@ -53,12 +48,12 @@ export default function AddMenuPage() {
     } = useForm<SingleCreateMenuSchemaType>({
         resolver: zodResolver(singleCreateMenuSchema),
         mode: 'onBlur',
-        defaultValues: { // Initialize restaurantId from URL params
+        defaultValues: {
             restaurantId: restaurantId,
             name: '',
-            price: 50, // Or whatever your min is
-            maxDaily: undefined,
-            cookingTime: undefined,
+            price: 50,
+            maxDaily: 80,
+            cookingTime: 3,
         }
     });
 
@@ -100,6 +95,23 @@ export default function AddMenuPage() {
             return;
         }
 
+        const tempId = `temp-${Date.now()}`;
+        const tempMenu: Menu = {
+            menuId: tempId,
+            name: data.name,
+            price: data.price,
+            maxDaily: data.maxDaily ?? 0,
+            cookingTime: data.cookingTime ?? 0,
+            menuImg: imagePreviewUrl ?? '',
+            isAvailable: true,
+            isOrderable: true,
+            sellPriceDisplay: data.price,
+            restaurantId: restaurantId!,
+        };
+
+        addMenuOptimistic(tempMenu);
+        router.push(`/cooker/restaurant/managed-menu/${restaurantId}`);
+
         try {
             const formData = new FormData();
 
@@ -119,18 +131,14 @@ export default function AddMenuPage() {
                 setIsApiLoading(false);
                 return;
             }
-            
-            const response = await api.post<MenuItem>(
-                `/menu/single`,
-                formData,
-                {
-                    headers: {
-                        'Content-Type': 'multipart/form-data', // Crucial for FormData
-                    },
+
+            const response = await api.post<MenuItem>(`/menu/single`, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
                 }
             );
 
             const createdMenuItem: MenuItem = response.data;
+            confirmMenu(tempId, response.data);
             setApiSuccessMessage(`Menu "${createdMenuItem.name}" created successfully!`);
 
             // Add the newly created menu item to the local list (optional, for display)
@@ -140,6 +148,7 @@ export default function AddMenuPage() {
             setImagePreviewUrl(null); // Clear preview image
             router.push(`/cooker/restaurant/managed-menu/${restaurantId}`);
         } catch {
+            rejectMenu(tempId);
             setApiError("สร้างเมนูใหม่ล้มเหลว กรุณาลองใหม่อีกครั้ง");
 
         } finally {

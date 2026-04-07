@@ -25,6 +25,9 @@ type MenuContextType = {
 
     updateMenu: (menuId: string, updater: (menu: Menu) => Menu) => void;
     deleteMenuLocal: (menuId: string) => void;
+    addMenuOptimistic: (tempMenu: Menu) => void;
+    confirmMenu: (tempId: string, realMenu: Menu) => void;
+    rejectMenu: (tempId: string) => void;
 };
 
 const MenuContext = createContext<MenuContextType | null>(null);
@@ -70,13 +73,25 @@ export const MenuProvider = ({ children }: { children: React.ReactNode }) => {
         setMenus(prev => prev?.filter(menu => menu.menuId !== menuId) || null);
     }, []);
 
+    const addMenuOptimistic = useCallback((tempMenu: Menu) => {
+        setMenus(prev => [tempMenu, ...(prev ?? [])]);
+    }, []);
+
+    const confirmMenu = useCallback((tempId: string, realMenu: Menu) => {
+        setMenus(prev => prev?.map(m => m.menuId === tempId ? realMenu : m) ?? null);
+    }, []);
+
+    const rejectMenu = useCallback((tempId: string) => {
+        setMenus(prev => prev?.filter(m => m.menuId !== tempId) ?? null);
+    }, []);
+
     useEffect(() => {
         fetchMenus();
     }, [fetchMenus]);
 
     const value = useMemo(() => ({
-        menus, loading, error, refetch: fetchMenus, updateMenu, deleteMenuLocal
-    }), [menus, loading, error, fetchMenus, deleteMenuLocal, updateMenu]);
+        menus, loading, error, refetch: fetchMenus, updateMenu, deleteMenuLocal, addMenuOptimistic, confirmMenu, rejectMenu
+    }), [menus, loading, error, fetchMenus, deleteMenuLocal, updateMenu, addMenuOptimistic, confirmMenu, rejectMenu]);
 
     return <MenuContext.Provider value={value}>{children}</MenuContext.Provider>;
 };

@@ -84,7 +84,7 @@ function Page() {
         try {
             await api.delete(`/menu/${menuId}`);
         } catch {
-            await refetch()
+            backup.forEach(menu => updateMenu(menu.menuId, () => menu))
             setError(`Failed to delete menu ${menuId}`);
         }
     }, [menus, deleteMenuLocal, setMenus]);
