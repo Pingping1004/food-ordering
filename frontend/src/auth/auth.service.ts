@@ -15,7 +15,7 @@ export async function loginApi(email: string, password: string) {
 }
 
 export async function logoutApi() {
-    await api.post("/auth/logout", undefined, {
+    await api.post("/auth/logout", {}, {
         headers: { skipAuth: "true" }
     })
 }
