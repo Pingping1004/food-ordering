@@ -1,69 +1,74 @@
+import React, { useCallback, useMemo } from "react";
 import { Button } from "../Button";
-import { cva, VariantProps } from "class-variance-authority";
+import { cva } from "class-variance-authority";
 import clsx from "clsx";
 import { getTimeFormat } from "@/util/time";
-import { OrderStatus } from "./OrderNavbar";
+import { OrderStatus, PaymentStatus } from "./OrderNavbar";
 
-const orderVariants = cva("font-noto-thai justify-center text-sm", {
-    variants: {
-        variant: {
-            sent: "",
-            accepted: "",
-            cancelled: "",
-            completed: "",
+const orderCardVariants = cva(
+    "flex flex-col border border-[#E1E1E1] rounded-2xl font-noto-thai",
+    {
+        variants: {
+            selected: {
+                true: "ring-2 ring-primary",
+                false: "",
+            },
+            size: {
+                default: "p-4 gap-y-6 text-sm",
+                large: "p-6 gap-y-8 text-lg",
+            },
         },
-        paymentStatus: {
-            paid: "",
-            unpaid: "",
-            verifying: "",
-            refund_pending: "",
-            refund_complete: "",
-            failed: "",
+        defaultVariants: {
+            selected: false,
+            size: "default",
         },
-        selected: {
-            default: "",
-            true: "",
-            false: "",
-        },
-        isDelayProp: {
-            true: "",
-            false: "",
-        }
-    },
-    defaultVariants: {
-        variant: "sent",
-        paymentStatus: "unpaid",
-        selected: "default",
-        isDelayProp: false,
-    },
-});
+    }
+);
 
-export type OrderProps = React.HTMLAttributes<HTMLDivElement> &
-    VariantProps<typeof orderVariants> & {
-        orderId: string;
-        orderAt: string;
-        deliverAt: string;
-        status: OrderStatus;
-        selected: "default" | boolean;
-        totalAmount: number;
-        isDelay: boolean;
-        orderMenus: { quantity: number; menuName: string; menuImg?: string }[];
-        details?: string;
-        userTel: string;
-        completedAt?: Date;
-        cancelledAt?: Date;
-        refundAt?: Date;
-        isLargeTextMode?: boolean
-        isDelayDisabled: boolean
-        isRejectedDisabled: boolean
-        onDelayUpdate: (orderId: string) => void;
-        onStatusUpdate: (orderId: string, status: OrderStatus) => void;
-    };
+export type OrderMenuEntry = {
+    quantity: number;
+    menuName: string;
+    menuImg?: string;
+};
+
+export type OrderProps = React.HTMLAttributes<HTMLDivElement> & {
+    orderId: string;
+    orderAt: string;
+    deliverAt: string;
+    status: OrderStatus;
+    selected?: boolean;
+    totalAmount: number;
+    paymentStatus: PaymentStatus;
+    isDelay?: boolean;
+    orderMenus: OrderMenuEntry[];
+    details?: string;
+    userTel: string;
+    acceptAt?: Date;
+    completedAt?: Date;
+    cancelledAt?: Date;
+    refundAt?: Date;
+    isLargeTextMode?: boolean;
+    isDelayDisabled?: boolean;
+    isRejectedDisabled?: boolean;
+    onDelayUpdate: (orderId: string) => void;
+    onStatusUpdate: (orderId: string, status: OrderStatus) => void;
+};
+
+type ScaledTextProps = {
+    large?: boolean;
+    className?: string;
+    children: React.ReactNode;
+};
+
+const ScaledText = ({ large, className, children }: ScaledTextProps) => (
+    <span className={clsx(large ? "text-2xl font-bold" : "text-lg", className)}>
+        {children}
+    </span>
+);
 
 export const Order = ({
     orderId,
-    variant,
-    selected = "default",
+    selected = false,
     orderAt,
     userTel,
     status,
@@ -72,6 +77,7 @@ export const Order = ({
     paymentStatus,
     isDelay = false,
     orderMenus = [],
+    details,
     className,
     isLargeTextMode = false,
     isDelayDisabled = false,
@@ -80,163 +86,201 @@ export const Order = ({
     onStatusUpdate,
     ...props
 }: OrderProps) => {
+    const lg = isLargeTextMode;
+
+    // Stable references so child Buttons don't re-render unnecessarily
+    const handleAccept = useCallback(
+        () => onStatusUpdate(orderId, OrderStatus.accepted),
+        [orderId, onStatusUpdate]
+    );
+    const handleReject = useCallback(
+        () => onStatusUpdate(orderId, OrderStatus.rejected),
+        [orderId, onStatusUpdate]
+    );
+    const handleDelay = useCallback(
+        () => onDelayUpdate(orderId),
+        [orderId, onDelayUpdate]
+    );
+
+    // Computed once per render, not inline inside JSX
+    const isDeliveryPast = useMemo(
+        () => new Date(deliverAt).getTime() <= Date.now(),
+        [deliverAt]
+    );
+
+    const formattedAmount = useMemo(
+        () =>
+            new Intl.NumberFormat("th-TH", {
+                style: "currency",
+                currency: "THB",
+            }).format(totalAmount),
+        [totalAmount]
+    );
+
     return (
         <div
             className={clsx(
-                "flex flex-col p-4 border-1 border-[#E1E1E1] rounded-2xl",
-                isLargeTextMode ? "p-6 gap-y-8 text-lg" : "p-4 gap-y-6 text-sm",
-                orderVariants({ variant, paymentStatus, selected, isDelayProp: isDelay }),
+                orderCardVariants({ selected, size: lg ? "large" : "default" }),
                 className
             )}
             {...props}
         >
-            <header className="flex items-start justify-between">
-                <div className="flex grid-rows-2 text-left gap-x-2">
-                    <div className="flex flex-col gap-y-1">
-                        <div className="flex justify-center gap-x-2">
-                            <h3 className={clsx(
-                                "font-noto-thai text-bold text-primary",
-                                isLargeTextMode ? "text-3xl" : "text-xl"
-                            )}>
-                                {orderId?.substring(0, 4)}
-                            </h3>
 
-                            <p
-                                className={clsx(
-                                    "flex items-center font-noto-thai text-bold text-secondary",
-                                    isLargeTextMode ? "" : "text-sm"
-                                )}
-                            >
-                                (<span className={clsx("mr-1", isLargeTextMode ? "text-xl" : "text-lg")}>เบอร์ติดต่อ:</span>
-                                <a
-                                    href={`tel:${userTel}`}
-                                    className={clsx("text-info underline hover:text-info", isLargeTextMode ? "text-xl" : "text-lg")}
-                                >
-                                    {userTel}
-                                </a>
-                                <span>{')'}</span>
-                            </p>
-                        </div>
-                        <p
+            <header className="flex items-start justify-between">
+                <div className="flex flex-col gap-y-1 text-left">
+                    <div className="flex items-center gap-x-2">
+                        <h3
                             className={clsx(
-                                "font-noto-thai text-light",
-                                isLargeTextMode ? "" : "text-sm"
+                                "font-bold text-primary",
+                                lg ? "text-3xl" : "text-xl"
                             )}
                         >
-                            สั่งเมื่อ {orderAt}
+                            {orderId.substring(0, 4)}
+                        </h3>
+
+                        <p
+                            className={clsx(
+                                "flex items-center text-secondary",
+                                lg ? "text-xl" : "text-sm"
+                            )}
+                        >
+                            (<span className="mr-1">เบอร์ติดต่อ:</span>
+
+                            <a href={`tel:${userTel}`}
+                                className="text-info underline hover:opacity-80"
+                            >
+                                {userTel}
+                            </a>
+                            )
                         </p>
                     </div>
+
+                    <p className={clsx("text-light", lg ? "" : "text-sm")}>
+                        สั่งเมื่อ {orderAt}
+                    </p>
                 </div>
             </header>
 
-            <main className="flex grid-rows-2 justify-between">
-                <div
-                    className={clsx(
-                        "w-1/2 text-secondary",
-                        isLargeTextMode ? "text-lg" : ""
-                    )}
-                >
+            <main className="flex justify-between gap-x-4">
+                <div className={clsx("w-1/2 text-secondary", lg && "text-lg")}>
                     <p className="mb-2 text-primary">รายละเอียดออเดอร์:</p>
                     {orderMenus.map((item, index) => (
                         <p
                             key={`${item.menuName}-${index}`}
-                            className={clsx(isLargeTextMode ? "text-2xl mb-1 font-bold" : "text-lg")}
+                            className={clsx(lg ? "text-2xl mb-1 font-bold" : "text-lg")}
                         >
-                            {item.quantity}x - {item.menuName}
+                            {item.quantity}× {item.menuName}
                         </p>
                     ))}
                 </div>
 
-                <div className="flex w-1/2 grid-cols-2 items-end justify-end md:gap-x-6 gap-x-4">
+                <div className="flex w-1/2 items-end justify-end gap-x-4 md:gap-x-6">
                     <div className="text-center">
-                        <p className={clsx(isLargeTextMode ? "" : "text-sm")}>จัดส่ง:</p>
-
+                        <p className={clsx(!lg && "text-sm")}>จัดส่ง:</p>
                         <h4
-                            className={clsx("text-secondary", isLargeTextMode ? "text-2xl font-bold" : "text-xl")}
+                            className={clsx(
+                                "text-secondary",
+                                lg ? "text-2xl font-bold" : "text-xl"
+                            )}
                         >
                             {getTimeFormat(deliverAt)}
                         </h4>
                     </div>
 
                     <div className="text-center">
-                        <p className={clsx(isLargeTextMode ? "" : "text-sm")}>ราคา:</p>
+                        <p className={clsx(!lg && "text-sm")}>ราคา:</p>
                         <h4
-                            className={clsx("text-secondary", isLargeTextMode ? "text-2xl font-bold" : "text-xl")}
+                            className={clsx(
+                                "text-secondary",
+                                lg ? "text-2xl font-bold" : "text-xl"
+                            )}
                         >
-                            {totalAmount}
+                            {formattedAmount}
                         </h4>
                     </div>
                 </div>
             </main>
 
-            {/* <section>
-                <p className="font-noto-thai text-bold text-sm">{details}</p>
-            </section> */}
-
-            {/* {isRefund && (
-                <Button
-                    variant={paymentStatus === 'refund_complete' ? "secondarySuccess" : "secondaryDanger"}
-                    size="full"
-                    type="button"
-                >
-                    <p className={clsx(isLargeTextMode ? "text-2xl mb-1 font-bold" : "text-lg")}>{paymentStatus === 'refund_complete' ? "คืนเงินแล้ว" : "ยังไม่คืนเงิน"}</p>
-                </Button>
-            )} */}
-
-            {status === OrderStatus.completed ? (
-                <Button
-                    variant="secondarySuccess"
-                    size={isLargeTextMode ? "lg" : "md"}
-                    className="flex w-full"
-                    type="button"
-                >
-                    <p className={clsx(isLargeTextMode ? "text-2xl mb-1 font-bold" : "text-lg")}>ออเดอร์เสร็จสิ้น</p>
-                </Button>
-            ) : (
-                <div className={status === OrderStatus.sent ? "grid grid-cols-2 gap-x-2" : ""}>
-                    {status === OrderStatus.sent && (
-                        <>
-                            <Button
-                                variant="primary"
-                                size={isLargeTextMode ? "lg" : "md"}
-                                className="flex w-full"
-                                type="button"
-                                onClick={() => onStatusUpdate(orderId, OrderStatus.accepted)}
-                            >
-                                <p className={clsx(isLargeTextMode ? "text-2xl mb-1 font-bold" : "text-lg")}>รับออเดอร์</p>
-                            </Button>
-
-                            <Button
-                                variant="secondaryDanger"
-                                disabled={isDelay || isRejectedDisabled}
-                                size={isLargeTextMode ? "lg" : "md"}
-                                type="button"
-                                className="flex w-full"
-                                onClick={() => onStatusUpdate(orderId, OrderStatus.rejected)}
-                            >
-                                <p className={clsx(isLargeTextMode ? "text-2xl mb-1 font-bold" : "text-lg")}>ปฏิเสธ</p>
-                            </Button>
-                        </>
-                    )}
-
-                    {status === OrderStatus.accepted && (
-                        <Button
-                            variant={isDelay === false ? "tertiary" : "secondary"}
-                            disabled={isDelay || isDelayDisabled || new Date(deliverAt).getTime() <= new Date().getTime()}
-                            size={"full"}
-                            type="button"
-                            className="flex w-full"
-                            onClick={() => onDelayUpdate(orderId)}
-                        >
-                            <p className={clsx(isLargeTextMode ? "text-2xl mb-1 font-bold" : "text-lg")}>
-                                {isDelay === false ? 'แจ้งล่าช้า10นาที' : 'แจ้งล่าช้าสำเร็จ'}
-                            </p>
-                        </Button>
-                    )}
-                </div>
+            {details && (
+                <section>
+                    <p className={clsx("text-secondary", lg ? "text-lg" : "text-sm")}>
+                        {details}
+                    </p>
+                </section>
             )}
+
+            <footer>
+                {status === OrderStatus.completed && (
+                    <Button
+                        variant="secondarySuccess"
+                        size={lg ? "lg" : "md"}
+                        className="w-full"
+                        type="button"
+                    >
+                        <ScaledText large={lg}>ออเดอร์เสร็จสิ้น</ScaledText>
+                    </Button>
+                )}
+
+                {status === OrderStatus.accepted && (
+                    <div className="flex w-full gap-x-4">
+                        <Button
+                            variant={
+                                paymentStatus === PaymentStatus.paid
+                                    ? "secondarySuccess"
+                                    : "secondaryDanger"
+                            }
+                            size="full"
+                            type="button"
+                        >
+                            <ScaledText large={lg}>
+                                {paymentStatus === PaymentStatus.paid
+                                    ? "ชำระเงินแล้ว"
+                                    : "ยังไม่ชำระเงิน"}
+                            </ScaledText>
+                        </Button>
+
+                        <Button
+                            variant={isDelay ? "secondary" : "tertiary"}
+                            disabled={isDelay || isDelayDisabled || isDeliveryPast}
+                            size="full"
+                            type="button"
+                            className="w-full"
+                            onClick={handleDelay}
+                        >
+                            <ScaledText large={lg}>
+                                {isDelay ? "แจ้งล่าช้าสำเร็จ" : "ล่าช้า 10 นาที"}
+                            </ScaledText>
+                        </Button>
+                    </div>
+                )}
+
+                {status === OrderStatus.sent && (
+                    <div className="grid grid-cols-2 gap-x-2">
+                        <Button
+                            variant="primary"
+                            size={lg ? "lg" : "md"}
+                            className="w-full"
+                            type="button"
+                            onClick={handleAccept}
+                        >
+                            <ScaledText large={lg}>รับออเดอร์</ScaledText>
+                        </Button>
+
+                        <Button
+                            variant="secondaryDanger"
+                            disabled={isRejectedDisabled}
+                            size={lg ? "lg" : "md"}
+                            type="button"
+                            className="w-full"
+                            onClick={handleReject}
+                        >
+                            <ScaledText large={lg}>ปฏิเสธ</ScaledText>
+                        </Button>
+                    </div>
+                )}
+            </footer>
         </div>
-    )
+    );
 };
 
-export default Order
+export default Order;
