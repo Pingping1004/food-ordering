@@ -1,5 +1,6 @@
 import axios, { AxiosRequestConfig, AxiosError, AxiosHeaders } from "axios";
 import { setAccessToken, clearTokens, removeAccessToken, clearCsrfToken, fetchOrGetCsrfToken } from "./token";
+import { logoutApi } from "@/auth/auth.service";
 
 type ApiErrorResponse = {
     message?: string;
@@ -20,10 +21,18 @@ let failedQueue: {
     config: AxiosRequestConfig;
 }[] = [];
 
-const forcedLogout = () => {
-    removeAccessToken();
-    clearTokens();
-    window.location.href = "/login";
+let isLoggingOut = false
+const forcedLogout = async () => {
+    if (isLoggingOut) return;
+    isLoggingOut = true;
+
+    try {
+        await logoutApi();
+    } finally {
+        removeAccessToken();
+        clearTokens();
+        window.location.href = "/login";
+    }
 };
 
 const processQueue = (error: AxiosError | null, token: string | null = null) => {
@@ -55,17 +64,6 @@ export const requestInterceptor = api.interceptors.request.use(
             delete config.headers['skipAuth'];
             return config;
         }
-
-        // attach access token
-        // const accessToken = localStorage.getItem('accessToken');
-        // if (accessToken && config.headers && !config.headers.Authorization) {
-        //     if (!config.headers) {
-        //         config.headers = new axios.AxiosHeaders();
-        //     } else if (!(config.headers instanceof AxiosHeaders)) {
-        //         config.headers = AxiosHeaders.from(config.headers);
-        //     }
-        //     config.headers['Authorization'] = `Bearer ${accessToken}`;
-        // }
 
         if (!config.method) throw Error('Not found config method');
 
@@ -153,7 +151,7 @@ async function handleTokenRefresh401(originalRequest: CustomAxiosRequestConfig) 
         return api(originalRequest);
     } catch (refreshError) {
         processQueue(refreshError as AxiosError, null);
-        forcedLogout();
+        await forcedLogout();
         return Promise.reject(normalizeError(refreshError));
     } finally {
         isRefreshing = false;
@@ -199,15 +197,15 @@ api.interceptors.response.use(
         if (isLoginRequest) return Promise.reject(normalizeError(error));
         if (!isUnauthorized) return Promise.reject(normalizeError(error));
         if (hasSkipAuth) {
-            forcedLogout();
+            await forcedLogout();
             return Promise.reject(normalizeError(error));
         }
         if (isRefreshRequest) {
-            forcedLogout();
+            await forcedLogout();
             return Promise.reject(new Error('Session expired'));
         }
         if (hasRetried) {
-            forcedLogout();
+            await forcedLogout();
             return Promise.reject(normalizeError(error));
         }
 
@@ -217,7 +215,7 @@ api.interceptors.response.use(
 
 // call this after login to pre-fetch CSRF token
 export async function fetchCsrfToken(): Promise<void> {
-    clearCsrfToken(); // force fresh token
+    clearCsrfToken();
     await fetchOrGetCsrfToken(async () => {
         const res = await api.get('/csrf-token');
         return res.data.csrfToken;

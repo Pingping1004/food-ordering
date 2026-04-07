@@ -56,9 +56,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         startInactivityWatcher({
             onLogout: () => {
                 stopInactivityWatcher();
-                logout(); // your existing logout function
+                logout();
             },
             tokenExpiresInSeconds: 1800,
+            freshLogin: true,
         });
 
         return () => stopInactivityWatcher(); // cleanup on unmount
