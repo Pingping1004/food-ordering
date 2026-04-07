@@ -1,5 +1,6 @@
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { S3Service } from '../s3/s3.service';
+import sharp from "sharp";
 
 export interface UploadImageInfo {
     originalName: string;
@@ -13,9 +14,15 @@ export class UploadService {
 
     constructor(private readonly s3Service: S3Service) { }
 
+    private async fixOrientation(file: Express.Multer.File): Promise<Express.Multer.File> {
+        const correctedBuffer = await sharp(file.buffer).rotate().toBuffer();
+        return { ...file, buffer: correctedBuffer };
+    }
+
     async saveImage(file: Express.Multer.File): Promise<UploadImageInfo> {
         try {
-            const { fileName, url } = await this.s3Service.uploadFile(file);
+            const correctedFile = await this.fixOrientation(file);
+            const { fileName, url } = await this.s3Service.uploadFile(correctedFile);
             const uploadedInfo = {
                 originalName: file.originalname,
                 key: fileName,
