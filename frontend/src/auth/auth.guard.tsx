@@ -18,7 +18,7 @@ export function AuthGuard({ children, role, optional = false }: Props) {
   const router = useRouter()
 
   useEffect(() => {
-    if (loading) return
+    if (loading || initializing) return
 
     // not logged in
     if (!user && !optional) {
@@ -33,7 +33,7 @@ export function AuthGuard({ children, role, optional = false }: Props) {
       return
     }
 
-  }, [user, loading, role, optional, router])
+  }, [user, loading, role, optional, router, initializing])
 
   if (loading || initializing) return <LoadingPage />
 
