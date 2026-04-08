@@ -18,7 +18,6 @@ let isRefreshing = false;
 let failedQueue: {
     resolve: (value?: unknown) => void;
     reject: (reason?: unknown) => void;
-    config: AxiosRequestConfig;
 }[] = [];
 
 let isLoggingOut = false
@@ -35,19 +34,10 @@ const forcedLogout = async () => {
     }
 };
 
-const processQueue = (error: AxiosError | null, token: string | null = null) => {
-    failedQueue.forEach(({ resolve, reject, config }) => {
-        if (error) {
-            reject(error);
-        } else if (token) {
-            if (!config.headers) {
-                config.headers = new axios.AxiosHeaders();
-            } else if (!(config.headers instanceof axios.AxiosHeaders)) {
-                config.headers = axios.AxiosHeaders.from({ ...(config.headers as object) });
-            }
-            config.headers['Authorization'] = `Bearer ${token}`;
-            resolve(api(config));
-        }
+const processQueue = (error: unknown) => {
+    failedQueue.forEach(({ resolve, reject }) => {
+        if (error) reject(error);
+        else resolve(null);
     });
     failedQueue = [];
 };
@@ -133,7 +123,7 @@ async function handleTokenRefresh401(originalRequest: CustomAxiosRequestConfig) 
 
     if (isRefreshing) {
         return new Promise((resolve, reject) => {
-            failedQueue.push({ resolve, reject, config: originalRequest });
+            failedQueue.push({ resolve, reject });
         });
     }
 
@@ -142,7 +132,7 @@ async function handleTokenRefresh401(originalRequest: CustomAxiosRequestConfig) 
     try {
         const { accessToken: newAccessToken } = await handleTokenRefresh();
 
-        processQueue(null, newAccessToken);
+        processQueue(null);
         updateAuthHeader(originalRequest, newAccessToken);
 
         if (!originalRequest.headers) originalRequest.headers = {};
@@ -150,7 +140,7 @@ async function handleTokenRefresh401(originalRequest: CustomAxiosRequestConfig) 
 
         return api(originalRequest);
     } catch (refreshError) {
-        processQueue(refreshError as AxiosError, null);
+        processQueue(refreshError);
         await forcedLogout();
         return Promise.reject(normalizeError(refreshError));
     } finally {
@@ -168,10 +158,9 @@ api.interceptors.response.use(
 
         // handle CSRF error — clear token and retry once
         const isCsrfError = status === 403 && (error.response?.data as ApiErrorResponse)?.code === 'INVALID_CSRF_TOKEN';
-
         if (isCsrfError && !originalRequest._retry) {
             originalRequest._retry = true;
-            clearCsrfToken(); // force re-fetch on next interceptor call
+            clearCsrfToken();
 
             try {
                 const newToken = await fetchOrGetCsrfToken(async () => {
@@ -181,7 +170,6 @@ api.interceptors.response.use(
 
                 if (!originalRequest.headers) originalRequest.headers = {};
                 originalRequest.headers['X-CSRF-TOKEN'] = newToken;
-
                 return api(originalRequest);
             } catch (err) {
                 return Promise.reject(normalizeError(err));
@@ -209,7 +197,30 @@ api.interceptors.response.use(
             return Promise.reject(normalizeError(error));
         }
 
-        return handleTokenRefresh401(originalRequest);
+        if (isRefreshing) {
+            return new Promise((resolve, reject) => {
+                failedQueue.push({ resolve, reject });
+            }).then(() => {
+                return api(originalRequest);
+            }).catch((err) => {
+                return Promise.reject(err);
+            });
+        }
+
+        originalRequest._retry = true;
+        isRefreshing = true;
+
+        try {
+            await handleTokenRefresh401(originalRequest);
+            processQueue(null);
+            return api(originalRequest);
+        } catch (refreshError) {
+            processQueue(refreshError as Error);
+            await forcedLogout();
+            return Promise.reject(refreshError);
+        } finally {
+            isRefreshing = false
+        }
     }
 );
 
