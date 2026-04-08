@@ -37,6 +37,8 @@ export default function UserHomePage() {
         [restaurants, visibleCount]
     );
 
+    if (visibleRestaurants.length === 0) return <div>ไม่มีร้านอาหารที่พร้อมให้บริการในขณะนี้</div>
+
     return (
         <>
             {showModal && (
@@ -51,20 +53,24 @@ export default function UserHomePage() {
 
             <div className="flex flex-col gap-y-10 py-10 px-6">
                 <UserHeader />
-                <div className="grid md:grid-cols-4 lg:grid-cols-6 grid-cols-2 gap-x-4 gap-y-6">
-                    {visibleRestaurants.map((restaurant, i) => (
-                        <RestaurantProfile
-                            key={restaurant.restaurantId}
-                            name={restaurant.name}
-                            categories={restaurant.categories}
-                            restaurantId={restaurant.restaurantId}
-                            restaurantImg={restaurant.restaurantImg}
-                            isOpen={restaurant.isActuallyOpen}
-                            isPriority={i < 4}
-                            variant={restaurant.isActuallyOpen ? "isOpen" : "isClose"}
-                        />
-                    ))}
-                </div>
+                {visibleRestaurants.length === 0 ? (
+                    <div className="col-span-full text-center text-gray-500">ไม่มีร้านอาหารที่พร้อมให้บริการในขณะนี้</div>
+                ) : (
+                    <div className="grid md:grid-cols-4 lg:grid-cols-6 grid-cols-2 gap-x-4 gap-y-6">
+                        {visibleRestaurants.map((restaurant, i) => (
+                            <RestaurantProfile
+                                key={restaurant.restaurantId}
+                                name={restaurant.name}
+                                categories={restaurant.categories}
+                                restaurantId={restaurant.restaurantId}
+                                restaurantImg={restaurant.restaurantImg}
+                                isOpen={restaurant.isActuallyOpen}
+                                isPriority={i < 4}
+                                variant={restaurant.isActuallyOpen ? "isOpen" : "isClose"}
+                            />
+                        ))}
+                    </div>
+                )}
 
                 {visibleCount < restaurants.length && (
                     <Button
