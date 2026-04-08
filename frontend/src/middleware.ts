@@ -18,20 +18,21 @@ function getRoleFromToken(token?: string): UserRole | null {
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
-  const token = req.cookies.get("access_token")?.value;
+  const refreshToken = req.cookies.get("refresh_token")?.value;
+  const accessToken = req.cookies.get("access_token")?.value;
+
+  const token = accessToken || refreshToken
   const role = getRoleFromToken(token)
 
   // cooker
   if (pathname.startsWith("/cooker")) {
     if (!token) return NextResponse.redirect(new URL("/login", req.url))
-
     if (role !== "cooker") return NextResponse.redirect(new URL("/user", req.url))
   }
 
   // admin
   if (pathname.startsWith("/admin")) {
     if (!token) return NextResponse.redirect(new URL("/login", req.url))
-
     if (role !== "admin") return NextResponse.redirect(new URL("/user", req.url))
   }
 
