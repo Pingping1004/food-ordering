@@ -181,7 +181,6 @@ api.interceptors.response.use(
         const isRefreshRequest = originalRequest?.url?.includes('/auth/refresh');
         const hasSkipAuth = originalRequest?.headers?.skipAuth === 'true';
         const hasRetried = originalRequest?._retry === true;
-        console.log('[interceptor] 401 on:', originalRequest?.url, { isRefreshRequest, hasRetried, hasSkipAuth });
 
         if (isLoginRequest) return Promise.reject(normalizeError(error));
         if (!isUnauthorized) return Promise.reject(normalizeError(error));
