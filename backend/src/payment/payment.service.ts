@@ -6,8 +6,9 @@ import {
     Injectable,
     Logger,
     NotFoundException,
+    UnauthorizedException,
 } from '@nestjs/common';
-import { PaymentStatus } from '@prisma/client';
+import { PaymentStatus, Prisma } from '@prisma/client';
 import axios, { AxiosError } from 'axios';
 import { BANK_CODE_MAP, PaymentPayload } from 'src/common/interface/accountType';
 import { OrderService } from 'src/order/order.service';
@@ -15,6 +16,14 @@ import { PayoutService } from 'src/payout/payout.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { RestaurantService } from 'src/restaurant/restaurant.service';
 import { toThaiDate } from 'src/utils/timezone';
+import { CreatePaymentDto } from './dto/create-payment.dto';
+import { createHash } from 'crypto';
+import { UploadService } from 'src/upload/upload.service';
+import { calculatePayout } from 'src/payout/payout-calculator';
+
+function sha256(data: string): string {
+    return createHash('sha256').update(data).digest('hex');
+}
 
 @Injectable()
 export class PaymentService {
@@ -22,38 +31,82 @@ export class PaymentService {
 
     constructor(
         private readonly prisma: PrismaService,
+        private readonly uploadService: UploadService,
         private readonly restaurantService: RestaurantService,
         private readonly orderService: OrderService,
         private readonly payoutService: PayoutService,
     ) { }
 
-    async verifyPayment(restaurantId: string, orderId: string, paymentSlipImg: string) {
+    async verifyPayment(dto: CreatePaymentDto, orderSecret: string) {
+        this.logger.log(`OrderSecret in payment service: ${orderSecret}`)
+        const { idempotencyKey, orderId, paymentSlipImg } = dto;
+
+        const order = await this.orderService.findOneOrder(orderId, orderSecret);
+        const { name, accountNumber, bankAccount, accountHolderFullName } = await this.restaurantService.findRestaurant(order.restaurantId);
+
         if (!process.env.SLIP_VERIFY_SECRET) throw new NotFoundException("SLIP_VERIFY_SECRET key missing");
+        if (order.orderSecret !== orderSecret) throw new UnauthorizedException("ไม่สามารถเข้าถึงออเดอร์ได้");
+        if (order.paymentStatus === "paid") return { success: true };
+
+        const requestHash = sha256(JSON.stringify({ orderId, slip: paymentSlipImg.slice(0, 500) }));
+
+        let payout;
+        try {
+            const totalAmountDecimal = new Prisma.Decimal(order.totalAmount);
+            const calculated = calculatePayout(totalAmountDecimal)
+
+            payout = await this.prisma.payout.create({
+                data: {
+                    idempotencyKey,
+                    requestHash,
+                    orderId,
+                    payoutStatus: "initiated",
+                    restaurantId: order.restaurantId,
+                    restaurantName: name,
+                    grossAmount: order.totalAmount,
+                    restaurantRevenue: calculated.restaurantEarning,
+                    platformFee: calculated.platformNetEarning,
+                    transactionFee: calculated.transactionFee,
+                    vat: calculated.vatRate,
+                    startDate: new Date(),
+                    endDate: new Date(),
+                }
+            });
+        } catch (err) {
+            const existing = await this.payoutService.findPayoutByIdempotencyKey(idempotencyKey, orderId)
+
+            if (!existing) throw err;
+            if (existing.requestHash !== requestHash) throw new ConflictException("Idempotency key reused with different payload");
+
+            if (existing.payoutStatus === "success") return { success: true };
+            if (existing.payoutStatus === "initiated") return { success: false, status: "initiated" }
+            if (existing.payoutStatus === "processing") return { success: false, status: "processing" }
+
+            payout = existing;
+        }
 
         try {
-            const { accountNumber, bankAccount, accountHolderFullName } = await this.restaurantService.findRestaurant(restaurantId);
-            const { acceptAt, totalAmount } = await this.orderService.findOneOrder(orderId);
-
             const accountTypeCode = BANK_CODE_MAP[bankAccount];
             if (!accountTypeCode) throw new ConflictException("ไม่พบข้อมูลบัญชีธนาคาร")
-            if (!acceptAt) throw new ConflictException("ออเดอร์ยังไม่ถูกรับโดยร้านอาหร")
+            if (!order.acceptAt) throw new ConflictException("ออเดอร์ยังไม่ถูกรับโดยร้านอาหร")
 
-            const acceptAtDate = new Date((acceptAt))
+            const acceptAtDate = new Date((order.acceptAt))
             const bufferMinsLater = new Date(acceptAtDate.getTime() + 3 * 60 * 1000);
 
+            const { dataUrl: paymentSlipUrl } = this.uploadService.parseBase64Image(paymentSlipImg);
             const paymentData: PaymentPayload = {
                 payload: {
-                    imageBase64: paymentSlipImg,
+                    imageBase64: paymentSlipUrl,
                     checkCondition: {
                         checkAmount: {
                             type: "eq",
-                            amount: totalAmount.toString(),
+                            amount: order.totalAmount.toString(),
                         },
                         checkDate: {
                             type: "gte",
                             date: toThaiDate(acceptAtDate),
                         },
-                        checkDuplicate: true,
+                        checkDuplicate: false,
                         checkReceiver: [
                             {
                                 accountType: accountTypeCode,
@@ -67,6 +120,7 @@ export class PaymentService {
 
             this.logger.debug(`Sending account receiver info: ${JSON.stringify(paymentData.payload.checkCondition.checkReceiver, null, 2)}`)
             const response = await axios.post("https://connect.slip2go.com/api/verify-slip/qr-base64/info", paymentData, {
+                timeout: 5000,
                 headers: {
                     Authorization: `Bearer ${process.env.SLIP_VERIFY_SECRET}`
                 },
@@ -80,18 +134,44 @@ export class PaymentService {
             if (!result?.data?.dateTime) throw new BadRequestException("ข้อมูลการชำระเงินไม่สมบูรณ์");
             const paidAt = new Date(result.data.dateTime);
 
-            // if (Date.now() - paidAt.getTime() > 11 * 60 * 1000) throw new BadRequestException("เวลาในการชำระเงินหมดอายุ กรุณาทำรายการใหม่")
-            if (paidAt < acceptAt || paidAt > bufferMinsLater) throw new BadRequestException("Invalid slip time");
+            if (paidAt < order.acceptAt || paidAt > bufferMinsLater) throw new BadRequestException("Invalid slip time");
 
-            await this.prisma.$transaction(async (tx) => {
-                await this.orderService.updateOrderPaymentTx(tx, orderId, PaymentStatus.paid, paymentSlipImg, 'verified', result.data.transRef, paidAt)
-                await this.payoutService.createPayoutTx(tx, orderId, paidAt)
-            });
+            const transactionId = result.data.transRef;
+            const existingTx = await this.payoutService.findPayoutByTransactionId(transactionId);
+            if (existingTx) throw new ConflictException("สลิปซ้ำ");
 
-            return result;
+            try {
+                const { url: slipUrl } = await this.uploadService.uploadBase64(paymentSlipImg, `slip-${orderId}`);
+
+                await this.prisma.$transaction(async (tx) => {
+                    await this.orderService.updateOrderPaymentTx(tx, orderId, PaymentStatus.paid, slipUrl, 'verified', transactionId, paidAt)
+                    await this.payoutService.updatePayoutTx(tx, payout.payoutId, orderId, idempotencyKey, transactionId, "success", paidAt)
+                });
+            } catch (error) {
+                const existing = await this.payoutService.findPayoutByIdempotencyKey(idempotencyKey, orderId);
+
+                if (!existing) throw error;
+
+                if (existing.requestHash !== requestHash) {
+                    throw new ConflictException("Idempotency key reused with different payload");
+                }
+
+                await this.payoutService.updatePayoutStatus(payout.payoutId, "failed")
+                if (existing) {
+                    if (existing.payoutStatus === "success") return { success: true };
+                    if (existing.payoutStatus === "processing") throw new ConflictException("กำลังตรวจสอบการชำระเงิน")
+
+                    return { success: false, retry: true };
+                }
+            }
+
+            return { success: true };
 
         } catch (error) {
-            if (error instanceof HttpException) throw error;
+            if (error instanceof HttpException) {
+                await this.payoutService.updatePayoutStatus(payout.payoutId, "failed")
+                throw error;
+            }
 
             const err = error as AxiosError;
             const errorLog = {
