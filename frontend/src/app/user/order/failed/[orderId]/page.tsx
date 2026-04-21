@@ -15,30 +15,22 @@ export default function FailedOrderPage() {
     const orderId = getParamId(params.orderId)
 
     const [restaurantName, setRestaurantName] = useState<string | null>(null);
-    const [, setRestaurantId] = useState<string | null>(null);
     const [order, setOrder] = useState<Order>();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        if (!orderId) {
-            setLoading(false);
-            setError('ไม่พบออเดอร์ของคุณ');
-            return;
-        }
         const fetchData = async () => {
             try {
                 const orderSecret = localStorage.getItem(`orderSecret:${orderId}`)
                 const orderResponse = await api.get(`order/${orderId}`, {
                     headers: { "x-order-secret": orderSecret }
                 });
-                setOrder(orderResponse.data);
 
-                const newRestaurantId = orderResponse.data.restaurantId;
-                setRestaurantId(newRestaurantId);
-                const restaurantResponse = await api.get(`restaurant/${newRestaurantId}`);
+                const data = orderResponse.data;
+                setOrder(data);
 
-                const newRestaurantName = restaurantResponse.data.name;
+                const newRestaurantName = data.name;
                 setRestaurantName(newRestaurantName);
             } catch {
                 setError('Error fetching order data');
