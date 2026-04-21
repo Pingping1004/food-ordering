@@ -39,31 +39,24 @@ export default function DoneOrderPage() {
     const hasRedirectedRef = useRef<boolean>(false);
 
     useEffect(() => {
-        if (!orderId) {
-            setLoading(false);
-            setError('No Order ID found in URL.');
-            return;
-        }
-
         const fetchData = async () => {
             try {
                 const orderSecret = localStorage.getItem(`orderSecret:${orderId}`)
                 const orderResponse = await api.get(`order/${orderId}`, {
-                    headers: { "x-order-secret": orderSecret } 
+                    headers: { "x-order-secret": orderSecret }
                 });
-                setOrder(orderResponse.data);
 
-                if (orderResponse.data.isPaid === "unpaid" && !hasRedirectedRef.current) {
+                const data = orderResponse.data;
+                setOrder(data);
+
+                if (data.paymentStatus === "unpaid" && !hasRedirectedRef.current) {
                     hasRedirectedRef.current = true;
-                    toastDanger('กรุณาชำระเงินก่อน');
-                    router.push(`/user/order/confirm/${orderId}`);
+                    toastDanger('บังไม่ได้ชำระเงิน');
+                    router.push(`/user/order/failed/${orderId}`);
                     return;
                 }
 
-                const newRestaurantId = orderResponse.data.restaurantId;
-                const restaurantResponse = await api.get(`restaurant/${newRestaurantId}`);
-
-                const newRestaurantName = restaurantResponse.data.name;
+                const newRestaurantName = data.name;
                 setRestaurantName(newRestaurantName);
             } catch {
                 setError('Error fetching order data');
@@ -97,7 +90,7 @@ export default function DoneOrderPage() {
 
 
             <section className="flex justify-between mt-0">
-                <p className="text-xl font-semibold">สั่งเมื่อ: {getTimeFormat(order.orderAt)}</p>
+                <p className="text-xl font-semibold">ชำระเมื่อ: {getTimeFormat(order.orderAt)}</p>
                 <p className="text-xl font-semibold">พร้อมเสิร์ฟ: {getTimeFormat(order.deliverAt)}</p>
             </section>
 
