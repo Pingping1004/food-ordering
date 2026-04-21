@@ -8,6 +8,7 @@ import { PayoutModule } from 'src/payout/payout.module';
 import { CsrfModule } from 'src/csrf/csrf.module';
 import { RestaurantModule } from 'src/restaurant/restaurant.module';
 import { PrismaModule } from 'src/prisma/prisma.module';
+import { UploadModule } from 'src/upload/upload.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { PrismaModule } from 'src/prisma/prisma.module';
     PayoutModule,
     RestaurantModule,
     PrismaModule,
+    UploadModule,
     OrderModule,
     CsrfModule,
   ],
