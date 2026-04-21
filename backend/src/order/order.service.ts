@@ -232,22 +232,25 @@ export class OrderService {
     if (!existing) throw new NotFoundException("ไม่พบออเดอร์");
     if (existing.paymentGatewayStatus === "verified") return existing;
 
-    const existingOrder = await tx.order.findFirst({
-      where: { transactionId }
-    });
-
-    if (existingOrder) return existingOrder;
-
-    return await tx.order.update({
-      where: { orderId },
-      data: {
-        paymentGatewayStatus: paymentGatewayStatus,
-        transactionId: transactionId,
-        paymentStatus: paymentStatus,
-        paymentSlipImg: paymentSlipImg,
-        paidAt: paidAt,
+    try {
+      return await tx.order.update({
+        where: { orderId },
+        data: {
+          paymentGatewayStatus: paymentGatewayStatus,
+          transactionId: transactionId,
+          paymentStatus: paymentStatus,
+          paymentSlipImg: paymentSlipImg,
+          paidAt: paidAt,
+        }
+      });
+    } catch (error) {
+      if (error.code === 'P2002' && error.meta?.target?.includes('transactionId')) {
+        return await tx.order.findUnique({
+          where: { transactionId }
+        });
       }
-    });
+      throw error;
+    }
   }
 
   async updateDelay(orderId: string, isDelay: boolean) {

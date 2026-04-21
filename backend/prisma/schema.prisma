@@ -31,25 +31,32 @@ model RefreshToken {
 
 model Payout {
   payoutId          String     @id @default(uuid())
+  idempotencyKey    String     @unique
+  requestHash       String
+  transactionId     String?    @unique
   grossAmount       Decimal    @db.Decimal(10, 2)
   restaurantRevenue Decimal    @db.Decimal(10, 2)
   platformFee       Decimal    @db.Decimal(10, 2)
   transactionFee    Decimal    @db.Decimal(10, 2)
   vat               Decimal    @db.Decimal(10, 2)
-  refundAmount      Decimal?    @db.Decimal(10, 2)
-  isPaid            Boolean    @default(false)
+  refundAmount      Decimal?   @db.Decimal(10, 2)
+  payoutStatus      PayoutStatus  @default(processing)
   startDate         DateTime
   endDate           DateTime
   paidAt            DateTime?
-  refundAt            DateTime?
+  refundAt          DateTime?
   createdAt         DateTime   @default(now())
+  updatedAt            DateTime    @updatedAt
   orderId           String     @unique
   restaurantName    String
   restaurantId      String
   order             Order      @relation("OrderToPayout", fields: [orderId], references: [orderId], onDelete: Cascade)
   restaurant        Restaurant @relation("RestaurantPayment", fields: [restaurantId], references: [restaurantId], onDelete: Cascade)
 
-  @@index([isPaid, endDate])
+  @@index([payoutStatus, endDate])
+  @@index([transactionId])
+
+  @@unique([idempotencyKey, orderId])
 }
 
 model Restaurant {
@@ -147,7 +154,7 @@ model Order {
   totalAmount          Decimal    @db.Decimal(10, 2)
 
   paidAt               DateTime?
-  paymentId            String?      @unique
+  transactionId        String?     @unique
   paymentSlipImg       String?
   paymentMethod        String?     @map("payment_method_type")
   paymentGatewayStatus String?     @map("payment_gateway_status")
@@ -192,6 +199,13 @@ model User {
   @@index([name])
   @@index([userId])
   @@index([role])
+}
+
+enum PayoutStatus {
+  initiated
+  processing
+  success
+  failed
 }
 
 enum DateWeek {
