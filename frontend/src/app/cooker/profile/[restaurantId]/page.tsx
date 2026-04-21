@@ -5,54 +5,26 @@ import { Toggle } from '@/components/Toggle';
 import { useParams } from 'next/navigation';
 import { Button } from '@/components/Button';
 import { useAuth } from '@/auth/auth.hooks';
-import { useCooker } from '@/context/Cookercontext';
 import { getParamId } from '@/util/param';
 import { api } from '@/lib/api';
 import CookerHeader from '@/components/cookers/CookerHeader';
+import { useCooker, useToggleRestaurantClosed } from '@/hook/useCooker';
 
 function Page() {
     const params = useParams();
-    const restaurantId = getParamId(params.restaurantId);
-    const { cooker, setCooker } = useCooker();
+    const restaurantId = (params.restaurantId) as string;
+    const { data: cooker } = useCooker(restaurantId);
+    const { mutate: toggleClosed, isPending: isPatching } = useToggleRestaurantClosed(restaurantId)
     const { logout } = useAuth();
-    const [isPatching, setIsPatching] = useState(false);
     const [error,] = useState(null);
 
     const toggleCheckedState = cooker?.isTemporarilyClosed;
-    const handleRestaurantAvailabilityChange = useCallback(async (newIsTemporarilyClosed: boolean) => {
-        if (!cooker || !cooker.restaurantId) return;
-
-        const prevIsTemporarilyClosed = !!cooker.isTemporarilyClosed;
-        setIsPatching(true);
-        setCooker(prevCooker => {
-            if (!prevCooker) return prevCooker;
-            return { ...prevCooker, isTemporarilyClosed: newIsTemporarilyClosed };
-        });
-
-        try {
-            const payload = {
-                isTemporarilyClosed: newIsTemporarilyClosed,
-            };
-
-            const response = await api.patch(`restaurant/temporarily-close/${restaurantId}`, payload);
-
-            const confirmedIsTemporarilyClosed = typeof response.data.isTemporarilyClosed === 'boolean'
-                ? response.data.isTemporarilyClosed
-                : newIsTemporarilyClosed;
-
-            setCooker((prevData) => {
-                if (!prevData) return;
-                return { ...prevData, isTemporarilyClosed: confirmedIsTemporarilyClosed };
-            });
-        } catch {
-            setCooker(prevCooker => {
-                if (!prevCooker) return prevCooker;
-                return { ...prevCooker, isTemporarilyClosed: prevIsTemporarilyClosed };
-            })
-        } finally {
-            setIsPatching(false);
-        }
-    }, [cooker, setCooker, restaurantId]);
+    const handleRestaurantAvailabilityChange = useCallback(
+        (newIsTemporarilyClosed: boolean) => {
+          toggleClosed(newIsTemporarilyClosed);
+        },
+        [toggleClosed]
+      );
 
     if (!cooker) return <div>Loading restaurant profile...</div>
     if (error) return <div>Error</div>
