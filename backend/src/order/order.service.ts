@@ -199,7 +199,8 @@ export class OrderService {
       });
 
       if (!order) throw new NotFoundException("ไม่พบออเดอร์ที่ค้นหา");
-      if (!orderSecret || order.orderSecret !== orderSecret) throw new UnauthorizedException("ไม่สามารถเข้าถึงออเดอร์นี้ได้");
+
+      if (orderSecret && order.orderSecret !== orderSecret) throw new UnauthorizedException("ไม่สามารถเข้าถึงออเดอร์นี้ได้");
 
       return order;
 
@@ -437,9 +438,16 @@ export class OrderService {
   
       try {
           const acceptedResult = await this.prisma.order.updateMany({
-              where: { status: "accepted", paymentStatus: "unpaid", acceptAt: { lt: acceptedThreshold } },
+              where: { status: "accepted", paymentStatus: "unpaid", acceptAt: { lt: acceptedThreshold },
+                NOT: [
+                  { status: { in: ["cancelled", "rejected", "completed"] } },
+                  { paymentStatus: "paid" }
+                ]
+              },
               data: { status: "cancelled", cancelledAt: now }
-          });
+          });;
+
+          this.logger.log("Cron result: ", acceptedResult);
           if (acceptedResult.count > 0) this.logger.log(`Auto-cancelled ${acceptedResult.count} unpaid orders`);
       } catch (e) {
           this.logger.error(`Auto-cancel (accepted) failed: ${e.message}`);
