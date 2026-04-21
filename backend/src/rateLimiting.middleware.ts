@@ -30,7 +30,7 @@ export const authRateLimit = rateLimit({
 
 export const paymentRateLimit = rateLimit({
   windowMs: 5 * 60 * 1000,
-  max: 5,
+  max: 10,
   message: {
     error: 'รีเควสในการชำระเงินเกินขีดจำกัด กรุณาลองใหม่อีกครั้ง',
     retryAfter: '1 minutes'
