@@ -1,9 +1,9 @@
 import { startOfWeek, endOfWeek, format } from 'date-fns';
 import Decimal from 'decimal.js';
 
-const baseTransactionRate = new Decimal(process.env.TRANSACTION_RATE || "0");
-const vatRate = new Decimal(process.env.VAT_RATE || "0");
-const platformCommissionRate = new Decimal(process.env.PLATFORM_COMMISSION_RATE || "0");
+const envBaseTransactionRate = new Decimal(process.env.TRANSACTION_RATE || "0");
+const envVatRate = new Decimal(process.env.VAT_RATE || "0");
+const envCommissionRate = new Decimal(process.env.PLATFORM_COMMISSION_RATE || "0");
 
 export interface PayoutCalculationType {
   totalRevenue: number | Decimal;
@@ -11,6 +11,7 @@ export interface PayoutCalculationType {
   platformNetEarning: number | Decimal;
   grossPlatformCommission: number | Decimal;
   transactionFee: number | Decimal;
+  vatRate: number | Decimal;
 }
 
 export interface WeeklyPayoutType {
@@ -21,12 +22,10 @@ export interface WeeklyPayoutType {
 }
 
 export function calculatePayout(
-  totalPrice: Decimal,
-  config: {
-    platformCommissionRate: Decimal;
-    baseTransactionRate: Decimal;
-    vatRate: Decimal;
-  }
+  totalPrice: Decimal, 
+  platformCommissionRate: Decimal = envCommissionRate, 
+  baseTransactionRate: Decimal = envBaseTransactionRate, 
+  vatRate: Decimal = envVatRate
 ): PayoutCalculationType {
 
   const userPaidAmount = totalPrice;
@@ -50,6 +49,7 @@ export function calculatePayout(
     platformNetEarning: platformNetEarning.toDecimalPlaces(2),
     grossPlatformCommission: new Decimal(0),
     transactionFee: transactionFee.toDecimalPlaces(2),
+    vatRate: totalPrice.mul(vatRate).toDecimalPlaces(2)
   };
 }
 
