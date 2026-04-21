@@ -9,11 +9,11 @@ import { api } from '@/lib/api';
 import { useForm, Controller } from 'react-hook-form';
 import { createOrderSchema, CreateOrderSchemaType } from '@/schemas/addOrderSchema';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { toastDanger } from '@/components/ui/Toast';
 import { toastSuccess } from '@/components/ui/Toast';
-import { useEffect, useMemo } from 'react';
-import { useCooker } from '@/context/Cookercontext';
+import { useEffect, useMemo, useRef } from 'react';
+import { useCooker } from '@/hook/useCooker';
 
 const OrderList = dynamic(() => import("@/components/users/OrderList"), { ssr: false })
 const Input = dynamic(() => import("@/components/Input"), { ssr: false })
@@ -51,22 +51,27 @@ const slipErrorMap: Record<string, string> = {
 };
 
 function OrderConfirmContext() {
-    const { cooker } = useCooker();
-    const { cart, clearCart } = useCart();
-    const router = useRouter();
+    const params = useParams();
+    const restaurantId = params.restaurantId as string;
 
-    const schema = useMemo(() => createOrderSchema(cooker.avgCookingTime ?? 0), [cooker.avgCookingTime]);
+    const { data: cooker, isPending } = useCooker(restaurantId);
+    const { cart } = useCart();
+    const router = useRouter();
+    const hadCartRef = useRef(cart.length > 0);
+
+    const schema = useMemo(() => createOrderSchema(cooker?.avgCookingTime ?? 0), [cooker?.avgCookingTime]);
 
     const {
         control,
         handleSubmit,
         register,
         setValue,
-        formState: { errors, isSubmitting, isSubmitted, isValid, isDirty, isLoading }
+        reset,
+        formState: { errors, isSubmitting, isValid, isDirty, isLoading }
     } = useForm({
         resolver: zodResolver(schema),
         defaultValues: {
-            deliverAt: getBufferTime(cooker.avgCookingTime + 1),
+            deliverAt: '',
             userTel: '',
         },
         mode: "onChange",
@@ -78,6 +83,28 @@ function OrderConfirmContext() {
         }
     }, [cooker, setValue]);
 
+    useEffect(() => {
+        if (!cooker) {
+            toastDanger("ไม่พบข้อมูลร้านอาหาร");
+        }
+    }, [cooker]);
+
+    useEffect(() => {
+        if (!cooker) return;
+
+        reset({
+            deliverAt: getBufferTime(cooker.avgCookingTime),
+            userTel: '',
+            restaurantId: cooker.restaurantId,
+        });
+    }, [cooker, reset]);
+
+    useEffect(() => {
+        if (!hadCartRef.current) {
+            router.replace(`/user/restaurant`);
+        }
+    }, []);
+
     const totalAmount = useMemo(() => {
         if (!cart) return 0;
 
@@ -87,18 +114,9 @@ function OrderConfirmContext() {
     }, [cart]);
 
     const formattedTotal = totalAmount.toFixed(2);
-    let isButtonDisabled = isSubmitting || !isValid || !isDirty || isLoading || cart.length === 0;
+    let isButtonDisabled = isSubmitting || !isValid || !isDirty || isLoading || isPending || cart.length === 0;
 
-    if (!cooker) {
-        toastDanger("ไม่พบข้อมูลร้านอาหาร");
-        return;
-    }
-
-    if (cart.length === 0 && !isSubmitting && !isSubmitted) {
-        toastDanger("กรุณาเลือกเมนูที่จะสั่ง")
-        setTimeout(() => router.replace(`/user/restaurant`));
-        return;
-    }
+    if (!cooker) return null;
 
     const submitOrder = async (data: CreateOrderSchemaType) => {
         try {
@@ -120,15 +138,11 @@ function OrderConfirmContext() {
                 userTel: data.userTel,
             }
 
-            isButtonDisabled = true;
-
             const response = await api.post(`/order/create`, orderPaymentPayload);
             const result = response.data;
             localStorage.setItem(`orderSecret:${result.orderId}`, result.orderSecret);
-            clearCart();
 
-
-            toastSuccess("ชำระเงินสำเร็จและสร้างออเดอร์เรียบร้อย");
+            toastSuccess("สร้างออเดอร์เรียบร้อย");
             router.push(`/user/order/wait/${result.orderId}`);
 
         } catch (error: unknown) {
