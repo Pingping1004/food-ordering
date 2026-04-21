@@ -7,14 +7,12 @@ import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
-import { api } from '@/lib/api';
 import { singleCreateMenuSchema, SingleCreateMenuSchemaType } from '@/schemas/addMenuSchema'; // Adjust path
 import { toastDanger } from '@/components/ui/Toast';
-import { Menu, useMenu } from '@/context/MenuContext';
 import { getParamId } from '@/util/param';
+import { useCreateMenu } from '@/hook/useMenu';
 
 export default function AddMenuPage() {
-    const { addMenuOptimistic, confirmMenu, rejectMenu } = useMenu();
     const params = useParams();
     const restaurantId = getParamId(params.restaurantId);
     const router = useRouter();
@@ -26,10 +24,6 @@ export default function AddMenuPage() {
     const [isApiLoading, setIsApiLoading] = useState(false);
     const [apiError, setApiError] = useState<string | null>(null);
     const [apiSuccessMessage, setApiSuccessMessage] = useState<string | null>(null);
-
-    // State to hold successfully created menu items (if you want to display them locally)
-    const [, setCreatedMenusList] = useState<Menu[]>([]);
-
 
     const {
         register,
@@ -59,11 +53,9 @@ export default function AddMenuPage() {
             const url = URL.createObjectURL(file);
             setImagePreviewUrl(url);
 
-            // Cleanup function to revoke the URL when the component unmounts
-            // or when a new file is selected (watchedMenuImgFile changes)
             return () => URL.revokeObjectURL(url);
         } else {
-            setImagePreviewUrl(null); // Clear preview if no file is selected
+            setImagePreviewUrl(null);
         }
     }, [watchedMenuImgFile]);
 
@@ -75,78 +67,46 @@ export default function AddMenuPage() {
         toastDanger(`กรุณากรอกข้อมูลให้ถูกต้อง:\n\n${messages}`);
     };
 
-    // --- API Call and Form Submission ---
-    const onSubmit: SubmitHandler<SingleCreateMenuSchemaType> = async (data) => {
-        setIsApiLoading(true);
-        setApiError(null);
-        setApiSuccessMessage(null);
-
-        if (!data.restaurantId || typeof data.restaurantId !== 'string') {
-            setApiError("Restaurant ID is missing or invalid in form data. Please check the URL.");
-            setIsApiLoading(false);
+    const onSubmit: SubmitHandler<SingleCreateMenuSchemaType> = (data) => {
+        if (!data.menuImg?.length) {
+            toastDanger("กรุณาเลือกรูปภาพ");
             return;
         }
 
-        const tempId = `temp-${Date.now()}`;
-        const tempMenu: Menu = {
-            menuId: tempId,
-            name: data.name,
-            price: data.price,
-            maxDaily: data.maxDaily ?? 0,
-            cookingTime: data.cookingTime ?? 0,
-            menuImg: imagePreviewUrl ?? '',
-            isAvailable: true,
-            isOrderable: true,
-            sellPriceDisplay: data.price,
-            restaurantId: restaurantId!,
-        };
+        const formData = new FormData();
+        formData.append('restaurantId', data.restaurantId);
+        formData.append('name', data.name);
+        formData.append('price', data.price.toString());
+        if (data.maxDaily !== undefined) formData.append('maxDaily', data.maxDaily.toString());
+        if (data.cookingTime !== undefined) formData.append('cookingTime', data.cookingTime.toString());
+        formData.append('menuImg', data.menuImg[0]);
 
-        addMenuOptimistic(tempMenu);
-        router.push(`/cooker/restaurant/managed-menu/${restaurantId}`);
-
-        try {
-            const formData = new FormData();
-
-            // Append all form data fields
-            formData.append('restaurantId', data.restaurantId);
-            formData.append('name', data.name);
-            formData.append('price', data.price.toString()); // Convert number to string for FormData
-            if (data.maxDaily !== undefined) formData.append('maxDaily', data.maxDaily.toString());
-            if (data.cookingTime !== undefined) formData.append('cookingTime', data.cookingTime.toString());
-
-            // Append the image file if selected
-            if (data.menuImg && data.menuImg.length > 0) {
-                formData.append('menuImg', data.menuImg[0]);
-            } else {
-                // Handle case where image is required but not provided
-                setApiError("กรุณาเลือกรูปภาพ");
-                setIsApiLoading(false);
-                return;
+        createMenu(
+            {
+                formData,
+                optimistic: {
+                    name: data.name,
+                    price: data.price,
+                    maxDaily: data.maxDaily ?? 0,
+                    cookingTime: data.cookingTime ?? 0,
+                    menuImg: imagePreviewUrl ?? '',
+                    isAvailable: true,
+                    isOrderable: true,
+                    sellPriceDisplay: data.price,
+                    restaurantId: restaurantId!,
+                },
+            },
+            {
+                onError: () => toastDanger("สร้างเมนูใหม่ล้มเหลว กรุณาลองใหม่อีกครั้ง"),
+                onSuccess: () => reset(),
             }
+        );
 
-            const response = await api.post<Menu>(`/menu/single`, formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' },
-                }
-            );
-
-            const createdMenuItem: Menu = response.data;
-            confirmMenu(tempId, response.data);
-            setApiSuccessMessage(`Menu "${createdMenuItem.name}" created successfully!`);
-
-            // Add the newly created menu item to the local list (optional, for display)
-            setCreatedMenusList((prevList) => [createdMenuItem, ...prevList]);
-
-            reset(); // Reset form fields
-            setImagePreviewUrl(null); // Clear preview image
-            router.push(`/cooker/restaurant/managed-menu/${restaurantId}`);
-        } catch {
-            rejectMenu(tempId);
-            setApiError("สร้างเมนูใหม่ล้มเหลว กรุณาลองใหม่อีกครั้ง");
-
-        } finally {
-            setIsApiLoading(false);
-        }
+        router.push(`/cooker/restaurant/managed-menu/${restaurantId}`);
     };
+
+    if (!restaurantId) return <div>ไม่พบข้อมูลร้านอาหาร</div>;
+    const { mutate: createMenu } = useCreateMenu(restaurantId)
 
     return (
         <div className="flex flex-col gap-y-10 py-10 px-6">
@@ -205,7 +165,6 @@ export default function AddMenuPage() {
                                 multiple={false} // Ensure only one file can be selected
                                 error={errors.menuImg?.message as string | undefined}
                                 {...register('menuImg')}
-                            // Removed onChange directly here as useEffect with watch handles preview
                             />
                         </div>
                     </div>

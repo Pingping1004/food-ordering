@@ -16,13 +16,17 @@ import { useToggle } from '@/hook/useToggle';
 import { useRouter } from 'next/navigation';
 import { toastDanger, toastSuccess } from '@/components/ui/Toast';
 import { ACCOUNT_TYPE_OPTIONS } from '@/common/bank-type.enum';
+import { useCreateRestaurant } from '@/hook/useCooker';
 
 export default function RestaurantRegisterPage() {
     const { user } = useAuth();
     const router = useRouter();
+    const { mutateAsync: createRestaurant, isPending } = useCreateRestaurant();
+
     const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
     const [slipPreview, setSlipPreview] = useState<string | null>(null);
     const hasShownInitToast = useRef(false);
+
     const {
         variants: categoryVariants,
         selected: categories,
@@ -40,7 +44,7 @@ export default function RestaurantRegisterPage() {
         setValue,
         handleSubmit,
         watch,
-        formState: { errors, isSubmitting }
+        formState: { errors }
     } = useForm({
         resolver: zodResolver(createRestaurantSchema),
         defaultValues: {
@@ -120,58 +124,39 @@ export default function RestaurantRegisterPage() {
             return;
         }
 
+        const formData = new FormData();
+
+        if (data.restaurantImg) formData.append('restaurantImg', data.restaurantImg[0]);
+        if (data.paymentQr) formData.append('paymentQr', data.paymentQr);
+
+        formData.append('name', data.name);
+        formData.append('email', user.email);
+        categories.forEach(({ value }) => formData.append('categories', value));
+        openDate.forEach(({ value }) => formData.append('openDate', value));
+        formData.append('openTime', data.openTime.toString());
+        formData.append('closeTime', data.closeTime.toString());
+        formData.append('avgCookingTime', data.avgCookingTime.toString());
+        formData.append('adminName', data.adminName);
+        formData.append('adminSurname', data.adminSurname);
+        formData.append('adminTel', data.adminTel);
+        formData.append('bankAccount', data.bankAccount);
+        formData.append('accountNumber', data.accountNumber);
+        formData.append('accountHolderFullName', data.accountHolderFullName);
+        if (data.adminEmail) formData.append('adminEmail', data.adminEmail);
+
         try {
-            const categoriesList = categories.map((item) => item.value);
-            const openDateList = openDate.map((date) => date.value);
-
-            const formData = new FormData();
-
-            if (data.restaurantImg) formData.append('restaurantImg', data.restaurantImg[0]);
-            if (data.paymentQr) formData.append('paymentQr', data.paymentQr);
-
-            formData.append('name', data.name);
-            formData.append('email', user.email);
-
-            categoriesList.forEach(category => {
-                formData.append('categories', category);
-            });
-
-            openDateList.forEach(date => {
-                formData.append('openDate', date);
-            });
-
-            formData.append('openTime', data.openTime.toString());
-            formData.append('closeTime', data.closeTime.toString());
-            formData.append('avgCookingTime', data.avgCookingTime.toString());
-            formData.append('adminName', data.adminName);
-            formData.append('adminSurname', data.adminSurname);
-            formData.append('adminTel', data.adminTel);
-            formData.append('bankAccount', data.bankAccount);
-            formData.append('accountNumber', data.accountNumber);
-            formData.append('accountHolderFullName', data.accountHolderFullName);
-
-            if (data.adminEmail !== undefined && data.adminEmail !== null) {
-                formData.append('adminEmail', data.adminEmail);
-            }
-
-            const response = await api.post('/restaurant', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                }
-            });
-
-            const restaurantId = response.data.result.restaurantId
-            toastSuccess(`ลงทะเบียนร้านอาหารสำเร็จ`);
-            router.push(`/cooker/${restaurantId}`)
+            const cooker = await createRestaurant(formData);
+            toastSuccess('ลงทะเบียนร้านอาหารสำเร็จ');
+            router.push(`/cooker/${cooker.restaurantId}`);
         } catch (error: unknown) {
             if (typeof error === 'object' && error !== null && 'response' in error) {
-                const err = error as { response: { status: number; data?: { message?: string } } };
+                const err = error as { response: { status: number } };
                 if (err.response.status === 409) {
-                    toastDanger(`ผู้ใช้งานได้ลงทะเบียนร้านอาหารไปแล้ว`)
+                    toastDanger('ผู้ใช้งานได้ลงทะเบียนร้านอาหารไปแล้ว');
                 }
             }
         }
-    }
+    };
 
     return (
         <div>
@@ -418,9 +403,9 @@ export default function RestaurantRegisterPage() {
                     type="submit"
                     size="full"
                     className="py-4 font-noto-thai text-bold"
-                    disabled={isSubmitting}
+                    disabled={isPending}
                 >
-                    ยืนยัน
+                    {isPending ? 'กำลังลงทะเบียน...' : 'ยืนยัน'}
                 </Button>
             </form>
         </div>

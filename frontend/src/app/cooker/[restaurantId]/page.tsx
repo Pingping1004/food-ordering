@@ -5,14 +5,13 @@ import { OrderProps } from "@/components/cookers/Order";
 import { NavState, OrderStatus } from "@/components/cookers/OrderNavbar";
 import LoadingPage from "@/components/LoadingPage";
 import { Button } from "@/components/Button";
-import { useCooker } from "@/context/Cookercontext";
 import { api } from "@/lib/api";
 import { getDateFormat, getTimeFormat } from "@/util/time";
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { toastDanger, toastSuccess } from "@/components/ui/Toast";
 import { useParams, usePathname } from "next/navigation";
-import { getParamId } from "@/util/param";
 import { useOrderSounds } from "@/hook/useOrderSounds";
+import { useCooker } from "@/hook/useCooker";
 
 const Modal = dynamic(() => import("../../../components/users/Modal"), { ssr: false })
 const WarningBanner = dynamic(() => import("../../../components/cookers/WarningBanner"), { ssr: false })
@@ -24,7 +23,6 @@ function Page() {
     const [isLargeTextMode, setIsLargeTextMode] = useState(false)
     const [orders, setOrders] = useState<Record<string, OrderProps>>({});
     const lastTimestampRef = useRef<string | null>(null)
-    const { cooker } = useCooker();
     const { playNewOrderSound, playPaymentSound } = useOrderSounds();
     const [navbarStatus, setNavbarStatus] = useState<NavState>("sent");
     const [showAutoCancelModal, setShowAutoCancelModal] = useState(false)
@@ -38,7 +36,8 @@ function Page() {
     const pendingOrdersRef = useRef<Record<string, { order: OrderProps; showAt: number }>>({});
 
     const params = useParams();
-    const restaurantId = getParamId(params.restaurantId);
+    const restaurantId = (params.restaurantId) as string;
+    const { data: cooker } = useCooker(restaurantId);
 
     const segments = usePathname().split("/").filter(Boolean);
     const isOrderPage = Boolean(restaurantId) && segments.length === 2;
@@ -378,6 +377,7 @@ function Page() {
     }, [navbarStatus, filterDailyOrders, navToStatusMap]);
 
     if (isLoading) return <LoadingPage />
+    if (!cooker) return null;
 
     return (
         <div

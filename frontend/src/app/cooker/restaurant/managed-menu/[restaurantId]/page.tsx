@@ -4,21 +4,25 @@ import { useState, useCallback, useRef, useMemo } from 'react'
 import CookerHeader from '@/components/cookers/CookerHeader'
 import { Button } from '@/components/Button'
 import { Menu as MenuComponent } from '@/components/cookers/Menu'
-import { useMenu } from '@/context/MenuContext';
-import { useRouter } from 'next/navigation';
-import { api } from '@/lib/api';
-import { useCooker } from '@/context/Cookercontext';
+import { useParams, useRouter } from 'next/navigation';
 import Input from '@/components/Input';
+import { useDeleteMenu, useToggleMenuAvailability, useMenus } from '@/hook/useMenu';
+import { toastDanger } from '@/components/ui/Toast';
+import { useCooker } from '@/hook/useCooker';
 
 function Page() {
-    const { menus, deleteMenuLocal, updateMenu } = useMenu();
-    const { cooker } = useCooker();
-    const restaurantId = cooker?.restaurantId;
+    const params = useParams();
+    const restaurantId = params.restaurantId as string;
+    const { data: cooker } = useCooker(restaurantId);
     const [, setError] = useState<string | null>(null);
     const [, setPatchingMenuId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
     const currentRequestRef = useRef<number | null>(null);
     const router = useRouter();
+
+    const { data: menus = [] } = useMenus(restaurantId);
+    const { mutate: toggleAvailability } = useToggleMenuAvailability(restaurantId);
+    const { mutate: deleteMenu } = useDeleteMenu(restaurantId);
 
     const filteredMenus = useMemo(() => {
         if (!menus) return [];
@@ -31,62 +35,24 @@ function Page() {
         });
     }, [menus, searchQuery]);
 
-    const handleMenuAvailabilityChange = useCallback(async (menuId: string, newIsAvailable: boolean) => {
-        if (!menus || !restaurantId) return;
+    const handleMenuAvailabilityChange = useCallback(
+        (menuId: string, newIsAvailable: boolean) => {
+            toggleAvailability(
+                { menuId, isAvailable: newIsAvailable },
+                { onError: () => toastDanger("อัปเดตสถานะเมนูล้มเหลว กรุณาลองใหม่อีกครั้ง") }
+            );
+        },
+        [toggleAvailability]
+    );
 
-        const targetMenu = menus.find(menu => menu.menuId === menuId);
-        if (!targetMenu) return;
-
-        const prev = targetMenu.isAvailable;
-        setPatchingMenuId(menuId);
-
-        updateMenu(menuId, (menu) => ({
-            ...menu,
-            isAvailable: newIsAvailable
-        }));
-
-        try {
-            const payload = {
-                restaurantId: restaurantId,
-                isAvailable: newIsAvailable,
-            }
-
-            const requestId = Date.now();
-            currentRequestRef.current = requestId;
-
-            const res = await api.patch(`menu/is-available/${menuId}`, payload);
-
-            if (currentRequestRef.current !== requestId) return;
-
-            const confirmed = typeof res.data.isAvailable === "boolean" ? res.data.isAvailable : newIsAvailable;
-
-            updateMenu(menuId, (menu) => ({
-                ...menu,
-                isAvailable: confirmed
-            }));
-        } catch {
-            updateMenu(menuId, (menu) => ({
-                ...menu,
-                isAvailable: prev
-            }));
-        } finally {
-            setPatchingMenuId(null);
-        }
-    }, [menus, restaurantId, updateMenu, setPatchingMenuId]);
-
-    const handleDeleteMenu = useCallback(async (menuId: string) => {
-        if (!menus) return;
-
-        const backup = [...menus];
-        deleteMenuLocal(menuId);
-
-        try {
-            await api.delete(`/menu/${menuId}`);
-        } catch {
-            backup.forEach(menu => updateMenu(menu.menuId, () => menu))
-            setError(`Failed to delete menu ${menuId}`);
-        }
-    }, [menus, deleteMenuLocal, updateMenu]);
+    const handleDeleteMenu = useCallback(
+        (menuId: string) => {
+            deleteMenu(menuId, {
+                onError: () => toastDanger("ลบเมนูล้มเหลว กรุณาลองใหม่อีกครั้ง"),
+            });
+        },
+        [deleteMenu]
+    );
 
     if (!cooker) return null;
 

@@ -2,38 +2,28 @@
 
 import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useMenu } from '@/context/MenuContext'
 import { useCart } from '@/context/CartContext';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/Button';
 import { toastDanger } from '@/components/ui/Toast';
-import { useCooker } from '@/context/Cookercontext';
 import Input from '@/components/Input';
+import { useMenus } from '@/hook/useMenu';
+import { getParamId } from '@/util/param';
+import LoadingPage from '@/components/LoadingPage';
+import { useCooker } from '@/hook/useCooker';
 
 const MenuProfile = dynamic(() => import("../../../../components/users/MenuProfile"), { ssr: false })
 const RestaurantHeader = dynamic(() => import("@/components/users/RestaurantHeader"))
 
 function MenuContextPage() {
-    const { menus } = useMenu();
-    const { cooker } = useCooker();
+    const params = useParams();
+    const restaurantId = (params.restaurantId) as string;
+    const { data: cooker } = useCooker(restaurantId);
     const { cart } = useCart();
     const router = useRouter();
     const alertShownRef = useRef(false);
     const [isNowOpen, setIsNowOpen] = useState<boolean>(true);
     const [searchQuery, setSearchQuery] = useState("");
-
-    const filteredMenus = useMemo(() => {
-        if (!menus) return [];
-
-        const query = searchQuery.trim().toLowerCase();
-
-        return menus.filter(menu => {
-            if (!menu.isOrderable) return false;
-            if (!query) return true;
-
-            return menu.name.toLowerCase().includes(query);
-        });
-    }, [menus, searchQuery]);
 
     const checkOrderCart = () => {
         if (!cooker) {
@@ -53,6 +43,25 @@ function MenuContextPage() {
             setIsNowOpen(false);
         }
     }, [cooker]);
+
+    if (!restaurantId) return <div>ไม่พบข้อมูลร้านอาหาร</div>;
+
+    const { data, isLoading } = useMenus(restaurantId);
+    const menus = data ?? [];
+    const filteredMenus = useMemo(() => {
+        if (!menus) return [];
+
+        const query = searchQuery.trim().toLowerCase();
+
+        return menus.filter(menu => {
+            if (!menu.isOrderable) return false;
+            if (!query) return true;
+
+            return menu.name.toLowerCase().includes(query);
+        });
+    }, [menus, searchQuery]);
+
+    if (isLoading) return <LoadingPage />
 
     return (
         <div className="relative min-h-screen pb-10">
@@ -80,13 +89,12 @@ function MenuContextPage() {
                 />
 
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-x-4 gap-y-6">
-                    {filteredMenus?.filter(menu => menu.isOrderable === true).map((menu, i) => (
+                    {filteredMenus.map((menu, i) => (
                         <MenuProfile
                             key={menu.menuId}
                             menuId={menu.menuId}
                             menuImg={menu.menuImg}
                             name={menu.name}
-                            // unitPrice={menu.price}
                             sellPriceDisplay={menu.sellPriceDisplay}
                             // maxDaily={menu.maxDaily}
                             // cookingTime={menu.cookingTime}
