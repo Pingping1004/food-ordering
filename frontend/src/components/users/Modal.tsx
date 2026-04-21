@@ -4,6 +4,7 @@ import { Button } from "../Button"
 type Props = {
   isOpen: boolean
   onClose: () => void
+  onConfirm?: () => void | Promise<void>
   title: string
   body: string
   confirmText?: string
@@ -12,6 +13,7 @@ type Props = {
 export default function Modal({
   isOpen,
   onClose,
+  onConfirm,
   title,
   body,
   confirmText = "เข้าใจแล้ว"
@@ -59,7 +61,10 @@ export default function Modal({
           <p className="text-secondary whitespace-pre-line text-start">{body}</p>
 
           <Button
-            onClick={onClose}
+            onClick={async () => {
+              if (onConfirm) await onConfirm();
+              onClose();
+            }}
             type="button"
             variant="primary"
             size="full"
