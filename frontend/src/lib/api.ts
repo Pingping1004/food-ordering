@@ -135,11 +135,7 @@ async function handleTokenRefresh401(originalRequest: CustomAxiosRequestConfig) 
 
         processQueue(null);
         updateAuthHeader(originalRequest, newAccessToken);
-
-        if (!originalRequest.headers) originalRequest.headers = {};
-        originalRequest.headers['skipAuth'] = 'true';
-
-        return api(originalRequest);
+        return;
     } catch (refreshError) {
         processQueue(refreshError);
         await forcedLogout();
@@ -209,18 +205,13 @@ api.interceptors.response.use(
         }
 
         originalRequest._retry = true;
-        isRefreshing = true;
 
         try {
             await handleTokenRefresh401(originalRequest);
-            processQueue(null);
             return api(originalRequest);
         } catch (refreshError) {
-            processQueue(refreshError as Error);
             await forcedLogout();
             return Promise.reject(refreshError);
-        } finally {
-            isRefreshing = false
         }
     }
 );
