@@ -1,10 +1,9 @@
 import {
     Controller,
     Post,
-    Logger,
+    Headers,
     Body,
 } from '@nestjs/common';
-import { OrderService } from 'src/order/order.service';
 import { PaymentService } from './payment.service';
 import { Public } from 'src/decorators/public.decorator';
 import { CreatePaymentDto } from './dto/create-payment.dto';
@@ -16,10 +15,8 @@ export class PaymentController {
         private readonly paymentService: PaymentService,
     ) { }
 
-    private readonly logger = new Logger('PaymentController');
-
     @Post('verify')
-    verifyPayment(@Body() body: CreatePaymentDto) {
-        return this.paymentService.verifyPayment(body.restaurantId, body.orderId, body.paymentSlipImg)
+    verifyPayment(@Body() body: CreatePaymentDto, @Headers('x-order-secret') orderSecret: string) {
+        return this.paymentService.verifyPayment(body, orderSecret)
     }
 }
