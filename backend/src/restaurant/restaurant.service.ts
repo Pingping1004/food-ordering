@@ -92,15 +92,11 @@ export class RestaurantService {
     }
   }
 
-  async findAllRestaurant(): Promise<RestaurantCache[]> {
-    const cacheKey = "restaurants:all";
+  async findAllRestaurant(limit: number = 6): Promise<RestaurantCache[]> {
+    const cacheKey = `restaurants:all:${limit}`;
     const cached = getRestaurantCache<OpenRestaurant[]>(cacheKey);
 
-    if (cached) {
-      const start = Date.now();
-      this.logger.debug(`DB query took ${Date.now() - start}ms`);
-      return cached
-    }
+    if (cached) return cached
 
     const pendingRequest = this.pendingRestaurantRequests.get(cacheKey);
     if (pendingRequest) return pendingRequest;
@@ -108,6 +104,7 @@ export class RestaurantService {
     const requestPromise = (async () => {
       const restaurants = await this.prisma.restaurant.findMany({
         where: { isApproved: true },
+        take: limit * 3,
         select: {
           restaurantId: true,
           restaurantImg: true,
@@ -125,6 +122,9 @@ export class RestaurantService {
           paymentQr: true,
         }
       });
+
+      const start = Date.now();
+      this.logger.debug(`DB query took ${Date.now() - start}ms`);
 
       setRestaurantCache(cacheKey, restaurants, 15 * 60 * 1000);
       return restaurants
@@ -247,15 +247,15 @@ export class RestaurantService {
     return openDate.includes(today);
   }
 
-  async getOpenRestaurants() {
-    const cacheKey = "restaurants:open";
+  async getOpenRestaurants(limit: number = 6) {
+    const cacheKey = `restaurants:open:${limit}`;
     const cached = getRestaurantCache<RestaurantCache[]>(cacheKey);
 
     if (cached) return cached;
 
     const currentTimeString = moment().tz('Asia/Bangkok').format('HH:mm');
 
-    const allRestaurants = await this.findAllRestaurant();
+    const allRestaurants = await this.findAllRestaurant(limit);
     const openRestaurants = allRestaurants
       .map(restaurant => {
         const isScheduledOpenDay = this.isTodayOpen(restaurant.openDate, restaurant.openTime, restaurant.closeTime);
@@ -272,7 +272,8 @@ export class RestaurantService {
           isActuallyOpen,
         };
       })
-      .filter(restaurant => restaurant.isActuallyOpen);
+      .filter(restaurant => restaurant.isActuallyOpen)
+      .slice(0, limit);
 
     setRestaurantCache(cacheKey, openRestaurants, 30 * 1000)
 
