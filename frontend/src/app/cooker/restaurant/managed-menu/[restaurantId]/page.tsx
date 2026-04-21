@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useMemo } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import CookerHeader from '@/components/cookers/CookerHeader'
 import { Button } from '@/components/Button'
 import { Menu as MenuComponent } from '@/components/cookers/Menu'
@@ -14,10 +14,7 @@ function Page() {
     const params = useParams();
     const restaurantId = params.restaurantId as string;
     const { data: cooker } = useCooker(restaurantId);
-    const [, setError] = useState<string | null>(null);
-    const [, setPatchingMenuId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
-    const currentRequestRef = useRef<number | null>(null);
     const router = useRouter();
 
     const { data: menus = [] } = useMenus(restaurantId);

@@ -5,8 +5,6 @@ import { Toggle } from '@/components/Toggle';
 import { useParams } from 'next/navigation';
 import { Button } from '@/components/Button';
 import { useAuth } from '@/auth/auth.hooks';
-import { getParamId } from '@/util/param';
-import { api } from '@/lib/api';
 import CookerHeader from '@/components/cookers/CookerHeader';
 import { useCooker, useToggleRestaurantClosed } from '@/hook/useCooker';
 

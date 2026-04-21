@@ -8,7 +8,6 @@ import { Button } from '@/components/Button';
 import { toastDanger } from '@/components/ui/Toast';
 import Input from '@/components/Input';
 import { useMenus } from '@/hook/useMenu';
-import { getParamId } from '@/util/param';
 import LoadingPage from '@/components/LoadingPage';
 import { useCooker } from '@/hook/useCooker';
 
@@ -24,6 +23,9 @@ function MenuContextPage() {
     const alertShownRef = useRef(false);
     const [isNowOpen, setIsNowOpen] = useState<boolean>(true);
     const [searchQuery, setSearchQuery] = useState("");
+
+    const { data, isLoading } = useMenus(restaurantId);
+    const menus = data ?? [];
 
     const checkOrderCart = () => {
         if (!cooker) {
@@ -44,10 +46,6 @@ function MenuContextPage() {
         }
     }, [cooker]);
 
-    if (!restaurantId) return <div>ไม่พบข้อมูลร้านอาหาร</div>;
-
-    const { data, isLoading } = useMenus(restaurantId);
-    const menus = data ?? [];
     const filteredMenus = useMemo(() => {
         if (!menus) return [];
 

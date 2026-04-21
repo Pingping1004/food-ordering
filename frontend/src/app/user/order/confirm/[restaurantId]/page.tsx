@@ -103,7 +103,7 @@ function OrderConfirmContext() {
         if (!hadCartRef.current) {
             router.replace(`/user/restaurant`);
         }
-    }, []);
+    }, [router]);
 
     const totalAmount = useMemo(() => {
         if (!cart) return 0;
@@ -114,7 +114,7 @@ function OrderConfirmContext() {
     }, [cart]);
 
     const formattedTotal = totalAmount.toFixed(2);
-    let isButtonDisabled = isSubmitting || !isValid || !isDirty || isLoading || isPending || cart.length === 0;
+    const isButtonDisabled = isSubmitting || !isValid || !isDirty || isLoading || isPending || cart.length === 0;
 
     if (!cooker) return null;
 

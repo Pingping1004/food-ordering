@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { getParamId } from "@/util/param";
@@ -35,7 +35,7 @@ function OrderWaitPage() {
         }
     };
 
-    const checkStatus = async () => {
+    const checkStatus = useCallback(async () => {
         try {
             const res = await api.get(`/order/${orderId}`, {
                 headers: {
@@ -63,7 +63,7 @@ function OrderWaitPage() {
                 return;
             }
 
-        } catch (error: unknown) {
+        } catch {
             failCountRef.current += 1;
 
             if (failCountRef.current >= 3) {
@@ -72,7 +72,7 @@ function OrderWaitPage() {
                 toastDanger("ไม่สามารถโหลดสถานะออเดอร์ได้");
             }
         }
-    };
+    }, []);
 
     const handleRetry = () => {
         stopPolling();
@@ -102,11 +102,11 @@ function OrderWaitPage() {
         return () => {
             if (intervalRef.current) clearInterval(intervalRef.current);
         };
-    }, [orderId]);
+    }, [orderId, checkStatus, router]);
 
     useEffect(() => {
         clearCart();
-    }, []);
+    }, [clearCart]);
 
     useEffect(() => {
         const t = setInterval(() => {

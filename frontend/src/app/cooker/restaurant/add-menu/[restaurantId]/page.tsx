@@ -20,16 +20,11 @@ export default function AddMenuPage() {
     // State for image preview URL
     const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
 
-    // States for API feedback
-    const [isApiLoading, setIsApiLoading] = useState(false);
-    const [apiError, setApiError] = useState<string | null>(null);
-    const [apiSuccessMessage, setApiSuccessMessage] = useState<string | null>(null);
-
     const {
         register,
         handleSubmit,
         watch,
-        formState: { errors },
+        formState: { errors, isLoading, isSubmitting },
         reset,
     } = useForm<SingleCreateMenuSchemaType>({
         resolver: zodResolver(singleCreateMenuSchema),
@@ -105,8 +100,7 @@ export default function AddMenuPage() {
         router.push(`/cooker/restaurant/managed-menu/${restaurantId}`);
     };
 
-    if (!restaurantId) return <div>ไม่พบข้อมูลร้านอาหาร</div>;
-    const { mutate: createMenu } = useCreateMenu(restaurantId)
+    const { mutate: createMenu } = useCreateMenu(restaurantId || "")
 
     return (
         <div className="flex flex-col gap-y-10 py-10 px-6">
@@ -120,18 +114,6 @@ export default function AddMenuPage() {
                     เพิ่มหลายเมนูพร้อมกัน
                 </Button>
             </div>
-
-            {/* --- API Feedback Messages --- */}
-            {apiSuccessMessage && (
-                <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative">
-                    {apiSuccessMessage}
-                </div>
-            )}
-            {apiError && (
-                <div className="bg-red-100 border border-red-400 text-red-500 px-4 py-3 rounded relative">
-                    {apiError}
-                </div>
-            )}
 
             <form onSubmit={handleSubmit(onSubmit, onError)} className="flex flex-col gap-y-10">
                 <div className="grid grid-cols-1 md:grid-cols-2 md:gap-x-10 gap-y-6">
@@ -206,8 +188,8 @@ export default function AddMenuPage() {
                     </div>
                 </div>
 
-                <Button size="lg" type="submit" disabled={isApiLoading}>
-                    {isApiLoading ? 'กำลังเพิ่มเมนู...' : 'เพิ่มเมนู'}
+                <Button size="lg" type="submit" disabled={isLoading || isSubmitting}>
+                    {isLoading || isSubmitting ? 'กำลังเพิ่มเมนู...' : 'เพิ่มเมนู'}
                 </Button>
             </form>
         </div>

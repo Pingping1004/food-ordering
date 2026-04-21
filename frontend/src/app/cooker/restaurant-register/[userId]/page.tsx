@@ -9,7 +9,6 @@ import TimePickerInput from '@/components/ui/TimePicker';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, Controller } from 'react-hook-form';
 import { createRestaurantSchema, CreateRestaurantSchemaType } from '@/schemas/addRestaurant';
-import { api } from '@/lib/api';
 import { buttonLabels, shortEngDays } from '@/common/restaurant.enum';
 import { getCurrentTime, getApproxCloseTime } from '@/util/time';
 import { useToggle } from '@/hook/useToggle';
