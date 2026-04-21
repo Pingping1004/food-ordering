@@ -3,17 +3,18 @@ import { CreatePayoutDto } from './create-payout.dto';
 import {
   IsOptional,
   IsDate,
-  IsBoolean,
   IsNotEmpty,
   IsNumber,
   IsPositive,
+  IsEnum,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { PayoutStatus } from '@prisma/client';
 
 export class UpdatePayoutDto extends PartialType(CreatePayoutDto) {
-  @IsBoolean()
+  @IsEnum(PayoutStatus)
   @IsNotEmpty()
-  isPaid: boolean
+  payoutStatus: PayoutStatus
 
   @IsOptional()
   @IsPositive()
