@@ -40,6 +40,6 @@ export class PayoutController {
 
   @Patch('update/:payoutId')
   updatePayout(@Param('payoutId') payoutId: string, @Body() updatePayoutDto: UpdatePayoutDto) {
-    return this.payoutService.updatePayout(payoutId, updatePayoutDto.isPaid)
+    return this.payoutService.updatePayoutStatus(payoutId, updatePayoutDto.payoutStatus)
   }
 }
