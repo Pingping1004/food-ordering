@@ -14,6 +14,8 @@ import {
   InternalServerErrorException,
   UploadedFiles,
   BadRequestException,
+  Query,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
 import { imageFileFilter } from '../utils/file-upload.utils'
@@ -64,8 +66,9 @@ export class RestaurantController {
 
   @Public()
   @Get()
-  async findAllRestaurant() {
-    return this.restaurantService.getOpenRestaurants();
+  async findAllRestaurant(@Query("limit") limit?: string) {
+    const parsedLimit = Math.min(Math.max(Number(limit) || 6, 1), 50);
+    return this.restaurantService.getOpenRestaurants(parsedLimit);
   }
 
   @Public()
