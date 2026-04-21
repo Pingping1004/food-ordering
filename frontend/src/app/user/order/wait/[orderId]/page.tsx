@@ -7,16 +7,26 @@ import { getParamId } from "@/util/param";
 import type { Order } from "../../done/[orderId]/page";
 import { OrderStatus } from "@/components/cookers/OrderNavbar";
 import LoadingPage from "@/components/LoadingPage";
+import { Button } from "@/components/Button";
+import { toastDanger } from "@/components/ui/Toast";
+import { useCart } from "@/context/CartContext";
 
 function OrderWaitPage() {
     const router = useRouter();
+    const { clearCart } = useCart();
     const params = useParams();
     const orderId = getParamId(params.orderId);
 
     const [order, setOrder] = useState<Order>();
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
+    const [isTimeout, setIsTimeout] = useState(false);
 
+    const failCountRef = useRef(0);
+    const orderSecretRef = useRef<string | null>(null);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
+    const lastSuccessRef = useRef(Date.now());
+
 
     const stopPolling = () => {
         if (intervalRef.current) {
@@ -25,43 +35,109 @@ function OrderWaitPage() {
         }
     };
 
-    useEffect(() => {
-        const checkStatus = async () => {
-            try {
-                const res = await api.get(`/order/${orderId}`);
-                const data = res.data;
-
-                setOrder(data);
-                setLoading(false);
-
-                if (data.status === OrderStatus.accepted) {
-                    stopPolling()
-                    router.replace(`/user/order/payment/${orderId}`);
-                    return;
+    const checkStatus = async () => {
+        try {
+            const res = await api.get(`/order/${orderId}`, {
+                headers: {
+                    'x-order-secret': orderSecretRef.current
                 }
+            });
+            const data = res.data;
 
-                if (data.status === OrderStatus.cancelled || data.status === OrderStatus.rejected) {
-                    stopPolling()
-                    router.replace(`/user/order/failed/${orderId}`);
-                    return;
-                }
+            setOrder(data);
+            setLoading(false);
+            setIsTimeout(false);
+            setError(false);
+            failCountRef.current = 0
+            lastSuccessRef.current = Date.now();
 
-            } catch (err) {
-                console.error(err);
+            if (data.status === OrderStatus.accepted) {
+                stopPolling()
+                router.replace(`/user/order/payment/${orderId}`);
+                return;
             }
-        };
+
+            if (data.status === OrderStatus.cancelled || data.status === OrderStatus.rejected) {
+                stopPolling()
+                router.replace(`/user/order/failed/${orderId}`);
+                return;
+            }
+
+        } catch (error: unknown) {
+            failCountRef.current += 1;
+
+            if (failCountRef.current >= 3) {
+                stopPolling();
+                setError(true);
+                toastDanger("ไม่สามารถโหลดสถานะออเดอร์ได้");
+            }
+        }
+    };
+
+    const handleRetry = () => {
+        stopPolling();
+
+        setError(false);
+        setIsTimeout(false);
+        failCountRef.current = 0;
+        lastSuccessRef.current = Date.now();
+        setLoading(true);
 
         checkStatus();
-
         intervalRef.current = setInterval(checkStatus, 3000);
+    };
 
+    useEffect(() => {
+        if (!orderId) {
+            router.replace("/user/restaurant");
+            return;
+        }
+    
+        const orderSecret = localStorage.getItem(`orderSecret:${orderId}`);
+        orderSecretRef.current = orderSecret;
+    
+        checkStatus();
+        intervalRef.current = setInterval(checkStatus, 3000);
+    
         return () => {
             if (intervalRef.current) clearInterval(intervalRef.current);
         };
-    }, [orderId, router]);
+    }, [orderId]);
 
+    useEffect(() => {
+        clearCart();
+    }, []);
+
+    useEffect(() => {
+        const t = setInterval(() => {
+            if (Date.now() - lastSuccessRef.current > 8000) {
+                setIsTimeout(true);
+                stopPolling();
+            }
+        }, 2000);
+
+        return () => clearInterval(t);
+    }, []);
+
+    if (loading) return <LoadingPage />
+    if (error || isTimeout) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+                <p className="text-lg font-semibold">
+                    ไม่สามารถโหลดสถานะออเดอร์ได้
+                </p>
+
+                <Button
+                    type="button"
+                    onClick={handleRetry}
+                    className="px-4 py-2 bg-primary text-white rounded"
+                >
+                    ลองใหม่
+                </Button>
+            </div>
+        )
+    }
     if (!order) return <div>ไม่พบออเดอร์ของคุณ</div>;
-    if (loading) <LoadingPage />
 
     const futureTime = new Date(new Date(order.orderAt).getTime() + 3 * 60 * 1000);
 

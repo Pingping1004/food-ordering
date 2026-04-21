@@ -11,13 +11,15 @@ import { getParamId } from '@/util/param';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import type { Order } from '../../done/[orderId]/page';
 import LoadingPage from '@/components/LoadingPage';
+import { getIdempotencyKey } from '@/util/idempotency';
+import { OrderStatus } from '@/components/cookers/OrderNavbar';
 
 export interface OrderPaymentPayload {
-    restaurantId: string;
+    idempotencyKey: string;
     orderId: string;
     paymentSlipImg: string;
 }
@@ -32,7 +34,6 @@ function OrderPaymentPage() {
         watch,
         setValue,
         handleSubmit,
-        register,
         formState: { errors, isSubmitting, isLoading }
     } = useForm({
         resolver: zodResolver(orderPaymentSchema),
@@ -43,23 +44,49 @@ function OrderPaymentPage() {
     });
 
     const [slipPreview, setSlipPreview] = useState<string | null>(null);
+    const [isFailed, setIsFailed] = useState(false);
     const [expired, setExpired] = useState(false);
     const [loading, setLoading] = useState(true);
     const [order, setOrder] = useState<Order>();
+    const failedCountRef = useRef(0);
+    const hasRedirectedRef = useRef(false);
 
     useEffect(() => {
-        if (!orderId) {
-            setLoading(false);
-            return;
-        }
-
         const fetchData = async () => {
             try {
                 const orderSecret = localStorage.getItem(`orderSecret:${orderId}`)
                 const orderResponse = await api.get(`order/${orderId}`, {
                     headers: { "x-order-secret": orderSecret }
                 });
-                setOrder(orderResponse.data);
+
+                failedCountRef.current = 0;
+                const data = orderResponse.data;
+                setOrder(data);
+
+                if (!hasRedirectedRef.current && data.status === OrderStatus.completed) {
+                    hasRedirectedRef.current = true
+                    router.replace(`/user/order/done/${orderId}`);
+                    return;
+                }
+
+                if (!hasRedirectedRef.current && (data.status === OrderStatus.cancelled || data.status === OrderStatus.rejected)) {
+                    hasRedirectedRef.current = true
+                    router.replace(`/user/order/failed/${orderId}`);
+                    return;
+                }
+
+                if (!hasRedirectedRef.current && data.status === OrderStatus.sent) {
+                    hasRedirectedRef.current = true
+                    router.replace(`/user/order/wait/${orderId}`);
+                    return;
+                }
+            } catch {
+                failedCountRef.current += 1;
+
+                if (failedCountRef.current >= 3) {
+                    setIsFailed(true);
+                    toastDanger("โหลดข้อมูลไม่สำเร็จ");
+                }
             } finally {
                 setLoading(false);
             }
@@ -69,15 +96,8 @@ function OrderPaymentPage() {
     }, [orderId, router]);
 
     useEffect(() => {
-        return () => {
-            if (slipPreview) URL.revokeObjectURL(slipPreview);
-        };
-    }, [slipPreview]);
-
-    useEffect(() => {
         if (orderId) setValue("orderId", orderId);
-        if (order?.restaurantId) setValue("restaurantId", order.restaurantId);
-    }, [orderId, order, setValue]);
+    }, [orderId, setValue]);
 
     const handleExpire = useCallback(async () => {
         setExpired(true);
@@ -122,26 +142,56 @@ function OrderPaymentPage() {
                 return;
             }
 
+            if (expired) {
+                toastDanger("หมดเวลาแล้ว");
+                return;
+            }
+
             if (!order.restaurantId) {
                 toastDanger("ไม่พบข้อมูลร้านอาหาร");
                 return;
             }
 
+            const idempotencyKey = getIdempotencyKey(orderId);
             const orderPaymentPayload: OrderPaymentPayload = {
-                restaurantId: order.restaurantId,
+                idempotencyKey: idempotencyKey,
                 orderId: orderId,
                 paymentSlipImg: data.paymentSlipImg,
             }
 
-            await api.post(`/payment/verify`, orderPaymentPayload);
+            const orderSecret = localStorage.getItem(`orderSecret:${orderId}`)
+            await api.post(`/payment/verify`, orderPaymentPayload,
+                {
+                    headers: {
+                        'x-order-secret': orderSecret
+                    }
+                }
+            );
 
-            toastSuccess("ชำระเงินสำเร็จและสร้างออเดอร์เรียบร้อย");
+            toastSuccess("ชำระเงินสำเร็จ");
+
+            setIsFailed(false)
             clearCart();
+            localStorage.removeItem(`idempotencyKey:${orderId}`);
+
             router.push(`/user/order/done/${orderId}`);
 
         } catch (error: unknown) {
+            setIsFailed(true)
+            failedCountRef.current += 1;
+
+            if (failedCountRef.current >= 3) {
+                toastDanger("ลองใหม่หลายครั้งเกินไป กรุณารอสักครู่");
+                return;
+            }
+
             if (typeof error === 'object' && error !== null && 'response' in error) {
                 const err = error as { response: { status: number; data?: { message?: string, code?: string } } };
+
+                if (err.response.status === 409) {
+                    toastDanger("ระบบกำลังตรวจสอบสลิป กรุณารอสักครู่");
+                    return;
+                }
 
                 const backendMessage = err.response.data?.message;
                 const code = err.response?.data?.code;
@@ -163,12 +213,16 @@ function OrderPaymentPage() {
             return;
         }
 
+        const previewUrl = URL.createObjectURL(file);
+        setSlipPreview(previewUrl);
+
         const reader = new FileReader();
 
         reader.onloadend = () => {
-            const base64DataUrl = reader.result as string;
+            const base64 = reader.result as string;
+            // const pureBase64 = base64.split(",")[1];
 
-            setValue("paymentSlipImg", base64DataUrl, {
+            setValue("paymentSlipImg", base64, {
                 shouldValidate: true,
                 shouldDirty: true,
             });
@@ -189,9 +243,7 @@ function OrderPaymentPage() {
     const isButtonDisabled = isSubmitting || expired || isLoading || !paymentSlipImg;
 
     const PAYMENT_WINDOW_MINS = 3;
-    const paymentDeadline = new Date(
-        new Date(order.acceptAt).getTime() + PAYMENT_WINDOW_MINS * 60 * 1000
-    );
+    const paymentDeadline = new Date(new Date(order.acceptAt).getTime() + PAYMENT_WINDOW_MINS * 60 * 1000);
 
     return (
         <form className="flex flex-col justify-center items-center py-10 px-6 gap-y-6" onSubmit={handleSubmit(handlePayment)}>
@@ -236,29 +288,39 @@ function OrderPaymentPage() {
                     label={paymentSlipImg ? "อัพโหลดสลิปสำเร็จ" : "ยังไม่ได้อัพโหลดสลิป"}
                     placeholder="อัพโหลดสลิปชำระเงิน"
                     id="paymentSlipImg"
+                    name="paymentSlipImg"
                     accept="image/*"
                     error={errors.paymentSlipImg?.message as string | undefined}
-                    {...register('paymentSlipImg')}
                     onChange={(e) => {
                         const file = (e.target as HTMLInputElement).files?.[0];
                         if (!file) return;
-
-                        const previewUrl = URL.createObjectURL(file);
-                        setSlipPreview(previewUrl);
 
                         handleSlipUpload(file);
                     }}
                 />
 
                 <div className=" w-full *:z-50 flex">
-                    <Button
-                        className="w-full font-noto-thai text-bold py-4"
-                        type="submit"
-                        size="full"
-                        disabled={isButtonDisabled}
-                    >
-                        {isSubmitting ? "กำลังส่งสลิป..." : "ส่งหลักฐานการชำระเงิน"}
-                    </Button>
+                    {isFailed ? (
+                        <Button
+                            className="w-full font-noto-thai text-bold py-4"
+                            type="submit"
+                            variant="secondaryDanger"
+                            size="full"
+                            disabled={isButtonDisabled}
+                        >
+                            {isSubmitting ? "กำลังส่งสลิป..." : "ลองใหม่อีกครั้ง"}
+                        </Button>
+                    ) : (
+                        <Button
+                            className="w-full font-noto-thai text-bold py-4"
+                            type="submit"
+                            variant="primary"
+                            size="full"
+                            disabled={isButtonDisabled}
+                        >
+                            {isSubmitting ? "กำลังส่งสลิป..." : "ส่งหลักฐานการชำระเงิน"}
+                        </Button>
+                    )}
                 </div>
             </div>
         </form>
