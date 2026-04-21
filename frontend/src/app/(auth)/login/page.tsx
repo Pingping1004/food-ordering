@@ -104,10 +104,10 @@ export default function LoginPage() {
                                     type="submit"
                                     disabled={isSubmitting}
                                 >
-                                    เข้าสู่ระบบ
+                                    {isSubmitting ? "กำลังโหลด..." : "เข้าสู่ระบบ"}
                                 </Button>
                                 <p className="text-light font-thai text-sm">หรือ</p>
-                                <Button type="button" size="full" variant="secondary" onClick={() => router.push('/user/restaurant')}>
+                                <Button type="button" size="full" variant="secondary" disabled={isSubmitting} onClick={() => router.push('/user/restaurant')}>
                                     สั่งอาหารเลยโดยไม่ล็อกอิน!
                                 </Button>
                             </div>

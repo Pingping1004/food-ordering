@@ -102,7 +102,7 @@ export default function SignupPage() {
                             <div className="flex flex-row justify-end mb-8"></div>
                             <div className="flex flex-col justify-center gap-y-4">
                                 <Button variant="primary" size="full" type="submit" disabled={isSubmitting}>
-                                    สร้างบัญชีผู้ใช้
+                                    {isSubmitting ? "กำลังโหลด..." : "สร้างบัญชีผู้ใช้"}
                                 </Button>
                                 <p className="text-light font-noto-thai text-sm">หรือ</p>
                                 <Button type="button" size="full" variant="secondary" onClick={() => router.push('/user/restaurant')}>
