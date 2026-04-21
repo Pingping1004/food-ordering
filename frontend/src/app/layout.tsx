@@ -4,6 +4,7 @@ import { Noto_Sans_Thai, Poppins } from "next/font/google"
 import { AuthProvider } from "@/auth/auth.provider";
 import { AppToaster } from "@/components/ui/Toast";
 import StorageGuard from "@/components/StorageGuard";
+import { ReactQueryProvider } from "@/lib/provider/ReactQueryProvider";
 
 const notoThai = Noto_Sans_Thai({
     subsets: ["thai"],
@@ -36,13 +37,15 @@ export default function RootLayout({
     return (
         <html lang="en">
             <head></head>
-            
+
             <body className={`${poppins.variable} ${notoThai.variable}`}>
-                <AuthProvider>
-                    <StorageGuard />
-                    {children}
-                    <AppToaster />
-                </AuthProvider>
+                <ReactQueryProvider>
+                    <AuthProvider>
+                        <StorageGuard />
+                        {children}
+                        <AppToaster />
+                    </AuthProvider>
+                </ReactQueryProvider>
             </body>
         </html>
     );

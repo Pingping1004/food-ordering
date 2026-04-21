@@ -1,7 +1,5 @@
 import { CartProvider } from "@/context/CartContext";
 import { AuthGuard } from "@/auth/auth.guard";
-import { MenuProvider } from "@/context/MenuContext";
-import { CookerProvider } from "@/context/Cookercontext";
 
 export default function UserLayout({
     children,
@@ -14,13 +12,9 @@ export default function UserLayout({
             <link rel="preconnect" href={process.env.NEXT_PUBLIC_API_URL} />
 
             <AuthGuard optional>
-                <CookerProvider>
-                    <MenuProvider>
-                        <CartProvider>
-                            {children}
-                        </CartProvider>
-                    </MenuProvider>
-                </CookerProvider>
+                <CartProvider>
+                    {children}
+                </CartProvider>
             </AuthGuard>
         </>
     )
