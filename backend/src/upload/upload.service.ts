@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { S3Service } from '../s3/s3.service';
 import sharp from "sharp";
 
@@ -71,6 +71,62 @@ export class UploadService {
             throw new InternalServerErrorException('อัพโหลดหลายรูปล้มเหลว');
         }
     }
+
+    private detectImageType(buffer: Buffer): string | null {
+        if (buffer.slice(0, 3).toString("hex") === "ffd8ff") return "jpeg";
+        if (buffer.slice(0, 8).toString("hex") === "89504e470d0a1a0a") return "png";
+        if (buffer.slice(0, 4).toString() === "RIFF") return "webp";
+    
+        return null;
+    }
+
+    async uploadBase64(base64: string, fileNamePrefix = "slip") {
+        const { buffer, mime } = this.parseBase64Image(base64);
+    
+        const fileType = this.detectImageType(buffer);
+        if (!fileType) {
+            throw new BadRequestException("Invalid image format");
+        }
+    
+        const file: Express.Multer.File = {
+            fieldname: "file",
+            originalname: `${fileNamePrefix}.${fileType}`,
+            encoding: "7bit",
+            mimetype: mime,
+            size: buffer.length,
+            buffer,
+            stream: null as any,
+            destination: "",
+            filename: "",
+            path: "",
+        };
+    
+        return this.saveImage(file);
+    }
+
+    parseBase64Image(base64: string): { buffer: Buffer; mime: string; dataUrl: string } {
+    let mime = "image/jpeg";
+    let pureBase64 = base64;
+
+    // If Data URL format
+    if (base64.startsWith("data:")) {
+        const matches = base64.match(/^data:(image\/\w+);base64,(.+)$/);
+        if (!matches) {
+            throw new BadRequestException("Invalid base64 format");
+        }
+
+        mime = matches[1];
+        pureBase64 = matches[2];
+    }
+
+    const buffer = Buffer.from(pureBase64, "base64");
+
+    return {
+        buffer,
+        mime,
+        dataUrl: `data:${mime};base64,${pureBase64}`,
+    };
+}
 
     extractKeyFromUrl(url: string): string | null {
         if (!url) return null;
