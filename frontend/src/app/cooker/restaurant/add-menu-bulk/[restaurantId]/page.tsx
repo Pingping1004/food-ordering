@@ -4,11 +4,11 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import Image from "next/image";
 import { api } from "@/lib/api";
 import { Button } from "@/components/Button";
-import type { Menu } from "@/context/MenuContext";
 import { saveAs } from 'file-saver';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { parse } from 'papaparse';
+import type { Menu } from "@/lib/types/menu";
 import {
     bulkUploadFormSchema,
     BulkUploadFormValues,
@@ -348,8 +348,6 @@ export default function BulkAddMenuPage() {
                         {...register("csvFile")} // Still register it with React Hook Form
                         onChange={(e) => { // Manually merge RHF's onChange with your custom one
                             handleCsvFileChange(e);
-                            // Also call RHF's onChange if it exists to update form state
-                            // You might need to adjust based on how register.onChange is structured
                             if (register("csvFile").onChange) {
                                 register("csvFile").onChange(e);
                             }
