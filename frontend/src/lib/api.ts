@@ -12,6 +12,7 @@ const baseBackendUrl = `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/api`;
 export const api = axios.create({
     baseURL: baseBackendUrl,
     withCredentials: true,
+    timeout: 5000,
 });
 
 let isRefreshing = false;
