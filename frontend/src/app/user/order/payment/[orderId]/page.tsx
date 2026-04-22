@@ -188,7 +188,7 @@ function OrderPaymentPage() {
             if (typeof error === 'object' && error !== null && 'response' in error) {
                 const err = error as { response: { status: number; data?: { message?: string, code?: string } } };
 
-                if (err.response.status === 409) {
+                if (err.response.status === 409 && failedCountRef.current >= 1) {
                     toastDanger("ระบบกำลังตรวจสอบสลิป กรุณารอสักครู่");
                     return;
                 }
