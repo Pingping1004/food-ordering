@@ -62,8 +62,8 @@ export class AuthController {
 
     res.clearCookie('access_token', { path: '/' });
     res.clearCookie('refresh_token', { path: '/' });
-    res.clearCookie('access_token', { path: '/', domain: '.promptserve.online' });
-    res.clearCookie('refresh_token', { path: '/', domain: '.promptserve.online' });
+    res.clearCookie('access_token', clearAccessToken);
+    res.clearCookie('refresh_token', clearRefreshToken);
 
     res.cookie('access_token', accessToken, accessTokenCookieOptions);
     res.cookie('refresh_token', refreshToken, refreshTokenCookieOptions);
