@@ -49,12 +49,39 @@ export function normalizeError(err: unknown): Error {
     return new Error(JSON.stringify(err));
 }
 
+function readSkipAuthHeader(headers: AxiosRequestConfig["headers"]): boolean {
+    if (!headers) return false;
+
+    if (headers instanceof AxiosHeaders) {
+        return headers.get('skipAuth') === 'true' || headers.get('skipauth') === 'true';
+    }
+
+    const raw = headers as Record<string, string | undefined>;
+    return raw.skipAuth === 'true' || raw.skipauth === 'true';
+}
+
+function removeSkipAuthHeader(headers: AxiosRequestConfig["headers"]): void {
+    if (!headers) return;
+
+    if (headers instanceof AxiosHeaders) {
+        headers.delete('skipAuth');
+        headers.delete('skipauth');
+        return;
+    }
+
+    const raw = headers as Record<string, string | undefined>;
+    delete raw.skipAuth;
+    delete raw.skipauth;
+}
+
 export const requestInterceptor = api.interceptors.request.use(
     async (config) => {
+        const customConfig = config as CustomAxiosRequestConfig;
         config.withCredentials = true;
 
-        if (config.headers?.skipAuth === 'true') {
-            delete config.headers['skipAuth'];
+        if (readSkipAuthHeader(config.headers)) {
+            customConfig._skipAuth = true;
+            removeSkipAuthHeader(config.headers);
             return config;
         }
 
@@ -94,6 +121,7 @@ export const requestInterceptor = api.interceptors.request.use(
 
 interface CustomAxiosRequestConfig extends AxiosRequestConfig {
     _retry?: boolean;
+    _skipAuth?: boolean;
 }
 
 export async function handleTokenRefresh(): Promise<{ accessToken?: string }> {
@@ -187,7 +215,7 @@ api.interceptors.response.use(
         const isUnauthorized = status === 401;
         const isLoginRequest = originalRequest?.url?.includes('/auth/login');
         const isRefreshRequest = originalRequest?.url?.includes('/auth/refresh');
-        const hasSkipAuth = originalRequest?.headers?.skipAuth === 'true';
+        const hasSkipAuth = originalRequest?._skipAuth === true;
         const hasRetried = originalRequest?._retry === true;
 
         if (isLoginRequest) return Promise.reject(normalizeError(error));
