@@ -83,11 +83,13 @@ export class AuthService {
     const accessToken = await this.jwtService.signAsync(
       { ...payload, jti },
       {
-        expiresIn: '30m',
+        // expiresIn: '30m',
+        expiresIn: '1m'
       },
     );
 
-    const refreshExpiresIn = 7 * 24 * 60 * 60;
+    // const refreshExpiresIn = 7 * 24 * 60 * 60;
+    const refreshExpiresIn = 2 * 60
     const refreshTokenExpiresAt = new Date(Date.now() + refreshExpiresIn * 1000)
     const refreshToken = await this.jwtService.signAsync(
       { ...payload, jti } as RefreshTokenPayload,
