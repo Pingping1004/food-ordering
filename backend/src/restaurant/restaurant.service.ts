@@ -102,26 +102,27 @@ export class RestaurantService {
     if (pendingRequest) return pendingRequest;
 
     const requestPromise = (async () => {
-      const restaurants = await this.prisma.restaurant.findMany({
-        where: { isApproved: true },
-        take: limit * 3,
-        select: {
-          restaurantId: true,
-          restaurantImg: true,
-          name: true,
-          location: true,
-          categories: true,
-          openDate: true,
-          openTime: true,
-          closeTime: true,
-          avgCookingTime: true,
-          isTemporarilyClosed: true,
-          accountNumber: true,
-          bankAccount: true,
-          accountHolderFullName: true,
-          paymentQr: true,
-        }
-      });
+      const restaurants = await this.prisma.safeRead(() =>
+        this.prisma.restaurant.findMany({
+          where: { isApproved: true },
+          take: limit * 3,
+          select: {
+            restaurantId: true,
+            restaurantImg: true,
+            name: true,
+            location: true,
+            categories: true,
+            openDate: true,
+            openTime: true,
+            closeTime: true,
+            avgCookingTime: true,
+            isTemporarilyClosed: true,
+            accountNumber: true,
+            bankAccount: true,
+            accountHolderFullName: true,
+            paymentQr: true,
+          }
+        }));
 
       const start = Date.now();
       this.logger.debug(`DB query took ${Date.now() - start}ms`);
@@ -175,9 +176,10 @@ export class RestaurantService {
     }
 
     try {
-      const restaurant = await this.prisma.restaurant.findUnique({
-        where: { restaurantId },
-      });
+      const restaurant = await this.prisma.safeRead(() =>
+        this.prisma.restaurant.findUnique({
+          where: { restaurantId },
+        }));
 
       if (!restaurant) throw new NotFoundException(`ไม่พบร้านอาหารที่มีID: ${restaurantId}`);
 

@@ -350,22 +350,23 @@ export class MenuService implements OnModuleInit {
         }
 
         const requestPromise = (async () => {
-            const dbMenus = await this.prisma.menu.findMany({
-                where: { restaurantId },
-                select: {
-                    menuId: true,
-                    name: true,
-                    menuImg: true,
-                    price: true,
-                    restaurantId: true,
-                    isAvailable: true,
-                    cookingTime: true,
-                    maxDaily: true,
-                },
-                orderBy: {
-                    name: "asc"
-                },
-            });
+            const dbMenus = await this.prisma.safeRead(() =>
+                this.prisma.menu.findMany({
+                    where: { restaurantId },
+                    select: {
+                        menuId: true,
+                        name: true,
+                        menuImg: true,
+                        price: true,
+                        restaurantId: true,
+                        isAvailable: true,
+                        cookingTime: true,
+                        maxDaily: true,
+                    },
+                    orderBy: {
+                        name: "asc"
+                    },
+                }));
 
             const menuIds = dbMenus.map(m => m.menuId);
             let quotas = getMenuQuotaCache(quotaCacheKey);
@@ -405,9 +406,10 @@ export class MenuService implements OnModuleInit {
 
     async findMenu(menuId: string) {
         try {
-            const menu = await this.prisma.menu.findUnique({
-                where: { menuId },
-            });
+            const menu = await this.prisma.safeRead(() =>
+                this.prisma.menu.findUnique({
+                    where: { menuId },
+                }))
 
             if (!menu) throw new Error('ไม่พบเมนูที่ค้นหา');
 

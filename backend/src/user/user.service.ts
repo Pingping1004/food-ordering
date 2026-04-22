@@ -94,34 +94,35 @@ export class UserService {
   async findOneUser(
     userId: string,
   ): Promise<UserProfile> {
-    const user = await this.prisma.user.findUnique({
-      where: { userId },
-      select: {
-        userId: true,
-        email: true,
-        profileImg: true,
-        name: true,
-        role: true,
-        createdAt: true,
-        updatedAt: true,
-        restaurant: {
-          select: {
-            restaurantId: true,
-            isApproved: true,
+    const user = await this.prisma.safeRead(() =>
+      this.prisma.user.findUnique({
+        where: { userId },
+        select: {
+          userId: true,
+          email: true,
+          profileImg: true,
+          name: true,
+          role: true,
+          createdAt: true,
+          updatedAt: true,
+          restaurant: {
+            select: {
+              restaurantId: true,
+              isApproved: true,
+            },
+          },
+          RoleRequest: {
+            select: {
+              requestId: true,
+              userId: true,
+              requestRole: true,
+              status: true,
+              createdAt: true,
+              updatedAt: true,
+            },
           },
         },
-        RoleRequest: {
-          select: {
-            requestId: true,
-            userId: true,
-            requestRole: true,
-            status: true,
-            createdAt: true,
-            updatedAt: true,
-          },
-        },
-      },
-    });
+      }));
 
     if (!user) {
       throw new NotFoundException('ไม่พบผู้ใช้งานไอดี: ', userId);

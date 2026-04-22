@@ -152,13 +152,14 @@ export class OrderService {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1)
 
-    const orders = await this.prisma.order.findMany({
-      where: { restaurantId, orderAt: { gte: yesterday } },
-      include: { orderMenus: true },
-      orderBy: {
-        deliverAt: 'asc',
-      },
-    });
+    const orders = await this.prisma.safeRead(() =>
+      this.prisma.order.findMany({
+        where: { restaurantId, orderAt: { gte: yesterday } },
+        include: { orderMenus: true },
+        orderBy: {
+          deliverAt: 'asc',
+        },
+      }))
 
     const latestTimestamp = orders.length > 0 ? orders.reduce((latest, order) =>
       order.updatedAt > latest ? order.updatedAt : latest, orders[0].updatedAt) : new Date();
@@ -185,18 +186,19 @@ export class OrderService {
 
   async findOneOrder(orderId: string, orderSecret?: string) {
     try {
-      const order = await this.prisma.order.findUnique({
-        where: { orderId },
-        include: {
-          orderMenus: true,
-          restaurant: {
-            select: {
-              name: true,
-              paymentQr: true,
+      const order = await this.prisma.safeRead(() =>
+        this.prisma.order.findUnique({
+          where: { orderId },
+          include: {
+            orderMenus: true,
+            restaurant: {
+              select: {
+                name: true,
+                paymentQr: true,
+              }
             }
-          }
-        },
-      });
+          },
+        }))
 
       if (!order) throw new NotFoundException("ไม่พบออเดอร์ที่ค้นหา");
 
@@ -422,35 +424,36 @@ export class OrderService {
 
   @Cron('*/3 * * * *')
   async autoCancelledOrders() {
-      const now = new Date();
-      const sentThreshold = new Date(Date.now() - 3 * 60 * 1000);
-      const acceptedThreshold = new Date(Date.now() - 3 * 60 * 1000);
-  
-      try {
-          const sentResult = await this.prisma.order.updateMany({
-              where: { status: "sent", paymentStatus: "unpaid", orderAt: { lt: sentThreshold } },
-              data: { status: "rejected", rejectedAt: now }
-          });
-          if (sentResult.count > 0) this.logger.log(`Auto-rejected ${sentResult.count} unaccepted orders`);
-      } catch (e) {
-          this.logger.error(`Auto-cancel (sent) failed: ${e.message}`);
-      }
-  
-      try {
-          const acceptedResult = await this.prisma.order.updateMany({
-              where: { status: "accepted", paymentStatus: "unpaid", acceptAt: { lt: acceptedThreshold },
-                NOT: [
-                  { status: { in: ["cancelled", "rejected", "completed"] } },
-                  { paymentStatus: "paid" }
-                ]
-              },
-              data: { status: "cancelled", cancelledAt: now }
-          });;
+    const now = new Date();
+    const sentThreshold = new Date(Date.now() - 3 * 60 * 1000);
+    const acceptedThreshold = new Date(Date.now() - 3 * 60 * 1000);
 
-          this.logger.log("Cron result: ", acceptedResult);
-          if (acceptedResult.count > 0) this.logger.log(`Auto-cancelled ${acceptedResult.count} unpaid orders`);
-      } catch (e) {
-          this.logger.error(`Auto-cancel (accepted) failed: ${e.message}`);
-      }
+    try {
+      const sentResult = await this.prisma.order.updateMany({
+        where: { status: "sent", paymentStatus: "unpaid", orderAt: { lt: sentThreshold } },
+        data: { status: "rejected", rejectedAt: now }
+      });
+      if (sentResult.count > 0) this.logger.log(`Auto-rejected ${sentResult.count} unaccepted orders`);
+    } catch (e) {
+      this.logger.error(`Auto-cancel (sent) failed: ${e.message}`);
+    }
+
+    try {
+      const acceptedResult = await this.prisma.order.updateMany({
+        where: {
+          status: "accepted", paymentStatus: "unpaid", acceptAt: { lt: acceptedThreshold },
+          NOT: [
+            { status: { in: ["cancelled", "rejected", "completed"] } },
+            { paymentStatus: "paid" }
+          ]
+        },
+        data: { status: "cancelled", cancelledAt: now }
+      });;
+
+      this.logger.log("Cron result: ", acceptedResult);
+      if (acceptedResult.count > 0) this.logger.log(`Auto-cancelled ${acceptedResult.count} unpaid orders`);
+    } catch (e) {
+      this.logger.error(`Auto-cancel (accepted) failed: ${e.message}`);
+    }
   }
 }
