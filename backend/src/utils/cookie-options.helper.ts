@@ -41,6 +41,6 @@ export const clearAccessToken: CookieOptions = {
 export const clearRefreshToken: CookieOptions = {
   path: '/',
   secure: true,
-  sameSite: isProd ? 'none' : 'lax',
+  sameSite: isProd ? 'none' : 'lax', 
   domain: cookieDomain,
 };
