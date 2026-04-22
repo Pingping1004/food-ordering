@@ -7,7 +7,15 @@ import { parseLoginErrorMessage } from "./auth.utils"
 import { toastDanger } from "@/components/ui/Toast"
 import { clearTokens } from "@/lib/token"
 import { useRouter } from "next/navigation"
-import { checkSessionValidity, initSession } from "./auth.session"
+import {
+    attachTabVisibleTokenCatchUp,
+    checkSessionValidity,
+    clearRefresh,
+    detachTabVisibleTokenCatchUp,
+    initSession,
+    scheduleRefresh,
+} from "./auth.session"
+import { handleTokenRefresh } from "@/lib/api"
 import { User } from "./auth.types"
 import { startInactivityWatcher, stopInactivityWatcher } from "@/lib/inactivity"
 
@@ -54,21 +62,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         if (!user) {
             stopInactivityWatcher();
+            clearRefresh();
+            detachTabVisibleTokenCatchUp();
             return;
         }
 
-        // Only start watching when user is logged in
+        const refreshAccessToken = async () => {
+            await handleTokenRefresh();
+        };
+        const onRefreshFailed = () => handleLogoutSideEffects(true);
+
+        scheduleRefresh(refreshAccessToken, onRefreshFailed);
+        attachTabVisibleTokenCatchUp(refreshAccessToken, onRefreshFailed);
+
         startInactivityWatcher({
             onLogout: () => {
                 stopInactivityWatcher();
                 logout();
             },
-            tokenExpiresInSeconds: 1800,
             freshLogin: true,
         });
 
-        return () => stopInactivityWatcher();
-    }, [user, logout]);
+        return () => {
+            stopInactivityWatcher();
+            clearRefresh();
+            detachTabVisibleTokenCatchUp();
+        };
+    }, [user, logout, handleLogoutSideEffects]);
 
     const login = useCallback(async (email: string, password: string): Promise<User> => {
         try {

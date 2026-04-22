@@ -1,23 +1,17 @@
-import { handleTokenRefresh } from "./api";
-
 const INACTIVITY_LIMIT_MS = 7 * 24 * 60 * 60 * 1000;
-const REFRESH_BEFORE_EXPIRY_MS = 5 * 60 * 1000;
 const LAST_ACTIVE_KEY = 'last_active_at';
 
 
 let inactivityTimer: ReturnType<typeof setTimeout> | null = null;
-let tokenRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 let onLogoutCallback: (() => void) | null = null;
 
 const ACTIVITY_EVENTS = ['mousemove', 'keydown', 'click', 'touchstart', 'scroll'];
 
 export function startInactivityWatcher({
   onLogout,
-  tokenExpiresInSeconds = 1800,
   freshLogin = false
 }: {
   onLogout: () => void;
-  tokenExpiresInSeconds?: number;
   freshLogin?: boolean;
 }) {
   onLogoutCallback = onLogout;
@@ -37,10 +31,8 @@ export function startInactivityWatcher({
 
   localStorage.setItem(LAST_ACTIVE_KEY, Date.now().toString());
 
-  // Also refresh when user returns to tab
   document.addEventListener('visibilitychange', handleVisibilityChange);
   resetInactivityTimer();
-  scheduleTokenRefresh(tokenExpiresInSeconds);
 }
 
 export function stopInactivityWatcher() {
@@ -80,23 +72,6 @@ function resetInactivityTimer() {
   }, INACTIVITY_LIMIT_MS);
 }
 
-function scheduleTokenRefresh(expiresInSeconds: number) {
-  if (tokenRefreshTimer) clearTimeout(tokenRefreshTimer);
-
-  const refreshInMs = (expiresInSeconds * 1000) - REFRESH_BEFORE_EXPIRY_MS;
-  if (refreshInMs <= 0) return;
-
-  tokenRefreshTimer = setTimeout(async () => {
-    try {
-      await handleTokenRefresh();
-      scheduleTokenRefresh(expiresInSeconds);
-    } catch {
-      onLogoutCallback?.();
-    }
-  }, refreshInMs);
-}
-
 function clearAllTimers() {
   if (inactivityTimer) clearTimeout(inactivityTimer);
-  if (tokenRefreshTimer) clearTimeout(tokenRefreshTimer);
 }

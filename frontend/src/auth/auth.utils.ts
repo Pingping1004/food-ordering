@@ -9,18 +9,29 @@ export function getFormattedBackendMessage(message: string | string[] | undefine
     return undefined;
 };
 
-export function getRoleFromAccessToken(token: string | null): UserRole | undefined {
-    if (!token) return undefined;
+function decodeJwtPayload(token: string): { role?: string; exp?: number } | null {
     try {
         const parts = token.split('.');
-        if (parts.length < 2) return undefined;
+        if (parts.length < 2) return null;
         const payloadJson = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
-        const payload = JSON.parse(payloadJson) as { role?: string };
-        const role = payload.role as UserRole | undefined;
-        return role;
+        return JSON.parse(payloadJson) as { role?: string; exp?: number };
     } catch {
-        return undefined;
+        return null;
     }
+}
+
+export function getAccessTokenExpiresAtMs(token: string | null): number | null {
+    if (!token) return null;
+    const payload = decodeJwtPayload(token);
+    if (!payload || typeof payload.exp !== 'number') return null;
+    return payload.exp * 1000;
+}
+
+export function getRoleFromAccessToken(token: string | null): UserRole | undefined {
+    if (!token) return undefined;
+    const payload = decodeJwtPayload(token);
+    const role = payload?.role as UserRole | undefined;
+    return role;
 };
 
 export function parseLoginErrorMessage(err: unknown): string {
