@@ -96,13 +96,14 @@ interface CustomAxiosRequestConfig extends AxiosRequestConfig {
     _retry?: boolean;
 }
 
-export async function handleTokenRefresh(): Promise<{ accessToken: string }> {
+export async function handleTokenRefresh(): Promise<{ accessToken?: string }> {
     try {
         const response = await api.post('/auth/refresh', {}, {
             headers: { skipAuth: 'true' }
         });
 
-        const { accessToken } = response.data;
+        // const { accessToken } = response.data;
+        const accessToken = response.data.accessToken as string | undefined;
         setAccessToken(accessToken);
 
         return { accessToken };
@@ -144,7 +145,7 @@ async function handleTokenRefresh401(originalRequest: CustomAxiosRequestConfig) 
         const { accessToken: newAccessToken } = await handleTokenRefresh();
 
         processQueue(null);
-        updateAuthHeader(originalRequest, newAccessToken);
+        if (newAccessToken) updateAuthHeader(originalRequest, newAccessToken);
         return;
     } catch (refreshError) {
         processQueue(refreshError);

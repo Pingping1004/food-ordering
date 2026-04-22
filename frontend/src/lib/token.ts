@@ -4,11 +4,20 @@ let csrfTokenMemory: string | null = null;
 let csrfFetchPromise: Promise<string> | null = null;
 
 export const getAccessToken = (): string | null => {
-    return localStorage.getItem('accessToken');
+    const token = localStorage.getItem('accessToken');
+    if (!token) return null;
+
+    const normalized = token.trim().toLowerCase();
+    if (normalized === 'undefined' || normalized === 'null') {
+        localStorage.removeItem('accessToken');
+        return null;
+    }
+
+    return token;
 };
 
 export const setAccessToken = (token: string | undefined): void => {
-    if (token) {
+    if (token && token.trim() && token !== 'undefined' && token !== 'null') {
         localStorage.setItem('accessToken', token);
     } else {
         localStorage.removeItem('accessToken')

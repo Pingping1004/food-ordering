@@ -5,7 +5,7 @@ import { AuthContext } from "@/context/Authcontext"
 import { loginApi, logoutApi } from "./auth.service"
 import { parseLoginErrorMessage } from "./auth.utils"
 import { toastDanger } from "@/components/ui/Toast"
-import { clearTokens } from "@/lib/token"
+import { clearTokens, setAccessToken } from "@/lib/token"
 import { useRouter } from "next/navigation"
 import {
     attachTabVisibleTokenCatchUp,
@@ -81,7 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
             const { accessToken, user } = await loginApi(email, password)
 
-            localStorage.setItem("accessToken", accessToken)
+            setAccessToken(accessToken)
             setUser(user)
 
             return user;
