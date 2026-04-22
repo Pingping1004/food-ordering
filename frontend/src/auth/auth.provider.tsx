@@ -47,19 +47,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, [handleLogoutSideEffects]);
 
     useEffect(() => {
-        if (initializing) return;
-
-        const verify = async () => {
-            const token = localStorage.getItem('accessToken');
-            if (!token) return
-
-            const isValid = await checkSessionValidity();
-            if (!isValid) handleLogoutSideEffects(true)
-        };
-        verify();
-    }, [router, handleLogoutSideEffects, initializing]);
-
-    useEffect(() => {
         if (!user) {
             stopInactivityWatcher();
             clearRefresh();

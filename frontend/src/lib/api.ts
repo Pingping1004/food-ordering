@@ -1,5 +1,5 @@
 import axios, { AxiosRequestConfig, AxiosError, AxiosHeaders } from "axios";
-import { setAccessToken, clearTokens, removeAccessToken, clearCsrfToken, fetchOrGetCsrfToken } from "./token";
+import { setAccessToken, clearTokens, removeAccessToken, clearCsrfToken, fetchOrGetCsrfToken, getAccessToken } from "./token";
 import { logoutApi } from "@/auth/auth.service";
 
 type ApiErrorResponse = {
@@ -74,6 +74,15 @@ export const requestInterceptor = api.interceptors.request.use(
             }
 
             config.headers.set('X-CSRF-TOKEN', csrfToken);;
+        }
+
+        const accessToken = getAccessToken();
+        if (accessToken) {
+            if (!config.headers) config.headers = new axios.AxiosHeaders();
+            else if (!(config.headers instanceof AxiosHeaders)) {
+                config.headers = AxiosHeaders.from(config.headers);
+            }
+            config.headers.set('Authorization', `Bearer ${accessToken}`);
         }
 
         config.withCredentials = true;

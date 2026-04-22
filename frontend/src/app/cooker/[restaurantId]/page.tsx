@@ -19,6 +19,12 @@ const CookerHeader = dynamic(() => import("../../../components/cookers/CookerHea
 const Order = dynamic(() => import("../../../components/cookers/Order"), { ssr: false })
 const OrderNavBar = dynamic(() => import("../../../components/cookers/OrderNavbar"), { ssr: false })
 
+function isUnauthorizedError(error: unknown): boolean {
+    if (typeof error !== "object" || error === null || !("response" in error)) return false;
+    const err = error as { response?: { status?: number } };
+    return err.response?.status === 401;
+}
+
 function Page() {
     const [isLargeTextMode, setIsLargeTextMode] = useState(false)
     const [orders, setOrders] = useState<Record<string, OrderProps>>({});
@@ -32,6 +38,7 @@ function Page() {
 
     const ordersRef = useRef<Record<string, OrderProps>>({});
     const fetchingRef = useRef<boolean>(false);
+    const authFailedRef = useRef<boolean>(false);
     const pollingIntervalRef = useRef(3000)
     const pendingOrdersRef = useRef<Record<string, { order: OrderProps; showAt: number }>>({});
 
@@ -43,24 +50,32 @@ function Page() {
     const isOrderPage = Boolean(restaurantId) && segments.length === 2;
 
     const fetchInitialOrders = useCallback(async () => {
-        const response = await api.get(`/order/today/${restaurantId}`);
-        const data = response.data;
+        try {
+            const response = await api.get(`/order/today/${restaurantId}`);
+            const data = response.data;
 
-        const mapped: Record<string, OrderProps> = {};
+            const mapped: Record<string, OrderProps> = {};
 
-        for (const order of data.orders) {
-            mapped[order.orderId] = order;
+            for (const order of data.orders) {
+                mapped[order.orderId] = order;
+            }
+
+            setOrders(mapped);
+
+            if (data.latestTimestamp) lastTimestampRef.current = data.latestTimestamp;
+
+            setIsLoading(false);
+        } catch (error: unknown) {
+            if (isUnauthorizedError(error)) {
+                authFailedRef.current = true;
+                return;
+            }
+            throw error;
         }
-
-        setOrders(mapped);
-
-        if (data.latestTimestamp) lastTimestampRef.current = data.latestTimestamp;
-
-        setIsLoading(false);
     }, [restaurantId]);
 
     const fetchNewOrders = useCallback(async () => {
-        if (fetchingRef.current) return
+        if (fetchingRef.current || authFailedRef.current) return
         fetchingRef.current = true;
 
         try {
@@ -130,6 +145,10 @@ function Page() {
 
                     return next;
                 });
+            }
+        } catch (error: unknown) {
+            if (isUnauthorizedError(error)) {
+                authFailedRef.current = true;
             }
         } finally {
             fetchingRef.current = false
@@ -247,10 +266,10 @@ function Page() {
         let timeoutId: NodeJS.Timeout;
 
         const loop = async () => {
-            if (!isMounted) return;
+            if (!isMounted || authFailedRef.current) return;
 
             if (!document.hidden && restaurantId) await fetchNewOrdersRef.current();
-            if (isMounted) timeoutId = setTimeout(loop, pollingIntervalRef.current);
+            if (isMounted && !authFailedRef.current) timeoutId = setTimeout(loop, pollingIntervalRef.current);
         };
 
         const init = async () => {
@@ -268,7 +287,7 @@ function Page() {
 
     useEffect(() => {
         const handleVisibility = () => {
-            if (!document.hidden && isOrderPage) {
+            if (!document.hidden && isOrderPage && !authFailedRef.current) {
                 fetchNewOrders();
             }
         };
