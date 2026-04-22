@@ -51,6 +51,8 @@ export function normalizeError(err: unknown): Error {
 
 export const requestInterceptor = api.interceptors.request.use(
     async (config) => {
+        config.withCredentials = true;
+
         if (config.headers?.skipAuth === 'true') {
             delete config.headers['skipAuth'];
             return config;
@@ -85,7 +87,6 @@ export const requestInterceptor = api.interceptors.request.use(
             config.headers.set('Authorization', `Bearer ${accessToken}`);
         }
 
-        config.withCredentials = true;
         return config;
     },
     (error) => Promise.reject(normalizeError(error))

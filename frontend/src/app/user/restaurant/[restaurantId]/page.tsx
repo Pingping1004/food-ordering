@@ -25,7 +25,7 @@ function MenuContextPage() {
     const [searchQuery, setSearchQuery] = useState("");
 
     const { data, isLoading } = useMenus(restaurantId);
-    const menus = data ?? [];
+    const menus = useMemo(() => (data ?? []), [data]);
 
     const checkOrderCart = () => {
         if (!cooker) {

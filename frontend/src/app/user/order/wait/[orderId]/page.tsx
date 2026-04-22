@@ -72,7 +72,7 @@ function OrderWaitPage() {
                 toastDanger("ไม่สามารถโหลดสถานะออเดอร์ได้");
             }
         }
-    }, []);
+    }, [orderId, router]);
 
     const handleRetry = () => {
         stopPolling();
