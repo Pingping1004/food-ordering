@@ -22,6 +22,7 @@ export class RestaurantService {
 
   private readonly logger = new Logger('RestaurantService');
   private pendingRestaurantRequests = new Map<string, Promise<RestaurantCache[]>>();
+  private requestVersion = new Map<string, number>();
 
   async createRestaurant(
     createRestaurantDto: CreateRestaurantDto,
@@ -82,6 +83,9 @@ export class RestaurantService {
         data: newRestaurant,
       });
 
+      this.requestVersion.set("restaurants:all", Date.now());
+      this.requestVersion.set("restaurants:open", Date.now());
+
       clearRestaurantCache("restaurants:all")
       clearRestaurantCache("restaurants:open")
 
@@ -93,15 +97,21 @@ export class RestaurantService {
   }
 
   async findAllRestaurant(limit: number = 6): Promise<RestaurantCache[]> {
-    const cacheKey = `restaurants:all:${limit}`;
+    const cacheKey = `restaurants:all`;
     const cached = getRestaurantCache<OpenRestaurant[]>(cacheKey);
 
-    if (cached) return cached
+    if (cached) return cached.slice(0, limit)
 
     const pendingRequest = this.pendingRestaurantRequests.get(cacheKey);
-    if (pendingRequest) return pendingRequest;
+    if (pendingRequest) {
+      this.logger.debug(`Using pending request for key: ${cacheKey}`);
+      return pendingRequest;
+    }
 
     const requestPromise = (async () => {
+      const currentVersion = Date.now();
+      this.requestVersion.set(cacheKey, currentVersion);
+
       const restaurants = await this.prisma.safeRead(() =>
         this.prisma.restaurant.findMany({
           where: { isApproved: true },
@@ -124,11 +134,11 @@ export class RestaurantService {
           }
         }));
 
-      const start = Date.now();
-      this.logger.debug(`DB query took ${Date.now() - start}ms`);
+      if (this.requestVersion.get(cacheKey) === currentVersion) {
+        setRestaurantCache(cacheKey, restaurants, 15 * 60 * 1000);
+      }
 
-      setRestaurantCache(cacheKey, restaurants, 15 * 60 * 1000);
-      return restaurants
+      return restaurants.slice(0, limit)
     })();
 
     this.pendingRestaurantRequests.set(cacheKey, requestPromise)
@@ -250,10 +260,10 @@ export class RestaurantService {
   }
 
   async getOpenRestaurants(limit: number = 6) {
-    const cacheKey = `restaurants:open:${limit}`;
+    const cacheKey = `restaurants:open`;
     const cached = getRestaurantCache<RestaurantCache[]>(cacheKey);
 
-    if (cached) return cached;
+    if (cached) return cached.slice(0, limit);
 
     const currentTimeString = moment().tz('Asia/Bangkok').format('HH:mm');
 
@@ -277,7 +287,7 @@ export class RestaurantService {
       .filter(restaurant => restaurant.isActuallyOpen)
       .slice(0, limit);
 
-    setRestaurantCache(cacheKey, openRestaurants, 30 * 1000)
+    setRestaurantCache(cacheKey, openRestaurants, 2 * 60 * 1000)
 
     return openRestaurants;
   }
@@ -322,6 +332,10 @@ export class RestaurantService {
         data: dataToUpdate,
       });
 
+      this.requestVersion.set(`restaurant:${restaurantId}`, Date.now());
+      this.requestVersion.set(`restaurants:all`, Date.now());
+      this.requestVersion.set(`restaurants:open`, Date.now());
+
       clearRestaurantCache(`restaurant:${restaurantId}`)
       clearRestaurantCache(`restaurants:all`)
       clearRestaurantCache("restaurants:open")
@@ -344,6 +358,10 @@ export class RestaurantService {
         where: { restaurantId },
         data: { isTemporarilyClosed: updateRestaurantDto.isTemporarilyClosed },
       });
+
+      this.requestVersion.set(`restaurant:${restaurantId}`, Date.now());
+      this.requestVersion.set(`restaurants:all`, Date.now());
+      this.requestVersion.set(`restaurants:open`, Date.now());
 
       clearRestaurantCache(`restaurant:${restaurantId}`)
       clearRestaurantCache(`restaurants:all`)
@@ -392,6 +410,10 @@ export class RestaurantService {
         where: { restaurantId },
       });
     });
+
+    this.requestVersion.set(`restaurant:${restaurantId}`, Date.now());
+    this.requestVersion.set(`restaurants:all`, Date.now());
+    this.requestVersion.set(`restaurants:open`, Date.now());
 
     clearRestaurantCache(`restaurant:${restaurantId}`)
     clearRestaurantCache(`restaurants:all`)

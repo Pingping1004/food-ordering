@@ -61,6 +61,7 @@ export class MenuService implements OnModuleInit {
 
     private readonly logger = new Logger('menuService');
     private pendingMenuRequest = new Map<string, Promise<MenusWithDisplayPrices[]>>();
+    private requestVersion = new Map<string, number>();
     private readonly tempImageStore = new Map<string, { url: string; createdAt: Date }>();
     private readonly MENU_CACHE_TTL_MS = 10 * 60 * 1000;
     private readonly QUOTA_CACHE_TTL_MS = 5 * 1000;
@@ -80,8 +81,10 @@ export class MenuService implements OnModuleInit {
         const quotaCacheKey = this.getMenuQuotaCacheKey(restaurantId);
         clearMenuCache(menuCacheKey);
         clearMenuQuotaCache(quotaCacheKey);
+        this.requestVersion.set(menuCacheKey, Date.now());
 
         this.pendingMenuRequest.delete(menuCacheKey);
+        this.logger.debug(`Cache cleared for key: ${menuCacheKey}`);
     }
 
     async createSingleMenu(createMenuDto: CreateMenuDto, file: Express.Multer.File) {
@@ -345,11 +348,14 @@ export class MenuService implements OnModuleInit {
 
         const pending = this.pendingMenuRequest.get(cacheKey);
         if (pending) {
-            this.logger.debug(`Reusing pending menu request for key: ${cacheKey}`);
+            this.logger.debug(`Using pending request for key: ${cacheKey}`);
             return pending;
         }
 
         const requestPromise = (async () => {
+            const currentVersion = Date.now();
+            this.requestVersion.set(cacheKey, currentVersion);
+
             const dbMenus = await this.prisma.safeRead(() =>
                 this.prisma.menu.findMany({
                     where: { restaurantId },
@@ -390,7 +396,9 @@ export class MenuService implements OnModuleInit {
                 };
             });
 
-            setMenuCache(cacheKey, menus, this.MENU_CACHE_TTL_MS);
+            if (this.requestVersion.get(cacheKey) === currentVersion) {
+                setMenuCache(cacheKey, menus, this.MENU_CACHE_TTL_MS);
+            }
 
             return menus;
         })();
