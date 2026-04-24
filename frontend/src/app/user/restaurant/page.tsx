@@ -55,7 +55,14 @@ export default function UserHomePage() {
             </div>
         );
     }
-    if (restaurants.length === 0) return <div>ไม่มีร้านอาหารที่พร้อมให้บริการในขณะนี้</div>
+    
+    if (restaurants.length === 0) {
+        return (
+          <div className="flex items-center justify-center min-h-screen text-gray-500 text-lg">
+            ไม่มีร้านอาหารที่พร้อมให้บริการในขณะนี้
+          </div>
+        );
+      }
 
     return (
         <>
