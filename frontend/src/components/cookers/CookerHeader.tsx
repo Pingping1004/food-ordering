@@ -18,6 +18,8 @@ export default function CookerHeader({
 }: Readonly<Restaurant>) {
     const pathname = usePathname();
     const router = useRouter();
+    const isCookerHome = pathname === `/cooker/${restaurantId}`;
+    const isCookerRoute = pathname.startsWith('/cooker/');
 
     return (
         <header className="w-full flex items-center">
@@ -25,18 +27,20 @@ export default function CookerHeader({
                 <h1 className="w-2/5 font-noto-thai font-bold md:text-3xl text-2xl inline-block">{name}</h1>
 
                 <div className="w-full flex justify-end items-center gap-x-6">
-                    {/* Conditional rendering based on the current URL */}
-                    {pathname === `/cooker/${restaurantId}` && (
+                    {isCookerHome && (
                         <Button
                             type="button"
                             variant="primary"
                             size="md"
-                            onClick={() => router.push(`/cooker/restaurant/managed-menu/${restaurantId}`)}
+                            onClick={() =>
+                                router.push(`/cooker/restaurant/managed-menu/${restaurantId}`)
+                            }
                         >
                             จัดการเมนู
                         </Button>
                     )}
-                    {pathname !== `/cooker/${restaurantId}` && (
+
+                    {isCookerRoute && !isCookerHome && (
                         <Button
                             type="button"
                             variant="secondary"
@@ -45,6 +49,7 @@ export default function CookerHeader({
                         >
                             <p className="text-sm">กลับหน้าหลัก</p>
                         </Button>
+
                     )}
 
                     <div>
