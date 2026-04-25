@@ -9,6 +9,7 @@ import { UserModule } from 'src/user/user.module';
 import { MenuModule } from 'src/menu/menu.module';
 import { InventoryModule } from 'src/inventory/inventory.module';
 import { RestaurantModule } from 'src/restaurant/restaurant.module';
+import { NotificationModule } from 'src/notification/notification.module';
 
 @Module({
   imports: [
@@ -17,7 +18,8 @@ import { RestaurantModule } from 'src/restaurant/restaurant.module';
     UserModule, 
     forwardRef(() => MenuModule), 
     forwardRef(() => InventoryModule), 
-    forwardRef(() => RestaurantModule)
+    forwardRef(() => RestaurantModule),
+    NotificationModule,
   ],
   controllers: [OrderController],
   providers: [OrderService, PrismaService, ConfigService],

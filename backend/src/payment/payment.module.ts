@@ -9,6 +9,7 @@ import { CsrfModule } from 'src/csrf/csrf.module';
 import { RestaurantModule } from 'src/restaurant/restaurant.module';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { UploadModule } from 'src/upload/upload.module';
+import { NotificationModule } from 'src/notification/notification.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { UploadModule } from 'src/upload/upload.module';
     UploadModule,
     OrderModule,
     CsrfModule,
+    NotificationModule,
   ],
   controllers: [PaymentController],
   providers: [PaymentService, PrismaService],
