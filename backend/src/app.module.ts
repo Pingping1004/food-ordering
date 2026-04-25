@@ -47,6 +47,7 @@ import { InventoryModule } from './inventory/inventory.module';
 import { InventoryService } from './inventory/inventory.service';
 import { TokenCleanService } from './auth/jobs/tokenClean.job';
 import { ScheduleModule } from '@nestjs/schedule';
+import { NotificationModule } from './notification/notification.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     OrderModule,
     PaymentModule,
     UploadModule,
+    NotificationModule,
     CsrfModule,
     RefreshTokenModule,
     S3Module,
