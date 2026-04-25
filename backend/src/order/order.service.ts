@@ -18,6 +18,7 @@ import { InventoryService } from 'src/inventory/inventory.service';
 import moment from 'moment-timezone';
 import { RestaurantService } from 'src/restaurant/restaurant.service';
 import { Decimal } from '@prisma/client/runtime/client';
+import { NotificationService } from 'src/notification/notification.service';
 
 type ValidatedOrderMenu = {
   menuId: string;
@@ -37,6 +38,7 @@ export class OrderService {
     private readonly restaurantService: RestaurantService,
     @Inject(forwardRef(() => InventoryService))
     private readonly inventoryService: InventoryService,
+    private readonly notificationService: NotificationService,
   ) { }
 
   private readonly logger = new Logger('OrderService');
@@ -69,7 +71,6 @@ export class OrderService {
       if (!existingMenu.isAvailable) throw new BadRequestException("เมนูนี้ไม่พร้อมให้บริการ");
       if (existingMenu.restaurantId !== restaurantId) throw new BadRequestException(`เมนู ${item.menuName} ไม่ใช่ของร้านนี้`);
 
-      // SERVER calculates price
       const basePrice = new Decimal(existingMenu.price);
       const markupUnitPrice = basePrice.mul(markupRate).toDecimalPlaces(2);
       const totalPrice = markupUnitPrice.mul(item.quantity);
@@ -138,6 +139,11 @@ export class OrderService {
         });
 
         return order;
+      });
+
+      await this.notificationService.queueOrderCreated(order.orderId).catch((error: unknown) => {
+        const pushError = error as Error;
+        this.logger.warn(`Order created but push queue failed: ${pushError.message}`);
       });
 
       return order;
@@ -291,7 +297,7 @@ export class OrderService {
       completed: []
     };
 
-    return await this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({
         where: { orderId },
         include: { orderMenus: true }
@@ -340,6 +346,15 @@ export class OrderService {
 
       return { result: updatedOrder, message: `อัพเดทสถานะออเดอร์เป็น ${updatedOrder?.status} สำเร็จ` };
     });
+
+    if (result.result.status !== OrderStatus.sent) {
+      await this.notificationService.stopRetriesForOrder(orderId).catch((error: unknown) => {
+        const pushError = error as Error;
+        this.logger.warn(`Failed to stop push retries for ${orderId}: ${pushError.message}`);
+      });
+    }
+
+    return result;
   }
 
   private async handleInventoryDeduction(tx: Prisma.TransactionClient, orderMenus: ValidatedOrderMenu[]) {
@@ -370,7 +385,7 @@ export class OrderService {
   }
 
   async cancelOrder(orderId: string, orderSecret: string) {
-    return await this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({
         where: { orderId },
       });
@@ -392,6 +407,13 @@ export class OrderService {
 
       return { result: updatedorder, message: "ยกเลิกออเดอร์สำเร็จ" }
     })
+
+    await this.notificationService.stopRetriesForOrder(orderId, 'cancelled_by_user').catch((error: unknown) => {
+      const pushError = error as Error;
+      this.logger.warn(`Failed to stop push retries for cancelled order ${orderId}: ${pushError.message}`);
+    });
+
+    return result;
   }
 
   async removeOrder(orderId: string) {

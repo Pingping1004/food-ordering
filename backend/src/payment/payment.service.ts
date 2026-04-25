@@ -20,6 +20,7 @@ import { CreatePaymentDto } from './dto/create-payment.dto';
 import { createHash } from 'crypto';
 import { UploadService } from 'src/upload/upload.service';
 import { calculatePayout } from 'src/payout/payout-calculator';
+import { NotificationService } from 'src/notification/notification.service';
 
 function sha256(data: string): string {
     return createHash('sha256').update(data).digest('hex');
@@ -35,6 +36,7 @@ export class PaymentService {
         private readonly restaurantService: RestaurantService,
         private readonly orderService: OrderService,
         private readonly payoutService: PayoutService,
+        private readonly notificationService: NotificationService,
     ) { }
 
     async verifyPayment(dto: CreatePaymentDto, orderSecret: string) {
@@ -110,7 +112,7 @@ export class PaymentService {
                         checkReceiver: [
                             {
                                 accountType: accountTypeCode,
-                                accountNameTH: accountHolderFullName,
+                                // accountNameTH: accountHolderFullName,
                                 accountNumber: accountNumber.toString(),
                             }
                         ]
@@ -164,6 +166,11 @@ export class PaymentService {
                     return { success: false, retry: true };
                 }
             }
+
+            await this.notificationService.sendPaymentVerified(orderId).catch((pushError: unknown) => {
+                const error = pushError as Error;
+                this.logger.warn(`Payment verified but push notification failed: ${error.message}`);
+            });
 
             return { success: true };
 
