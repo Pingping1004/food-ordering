@@ -27,6 +27,7 @@ const WarningBanner = dynamic(() => import("../../../components/cookers/WarningB
 const CookerHeader = dynamic(() => import("../../../components/cookers/CookerHeader"), { ssr: false })
 const Order = dynamic(() => import("../../../components/cookers/Order"), { ssr: false })
 const OrderNavBar = dynamic(() => import("../../../components/cookers/OrderNavbar"), { ssr: false })
+const InstallGuideModal = dynamic(() => import("../../../components/cookers/InstallGuideModal"), { ssr: false })
 
 interface ServiceWorkerMessage {
     type?: "BACKGROUND_ORDER_RECEIVED" | "notification-click" | string;
@@ -555,7 +556,7 @@ function Page() {
         const handleServiceWorkerMessage = (event: MessageEvent<ServiceWorkerMessage>) => {
             const type = event.data?.type;
             const payloadData = event.data?.data;
-        
+
             if (type === "BACKGROUND_ORDER_RECEIVED") {
                 const orderId = payloadData?.orderId;
                 if (orderId) {
@@ -565,15 +566,15 @@ function Page() {
                 }
                 return;
             }
-        
+
             if (type !== "notification-click") return;
-        
+
             const clickedOrderId = payloadData?.orderId;
             if (clickedOrderId && payloadData?.type === "new_order") {
                 announcedOrdersRef.current.add(clickedOrderId);
                 showNewOrderBanner(clickedOrderId, "NEW ORDER", "Open order and accept it to stop reminders.");
             }
-        
+
             void fetchNewOrdersRef.current();
         };
 
@@ -728,7 +729,7 @@ function Page() {
                         onClick={handleInstallApp}
                         className="px-4 py-2"
                     >
-                        Install App
+                        ติดตั้งแอพลิเคชัน
                     </Button>
                 )}
             </div>
@@ -738,23 +739,12 @@ function Page() {
                     <h2 className={`${isLargeTextMode ? "text-2xl" : "text-xl"} font-bold`}>
                         Notifications are required for cooker order handling
                     </h2>
-                    {shouldShowIosOnboarding ? (
-                        <div className={`mt-2 space-y-2 ${isLargeTextMode ? "text-lg" : "text-sm"}`}>
-                            <p>On iPhone and iPad, push only works after the app is installed to the home screen.</p>
-                            <p>1. Tap Share in Safari.</p>
-                            <p>2. Choose Add to Home Screen.</p>
-                            <p>3. Open the installed app from the home screen.</p>
-                            <p>4. Tap Enable Notifications below.</p>
-                        </div>
-                    ) : (
-                        <p className={`mt-2 ${isLargeTextMode ? "text-lg" : "text-sm"}`}>
-                            Browser notifications are blocked. Re-enable them in browser settings so locked-screen alerts keep working.
-                        </p>
-                    )}
+                    
+                    <InstallGuideModal isIOS={isIosDevice()} isLargeTextMode={isLargeTextMode} />
 
                     <div className="mt-4 flex flex-wrap gap-2">
                         <Button type="button" variant="danger" size={isLargeTextMode ? "lg" : "md"} onClick={handleNotificationEnable}>
-                            Enable Notifications
+                            เปิดการแจ้งเตือน
                         </Button>
                         {pushErrorMessage && (
                             <p className={`${isLargeTextMode ? "text-base" : "text-sm"} text-danger-main`}>{pushErrorMessage}</p>
@@ -771,7 +761,7 @@ function Page() {
                     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                         <div>
                             <h2 className={`${isLargeTextMode ? "text-2xl" : "text-xl"} font-bold text-primary-main`}>
-                                Turn on push notifications
+                                เปิดการแจ้งเตือน
                             </h2>
                             <p className={`${isLargeTextMode ? "text-lg" : "text-sm"} text-secondary`}>
                                 Required for new orders when another app is open, the browser is closed, or the phone is locked.
@@ -790,7 +780,7 @@ function Page() {
                     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                         <div className="space-y-1">
                             <p className={`${isLargeTextMode ? "text-lg" : "text-base"} font-semibold text-danger-main`}>
-                                {pushErrorMessage}
+                                พบข้อผิดพลาด: {pushErrorMessage}
                             </p>
                             {pushDebugMessage && (
                                 <p className={`${isLargeTextMode ? "text-base" : "text-sm"} text-danger-main/80`}>
@@ -805,7 +795,7 @@ function Page() {
                             size={isLargeTextMode ? "lg" : "md"}
                             onClick={syncPushToken}
                         >
-                            Try Again
+                            ลองอีกครั้ง
                         </Button>
                     </div>
                 </section>
