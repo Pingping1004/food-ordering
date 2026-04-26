@@ -268,12 +268,28 @@ export class NotificationService {
           icon: `${this.getFrontendBaseUrl()}/icons/icon-192.svg`,
           badge: `${this.getFrontendBaseUrl()}/icons/badge.svg`,
           tag: `${eventType}-${order.orderId}`,
-          renotify: attemptNumber > 1,
+          vibrate: [200, 100, 200],
+          silent: false,
+          requireInteraction: true,
         },
         fcmOptions: {
           link: `${this.getFrontendBaseUrl()}/cooker/${order.restaurantId}?orderId=${order.orderId}&event=${eventType}`,
         },
       },
+      android: {
+          priority: 'high',
+          notification: {
+            sound: 'default',
+            channelId: 'high_priority',
+          }
+        },
+        apns: {
+          payload: {
+            aps: {
+              sound: 'default',
+            }
+          }
+        },
     });
 
     const invalidTokenIds: string[] = [];
