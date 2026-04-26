@@ -77,6 +77,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
     }, [user, logout, handleLogoutSideEffects]);
 
+    useEffect(() => {
+        const audio = new Audio("/sounds/notification.mp3");
+        audio.preload = "auto";
+    
+        let lastPlayedAt = 0;
+    
+        const playSound = () => {
+            const now = Date.now();
+            if (now - lastPlayedAt < 3000) return;
+            lastPlayedAt = now;
+    
+            audio.currentTime = 0;
+            audio.play().catch(() => {});
+        };
+    
+        const handleSWMessage = (e: MessageEvent) => {
+            if (e.data?.type === "PLAY_NOTIFICATION_SOUND") playSound();
+        };
+    
+        navigator.serviceWorker?.addEventListener("message", handleSWMessage);
+    
+        return () => {
+            navigator.serviceWorker?.removeEventListener("message", handleSWMessage);
+        };
+    }, []);
+
     const login = useCallback(async (email: string, password: string): Promise<User> => {
         try {
             const { accessToken, user } = await loginApi(email, password)
