@@ -39,15 +39,15 @@ self.addEventListener("push", (event) => {
   }
 
   const notificationData = payload.data || {};
-  const notificationTitle = notificationData.title || "New Order";
+  const notificationTitle = notificationData.title || "ออเดอร์เข้าใหม่";
   const notificationBody  = notificationData.body  || "A new order is waiting";
 
   const notificationOptions = {
     body: notificationBody,
-    icon: "/icons/icon-192.svg",
+    icon: "/favicon.svg",
     tag: `${notificationData.type || "push"}-${notificationData.orderId || "event"}`,
     data: notificationData,
-    silent: false,            // let the OS play its default notification sound
+    silent: false,
     requireInteraction: true,
     vibrate: [200, 100, 200, 100, 400],
   };
