@@ -2,21 +2,19 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.10.0/fireba
 import { getMessaging, onBackgroundMessage } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-messaging-sw.js';
 
 const firebaseConfig = {
-  apiKey:  process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket:process.env.NEXT_PUBLIC_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
+  apiKey: "AIzaSyA-la1axSFINRf60fgbv82VZIgAJo0AnpE",
+  authDomain: "cooker-cms.firebaseapp.com",
+  projectId: "cooker-cms",
+  storageBucket: "cooker-cms.appspot.com",
+  messagingSenderId: "156046680002",
+  appId: "1:156046680002:web:f09ba2e0bd2a850db6005b",
+  measurementId: "G-EQ0T23BPDQ",
 };
 
 const firebaseApp = initializeApp(firebaseConfig);
 
 try {
   const messaging = getMessaging(firebaseApp);
-  // Suppress Firebase's auto-notification so our native push handler
-  // is the single source of truth for showing notifications.
   onBackgroundMessage(messaging, () => {});
 } catch (error) {
   throw error;
@@ -55,7 +53,6 @@ self.addEventListener("push", (event) => {
   };
 
   // Signal every open tab to play the in-app sound.
-  // Done inside event.waitUntil so the SW stays alive long enough to deliver it.
   const notifyClients = self.clients
     .matchAll({ type: "window", includeUncontrolled: true })
     .then((clients) => {
