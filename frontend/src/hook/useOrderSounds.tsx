@@ -3,6 +3,14 @@ import { useEffect, useRef, useCallback } from "react";
 export function useOrderSounds() {
     const newOrderSoundRef = useRef<HTMLAudioElement | null>(null);
     const paymentSoundRef = useRef<HTMLAudioElement | null>(null);
+    const alertLoopRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    const stopAlertLoop = useCallback(() => {
+        if (alertLoopRef.current) {
+            clearInterval(alertLoopRef.current);
+            alertLoopRef.current = null;
+        }
+    }, []);
 
     useEffect(() => {
         newOrderSoundRef.current = new Audio('/sounds/new-order.mp3');
@@ -12,16 +20,32 @@ export function useOrderSounds() {
         paymentSoundRef.current.volume = 0.8;
 
         const unlock = () => {
-            newOrderSoundRef.current?.play().then(() => {
-                newOrderSoundRef.current!.pause();
-                newOrderSoundRef.current!.currentTime = 0;
-            }).catch(() => {});
+            const primeAudio = async (audio: HTMLAudioElement | null) => {
+                if (!audio) return;
+
+                try {
+                    await audio.play();
+                    audio.pause();
+                    audio.currentTime = 0;
+                } catch {
+                    // Browser blocked autoplay priming. We'll try again on the next interaction.
+                }
+            };
+
+            void primeAudio(newOrderSoundRef.current);
+            void primeAudio(paymentSoundRef.current);
             window.removeEventListener('click', unlock);
+            window.removeEventListener('touchstart', unlock);
         };
 
         window.addEventListener('click', unlock);
-        return () => window.removeEventListener('click', unlock);
-    }, []);
+        window.addEventListener('touchstart', unlock, { passive: true });
+        return () => {
+            stopAlertLoop();
+            window.removeEventListener('click', unlock);
+            window.removeEventListener('touchstart', unlock);
+        };
+    }, [stopAlertLoop]);
 
     const playNewOrderSound = useCallback(() => {
         if (!newOrderSoundRef.current) return;
@@ -35,5 +59,10 @@ export function useOrderSounds() {
         paymentSoundRef.current.play().catch(() => {});
     }, []);
 
-    return { playNewOrderSound, playPaymentSound };
+    const playAlertOnce = useCallback(() => {
+        stopAlertLoop();
+        playNewOrderSound();
+    }, [playNewOrderSound, stopAlertLoop]);
+    
+    return { playNewOrderSound, playPaymentSound, playAlertOnce, stopAlertLoop };
 }
