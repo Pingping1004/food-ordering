@@ -344,15 +344,15 @@ export class NotificationService {
       .join(', ');
     const body =
       eventType === PushEventType.payment_verified
-        ? 'Order payment is confirmed'
+        ? 'ชำระเงินแล้ว'
         : summary || `Order ${order.orderId.slice(0, 6)}`;
 
     const title =
       eventType === PushEventType.payment_verified
         ? 'Payment Verified'
         : attemptNumber > 1
-          ? 'New Order Reminder'
-          : 'New Order';
+          ? 'แจ้งเตือนออเดอร์ใหม่'
+          : 'ออเดอร์ใหม่';
 
     return {
       title,

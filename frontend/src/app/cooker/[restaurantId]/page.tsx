@@ -162,7 +162,7 @@ function Page() {
         if (paidOrdersRef.current.has(order.orderId)) return;
 
         paidOrdersRef.current.add(order.orderId);
-        showPaymentBanner(order.orderId, fallbackTitle, "Order payment has been verified");
+        showPaymentBanner(order.orderId, fallbackTitle, "ชำระเงินแล้ว");
     }, [showPaymentBanner]);
 
     const fetchInitialOrders = useCallback(async () => {
@@ -737,7 +737,7 @@ function Page() {
             {shouldBlockPermission && (
                 <section className="rounded-2xl border border-danger-main bg-danger-light px-5 py-4 text-danger-main">
                     <h2 className={`${isLargeTextMode ? "text-2xl" : "text-xl"} font-bold`}>
-                        Notifications are required for cooker order handling
+                        จำเป็นต้องเปิดการแจ้งเตือนเพื่อให้มีการแจ้งเตือนออเดอร์ใหม่ แม้ขณะเปิดแอปอื่น ปิดเบราว์เซอร์ หรือหน้าจอโทรศัพท์ล็อกอยู่
                     </h2>
                     
                     <InstallGuideModal isIOS={isIosDevice()} isLargeTextMode={isLargeTextMode} />
@@ -764,12 +764,12 @@ function Page() {
                                 เปิดการแจ้งเตือน
                             </h2>
                             <p className={`${isLargeTextMode ? "text-lg" : "text-sm"} text-secondary`}>
-                                Required for new orders when another app is open, the browser is closed, or the phone is locked.
+                                จำเป็นต้องเปิดการแจ้งเตือนเพื่อให้มีการแจ้งเตือนออเดอร์ใหม่ แม้ขณะเปิดแอปอื่น ปิดเบราว์เซอร์ หรือหน้าจอโทรศัพท์ล็อกอยู่
                             </p>
                         </div>
 
                         <Button type="button" variant="primary" size={isLargeTextMode ? "lg" : "md"} onClick={handleNotificationEnable}>
-                            {pushSyncState === "error" ? "Retry Notifications" : "Enable Notifications"}
+                            {pushSyncState === "error" ? "ลองเปิดการแจ้งเตือนใหม่" : "เปิดการแจ้งเตือน"}
                         </Button>
                     </div>
                 </section>
