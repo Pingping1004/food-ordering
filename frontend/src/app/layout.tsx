@@ -22,10 +22,17 @@ const poppins = Poppins({
 
 export const metadata: Metadata = {
     title: "Promptserve",
+    manifest: "/manifest.json",
     icons: {
         icon: "/favicon.svg",
+        apple: "/icons/icon-192.svg",
     },
     description: "Have your meal with no deailing with queue",
+    appleWebApp: {
+        capable: true,
+        statusBarStyle: "default",
+        title: "Promptserve",
+    },
 };
 
 export default function RootLayout({
@@ -36,7 +43,9 @@ export default function RootLayout({
 
     return (
         <html lang="en">
-            <head></head>
+            <head>
+                <meta name="theme-color" content="#006CFE" />
+            </head>
 
             <body className={`${poppins.variable} ${notoThai.variable}`}>
                 <ReactQueryProvider>
