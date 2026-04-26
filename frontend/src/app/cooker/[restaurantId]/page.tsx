@@ -9,7 +9,7 @@ import { api } from "@/lib/api";
 import { getDateFormat, getTimeFormat } from "@/util/time";
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { toastDanger, toastSuccess } from "@/components/ui/Toast";
-import { useParams, usePathname, useSearchParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import { useOrderSounds } from "@/hook/useOrderSounds";
 import { useCooker } from "@/hook/useCooker";
 import { useAuth } from "@/auth/auth.hooks";
@@ -114,10 +114,8 @@ function Page() {
 
     const params = useParams();
     const pathname = usePathname();
-    const searchParams = useSearchParams();
     const { user } = useAuth();
     const restaurantId = (params.restaurantId) as string;
-    const highlightOrderId = searchParams.get("orderId");
     const { data: cooker } = useCooker(restaurantId);
 
     const segments = pathname.split("/").filter(Boolean);
