@@ -55,14 +55,6 @@ export default function UserHomePage() {
             </div>
         );
     }
-    
-    if (restaurants.length === 0) {
-        return (
-          <div className="flex items-center justify-center min-h-screen text-gray-500 text-lg">
-            ไม่มีร้านอาหารที่พร้อมให้บริการในขณะนี้
-          </div>
-        );
-      }
 
     return (
         <>
@@ -88,18 +80,24 @@ export default function UserHomePage() {
                 )}
 
                 <div className="grid md:grid-cols-4 lg:grid-cols-6 grid-cols-2 gap-x-4 gap-y-6">
-                    {restaurants.map((restaurant, i) => (
-                        <RestaurantProfile
-                            key={restaurant.restaurantId}
-                            name={restaurant.name}
-                            categories={restaurant.categories}
-                            restaurantId={restaurant.restaurantId}
-                            restaurantImg={restaurant.restaurantImg}
-                            isOpen={restaurant.isActuallyOpen}
-                            isPriority={i < 4}
-                            variant={restaurant.isActuallyOpen ? "isOpen" : "isClose"}
-                        />
-                    ))}
+                    {restaurants.length > 0 ? (
+                        restaurants.map((restaurant, i) => (
+                            <RestaurantProfile
+                                key={restaurant.restaurantId}
+                                name={restaurant.name}
+                                categories={restaurant.categories}
+                                restaurantId={restaurant.restaurantId}
+                                restaurantImg={restaurant.restaurantImg}
+                                isOpen={restaurant.isActuallyOpen}
+                                isPriority={i < 4}
+                                variant={restaurant.isActuallyOpen ? "isOpen" : "isClose"}
+                            />
+                        ))
+                    ) : (
+                        <div className="flex items-center justify-center min-h-screen text-gray-500 text-lg">
+                            ไม่มีร้านอาหารที่พร้อมให้บริการในขณะนี้
+                        </div>
+                    )}
                 </div>
 
                 {visibleCount < restaurants.length && (
