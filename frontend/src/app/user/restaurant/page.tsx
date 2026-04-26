@@ -94,7 +94,7 @@ export default function UserHomePage() {
                             />
                         ))
                     ) : (
-                        <div className="flex items-center justify-center min-h-screen text-gray-500 text-lg">
+                        <div className="col-span-full flex items-center justify-center min-h-screen text-gray-500 text-lg">
                             ไม่มีร้านอาหารที่พร้อมให้บริการในขณะนี้
                         </div>
                     )}
