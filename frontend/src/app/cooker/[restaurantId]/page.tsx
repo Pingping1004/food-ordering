@@ -9,9 +9,18 @@ import { api } from "@/lib/api";
 import { getDateFormat, getTimeFormat } from "@/util/time";
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { toastDanger, toastSuccess } from "@/components/ui/Toast";
-import { useParams, usePathname } from "next/navigation";
+import { useParams, usePathname, useSearchParams } from "next/navigation";
 import { useOrderSounds } from "@/hook/useOrderSounds";
 import { useCooker } from "@/hook/useCooker";
+import { useAuth } from "@/auth/auth.hooks";
+import {
+    getNotificationPermission,
+    registerNotificationServiceWorker,
+    requestNotificationPermission,
+    subscribeToForegroundMessages,
+    syncCookerPushToken,
+} from "@/lib/firebase-messaging";
+import type { MessagePayload } from "firebase/messaging";
 
 const Modal = dynamic(() => import("../../../components/users/Modal"), { ssr: false })
 const WarningBanner = dynamic(() => import("../../../components/cookers/WarningBanner"), { ssr: false })
@@ -19,35 +28,143 @@ const CookerHeader = dynamic(() => import("../../../components/cookers/CookerHea
 const Order = dynamic(() => import("../../../components/cookers/Order"), { ssr: false })
 const OrderNavBar = dynamic(() => import("../../../components/cookers/OrderNavbar"), { ssr: false })
 
+interface ServiceWorkerMessage {
+    type?: "BACKGROUND_ORDER_RECEIVED" | "notification-click" | string;
+    data?: {
+        orderId?: string;
+        type?: string; // e.g., "new_order"
+        restaurantId?: string;
+        [key: string]: string | undefined; // Catch-all for any other string data
+    };
+}
+
+type BeforeInstallPromptEvent = Event & {
+    prompt: () => Promise<void>;
+    userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+};
+
+type PushBanner = {
+    orderId: string;
+    type: "new_order" | "payment_verified";
+    title: string;
+    body: string;
+};
+
 function isUnauthorizedError(error: unknown): boolean {
     if (typeof error !== "object" || error === null || !("response" in error)) return false;
     const err = error as { response?: { status?: number } };
     return err.response?.status === 401;
 }
 
+function isIosDevice() {
+    if (typeof window === "undefined") return false;
+
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    return /iphone|ipad|ipod/.test(userAgent);
+}
+
+function isStandaloneMode() {
+    if (typeof window === "undefined") return false;
+
+    return window.matchMedia("(display-mode: standalone)").matches || (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+}
+
+function normalizePushPayload(payload: MessagePayload): PushBanner | null {
+    const data = payload.data ?? {};
+    const type = data.type;
+    const orderId = data.orderId;
+
+    if (!orderId || (type !== "new_order" && type !== "payment_verified")) {
+        return null;
+    }
+
+    return {
+        orderId,
+        type,
+        title: payload.notification?.title ?? data.title ?? (type === "new_order" ? "NEW ORDER" : "PAYMENT VERIFIED"),
+        body: payload.notification?.body ?? data.body ?? "",
+    };
+}
+
 function Page() {
     const [isLargeTextMode, setIsLargeTextMode] = useState(false)
     const [orders, setOrders] = useState<Record<string, OrderProps>>({});
-    const lastTimestampRef = useRef<string | null>(null)
-    const { playNewOrderSound, playPaymentSound } = useOrderSounds();
     const [navbarStatus, setNavbarStatus] = useState<NavState>("sent");
     const [showAutoCancelModal, setShowAutoCancelModal] = useState(false)
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [now, setNow] = useState(Date.now());
     const [showRuleBanner, setShowRuleBanner] = useState(true);
+    const [pushPermission, setPushPermission] = useState<NotificationPermission | "unsupported">("default");
+    const [pushSyncState, setPushSyncState] = useState<"idle" | "syncing" | "ready" | "error">("idle");
+    const [pushErrorMessage, setPushErrorMessage] = useState<string | null>(null);
+    const [pushDebugMessage, setPushDebugMessage] = useState<string | null>(null);
+    const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
+    const [isStandalone, setIsStandalone] = useState(false);
+    const [activeBanner, setActiveBanner] = useState<PushBanner | null>(null);
 
+    const lastTimestampRef = useRef<string | null>(null)
+    const { playPaymentSound, playAlertOnce, stopAlertLoop } = useOrderSounds();
     const ordersRef = useRef<Record<string, OrderProps>>({});
     const fetchingRef = useRef<boolean>(false);
     const authFailedRef = useRef<boolean>(false);
     const pollingIntervalRef = useRef(3000)
     const pendingOrdersRef = useRef<Record<string, { order: OrderProps; showAt: number }>>({});
+    const announcedOrdersRef = useRef<Set<string>>(new Set());
+    const paidOrdersRef = useRef<Set<string>>(new Set());
 
     const params = useParams();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const { user } = useAuth();
     const restaurantId = (params.restaurantId) as string;
+    const highlightOrderId = searchParams.get("orderId");
     const { data: cooker } = useCooker(restaurantId);
 
-    const segments = usePathname().split("/").filter(Boolean);
+    const segments = pathname.split("/").filter(Boolean);
     const isOrderPage = Boolean(restaurantId) && segments.length === 2;
+    const shouldShowIosOnboarding = isIosDevice() && !isStandalone;
+    const shouldBlockPermission = pushPermission === "denied" || shouldShowIosOnboarding;
+    const showInstallButton = Boolean(installPromptEvent) && !isStandalone;
+
+    const showNewOrderBanner = useCallback((orderId: string, title: string, body: string) => {
+        setActiveBanner({
+            orderId,
+            type: "new_order",
+            title,
+            body,
+        });
+        setNavbarStatus("sent");
+        playAlertOnce();
+    }, [playAlertOnce]);
+
+    const showPaymentBanner = useCallback((orderId: string, title: string, body: string) => {
+        setActiveBanner({
+            orderId,
+            type: "payment_verified",
+            title,
+            body,
+        });
+        playPaymentSound();
+    }, [playPaymentSound]);
+
+    const announceNewOrder = useCallback((order: OrderProps, fallbackTitle = "NEW ORDER") => {
+        if (announcedOrdersRef.current.has(order.orderId)) return;
+
+        announcedOrdersRef.current.add(order.orderId);
+        const summary = order.orderMenus
+            .slice(0, 2)
+            .map((item) => `${item.menuName} x${item.quantity}`)
+            .join(", ");
+
+        showNewOrderBanner(order.orderId, fallbackTitle, summary || "New incoming order");
+    }, [showNewOrderBanner]);
+
+    const announcePayment = useCallback((order: OrderProps, fallbackTitle = "PAYMENT VERIFIED") => {
+        if (paidOrdersRef.current.has(order.orderId)) return;
+
+        paidOrdersRef.current.add(order.orderId);
+        showPaymentBanner(order.orderId, fallbackTitle, "Order payment has been verified");
+    }, [showPaymentBanner]);
 
     const fetchInitialOrders = useCallback(async () => {
         try {
@@ -59,6 +176,17 @@ function Page() {
             for (const order of data.orders) {
                 mapped[order.orderId] = order;
             }
+
+            announcedOrdersRef.current = new Set(
+                data.orders
+                    .filter((order: OrderProps) => order.status === OrderStatus.sent)
+                    .map((order: OrderProps) => order.orderId)
+            );
+            paidOrdersRef.current = new Set(
+                data.orders
+                    .filter((order: OrderProps) => order.paymentStatus === "paid")
+                    .map((order: OrderProps) => order.orderId)
+            );
 
             setOrders(mapped);
 
@@ -87,15 +215,12 @@ function Page() {
 
             if (data.latestTimestamp) lastTimestampRef.current = data.latestTimestamp;
 
-            // No new orders → slow down polling
             if (!data.orders || data.orders.length === 0) {
                 pollingIntervalRef.current = Math.min(pollingIntervalRef.current + 1000, 8000);
             } else {
-                // New orders → speed up polling
                 pollingIntervalRef.current = 3000;
-                const now = Date.now()
+                const currentTime = Date.now()
 
-                // Stage new orders (with dedup protection)
                 for (const order of data.orders) {
                     const existingOrder = ordersRef.current[order.orderId];
 
@@ -107,34 +232,30 @@ function Page() {
                             [order.orderId]: { ...prev[order.orderId], ...order }
                         }));
 
-                        if (justPaid) playPaymentSound();
+                        if (justPaid) announcePayment({ ...existingOrder, ...order });
+                    } else if (!pendingOrdersRef.current[order.orderId]) {
+                        const delayMs = 1000 + Math.random() * 2000;
+                        pendingOrdersRef.current[order.orderId] = {
+                            order,
+                            showAt: currentTime + delayMs,
+                        };
                     } else {
-                        if (!pendingOrdersRef.current[order.orderId]) {
-                            const delayMs = 1000 + Math.random() * 2000;
-                            pendingOrdersRef.current[order.orderId] = {
-                                order,
-                                showAt: now + delayMs,
-                            };
-                        } else {
-                            pendingOrdersRef.current[order.orderId].order = order;
-                        }
+                        pendingOrdersRef.current[order.orderId].order = order;
                     }
                 }
             }
 
-            const now = Date.now();
-            const cutoff = now - 10000;
+            const currentTime = Date.now();
+            const cutoff = currentTime - 10000;
             const ready: { id: string; order: OrderProps }[] = [];
 
-            for (const [id, val] of Object.entries(pendingOrdersRef.current)) {
-                if (now >= val.showAt || val.showAt < cutoff) {
-                    ready.push({ id, order: val.order });
+            for (const [id, value] of Object.entries(pendingOrdersRef.current)) {
+                if (currentTime >= value.showAt || value.showAt < cutoff) {
+                    ready.push({ id, order: value.order });
                 }
             }
 
             if (ready.length > 0) {
-                playNewOrderSound();
-
                 setOrders(prev => {
                     const next = { ...prev };
 
@@ -145,6 +266,10 @@ function Page() {
 
                     return next;
                 });
+
+                for (const { order } of ready) {
+                    announceNewOrder(order);
+                }
             }
         } catch (error: unknown) {
             if (isUnauthorizedError(error)) {
@@ -153,12 +278,48 @@ function Page() {
         } finally {
             fetchingRef.current = false
         }
-    }, [restaurantId, playNewOrderSound, playPaymentSound]);
+    }, [announceNewOrder, announcePayment, restaurantId]);
+
+    const syncPushToken = useCallback(async () => {
+        if (!user || user.role !== "cooker") return;
+        if (shouldShowIosOnboarding) {
+            setPushSyncState("idle");
+            return;
+        }
+        if (getNotificationPermission() !== "granted") return;
+
+        try {
+            setPushSyncState("syncing");
+            setPushErrorMessage(null);
+            setPushDebugMessage(null);
+            const result = await syncCookerPushToken();
+
+            if (result.status === "registered") {
+                setPushSyncState("ready");
+                setPushDebugMessage(`Push token registered on attempt ${result.attempts}.`);
+                return;
+            }
+
+            setPushSyncState("error");
+            setPushErrorMessage(result.errorMessage);
+            setPushDebugMessage(
+                result.errorCode
+                    ? `Reason: ${result.errorCode}. Attempts: ${result.attempts}.`
+                    : `Attempts: ${result.attempts}.`
+            );
+        } catch (error) {
+            setPushSyncState("error");
+            setPushErrorMessage("Notification token registration failed. Please try again.");
+            if (error instanceof Error) {
+                setPushDebugMessage(error.message);
+            }
+        }
+    }, [shouldShowIosOnboarding, user]);
 
     const handleTextMode = () => {
         const newValue = !isLargeTextMode
         setIsLargeTextMode(newValue);
-        localStorage.setItem("large_text_mode", JSON.stringify(newValue))
+        localStorage.setItem("cook_large_text", JSON.stringify(newValue))
     }
 
     const handleDelayOrder = async (orderId: string) => {
@@ -179,8 +340,8 @@ function Page() {
             setOrders(prev => ({ ...prev, [orderId]: updatedOrder }))
             toastSuccess(response.data.message)
         } catch (error: unknown) {
-            if (typeof error === 'object' && error !== null && 'response' in error) {
-                const err = error as { response: { status: number; data?: { message?: string, code?: string } } };
+            if (typeof error === "object" && error !== null && "response" in error) {
+                const err = error as { response: { data?: { message?: string } } };
                 const backendMessage = err.response.data?.message;
 
                 setOrders(prev => ({
@@ -226,11 +387,16 @@ function Page() {
                 }
             }));
 
+            if (activeBanner?.orderId === orderId) {
+                stopAlertLoop();
+                setActiveBanner(null);
+            }
+
             toastSuccess(response.data.message);
 
         } catch (error: unknown) {
-            if (typeof error === 'object' && error !== null && 'response' in error) {
-                const err = error as { response: { status: number; data?: { message?: string, code?: string } } };
+            if (typeof error === "object" && error !== null && "response" in error) {
+                const err = error as { response: { data?: { message?: string } } };
                 const backendMessage = err.response.data?.message;
 
                 setOrders(prev => ({
@@ -242,6 +408,37 @@ function Page() {
             }
         }
     };
+
+    const handleNotificationEnable = useCallback(async () => {
+        if (shouldShowIosOnboarding) {
+            setPushErrorMessage("ติดตั้งแอปนี้ลงบนหน้าจอโทรศัพท์ก่อน จากนั้นกดเปิดจากไอคอน และกดอนุญาตการแจ้งเตือน");
+            setPushDebugMessage(null);
+            return;
+        }
+
+        const permission = await requestNotificationPermission();
+        setPushPermission(permission);
+
+        if (permission === "granted") {
+            await syncPushToken();
+            return;
+        }
+
+        if (permission === "denied") {
+            setPushErrorMessage("จำเป็นต้องเปิดการแจ้งเตือน เพื่อเปิดการแจ้งเตือนแม้ในขณะล็อกหน้าจอหรือใช้งานแอปอื่นอยู่");
+            setPushDebugMessage("การอนุญาติถูกปฏิเสธ");
+        }
+    }, [shouldShowIosOnboarding, syncPushToken]);
+
+    const handleInstallApp = useCallback(async () => {
+        if (!installPromptEvent) return;
+
+        await installPromptEvent.prompt();
+        const result = await installPromptEvent.userChoice;
+        if (result.outcome === "accepted") {
+            setInstallPromptEvent(null);
+        }
+    }, [installPromptEvent]);
 
     useEffect(() => {
         const saved = localStorage.getItem("cook_large_text");
@@ -337,8 +534,112 @@ function Page() {
         if (!seen) {
             setShowAutoCancelModal(true)
             localStorage.setItem("cook_large_text", "true")
+            localStorage.setItem("cook_order_rules_seen", "true")
         }
     }, [])
+
+    useEffect(() => {
+        setPushPermission(getNotificationPermission());
+        setIsStandalone(isStandaloneMode());
+
+        void registerNotificationServiceWorker();
+
+        const handleBeforeInstallPrompt = (event: Event) => {
+            event.preventDefault();
+            setInstallPromptEvent(event as BeforeInstallPromptEvent);
+        };
+
+        const handleAppInstalled = () => {
+            setInstallPromptEvent(null);
+            setIsStandalone(true);
+        };
+
+        const handleServiceWorkerMessage = (event: MessageEvent<ServiceWorkerMessage>) => {
+            const type = event.data?.type;
+            const payloadData = event.data?.data;
+        
+            if (type === "BACKGROUND_ORDER_RECEIVED") {
+                const orderId = payloadData?.orderId;
+                if (orderId) {
+                    announcedOrdersRef.current.add(orderId);
+                    showNewOrderBanner(orderId, "NEW ORDER", "New order received in background!");
+                    void fetchNewOrdersRef.current();
+                }
+                return;
+            }
+        
+            if (type !== "notification-click") return;
+        
+            const clickedOrderId = payloadData?.orderId;
+            if (clickedOrderId && payloadData?.type === "new_order") {
+                announcedOrdersRef.current.add(clickedOrderId);
+                showNewOrderBanner(clickedOrderId, "NEW ORDER", "Open order and accept it to stop reminders.");
+            }
+        
+            void fetchNewOrdersRef.current();
+        };
+
+        window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+        window.addEventListener("appinstalled", handleAppInstalled);
+        navigator.serviceWorker?.addEventListener("message", handleServiceWorkerMessage);
+
+        return () => {
+            window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+            window.removeEventListener("appinstalled", handleAppInstalled);
+            navigator.serviceWorker?.removeEventListener("message", handleServiceWorkerMessage);
+        };
+    }, [showNewOrderBanner]);
+
+    useEffect(() => {
+        if (!user || user.role !== "cooker") return;
+        if (pushPermission !== "granted") return;
+
+        void syncPushToken();
+    }, [pushPermission, syncPushToken, user]);
+
+    useEffect(() => {
+        let unsubscribe: (() => void) | undefined;
+
+        const attach = async () => {
+            unsubscribe = await subscribeToForegroundMessages((payload) => {
+                const banner = normalizePushPayload(payload);
+                if (!banner) return;
+
+                if (banner.type === "new_order") {
+                    announcedOrdersRef.current.add(banner.orderId);
+                    showNewOrderBanner(banner.orderId, banner.title, banner.body);
+                } else {
+                    paidOrdersRef.current.add(banner.orderId);
+                    showPaymentBanner(banner.orderId, banner.title, banner.body);
+                }
+
+                void fetchNewOrdersRef.current();
+            });
+        };
+
+        void attach();
+
+        return () => {
+            unsubscribe?.();
+        };
+    }, [showNewOrderBanner, showPaymentBanner]);
+
+    useEffect(() => {
+        if (!activeBanner || activeBanner.type !== "new_order") return;
+
+        const activeOrder = orders[activeBanner.orderId];
+        if (!activeOrder) return;
+        if (activeOrder.status === OrderStatus.sent) return;
+
+        stopAlertLoop();
+        setActiveBanner(current => current?.orderId === activeBanner.orderId ? null : current);
+    }, [activeBanner, orders, stopAlertLoop]);
+
+    useEffect(() => {
+        return () => {
+            stopAlertLoop();
+        };
+    }, [stopAlertLoop]);
 
     const handleCloseBanner = () => { setShowRuleBanner(false) };
     const ordersArray = useMemo(() => Object.values(orders), [orders])
@@ -388,7 +689,7 @@ function Page() {
         const allowedStatuses = navToStatusMap[navbarStatus];
         const filtered = filterDailyOrders.filter(order => allowedStatuses.includes(order.status));
 
-        if (navbarStatus === 'completed' || navbarStatus === 'cancelled_group') {
+        if (navbarStatus === "completed" || navbarStatus === "cancelled_group") {
             return filtered.sort((a, b) => new Date(b.orderAt).getTime() - new Date(a.orderAt).getTime());
         }
 
@@ -410,15 +711,107 @@ function Page() {
                 closeTime={cooker?.closeTime}
             />
 
-            <Button
-                variant="secondary"
-                size={isLargeTextMode ? "lg" : "md"}
-                type="button"
-                onClick={handleTextMode}
-                className="self-end px-4 py-2 rounded-lg bg-primary-light text-sm font-semibold "
-            >
-                {isLargeTextMode ? "โหมดตัวอักษรปกติ" : "โหมดตัวอักษรใหญ่"}
-            </Button>
+            <div className="flex flex-col justify-between">
+                <Button
+                    variant="secondary"
+                    size={isLargeTextMode ? "lg" : "md"}
+                    type="button"
+                    onClick={handleTextMode}
+                    className="px-4 py-2 rounded-lg bg-primary-light text-sm font-semibold "
+                >
+                    {isLargeTextMode ? "โหมดตัวอักษรปกติ" : "โหมดตัวอักษรใหญ่"}
+                </Button>
+
+                {showInstallButton && (
+                    <Button
+                        type="button"
+                        variant="tertiary"
+                        size={isLargeTextMode ? "lg" : "md"}
+                        onClick={handleInstallApp}
+                        className="px-4 py-2"
+                    >
+                        Install App
+                    </Button>
+                )}
+            </div>
+
+            {shouldBlockPermission && (
+                <section className="rounded-2xl border border-danger-main bg-danger-light px-5 py-4 text-danger-main">
+                    <h2 className={`${isLargeTextMode ? "text-2xl" : "text-xl"} font-bold`}>
+                        Notifications are required for cooker order handling
+                    </h2>
+                    {shouldShowIosOnboarding ? (
+                        <div className={`mt-2 space-y-2 ${isLargeTextMode ? "text-lg" : "text-sm"}`}>
+                            <p>On iPhone and iPad, push only works after the app is installed to the home screen.</p>
+                            <p>1. Tap Share in Safari.</p>
+                            <p>2. Choose Add to Home Screen.</p>
+                            <p>3. Open the installed app from the home screen.</p>
+                            <p>4. Tap Enable Notifications below.</p>
+                        </div>
+                    ) : (
+                        <p className={`mt-2 ${isLargeTextMode ? "text-lg" : "text-sm"}`}>
+                            Browser notifications are blocked. Re-enable them in browser settings so locked-screen alerts keep working.
+                        </p>
+                    )}
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                        <Button type="button" variant="danger" size={isLargeTextMode ? "lg" : "md"} onClick={handleNotificationEnable}>
+                            Enable Notifications
+                        </Button>
+                        {pushErrorMessage && (
+                            <p className={`${isLargeTextMode ? "text-base" : "text-sm"} text-danger-main`}>{pushErrorMessage}</p>
+                        )}
+                        {pushDebugMessage && (
+                            <p className={`${isLargeTextMode ? "text-base" : "text-sm"} text-danger-main/80`}>{pushDebugMessage}</p>
+                        )}
+                    </div>
+                </section>
+            )}
+
+            {!shouldBlockPermission && pushPermission !== "granted" && (
+                <section className="rounded-2xl border border-primary-main bg-primary-light px-5 py-4">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <h2 className={`${isLargeTextMode ? "text-2xl" : "text-xl"} font-bold text-primary-main`}>
+                                Turn on push notifications
+                            </h2>
+                            <p className={`${isLargeTextMode ? "text-lg" : "text-sm"} text-secondary`}>
+                                Required for new orders when another app is open, the browser is closed, or the phone is locked.
+                            </p>
+                        </div>
+
+                        <Button type="button" variant="primary" size={isLargeTextMode ? "lg" : "md"} onClick={handleNotificationEnable}>
+                            {pushSyncState === "error" ? "Retry Notifications" : "Enable Notifications"}
+                        </Button>
+                    </div>
+                </section>
+            )}
+
+            {pushSyncState === "error" && pushErrorMessage && !shouldBlockPermission && (
+                <section className="rounded-2xl border border-danger-main bg-danger-light px-5 py-4">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div className="space-y-1">
+                            <p className={`${isLargeTextMode ? "text-lg" : "text-base"} font-semibold text-danger-main`}>
+                                {pushErrorMessage}
+                            </p>
+                            {pushDebugMessage && (
+                                <p className={`${isLargeTextMode ? "text-base" : "text-sm"} text-danger-main/80`}>
+                                    {pushDebugMessage}
+                                </p>
+                            )}
+                        </div>
+
+                        <Button
+                            type="button"
+                            variant="danger"
+                            size={isLargeTextMode ? "lg" : "md"}
+                            onClick={syncPushToken}
+                        >
+                            Try Again
+                        </Button>
+                    </div>
+                </section>
+            )}
 
             <OrderNavBar
                 status={navbarStatus}
@@ -442,7 +835,7 @@ function Page() {
                         <p className={`${isLargeTextMode ? "text-2xl" : "text-xl"} text-secondary`}>ออเดอร์วันนี้: {dailyDone}</p>
                     </div>
                 </section>
-            ) : ('')}
+            ) : ("")}
 
             <main>
                 {filterTodayOrderStatus.map((order) => (
@@ -476,8 +869,7 @@ function Page() {
                     • สามารถกดปฏิเสธออเดอร์ได้ภายใน 3 นาทีหลังจากลูกค้าสั่ง
                     • แจ้งล่าช้าได้ภายใน 5นาทีหลังรับออเดอร์และ5นาทีก่อนลูกค้าจะมารับ
                     
-                    กรุณาตรวจสอบออเดอร์และดำเนินการให้ทันเวลา`
-                }
+                    กรุณาตรวจสอบออเดอร์และดำเนินการให้ทันเวลา`}
                 confirmText="รับทราบ"
             />
         </div>
