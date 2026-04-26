@@ -48,7 +48,6 @@ self.addEventListener("push", (event) => {
     body: notificationBody,
     icon: "/icons/icon-192.svg",
     tag: `${notificationData.type || "push"}-${notificationData.orderId || "event"}`,
-    renotify: true,
     data: notificationData,
     silent: false,            // let the OS play its default notification sound
     requireInteraction: true,
