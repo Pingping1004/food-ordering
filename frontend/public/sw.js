@@ -30,58 +30,18 @@ self.addEventListener("activate", (event) => {
 });
 
 
-// self.addEventListener("push", (event) => {
-//   let payload = {};
-
-//   try {
-//     payload = event.data ? event.data.json() : {};
-//   } catch (error) {
-//     throw error
-//   }
-
-//   const notificationData = payload.data || {};
-//   const notificationTitle = notificationData.title || "ออเดอร์เข้าใหม่";
-//   const notificationBody  = notificationData.body  || "คลิกเพื่อดูรายละเอียดออเดอร์";
-
-//   const notificationOptions = {
-//     body: notificationBody,
-//     icon: "/favicon.svg",
-//     tag: `${notificationData.type || "push"}-${notificationData.orderId || "event"}`,
-//     data: notificationData,
-//     silent: false,
-//     requireInteraction: true,
-//     vibrate: [200, 100, 200, 100, 400],
-//   };
-
-//   // Signal every open tab to play the in-app sound.
-//   const notifyClients = self.clients
-//     .matchAll({ type: "window", includeUncontrolled: true })
-//     .then((clients) => {
-//       clients.forEach((client) => {
-//         client.postMessage({ type: "PLAY_NOTIFICATION_SOUND" });
-//       });
-//     });
-
-//   event.waitUntil(
-//     Promise.all([
-//       self.registration.showNotification(notificationTitle, notificationOptions),
-//       notifyClients,
-//     ])
-//   );
-// });
-
 self.addEventListener("push", (event) => {
   let payload = {};
+
   try {
     payload = event.data ? event.data.json() : {};
   } catch (error) {
-    console.error("Failed to parse push payload", error);
-    return;
+    throw error
   }
 
   const notificationData = payload.data || {};
   const notificationTitle = notificationData.title || "ออเดอร์เข้าใหม่";
-  const notificationBody  = notificationData.body  || "A new order is waiting";
+  const notificationBody  = notificationData.body  || "คลิกเพื่อดูรายละเอียดออเดอร์";
 
   const notificationOptions = {
     body: notificationBody,
@@ -93,33 +53,20 @@ self.addEventListener("push", (event) => {
     vibrate: [200, 100, 200, 100, 400],
   };
 
-  event.waitUntil(
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
-      // 1. Check if the chef is currently looking at the app
-      const isAppInForeground = clientList.some((client) => client.visibilityState === "visible");
-
-      if (isAppInForeground) {
-        // THE APP IS VISIBLE. 
-        // Stop here! Let your React app's `subscribeToForegroundMessages` 
-        // handle the in-app banner and sound.
-        return null; 
-      }
-
-      // 2. THE APP IS HIDDEN OR CLOSED.
-      // Show the Mac/Windows/Android system notification
-      const showNotificationPromise = self.registration.showNotification(notificationTitle, notificationOptions);
-
-      // 3. If the tab is open but hidden (e.g., in another tab), 
-      // tell the background tab to update its state or play a sound
-      clientList.forEach((client) => {
-        client.postMessage({ 
-          type: "BACKGROUND_ORDER_RECEIVED", 
-          data: notificationData 
-        });
+  // Signal every open tab to play the in-app sound.
+  const notifyClients = self.clients
+    .matchAll({ type: "window", includeUncontrolled: true })
+    .then((clients) => {
+      clients.forEach((client) => {
+        client.postMessage({ type: "PLAY_NOTIFICATION_SOUND" });
       });
+    });
 
-      return showNotificationPromise;
-    })
+  event.waitUntil(
+    Promise.all([
+      self.registration.showNotification(notificationTitle, notificationOptions),
+      notifyClients,
+    ])
   );
 });
 

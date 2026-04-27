@@ -197,14 +197,14 @@ export async function syncCookerPushToken(): Promise<PushRegistrationResult> {
         };
     }
 
-    // try {
-    //     const existingSub = await serviceWorkerRegistration.pushManager.getSubscription();
-    //     if (existingSub) {
-    //         await existingSub.unsubscribe();
-    //     }
-    // } catch (error) {
-    //     throw error
-    // }
+    try {
+        const existingSub = await serviceWorkerRegistration.pushManager.getSubscription();
+        if (existingSub) {
+            await existingSub.unsubscribe();
+        }
+    } catch (error) {
+        throw error
+    }
 
     for (let attempt = 1; attempt <= MAX_PUSH_REGISTRATION_ATTEMPTS; attempt += 1) {
         try {
