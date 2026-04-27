@@ -10,6 +10,7 @@ export default function InstallGuide({ isIOS, isLargeTextMode }: Props) {
         <div className={`mt-2 space-y-3 ${textSize}`}>
             <p className="font-medium">
                 ⚠️ จำเป็นต้องติดตั้งแอปก่อน ถึงจะมีเสียงแจ้งเตือนตอนมีออเดอร์เข้า
+                ⚠️ อย่าปิดแอป ถ้าปิดแล้วต้องเข้าสู่ระบบใหม่
             </p>
 shouldShowIosOnboarding ?
             {isIOS ? (
