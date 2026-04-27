@@ -249,7 +249,7 @@ export class NotificationService {
       return { errorMessage: 'Firebase Admin SDK is not configured' };
     }
 
-    const messagePayload = this.buildMessagePayload(order, eventType, attemptNumber);
+    const messagePayload = this.buildMessagePayload(order, eventType);
     const response = await this.messaging.sendEachForMulticast({
       tokens: tokens.map((tokenRecord) => tokenRecord.token),
       data: messagePayload.data,
@@ -331,7 +331,6 @@ export class NotificationService {
   private buildMessagePayload(
     order: NotificationOrder,
     eventType: PushEventType,
-    attemptNumber: number,
   ) {
     const summary = order.orderMenus
       .slice(0, 2)
@@ -339,11 +338,11 @@ export class NotificationService {
       .join(', ');
     const body =
       eventType === PushEventType.payment_verified
-        ? 'ชำระเงินแล้ว'
-        : summary || `Order ${order.orderId.slice(0, 6)}`;
+        ? `ออเดอร์${order.orderId.slice(0,4)} ชำระเงินแล้ว`
+        : summary || `ออเดอร์ ${order.orderId.slice(0, 6)}`;
 
     const title = eventType === PushEventType.payment_verified
-        ? 'ยืนยันการชำระเงิน' : 'แจ้งเตือนออเดอร์ใหม่'
+        ? `ยืนยันการชำระเงิน ออเดอร์${order.orderId.slice(0, 4)}` : `ออเดอร์ใหม่ ${order.orderId.slice(0, 4)}`
 
     return {
       title,
