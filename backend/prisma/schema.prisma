@@ -229,7 +229,7 @@ model PushNotificationJob {
   restaurantId          String
   eventType             PushEventType
   attemptCount          Int           @default(0)
-  maxAttempts           Int           @default(3)
+  maxAttempts           Int           @default(1)
   nextAttemptAt         DateTime      @default(now())
   lastAttemptAt         DateTime?
   completedAt           DateTime?

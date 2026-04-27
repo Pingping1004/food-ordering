@@ -184,19 +184,14 @@ export class NotificationService {
       jobId: job.pushNotificationJobId,
     });
 
-    const shouldRetry =
-      eventType === PushEventType.new_order &&
-      order.status === OrderStatus.sent &&
-      attemptNumber < job.maxAttempts;
+    const shouldRetry = false;
 
     await this.prisma.pushNotificationJob.update({
       where: { pushNotificationJobId: job.pushNotificationJobId },
       data: {
         attemptCount: attemptNumber,
         lastAttemptAt: new Date(),
-        nextAttemptAt: shouldRetry
-          ? new Date(Date.now() + 20_000)
-          : new Date(),
+        nextAttemptAt: new Date(),
         completedAt: shouldRetry ? null : new Date(),
         lastError: dispatchResult.errorMessage ?? null,
       },
@@ -347,12 +342,8 @@ export class NotificationService {
         ? 'ชำระเงินแล้ว'
         : summary || `Order ${order.orderId.slice(0, 6)}`;
 
-    const title =
-      eventType === PushEventType.payment_verified
-        ? 'Payment Verified'
-        : attemptNumber > 1
-          ? 'แจ้งเตือนออเดอร์ใหม่'
-          : 'ออเดอร์ใหม่';
+    const title = eventType === PushEventType.payment_verified
+        ? 'ยืนยันการชำระเงิน' : 'แจ้งเตือนออเดอร์ใหม่'
 
     return {
       title,
