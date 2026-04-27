@@ -126,15 +126,20 @@ function Page() {
     const showInstallButton = Boolean(installPromptEvent) && !isStandalone;
 
     const showNewOrderBanner = useCallback((orderId: string, title: string, body: string) => {
-        setActiveBanner({
-            orderId,
-            type: "new_order",
-            title,
-            body,
+        setActiveBanner(prev => {
+            if (prev?.orderId === orderId && prev.type === "new_order") return prev;
+    
+            playAlertOnce();
+    
+            return {
+                orderId,
+                type: "new_order",
+                title,
+                body,
+            };
         });
-
+    
         setNavbarStatus("sent");
-        playAlertOnce();
     }, [playAlertOnce]);
 
     const showPaymentBanner = useCallback((orderId: string, title: string, body: string) => {
@@ -148,9 +153,8 @@ function Page() {
     }, [playPaymentSound]);
 
     const announceNewOrder = useCallback((order: OrderProps, fallbackTitle = "ออเดอร์ใหม่") => {
-        if (announcedOrdersRef.current.has(order.orderId)) return;
+        if (hasAnnounced(order.orderId)) return;
 
-        announcedOrdersRef.current.add(order.orderId);
         const summary = order.orderMenus
             .slice(0, 2)
             .map((item) => `${item.menuName} x${item.quantity}`)
@@ -158,6 +162,12 @@ function Page() {
 
         showNewOrderBanner(order.orderId, fallbackTitle, summary || "New incoming order");
     }, [showNewOrderBanner]);
+
+    const hasAnnounced = (id: string) => {
+        if (announcedOrdersRef.current.has(id)) return true;
+        announcedOrdersRef.current.add(id);
+        return false;
+    };
 
     const announcePayment = useCallback((order: OrderProps, fallbackTitle = "ชำระเงินแล้ว") => {
         if (paidOrdersRef.current.has(order.orderId)) return;
@@ -599,29 +609,32 @@ function Page() {
 
     useEffect(() => {
         let unsubscribe: (() => void) | undefined;
-
+    
         const attach = async () => {
             unsubscribe = await subscribeToForegroundMessages((payload) => {
                 const banner = normalizePushPayload(payload);
                 if (!banner) return;
-
+    
                 if (banner.type === "new_order") {
+                    if (announcedOrdersRef.current.has(banner.orderId)) return;
+    
                     announcedOrdersRef.current.add(banner.orderId);
                     showNewOrderBanner(banner.orderId, banner.title, banner.body);
+    
                 } else {
+                    if (paidOrdersRef.current.has(banner.orderId)) return;
+    
                     paidOrdersRef.current.add(banner.orderId);
                     showPaymentBanner(banner.orderId, banner.title, banner.body);
                 }
-
+    
                 void fetchNewOrdersRef.current();
             });
         };
-
+    
         void attach();
-
-        return () => {
-            unsubscribe?.();
-        };
+    
+        return () => { unsubscribe?.() };
     }, [showNewOrderBanner, showPaymentBanner]);
 
     useEffect(() => {
