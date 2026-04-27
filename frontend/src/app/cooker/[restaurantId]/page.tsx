@@ -132,6 +132,7 @@ function Page() {
             title,
             body,
         });
+
         setNavbarStatus("sent");
         playAlertOnce();
     }, [playAlertOnce]);
@@ -146,7 +147,7 @@ function Page() {
         playPaymentSound();
     }, [playPaymentSound]);
 
-    const announceNewOrder = useCallback((order: OrderProps, fallbackTitle = "NEW ORDER") => {
+    const announceNewOrder = useCallback((order: OrderProps, fallbackTitle = "ออเดอร์ใหม่") => {
         if (announcedOrdersRef.current.has(order.orderId)) return;
 
         announcedOrdersRef.current.add(order.orderId);
@@ -158,7 +159,7 @@ function Page() {
         showNewOrderBanner(order.orderId, fallbackTitle, summary || "New incoming order");
     }, [showNewOrderBanner]);
 
-    const announcePayment = useCallback((order: OrderProps, fallbackTitle = "PAYMENT VERIFIED") => {
+    const announcePayment = useCallback((order: OrderProps, fallbackTitle = "ชำระเงินแล้ว") => {
         if (paidOrdersRef.current.has(order.orderId)) return;
 
         paidOrdersRef.current.add(order.orderId);
