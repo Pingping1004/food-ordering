@@ -609,29 +609,32 @@ function Page() {
 
     useEffect(() => {
         let unsubscribe: (() => void) | undefined;
-
+    
         const attach = async () => {
             unsubscribe = await subscribeToForegroundMessages((payload) => {
                 const banner = normalizePushPayload(payload);
                 if (!banner) return;
-
+    
                 if (banner.type === "new_order") {
+                    if (announcedOrdersRef.current.has(banner.orderId)) return;
+    
                     announcedOrdersRef.current.add(banner.orderId);
                     showNewOrderBanner(banner.orderId, banner.title, banner.body);
+    
                 } else {
+                    if (paidOrdersRef.current.has(banner.orderId)) return;
+    
                     paidOrdersRef.current.add(banner.orderId);
                     showPaymentBanner(banner.orderId, banner.title, banner.body);
                 }
-
+    
                 void fetchNewOrdersRef.current();
             });
         };
-
+    
         void attach();
-
-        return () => {
-            unsubscribe?.();
-        };
+    
+        return () => { unsubscribe?.() };
     }, [showNewOrderBanner, showPaymentBanner]);
 
     useEffect(() => {
