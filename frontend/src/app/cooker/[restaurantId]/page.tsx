@@ -126,20 +126,15 @@ function Page() {
     const showInstallButton = Boolean(installPromptEvent) && !isStandalone;
 
     const showNewOrderBanner = useCallback((orderId: string, title: string, body: string) => {
-        setActiveBanner(prev => {
-            if (prev?.orderId === orderId && prev.type === "new_order") return prev;
-
-            playAlertOnce();
-
-            return {
-                orderId,
-                type: "new_order",
-                title,
-                body,
-            };
+        setActiveBanner({
+            orderId,
+            type: "new_order",
+            title,
+            body,
         });
 
         setNavbarStatus("sent");
+        playAlertOnce();
     }, [playAlertOnce]);
 
     const showPaymentBanner = useCallback((orderId: string, title: string, body: string) => {
@@ -153,8 +148,9 @@ function Page() {
     }, [playPaymentSound]);
 
     const announceNewOrder = useCallback((order: OrderProps, fallbackTitle = "ออเดอร์ใหม่") => {
-        if (hasAnnounced(order.orderId)) return;
+        if (announcedOrdersRef.current.has(order.orderId)) return;
 
+        announcedOrdersRef.current.add(order.orderId);
         const summary = order.orderMenus
             .slice(0, 2)
             .map((item) => `${item.menuName} x${item.quantity}`)
@@ -162,12 +158,6 @@ function Page() {
 
         showNewOrderBanner(order.orderId, fallbackTitle, summary || "New incoming order");
     }, [showNewOrderBanner]);
-
-    const hasAnnounced = (id: string) => {
-        if (announcedOrdersRef.current.has(id)) return true;
-        announcedOrdersRef.current.add(id);
-        return false;
-    };
 
     const announcePayment = useCallback((order: OrderProps, fallbackTitle = "ชำระเงินแล้ว") => {
         if (paidOrdersRef.current.has(order.orderId)) return;
@@ -607,10 +597,6 @@ function Page() {
         void syncPushToken();
     }, [pushPermission, syncPushToken, user]);
 
-    const isAppActive = () => {
-        return document.visibilityState === "visible";
-    };
-
     useEffect(() => {
         let unsubscribe: (() => void) | undefined;
 
@@ -619,16 +605,12 @@ function Page() {
                 const banner = normalizePushPayload(payload);
                 if (!banner) return;
 
-                if (announcedOrdersRef.current.has(banner.orderId)) return;
-                announcedOrdersRef.current.add(banner.orderId);
-
                 if (banner.type === "new_order") {
-                    if (isAppActive()) showNewOrderBanner(banner.orderId, banner.title, banner.body);
+                    announcedOrdersRef.current.add(banner.orderId);
+                    showNewOrderBanner(banner.orderId, banner.title, banner.body);
                 } else {
-                    if (paidOrdersRef.current.has(banner.orderId)) return;
                     paidOrdersRef.current.add(banner.orderId);
-
-                    if (isAppActive()) showPaymentBanner(banner.orderId, banner.title, banner.body);
+                    showPaymentBanner(banner.orderId, banner.title, banner.body);
                 }
 
                 void fetchNewOrdersRef.current();
@@ -637,7 +619,9 @@ function Page() {
 
         void attach();
 
-        return () => { unsubscribe?.() };
+        return () => {
+            unsubscribe?.();
+        };
     }, [showNewOrderBanner, showPaymentBanner]);
 
     useEffect(() => {
@@ -756,7 +740,7 @@ function Page() {
                     <h2 className={`${isLargeTextMode ? "text-2xl" : "text-xl"} font-bold`}>
                         จำเป็นต้องเปิดการแจ้งเตือนเพื่อให้มีการแจ้งเตือนออเดอร์ใหม่ แม้ขณะเปิดแอปอื่น ปิดเบราว์เซอร์ หรือหน้าจอโทรศัพท์ล็อกอยู่
                     </h2>
-
+                    
                     <InstallGuideModal isIOS={isIosDevice()} isLargeTextMode={isLargeTextMode} />
 
                     <div className="mt-4 flex flex-wrap gap-2">

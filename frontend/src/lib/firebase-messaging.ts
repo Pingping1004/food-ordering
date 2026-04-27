@@ -286,7 +286,9 @@ async function resetPushSubscription(serviceWorkerRegistration: ServiceWorkerReg
 }
 
 
-export async function subscribeToForegroundMessages(callback: (payload: MessagePayload) => void) {
+export async function subscribeToForegroundMessages(
+    callback: (payload: MessagePayload) => void,
+) {
     const messaging = await getMessagingInstance();
     if (!messaging) {
         return () => undefined;
