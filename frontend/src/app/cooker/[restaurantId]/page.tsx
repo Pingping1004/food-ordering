@@ -128,9 +128,9 @@ function Page() {
     const showNewOrderBanner = useCallback((orderId: string, title: string, body: string) => {
         setActiveBanner(prev => {
             if (prev?.orderId === orderId && prev.type === "new_order") return prev;
-    
+
             playAlertOnce();
-    
+
             return {
                 orderId,
                 type: "new_order",
@@ -138,7 +138,7 @@ function Page() {
                 body,
             };
         });
-    
+
         setNavbarStatus("sent");
     }, [playAlertOnce]);
 
@@ -607,33 +607,36 @@ function Page() {
         void syncPushToken();
     }, [pushPermission, syncPushToken, user]);
 
+    const isAppActive = () => {
+        return document.visibilityState === "visible";
+    };
+
     useEffect(() => {
         let unsubscribe: (() => void) | undefined;
-    
+
         const attach = async () => {
             unsubscribe = await subscribeToForegroundMessages((payload) => {
                 const banner = normalizePushPayload(payload);
                 if (!banner) return;
-    
+
+                if (announcedOrdersRef.current.has(banner.orderId)) return;
+                announcedOrdersRef.current.add(banner.orderId);
+
                 if (banner.type === "new_order") {
-                    if (announcedOrdersRef.current.has(banner.orderId)) return;
-    
-                    announcedOrdersRef.current.add(banner.orderId);
-                    showNewOrderBanner(banner.orderId, banner.title, banner.body);
-    
+                    if (isAppActive()) showNewOrderBanner(banner.orderId, banner.title, banner.body);
                 } else {
                     if (paidOrdersRef.current.has(banner.orderId)) return;
-    
                     paidOrdersRef.current.add(banner.orderId);
-                    showPaymentBanner(banner.orderId, banner.title, banner.body);
+
+                    if (isAppActive()) showPaymentBanner(banner.orderId, banner.title, banner.body);
                 }
-    
+
                 void fetchNewOrdersRef.current();
             });
         };
-    
+
         void attach();
-    
+
         return () => { unsubscribe?.() };
     }, [showNewOrderBanner, showPaymentBanner]);
 
@@ -753,7 +756,7 @@ function Page() {
                     <h2 className={`${isLargeTextMode ? "text-2xl" : "text-xl"} font-bold`}>
                         จำเป็นต้องเปิดการแจ้งเตือนเพื่อให้มีการแจ้งเตือนออเดอร์ใหม่ แม้ขณะเปิดแอปอื่น ปิดเบราว์เซอร์ หรือหน้าจอโทรศัพท์ล็อกอยู่
                     </h2>
-                    
+
                     <InstallGuideModal isIOS={isIosDevice()} isLargeTextMode={isLargeTextMode} />
 
                     <div className="mt-4 flex flex-wrap gap-2">

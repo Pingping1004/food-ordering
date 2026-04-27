@@ -30,13 +30,53 @@ self.addEventListener("activate", (event) => {
 });
 
 
+// self.addEventListener("push", (event) => {
+//   let payload = {};
+
+//   try {
+//     payload = event.data ? event.data.json() : {};
+//   } catch (error) {
+//     throw error
+//   }
+
+//   const notificationData = payload.data || {};
+//   const notificationTitle = notificationData.title || "ออเดอร์เข้าใหม่";
+//   const notificationBody  = notificationData.body  || "คลิกเพื่อดูรายละเอียดออเดอร์";
+
+//   const notificationOptions = {
+//     body: notificationBody,
+//     icon: "/favicon.svg",
+//     tag: `${notificationData.type || "push"}-${notificationData.orderId || "event"}`,
+//     data: notificationData,
+//     silent: false,
+//     requireInteraction: true,
+//     vibrate: [200, 100, 200, 100, 400],
+//   };
+
+//   // Signal every open tab to play the in-app sound.
+//   const notifyClients = self.clients
+//     .matchAll({ type: "window", includeUncontrolled: true })
+//     .then((clients) => {
+//       clients.forEach((client) => {
+//         client.postMessage({ type: "PLAY_NOTIFICATION_SOUND" });
+//       });
+//     });
+
+//   event.waitUntil(
+//     Promise.all([
+//       self.registration.showNotification(notificationTitle, notificationOptions),
+//       notifyClients,
+//     ])
+//   );
+// });
+
 self.addEventListener("push", (event) => {
   let payload = {};
 
   try {
     payload = event.data ? event.data.json() : {};
   } catch (error) {
-    throw error
+    return;
   }
 
   const notificationData = payload.data || {};
@@ -53,20 +93,28 @@ self.addEventListener("push", (event) => {
     vibrate: [200, 100, 200, 100, 400],
   };
 
-  // Signal every open tab to play the in-app sound.
-  const notifyClients = self.clients
-    .matchAll({ type: "window", includeUncontrolled: true })
-    .then((clients) => {
-      clients.forEach((client) => {
-        client.postMessage({ type: "PLAY_NOTIFICATION_SOUND" });
-      });
-    });
-
   event.waitUntil(
-    Promise.all([
-      self.registration.showNotification(notificationTitle, notificationOptions),
-      notifyClients,
-    ])
+    self.clients.matchAll({ type: "window", includeUncontrolled: true })
+      .then((clients) => {
+        const hasVisibleClient = clients.some(
+          (client) => client.visibilityState === "visible"
+        );
+
+        if (hasVisibleClient) {
+          // ✅ App is open → let frontend handle sound + banner
+          clients.forEach((client) => {
+            client.postMessage({
+              type: "FOREGROUND_ORDER",
+              data: notificationData,
+            });
+          });
+
+          return; // ❌ DO NOT show notification
+        }
+
+        // ✅ App is closed/background → show push only
+        return self.registration.showNotification(notificationTitle, notificationOptions);
+      })
   );
 });
 
