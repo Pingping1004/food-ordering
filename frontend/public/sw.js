@@ -1,26 +1,3 @@
-// import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
-// import { getMessaging, onBackgroundMessage } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-messaging-sw.js';
-
-// const firebaseConfig = {
-//   apiKey: "AIzaSyA-la1axSFINRf60fgbv82VZIgAJo0AnpE",
-//   authDomain: "cooker-cms.firebaseapp.com",
-//   projectId: "cooker-cms",
-//   storageBucket: "cooker-cms.appspot.com",
-//   messagingSenderId: "156046680002",
-//   appId: "1:156046680002:web:f09ba2e0bd2a850db6005b",
-//   measurementId: "G-EQ0T23BPDQ",
-// };
-
-// const firebaseApp = initializeApp(firebaseConfig);
-
-// try {
-//   const messaging = getMessaging(firebaseApp);
-//   onBackgroundMessage(messaging, () => {});
-// } catch (error) {
-//   throw error;
-// }
-
-
 self.addEventListener("install", () => {
   self.skipWaiting();
 });
