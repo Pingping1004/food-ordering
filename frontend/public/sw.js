@@ -1,24 +1,24 @@
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
-import { getMessaging, onBackgroundMessage } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-messaging-sw.js';
+// import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
+// import { getMessaging, onBackgroundMessage } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-messaging-sw.js';
 
-const firebaseConfig = {
-  apiKey: "AIzaSyA-la1axSFINRf60fgbv82VZIgAJo0AnpE",
-  authDomain: "cooker-cms.firebaseapp.com",
-  projectId: "cooker-cms",
-  storageBucket: "cooker-cms.appspot.com",
-  messagingSenderId: "156046680002",
-  appId: "1:156046680002:web:f09ba2e0bd2a850db6005b",
-  measurementId: "G-EQ0T23BPDQ",
-};
+// const firebaseConfig = {
+//   apiKey: "AIzaSyA-la1axSFINRf60fgbv82VZIgAJo0AnpE",
+//   authDomain: "cooker-cms.firebaseapp.com",
+//   projectId: "cooker-cms",
+//   storageBucket: "cooker-cms.appspot.com",
+//   messagingSenderId: "156046680002",
+//   appId: "1:156046680002:web:f09ba2e0bd2a850db6005b",
+//   measurementId: "G-EQ0T23BPDQ",
+// };
 
-const firebaseApp = initializeApp(firebaseConfig);
+// const firebaseApp = initializeApp(firebaseConfig);
 
-try {
-  const messaging = getMessaging(firebaseApp);
-  onBackgroundMessage(messaging, () => {});
-} catch (error) {
-  throw error;
-}
+// try {
+//   const messaging = getMessaging(firebaseApp);
+//   onBackgroundMessage(messaging, () => {});
+// } catch (error) {
+//   throw error;
+// }
 
 
 self.addEventListener("install", () => {
@@ -53,7 +53,6 @@ self.addEventListener("push", (event) => {
     vibrate: [200, 100, 200, 100, 400],
   };
 
-  // Signal every open tab to play the in-app sound.
   const notifyClients = self.clients
     .matchAll({ type: "window", includeUncontrolled: true })
     .then((clients) => {
@@ -86,14 +85,12 @@ self.addEventListener("notificationclick", (event) => {
       .matchAll({ type: "window", includeUncontrolled: true })
       .then((clientList) => {
         for (const client of clientList) {
-          // Only message and focus the tab that matches this restaurant
           if ("focus" in client && client.url.includes(`/cooker/${restaurantId}`)) {
             client.postMessage({ type: "notification-click", data });
             return client.focus();
           }
         }
 
-        // No matching tab open — open a new one
         if (self.clients.openWindow) {
           return self.clients.openWindow(targetPath);
         }
