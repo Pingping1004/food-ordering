@@ -190,6 +190,18 @@ export class OrderService {
     return { orders, latestTimestamp }
   }
 
+  async countActiveKitchenOrders(restaurantId: string): Promise<number> {
+    const startOfDay = moment().tz('Asia/Bangkok').startOf('day').toDate();
+
+    return this.prisma.order.count({
+      where: {
+        restaurantId,
+        status: { in: [OrderStatus.sent, OrderStatus.accepted] },
+        orderAt: { gte: startOfDay },
+      },
+    });
+  }
+
   async findOneOrder(orderId: string, orderSecret?: string) {
     try {
       const order = await this.prisma.safeRead(() =>
@@ -239,7 +251,7 @@ export class OrderService {
   async updateOrderPaymentTx(tx: Prisma.TransactionClient, orderId: string, paymentStatus: PaymentStatus, paymentSlipImg?: string, paymentGatewayStatus?: string, transactionId?: string, paidAt?: Date) {
     const existing = await tx.order.findUnique({ where: { orderId } });
     if (!existing) throw new NotFoundException("ไม่พบออเดอร์");
-    if (existing.paymentGatewayStatus === "verified") return existing;
+    if (existing.paymentStatus === PaymentStatus.paid || existing.paymentGatewayStatus === "verified") return existing;
 
     try {
       return await tx.order.update({

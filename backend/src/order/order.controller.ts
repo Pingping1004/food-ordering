@@ -55,6 +55,13 @@ export class OrderController {
   }
 
   @Public()
+  @Get('active-count/:restaurantId')
+  async countActiveKitchenOrders(@Param('restaurantId') restaurantId: string) {
+    const count = await this.orderService.countActiveKitchenOrders(restaurantId);
+    return { activeOrderCount: count };
+  }
+
+  @Public()
   @Get(':orderId')
   async findOneOrder(@Param('orderId') orderId: string, @Headers('x-order-secret') orderSecret: string) {
     return this.orderService.findOneOrder(orderId, orderSecret);
