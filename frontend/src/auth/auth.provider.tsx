@@ -5,17 +5,9 @@ import { AuthContext } from "@/context/Authcontext"
 import { loginApi, logoutApi } from "./auth.service"
 import { parseLoginErrorMessage } from "./auth.utils"
 import { toastDanger } from "@/components/ui/Toast"
-import { clearTokens, setAccessToken } from "@/lib/token"
+import { clearTokens } from "@/lib/token"
 import { useRouter } from "next/navigation"
-import {
-    attachTabVisibleTokenCatchUp,
-    checkSessionValidity,
-    clearRefresh,
-    detachTabVisibleTokenCatchUp,
-    initSession,
-    scheduleRefresh,
-} from "./auth.session"
-import { handleTokenRefresh } from "@/lib/api"
+import { initSession } from "./auth.session"
 import { User } from "./auth.types"
 import { startInactivityWatcher, stopInactivityWatcher } from "@/lib/inactivity"
 
@@ -31,36 +23,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         toastDanger(message)
     }, []);
 
-    const handleLogoutSideEffects = useCallback((showAlert: boolean = false) => {
-        localStorage.removeItem('accessToken');
+    const handleLogoutSideEffects = useCallback(({ showAlert = false, redirectUrl = '' }: { showAlert?: boolean; redirectUrl?: string } = {}) => {
         clearTokens();
         setUser(null);
 
         if (showAlert) toastDanger('เซสชันหมดอายุ กรุณาล็อกอินใหม่อีกครั้ง');
 
-        router.push('/login');
+        if (redirectUrl) router.push(redirectUrl);
     }, [router]);
 
     const logout = useCallback(async () => {
-        await logoutApi()
-        handleLogoutSideEffects(true);
+        try {
+            await logoutApi();
+        } finally {
+            handleLogoutSideEffects({ showAlert: false, redirectUrl: '/login' });
+        }
     }, [handleLogoutSideEffects]);
 
     useEffect(() => {
         if (!user) {
             stopInactivityWatcher();
-            clearRefresh();
-            detachTabVisibleTokenCatchUp();
             return;
         }
-
-        const refreshAccessToken = async () => {
-            await handleTokenRefresh();
-        };
-        const onRefreshFailed = () => handleLogoutSideEffects(true);
-
-        scheduleRefresh(refreshAccessToken, onRefreshFailed);
-        attachTabVisibleTokenCatchUp(refreshAccessToken, onRefreshFailed);
 
         startInactivityWatcher({
             onLogout: () => {
@@ -72,8 +56,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         return () => {
             stopInactivityWatcher();
-            clearRefresh();
-            detachTabVisibleTokenCatchUp();
         };
     }, [user, logout, handleLogoutSideEffects]);
 
@@ -105,9 +87,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const login = useCallback(async (email: string, password: string): Promise<User> => {
         try {
-            const { accessToken, user } = await loginApi(email, password)
+            const { user } = await loginApi(email, password)
 
-            setAccessToken(accessToken)
             setUser(user)
 
             return user;
@@ -122,11 +103,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             try {
                 const user = await initSession();
                 setUser(user || null);
-
-                if (user) {
-                    const isValid = await checkSessionValidity();
-                    if (!isValid) handleLogoutSideEffects(true);
-                }
             } catch {
                 setUser(null)
             } finally {
@@ -136,7 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         init()
-    }, [handleLogoutSideEffects]);
+    }, []);
 
     const value = useMemo(() => ({
         user,

@@ -1,5 +1,5 @@
 import axios, { AxiosRequestConfig, AxiosError, AxiosHeaders } from "axios";
-import { setAccessToken, clearTokens, removeAccessToken, clearCsrfToken, fetchOrGetCsrfToken, getAccessToken } from "./token";
+import { clearTokens, clearCsrfToken, fetchOrGetCsrfToken } from "./token";
 import { logoutApi } from "@/auth/auth.service";
 
 type ApiErrorResponse = {
@@ -29,9 +29,10 @@ const forcedLogout = async () => {
     try {
         await logoutApi();
     } finally {
-        removeAccessToken();
         clearTokens();
-        window.location.href = "/login";
+        if (typeof window !== 'undefined' && window.location.pathname !== "/login") {
+            window.location.href = "/login";
+        }
     }
 };
 
@@ -105,15 +106,6 @@ export const requestInterceptor = api.interceptors.request.use(
             config.headers.set('X-CSRF-TOKEN', csrfToken);;
         }
 
-        const accessToken = getAccessToken();
-        if (accessToken) {
-            if (!config.headers) config.headers = new axios.AxiosHeaders();
-            else if (!(config.headers instanceof AxiosHeaders)) {
-                config.headers = AxiosHeaders.from(config.headers);
-            }
-            config.headers.set('Authorization', `Bearer ${accessToken}`);
-        }
-
         return config;
     },
     (error) => Promise.reject(normalizeError(error))
@@ -124,37 +116,16 @@ interface CustomAxiosRequestConfig extends AxiosRequestConfig {
     _skipAuth?: boolean;
 }
 
-export async function handleTokenRefresh(): Promise<{ accessToken?: string }> {
+export async function handleTokenRefresh(): Promise<void> {
     try {
-        const response = await api.post('/auth/refresh', {}, {
+        await api.post('/auth/refresh', {}, {
             headers: { skipAuth: 'true' }
         });
-
-        // const { accessToken } = response.data;
-        const accessToken = response.data.accessToken as string | undefined;
-        setAccessToken(accessToken);
-
-        return { accessToken };
     } catch (err: unknown) {
         clearTokens();
         return Promise.reject(normalizeError(err));
     } finally {
         isRefreshing = false;
-    }
-}
-
-function updateAuthHeader(request: CustomAxiosRequestConfig, token: string) {
-    if (request.headers instanceof axios.AxiosHeaders) {
-        request.headers.set('Authorization', `Bearer ${token}`);
-    } else if (request.headers) {
-        request.headers = {
-            ...(request.headers as Record<string, string>),
-            Authorization: `Bearer ${token}`,
-        };
-    } else {
-        request.headers = new axios.AxiosHeaders({
-            Authorization: `Bearer ${token}`
-        });
     }
 }
 
@@ -170,10 +141,9 @@ async function handleTokenRefresh401(originalRequest: CustomAxiosRequestConfig) 
     isRefreshing = true;
 
     try {
-        const { accessToken: newAccessToken } = await handleTokenRefresh();
+        await handleTokenRefresh();
 
         processQueue(null);
-        if (newAccessToken) updateAuthHeader(originalRequest, newAccessToken);
         return;
     } catch (refreshError) {
         processQueue(refreshError);
@@ -221,7 +191,6 @@ api.interceptors.response.use(
         if (isLoginRequest) return Promise.reject(normalizeError(error));
         if (!isUnauthorized) return Promise.reject(normalizeError(error));
         if (hasSkipAuth) {
-            await forcedLogout();
             return Promise.reject(normalizeError(error));
         }
         if (isRefreshRequest) {
@@ -255,7 +224,6 @@ api.interceptors.response.use(
     }
 );
 
-// call this after login to pre-fetch CSRF token
 export async function fetchCsrfToken(): Promise<void> {
     clearCsrfToken();
     await fetchOrGetCsrfToken(async () => {
