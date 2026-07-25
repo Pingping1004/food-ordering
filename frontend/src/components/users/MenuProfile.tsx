@@ -75,15 +75,15 @@ export default function MenuProfile({
             </div>
 
             <div className="flex flex-col gap-y-2 w-full">
-                <h3 className="font-noto-thai text-bold text-sm text-primary">{name}</h3>
+                <h3 className="font-noto-thai font-semibold text-base text-primary">{name}</h3>
                 <div className="flex justify-between items-center text-sm">
                     <p className="text-light font-noto-thai">{sellPriceDisplay} บาท</p>
 
-                    <div className="flex items=center gap-x-2">
+                    <div className="flex items-center gap-x-1">
                         <Button
                             type="button"
                             size="sm"
-                            variant="secondarySuccess"
+                            variant="secondary"
                             onClick={() => removeFromCart(menuId)}
                         >
                             -
@@ -92,7 +92,7 @@ export default function MenuProfile({
                         <Button
                             type="button"
                             size="sm"
-                            variant="success"
+                            variant="primary"
                             onClick={() => addToCart(menuId, name, sellPriceDisplay, menuImg, isAvailable, restaurantId)}
                         >
                             +

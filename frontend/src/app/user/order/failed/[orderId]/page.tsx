@@ -20,6 +20,10 @@ export default function FailedOrderPage() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
+        localStorage.removeItem('activeOrderId');
+    }, []);
+
+    useEffect(() => {
         const fetchData = async () => {
             try {
                 const orderSecret = localStorage.getItem(`orderSecret:${orderId}`)
@@ -60,7 +64,7 @@ export default function FailedOrderPage() {
             </div>
 
             <section className="flex flex-col justify-between gap-y-6">
-                <p className="font-noto-thai text-bold text-lg text-primary">รายละเอียดออเดอร์</p>
+                <p className="font-bold text-lg text-primary">รายละเอียดออเดอร์</p>
                 <div>
                     {order.orderMenus.map((item) => (
                         <div key={item.menuName} className="flex justify-between gap-y-2">
