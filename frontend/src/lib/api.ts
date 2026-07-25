@@ -21,7 +21,7 @@ let failedQueue: {
     reject: (reason?: unknown) => void;
 }[] = [];
 
-let isLoggingOut = false
+let isLoggingOut = false;
 const forcedLogout = async () => {
     if (isLoggingOut) return;
     isLoggingOut = true;
@@ -30,8 +30,11 @@ const forcedLogout = async () => {
         await logoutApi();
     } finally {
         clearTokens();
-        if (typeof window !== 'undefined' && window.location.pathname !== "/login") {
-            window.location.href = "/login";
+        if (typeof window !== 'undefined') {
+            const publicPaths = ["/", "/login", "/signup"];
+            if (!publicPaths.includes(window.location.pathname)) {
+                window.location.href = "/login";
+            }
         }
     }
 };
