@@ -45,6 +45,10 @@ export default function DoneOrderPage() {
     const { data: cooker} = useCooker(restaurantId);
 
     useEffect(() => {
+        localStorage.removeItem('activeOrderId');
+    }, []);
+
+    useEffect(() => {
         const fetchData = async () => {
             try {
                 const orderSecret = localStorage.getItem(`orderSecret:${orderId}`)
@@ -85,7 +89,7 @@ export default function DoneOrderPage() {
 
         fetchData();
         fetchOrderAmnout();
-    }, [orderId, router]);
+    }, [orderId, router, cooker?.restaurantId]);
 
     if (loading) return <LoadingPage />
     if (!order) return <div>ไม่พบออเดอร์ของคุณ</div>;
