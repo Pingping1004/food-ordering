@@ -40,11 +40,10 @@ export class PaymentService {
     ) { }
 
     async verifyPayment(dto: CreatePaymentDto, orderSecret: string) {
-        this.logger.log(`OrderSecret in payment service: ${orderSecret}`)
         const { idempotencyKey, orderId, paymentSlipImg } = dto;
 
         const order = await this.orderService.findOneOrder(orderId, orderSecret);
-        const { name, accountNumber, bankAccount, accountHolderFullName } = await this.restaurantService.findRestaurant(order.restaurantId);
+        const { name, accountNumber, bankAccount } = await this.restaurantService.findRestaurant(order.restaurantId);
 
         if (!process.env.SLIP_VERIFY_SECRET) throw new NotFoundException("SLIP_VERIFY_SECRET key missing");
         if (order.orderSecret !== orderSecret) throw new UnauthorizedException("ไม่สามารถเข้าถึงออเดอร์ได้");
@@ -150,6 +149,8 @@ export class PaymentService {
                     await this.payoutService.updatePayoutTx(tx, payout.payoutId, orderId, idempotencyKey, transactionId, "success", paidAt)
                 });
             } catch (error) {
+                this.logger.warn(`Payment DB transaction failed for order ${orderId}: ${error instanceof Error ? error.message : String(error)}`,);
+
                 const existing = await this.payoutService.findPayoutByIdempotencyKey(idempotencyKey, orderId);
 
                 if (!existing) throw error;
