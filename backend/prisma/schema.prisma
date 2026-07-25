@@ -46,7 +46,7 @@ model Payout {
   paidAt            DateTime?
   refundAt          DateTime?
   createdAt         DateTime   @default(now())
-  updatedAt            DateTime    @updatedAt
+  updatedAt         DateTime    @updatedAt
   orderId           String     @unique
   restaurantName    String
   restaurantId      String
@@ -69,7 +69,9 @@ model Restaurant {
   openTime            String
   closeTime           String
   avgCookingTime      Int
+  maxActiveOrder      Int?                @default(15)
   isApproved          Boolean             @default(false)
+  isAutoAcceptedOrder          Boolean             @default(false)
   adminName           String
   adminSurname        String
   adminTel            String
@@ -182,6 +184,9 @@ model Order {
   @@index([orderAt])
   @@index([payoutId])
   @@index([userTel])
+
+  @@index([status, paymentStatus, acceptAt])
+  @@index([status, paymentStatus, orderAt])
 }
 
 model User {
@@ -220,6 +225,24 @@ model DeviceToken {
   pushDeliveries PushDelivery[]
 
   @@index([userId, isActive])
+}
+
+model Events {
+  eventId               String        @id @default(uuid())
+  name                  EventName
+  source                EventSource
+  userId                String?
+  restaurantId          String?
+  metadata              Json?
+  createdAt             DateTime      @default(now())
+
+  @@index([restaurantId])
+  @@index([userId])
+  @@index([name])
+  @@index([source])
+  @@index([createdAt])
+  @@index([restaurantId, createdAt])
+  @@index([name, createdAt])
 }
 
 model PushNotificationJob {
@@ -364,4 +387,42 @@ enum RestaurantCategory {
   Appetizer
   Noodle
   Dessert
+}
+
+enum EventName {
+  landing_page_viewed
+  restaurant_viewed
+  menu_viewed
+  item_added
+  checkout_started
+  order_submitted
+
+  order_accepted
+  order_rejected
+  order_paid
+  order_cancelled
+  order_completed
+  order_delayed
+  order_expired
+  order_auto_accepted
+  order_auto_rejected
+  order_auto_cancelled
+  menu_out_of_stock
+  queue_limit_reached
+  restaurant_closed
+  restaurant_reopened
+
+  websocket_disconnected
+  websocket_reconnected
+  api_request_failed
+  duplicate_order_detected
+  payment_verification_failed
+}
+
+enum EventSource {
+  student_web
+  restaurant_cms
+  admin_panel
+  backend_system
+  cron_job
 }

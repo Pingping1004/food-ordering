@@ -12,8 +12,17 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
     if (!connectionString) throw new Error("DATABASE_URL missing");
 
+    const logger = new Logger(PrismaService.name);
+    logger.log(`Connecting to: ${connectionString.replace(/:[^@]+@/, ':***@')}`);
+
     const pool = new Pool({
-      connectionString
+      connectionString,
+      // Transaction Pooler (port 6543): PgBouncer releases server connections
+      // after each transaction. PgBouncer handles pooling server-side.
+      max: 10,
+      idleTimeoutMillis: 20000,
+      connectionTimeoutMillis: 15000,
+      ssl: { rejectUnauthorized: false },
     });
 
     const adapter = new PrismaPg(pool)
@@ -54,7 +63,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       if (retries > 0 && retryable) {
         this.logger.warn(`Retrying DB query... (${retries} left)`);
 
-        await this.$disconnect(); // 🔥 critical
+        await this.$disconnect();
 
         await new Promise(r => setTimeout(r, 300));
 
