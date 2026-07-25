@@ -1,4 +1,4 @@
-function estimateDelayBufferFromOrderAmount(orderAmount: number) {
+export function estimateDelayBufferFromOrderAmount(orderAmount: number) {
     if (orderAmount >= 15) {
         return 15;
     } else if(orderAmount >= 10) {
@@ -20,4 +20,3 @@ export function esimatedDeliveryTimeRange(avgCookingTime: number, orderAmount: n
 
     return { min: minimumAllowedDeliverTime, max: maxEstimatedDeliverTime };
 }
-// Make this estimate function to get both min and max estimated time by packing the logic inside this function

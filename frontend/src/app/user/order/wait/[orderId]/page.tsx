@@ -88,11 +88,6 @@ function OrderWaitPage() {
     };
 
     useEffect(() => {
-        if (!orderId) {
-            router.replace("/user/restaurant");
-            return;
-        }
-    
         const orderSecret = localStorage.getItem(`orderSecret:${orderId}`);
         orderSecretRef.current = orderSecret;
     

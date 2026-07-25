@@ -3,30 +3,6 @@ import Cookies from 'js-cookie';
 let csrfTokenMemory: string | null = null;
 let csrfFetchPromise: Promise<string> | null = null;
 
-export const getAccessToken = (): string | null => {
-    const token = localStorage.getItem('accessToken');
-    if (!token) return null;
-
-    const normalized = token.trim().toLowerCase();
-    if (normalized === 'undefined' || normalized === 'null') {
-        localStorage.removeItem('accessToken');
-        return null;
-    }
-
-    return token;
-};
-
-export const setAccessToken = (token: string | undefined): void => {
-    if (token && token.trim() && token !== 'undefined' && token !== 'null') {
-        localStorage.setItem('accessToken', token);
-    } else {
-        localStorage.removeItem('accessToken')
-    }
-};
-
-export const removeAccessToken = (): void => {
-    localStorage.removeItem('accessToken');
-};
 
 export const getRefreshToken = (): string | null => {
     return Cookies.get('refresh_token') || null;
@@ -76,7 +52,6 @@ export const fetchOrGetCsrfToken = (
 };
 
 export const clearTokens = (): void => {
-    localStorage.removeItem('accessToken');
     Cookies.remove('refresh_token');
     Cookies.remove('XSRF-TOKEN');
     clearCsrfToken();

@@ -53,7 +53,12 @@ body {
     --color-primary-main: #006CFE;
     --color-primary-light: #E0E8F6;
     --color-success-main: #45B858;
-    --color-success-light: #E3F4E6
+    --color-success-light: #E3F4E6;
+    --color-brand-dark: #1c1c1c;
+    --color-brand-light: #FFFBF5;
+    --color-brand-orange: #FF5C1A;
+    --color-brand-muted: #71717A;
+    --color-brand-green: #16A34A;
 }
 
 @media (max-width: 389px) {

@@ -83,7 +83,7 @@ export default function UserHeader() {
 
     return (
         <header className="flex justify-between items-center">
-            <h1 className="font-noto-thai text-bold text-xl">วันนี้กินอะไรดี?</h1>
+            <h1 className="font-noto-thai font-bold text-xl">วันนี้กินอะไรดี?</h1>
 
             {user ? (
                 <div className="flex justify-between gap-x-2">
