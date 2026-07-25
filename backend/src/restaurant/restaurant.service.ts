@@ -12,12 +12,15 @@ import moment from 'moment-timezone';
 import { UploadService } from 'src/upload/upload.service';
 import { clearRestaurantCache, getRestaurantCache, OpenRestaurant, RestaurantCache, setRestaurantCache } from './restaurantCache';
 import { DEFAULT_FALLBACK_IMG_URL } from 'src/constant/image';
+import { AnalyticsService } from 'src/analytics/analytics.service';
+import { EventName, EventSource } from '@prisma/client';
 
 @Injectable()
 export class RestaurantService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly uploadService: UploadService,
+    private readonly analyticsService: AnalyticsService,
   ) { }
 
   private readonly logger = new Logger('RestaurantService');
@@ -367,6 +370,22 @@ export class RestaurantService {
       clearRestaurantCache(`restaurants:all`)
       clearRestaurantCache("restaurants:open")
 
+      if (updateRestaurantDto.isTemporarilyClosed === true) {
+        await this.analyticsService.trackEvent({
+          name: EventName.restaurant_closed,
+          source: EventSource.restaurant_cms,
+          restaurantId,
+        });
+      }
+      
+      if (updateRestaurantDto.isTemporarilyClosed === false) {
+        await this.analyticsService.trackEvent({
+          name: EventName.restaurant_reopened,
+          source: EventSource.restaurant_cms,
+          restaurantId,
+        });
+      }
+
       return {
         result,
         message: `อัพเดทสถานะเปิด/ปิดชั่วคราวของร้านอาหาร ${result.name} เป็น ${result.isTemporarilyClosed} สำเร็จ`,
@@ -374,6 +393,32 @@ export class RestaurantService {
     } catch (error) {
       this.logger.error('Failed to update temporary close status of restaurant', error.message, error.stack);
       throw error
+    }
+  }
+
+  async updateIsAutoAcceptedOrder(
+    restaurantId: string,
+    updateRestaurantDto: UpdateRestaurantDto,
+  ) {
+    try {
+      const result = await this.prisma.restaurant.update({
+        where: { restaurantId },
+        data: { isAutoAcceptedOrder: updateRestaurantDto.isAutoAcceptedOrder },
+      });
+
+      this.requestVersion.set(`restaurant:${restaurantId}`, Date.now());
+      this.requestVersion.set(`restaurants:all`, Date.now());
+
+      clearRestaurantCache(`restaurant:${restaurantId}`);
+      clearRestaurantCache(`restaurants:all`);
+
+      return {
+        result,
+        message: `อัพเดทสถานะรับออเดอร์อัตโนมัติของร้านอาหาร ${result.name} เป็น ${result.isAutoAcceptedOrder} สำเร็จ`,
+      };
+    } catch (error) {
+      this.logger.error('Failed to update auto accept order status of restaurant', error.message, error.stack);
+      throw error;
     }
   }
 

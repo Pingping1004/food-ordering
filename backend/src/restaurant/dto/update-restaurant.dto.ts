@@ -36,7 +36,11 @@ export class UpdateRestaurantDto {
 
   @IsBoolean()
   @IsOptional()
-  isTemporarilyClosed: boolean;
+  isTemporarilyClosed?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  isAutoAcceptedOrder?: boolean;
 
   @IsOptional()
   @IsEnum(RestaurantCategory, { each: true })

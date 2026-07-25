@@ -6,13 +6,14 @@ import { useParams } from 'next/navigation';
 import { Button } from '@/components/Button';
 import { useAuth } from '@/auth/auth.hooks';
 import CookerHeader from '@/components/cookers/CookerHeader';
-import { useCooker, useToggleRestaurantClosed } from '@/hook/useCooker';
+import { useCooker, useToggleRestaurantClosed, useToggleRestaurantAutoAccept } from '@/hook/useCooker';
 
 function Page() {
     const params = useParams();
     const restaurantId = (params.restaurantId) as string;
     const { data: cooker } = useCooker(restaurantId);
-    const { mutate: toggleClosed, isPending: isPatching } = useToggleRestaurantClosed(restaurantId)
+    const { mutate: toggleClosed, isPending: isPatching } = useToggleRestaurantClosed(restaurantId);
+    const { mutate: toggleAutoAccept, isPending: isPatchingAutoAccept } = useToggleRestaurantAutoAccept(restaurantId);
     const { logout } = useAuth();
     const [error,] = useState(null);
 
@@ -22,7 +23,15 @@ function Page() {
           toggleClosed(newIsTemporarilyClosed);
         },
         [toggleClosed]
-      );
+    );
+
+    const toggleAutoAcceptState = cooker?.isAutoAcceptedOrder;
+    const handleAutoAcceptChange = useCallback(
+        (newIsAutoAcceptedOrder: boolean) => {
+          toggleAutoAccept(newIsAutoAcceptedOrder);
+        },
+        [toggleAutoAccept]
+    );
 
     if (!cooker) return <div>Loading restaurant profile...</div>
     if (error) return <div>Error</div>
@@ -43,6 +52,16 @@ function Page() {
                     disabled={isPatching}
                     label=""
                     onCheckedChange={handleRestaurantAvailabilityChange}
+                />
+            </div>
+            <div className="flex items-center justify-center gap-x-2">
+                <p className="font-noto-thai text-primary ">รับออเดอร์อัตโนมัติ</p>
+                <Toggle
+                    id={`auto-accept-${restaurantId}`}
+                    checked={toggleAutoAcceptState || false}
+                    disabled={isPatchingAutoAccept}
+                    label=""
+                    onCheckedChange={handleAutoAcceptChange}
                 />
             </div>
             <Button

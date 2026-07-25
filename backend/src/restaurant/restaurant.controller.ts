@@ -119,6 +119,16 @@ export class RestaurantController {
   }
 
   @Roles([Role.user, Role.admin, Role.cooker])
+  @Patch('auto-accepted/:restaurantId')
+  async updateIsAutoAcceptedOrder(
+    @Param('restaurantId') restaurantId: string,
+    @Body() updateRestaurantDto: UpdateRestaurantDto,
+  ) {
+    const updateData = await this.restaurantService.updateIsAutoAcceptedOrder(restaurantId, updateRestaurantDto);
+    return updateData;
+  }
+
+  @Roles([Role.user, Role.admin, Role.cooker])
   @Delete(':restaurantId')
   async deleteRestaurant(@Param('restaurantId') restaurantId: string) {
     return await this.restaurantService.removeRestaurant(restaurantId);

@@ -10,12 +10,14 @@ import { MenuModule } from 'src/menu/menu.module';
 import { InventoryModule } from 'src/inventory/inventory.module';
 import { RestaurantModule } from 'src/restaurant/restaurant.module';
 import { NotificationModule } from 'src/notification/notification.module';
+import { AnalyticsModule } from 'src/analytics/dto/analytics.module';
 
 @Module({
   imports: [
     forwardRef(() => PayoutModule), 
     CsrfModule, 
     UserModule, 
+    AnalyticsModule,
     forwardRef(() => MenuModule), 
     forwardRef(() => InventoryModule), 
     forwardRef(() => RestaurantModule),

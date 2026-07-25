@@ -13,6 +13,7 @@ export interface Cooker extends Restaurant {
     closeTime: string;
     avgCookingTime: number;
     isTemporarilyClosed: boolean;
+    isAutoAcceptedOrder: boolean;
     isApproved: boolean;
 }
 
@@ -75,4 +76,35 @@ export function useToggleRestaurantClosed(restaurantId: string) {
         queryClient.invalidateQueries({ queryKey });
       },
     });
-  }
+}
+
+export function useToggleRestaurantAutoAccept(restaurantId: string) {
+    const queryClient = useQueryClient();
+    const queryKey = cookerQueryKey(restaurantId);
+  
+    return useMutation({
+      mutationFn: async (isAutoAcceptedOrder: boolean) => {
+        const res = await api.patch(`restaurant/auto-accepted/${restaurantId}`, {
+            isAutoAcceptedOrder,
+        });
+        return res.data as Pick<Cooker, 'isAutoAcceptedOrder'>;
+      },
+      onMutate: async (isAutoAcceptedOrder) => {
+        await queryClient.cancelQueries({ queryKey });
+
+        const previous = queryClient.getQueryData<Cooker>(queryKey);
+        
+        queryClient.setQueryData<Cooker>(queryKey, (prev) =>
+          prev ? { ...prev, isAutoAcceptedOrder } : prev
+        );
+
+        return { previous };
+      },
+      onError: (_err, _vars, ctx) => {
+        queryClient.setQueryData(queryKey, ctx?.previous);
+      },
+      onSettled: () => {
+        queryClient.invalidateQueries({ queryKey });
+      },
+    });
+}
