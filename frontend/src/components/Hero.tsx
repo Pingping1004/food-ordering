@@ -31,7 +31,7 @@ export default function Hero() {
               ข้ามคิวไปเลย<br />
               ด้วยการ<span className="text-gradient">สั่งล่วงหน้า</span><br />
               <span className="relative inline-block">
-                ไม่ต้องรอ
+                {"ไม่ต้องรอ"}
                 <svg className="absolute -bottom-1 left-0 w-full" viewBox="0 0 200 12" fill="none">
                   <path d="M2 8 Q50 2 100 8 Q150 14 198 8" stroke="#FFD700" strokeWidth="3" strokeLinecap="round" fill="none"/>
                 </svg>
@@ -135,7 +135,7 @@ export default function Hero() {
               <div className="absolute -left-12 top-20 bg-white rounded-2xl shadow-xl px-3 py-2 flex items-center gap-2 animate-float-delayed">
                 <span className="text-lg">⚡</span>
                 <div>
-                  <div className="text-xs font-bold text-slate-900">ประหยัดเวลา 18 นาที</div>
+                  <div className="text-xs font-bold text-slate-900">ประหยัดเวลา 10+ นาที</div>
                   <div className="text-[10px] text-slate-500">วันนี้</div>
                 </div>
               </div>

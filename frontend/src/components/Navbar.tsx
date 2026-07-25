@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
@@ -19,9 +20,7 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <a href="#" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 bg-primary-main rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform">
-              <span className="text-white font-display font-bold text-sm">P</span>
-            </div>
+            <Image src="/favicon.svg" alt="PromptServe Logo" width={32} height={32} className="w-8 h-8 group-hover:scale-105 transition-transform" />
             <span className="font-display font-bold text-lg text-slate-900">PromptServe</span>
           </a>
 

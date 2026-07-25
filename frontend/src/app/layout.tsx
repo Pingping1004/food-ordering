@@ -24,8 +24,8 @@ export const metadata: Metadata = {
     title: "Promptserve",
     manifest: "/manifest.json",
     icons: {
-        icon: "/favicon.svg",
-        apple: "/favicon.svg",
+        icon: "/favicon.svg?v=2",
+        apple: "/favicon.svg?v=2",
     },
     description: "Have your meal with no deailing with queue",
     appleWebApp: {
