@@ -9,15 +9,15 @@ const withBundleAnalyzer = bundleAnalyzer({
 
 /** @type {import('next').NextConfig} */
 const nextConfig: NextConfig = {
-    async redirects() {
-        return [
-            {
-                source: '/',
-                destination: '/login',
-                permanent: true,
-            },
-        ];
-    },
+    // async redirects() {
+    //     return [
+    //         {
+    //             source: '/',
+    //             destination: '/',
+    //             permanent: true,
+    //         },
+    //     ];
+    // },
 
     async rewrites() {
         return [
