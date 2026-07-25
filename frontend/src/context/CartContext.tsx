@@ -18,6 +18,7 @@ type CartContextType = {
     removeFromCart: (menuId: string) => void;
     getQuantity: (menuId: string) => number;
     clearCart: () => void;
+    hydrated: boolean;
 };
 
 const CartContext = createContext<CartContextType | null>(null);
@@ -97,8 +98,8 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     }, [cart]);
 
     const contextValue = useMemo(() => ({
-        cart, addToCart, removeFromCart, getQuantity, clearCart
-    }), [cart, addToCart, removeFromCart, getQuantity, clearCart]);
+        cart, addToCart, removeFromCart, getQuantity, clearCart, hydrated
+    }), [cart, addToCart, removeFromCart, getQuantity, clearCart, hydrated]);
 
     return (
         <CartContext.Provider
