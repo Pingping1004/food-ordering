@@ -132,7 +132,7 @@ function OrderPaymentPage() {
         } finally {
             sessionStorage.removeItem(expireLockKey);
         }
-    }, [orderId]);
+    }, [orderId, router]);
 
     useEffect(() => {
         if (!isSubmitting) return;

@@ -122,7 +122,7 @@ function OrderConfirmContext() {
                 } else {
                     localStorage.removeItem('activeOrderId');
                 }
-            } catch (error) {
+            } catch {
                 localStorage.removeItem('activeOrderId');
             }
         };

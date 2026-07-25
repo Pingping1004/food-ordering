@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import { Button } from "../Button";
 import { cva } from "class-variance-authority";
 import clsx from "clsx";
