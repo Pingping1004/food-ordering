@@ -25,7 +25,10 @@ import {
 } from './rateLimiting.middleware';
 import './auth/jobs/tokenClean.job';
 
-dotenv.config();
+// Load env BEFORE NestJS boots — PrismaService reads DATABASE_URL
+// in its constructor, before ConfigModule has a chance to run.
+const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.local';
+dotenv.config({ path: envFile });
 declare global {
   namespace Express {
     interface Request {
