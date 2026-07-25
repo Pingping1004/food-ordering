@@ -73,14 +73,6 @@ export class OrderController {
     return this.orderService.getOrdersAfterTimeStamp(restaurantId, timestamp)
   }
 
-  @Patch(':orderId')
-  async updateOrder(
-    @Param('orderId') orderId: string,
-    @Body() updateOrderDto: UpdateOrderDto,
-  ) {
-    return this.orderService.updateOrder(orderId, updateOrderDto);
-  }
-
   @Patch('delay/:orderId')
   async updateDelay(
     @Param('orderId') orderId: string,
@@ -97,6 +89,14 @@ export class OrderController {
     if (!orderId) throw new NotFoundException("ไม่พบออเดอร์ไอดี")
 
     return this.orderService.cancelOrder(orderId, orderSecret);
+  }
+
+  @Public()
+  @Patch('expire/:orderId')
+  async expireOrder(@Param('orderId') orderId: string, @Body('orderSecret') orderSecret: string) {
+    if (!orderId) throw new NotFoundException("ไม่พบออเดอร์ไอดี")
+
+    return this.orderService.expireOrder(orderId, orderSecret);
   }
 
   @Patch('reject/:orderId')

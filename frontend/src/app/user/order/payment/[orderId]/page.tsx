@@ -50,6 +50,7 @@ function OrderPaymentPage() {
     const [order, setOrder] = useState<Order>();
     const failedCountRef = useRef(0);
     const hasRedirectedRef = useRef(false);
+    const hasExpiredRef = useRef(false);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -100,17 +101,54 @@ function OrderPaymentPage() {
     }, [orderId, setValue]);
 
     const handleExpire = useCallback(async () => {
+        console.log("handleExpire is activated");
+        if (!orderId || hasExpiredRef.current) {
+            console.log("No orderId or hasExpiredRef")
+            return
+        };
+
+        const expireLockKey = `orderExpireRequested:${orderId}`;
+        const isRequesting = sessionStorage.getItem(expireLockKey);
+
+        if (isRequesting) {
+            console.log("Already requesting expire for orderId:", orderId);
+            return;
+        }
+
+        sessionStorage.setItem(expireLockKey, 'true');
         setExpired(true);
+        hasExpiredRef.current = true;
+
         try {
             const orderSecret = localStorage.getItem(`orderSecret:${orderId}`)
-            await api.patch(`/order/cancel/${orderId}`, {
-                orderSecret: orderSecret
+            await api.patch(`/order/expire/${orderId}`, {}, {
+                headers: { "x-order-secret": orderSecret }
             });
-        } catch { }
 
-        toastDanger("หมดเวลาในการชำระเงิน")
-        setTimeout(() => { router.push(`/user/order/failed/${orderId}`) }, 2000);
-    }, [orderId, router])
+            toastDanger("หมดเวลาชำระเงิน");
+            router.replace(`/user/order/failed/${orderId}`);
+        } catch (error) {
+            console.error("Error setting order to expired:", error);
+        } finally {
+            sessionStorage.removeItem(expireLockKey);
+        }
+    }, [orderId]);
+
+    useEffect(() => {
+        if (!isSubmitting) return;
+
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            e.preventDefault();
+            e.returnValue = "ระบบกำลังตรวจสอบการชำระเงิน คุณต้องการออกจากหน้านี้หรือไม่?";
+            return e.returnValue;
+        };
+
+        window.addEventListener("beforeunload", handleBeforeUnload);
+
+        return () => {
+            window.removeEventListener("beforeunload", handleBeforeUnload);
+        };
+    }, [isSubmitting]);
 
     useEffect(() => {
         return () => {
@@ -144,6 +182,7 @@ function OrderPaymentPage() {
 
             if (expired) {
                 toastDanger("หมดเวลาแล้ว");
+                router.replace(`/user/order/failed/${orderId}`);
                 return;
             }
 
@@ -160,13 +199,27 @@ function OrderPaymentPage() {
             }
 
             const orderSecret = localStorage.getItem(`orderSecret:${orderId}`)
-            await api.post(`/payment/verify`, orderPaymentPayload,
+            const { data: verifyResult } = await api.post<{ success: boolean; retry?: boolean; status?: string }>(
+                `/payment/verify`,
+                orderPaymentPayload,
                 {
                     headers: {
                         'x-order-secret': orderSecret
                     }
                 }
             );
+
+            if (!verifyResult?.success) {
+                if (verifyResult?.retry) {
+                    toastDanger("บันทึกการชำระเงินไม่สำเร็จ กรุณาลองส่งสลิปอีกครั้ง");
+                } else if (verifyResult?.status === "initiated" || verifyResult?.status === "processing") {
+                    toastDanger("ระบบกำลังตรวจสอบสลิป กรุณารอสักครู่");
+                } else {
+                    toastDanger("การชำระเงินไม่สำเร็จ");
+                }
+                setIsFailed(true);
+                return;
+            }
 
             toastSuccess("ชำระเงินสำเร็จ");
 
@@ -215,7 +268,6 @@ function OrderPaymentPage() {
 
         reader.onloadend = () => {
             const base64 = reader.result as string;
-            // const pureBase64 = base64.split(",")[1];
 
             setValue("paymentSlipImg", base64, {
                 shouldValidate: true,

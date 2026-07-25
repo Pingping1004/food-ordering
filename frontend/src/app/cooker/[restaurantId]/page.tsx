@@ -655,6 +655,12 @@ function Page() {
         return filterDailyOrders.filter((order) => (order.status === OrderStatus.completed && order.paymentStatus === "paid" && order.completedAt)).length;
     }, [filterDailyOrders]);
 
+    const dailyRejectAndCancelled = useMemo(() => {
+        return filterDailyOrders.filter((order) => (
+            [OrderStatus.rejected, OrderStatus.cancelled].includes(order.status) && 
+            order.paymentStatus === "unpaid")).length;
+    }, [filterDailyOrders]);
+
     const dailySales = useMemo(() => {
         return filterDailyOrders.filter((order) => order.paymentStatus === "paid" && order.status === OrderStatus.completed && order.completedAt)
             .reduce((total, order) => total + Number(order.totalAmount), 0);
@@ -821,7 +827,16 @@ function Page() {
                     <div className="flex justify-between items-center">
                         <h2 className={`${isLargeTextMode ? "text-2xl" : "text-xl"} font-bold text-primary`}>ยอดขายรวม: {dailySales.toFixed(2)}</h2>
 
-                        <p className={`${isLargeTextMode ? "text-2xl" : "text-xl"} text-secondary`}>ออเดอร์วันนี้: {dailyDone}</p>
+                        <p className={`${isLargeTextMode ? "text-2xl" : "text-xl"} text-secondary`}>ออเดอร์ที่ทำเสร็จ: {dailyDone}</p>
+                    </div>
+                </section>
+            ) : ("")}
+
+            {navbarStatus === "cancelled_group" ? (
+                <section className="flex flex-col gap-y-6">
+                    <h1 className={`${isLargeTextMode ? "text-3xl" : "text-2xl"} font-bold text-primary`}>สรุปรายวัน</h1>
+                    <div className="flex justify-between items-center">
+                        <p className={`${isLargeTextMode ? "text-2xl" : "text-xl"} text-secondary`}>ออเดอร์ที่ถูกยกเลิก/ปฏิเสธ: {dailyRejectAndCancelled}</p>
                     </div>
                 </section>
             ) : ("")}
@@ -835,6 +850,7 @@ function Page() {
                         isDelay={order.isDelay}
                         status={order.status}
                         orderAt={`${getTimeFormat(order.orderAt)} ${getDateFormat(new Date(order.orderAt))}`}
+                        orderCreatedAt={order.orderAt}
                         deliverAt={order.deliverAt}
                         paymentStatus={order.paymentStatus}
                         orderMenus={order.orderMenus}

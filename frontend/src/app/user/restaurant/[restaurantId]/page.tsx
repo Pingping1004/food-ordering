@@ -10,6 +10,7 @@ import Input from '@/components/Input';
 import { useMenus } from '@/hook/useMenu';
 import LoadingPage from '@/components/LoadingPage';
 import { useCooker } from '@/hook/useCooker';
+import { api } from '@/lib/api';
 
 const MenuProfile = dynamic(() => import("../../../../components/users/MenuProfile"), { ssr: false })
 const RestaurantHeader = dynamic(() => import("@/components/users/RestaurantHeader"))
@@ -22,6 +23,7 @@ function MenuContextPage() {
     const router = useRouter();
     const alertShownRef = useRef(false);
     const [isNowOpen, setIsNowOpen] = useState<boolean>(true);
+    const [orderAmount, setOrderAmount] = useState<number>(0);
     const [searchQuery, setSearchQuery] = useState("");
 
     const { data, isLoading } = useMenus(restaurantId);
@@ -44,6 +46,15 @@ function MenuContextPage() {
             alertShownRef.current = true;
             setIsNowOpen(false);
         }
+
+        const fetchOrderAmnout = async (): Promise<void> => {
+            const orderResponse = await api.get(`order/active-count/${cooker?.restaurantId}`);
+            const data = orderResponse.data;
+    
+            setOrderAmount(data.activeOrderCount);
+        }
+    
+        fetchOrderAmnout();
     }, [cooker]);
 
     const filteredMenus = useMemo(() => {
@@ -66,6 +77,7 @@ function MenuContextPage() {
             <div className="flex flex-col gap-y-10 py-10 px-6">
                 {cooker && (
                     <RestaurantHeader
+                        orderAmount={orderAmount}
                         restaurantId={cooker?.restaurantId}
                         name={cooker?.name}
                         restaurantImg={cooker?.restaurantImg}
