@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type CountdownTimerProps = {
-    deadline: Date; // seconds
+    deadline: Date;
     onExpire?: () => void;
 }
 
@@ -15,25 +15,42 @@ const getSecondsLeft = (deadline: Date) => Math.max(0, Math.floor((deadline.getT
 
 export default function CountdownTimer({ deadline, onExpire }: CountdownTimerProps) {
     const [timeLeft, setTimeLeft] = useState(() => getSecondsLeft(deadline));
+    const hasExpiredRef = useRef(false);
+    const onExpireRef = useRef(onExpire);
 
     useEffect(() => {
-        if (timeLeft <= 0) {
-            onExpire?.();
-            return
-        }
+        onExpireRef.current = onExpire;
+    }, [onExpire]);
 
-        const interval = setInterval(() => {
+    const deadlineMsRef = useRef(deadline.getTime());
+
+    useEffect(() => {
+        if (deadlineMsRef.current !== deadline.getTime()) {
+            deadlineMsRef.current = deadline.getTime();
+            hasExpiredRef.current = false;
+        }
+        setTimeLeft(getSecondsLeft(deadline));
+
+        const fireExpireOnce = () => {
+            if (hasExpiredRef.current) return;
+            hasExpiredRef.current = true;
+            onExpireRef.current?.();
+        };
+
+        const tick = () => {
             const remaining = getSecondsLeft(deadline);
             setTimeLeft(remaining);
 
             if (remaining <= 0) {
-                clearInterval(interval)
-                onExpire?.();
+                fireExpireOnce();
             }
-        }, 1000);
+        };
 
-        return () => clearInterval(interval)
-    }, [deadline, onExpire, timeLeft]);
+        tick();
+        const interval = setInterval(tick, 1000);
+
+        return () => clearInterval(interval);
+    }, [deadline]);
 
     return (
         <div className="text-center text-xl font-semibold text-red-500">

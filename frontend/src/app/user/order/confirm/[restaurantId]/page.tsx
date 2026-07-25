@@ -31,7 +31,7 @@ const SYSTEM_BUFFER_MINS = ACCEPT_WINDOW_MINS + PAYMENT_WINDOW_MINS;
 
 const getBufferTime = (cookingTime: number): string => {
     const now = new Date();
-    const totalMins = SYSTEM_BUFFER_MINS + cookingTime;
+    const totalMins = SYSTEM_BUFFER_MINS + cookingTime + 1;
     const minimumAllowedDeliverTime = new Date(now.getTime() + totalMins * 60 * 1000);
     const hours = minimumAllowedDeliverTime.getHours().toString().padStart(2, '0');
     const minutes = minimumAllowedDeliverTime.getMinutes().toString().padStart(2, '0');
@@ -55,9 +55,8 @@ function OrderConfirmContext() {
     const restaurantId = params.restaurantId as string;
 
     const { data: cooker, isPending } = useCooker(restaurantId);
-    const { cart } = useCart();
+    const { cart, hydrated, clearCart } = useCart();
     const router = useRouter();
-    const hadCartRef = useRef(cart.length > 0);
 
     const schema = useMemo(() => createOrderSchema(cooker?.avgCookingTime ?? 0), [cooker?.avgCookingTime]);
 
@@ -100,10 +99,44 @@ function OrderConfirmContext() {
     }, [cooker, reset]);
 
     useEffect(() => {
-        if (!hadCartRef.current) {
+        const checkActiveOrder = async () => {
+            const activeOrderId = localStorage.getItem('activeOrderId');
+            if (!activeOrderId) return;
+            
+            const activeOrderSecret = localStorage.getItem(`orderSecret:${activeOrderId}`);
+            if (!activeOrderSecret) {
+                localStorage.removeItem('activeOrderId');
+                return;
+            }
+
+            try {
+                const res = await api.get(`/order/${activeOrderId}`, {
+                    headers: { 'x-order-secret': activeOrderSecret }
+                });
+                
+                const status = res.data.status;
+                if (status === 'accepted') {
+                    router.replace(`/user/order/payment/${activeOrderId}`);
+                } else if (['sent', 'cooking', 'ready'].includes(status)) {
+                    router.replace(`/user/order/wait/${activeOrderId}`);
+                } else {
+                    localStorage.removeItem('activeOrderId');
+                }
+            } catch (error) {
+                localStorage.removeItem('activeOrderId');
+            }
+        };
+        
+        checkActiveOrder();
+    }, [router]);
+
+    const isSubmittedRef = useRef(false);
+
+    useEffect(() => {
+        if (hydrated && cart.length === 0 && !isSubmittedRef.current) {
             router.replace(`/user/restaurant`);
         }
-    }, [router]);
+    }, [hydrated, cart.length, router]);
 
     const totalAmount = useMemo(() => {
         if (!cart) return 0;
@@ -141,9 +174,17 @@ function OrderConfirmContext() {
             const response = await api.post(`/order/create`, orderPaymentPayload);
             const result = response.data;
             localStorage.setItem(`orderSecret:${result.orderId}`, result.orderSecret);
+            localStorage.setItem(`activeOrderId`, result.orderId);
 
+            isSubmittedRef.current = true;
             toastSuccess("สร้างออเดอร์เรียบร้อย");
-            router.push(`/user/order/wait/${result.orderId}`);
+            clearCart();
+            
+            if (result.status === 'accepted') {
+                router.replace(`/user/order/payment/${result.orderId}`);
+            } else {
+                router.replace(`/user/order/wait/${result.orderId}`);
+            }
 
         } catch (error: unknown) {
             if (typeof error === 'object' && error !== null && 'response' in error) {

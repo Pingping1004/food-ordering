@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { Button } from "../Button";
 import { cva } from "class-variance-authority";
 import clsx from "clsx";
@@ -34,6 +34,7 @@ export type OrderMenuEntry = {
 export type OrderProps = React.HTMLAttributes<HTMLDivElement> & {
     orderId: string;
     orderAt: string;
+    orderCreatedAt: string;
     deliverAt: string;
     status: OrderStatus;
     selected?: boolean;
@@ -70,6 +71,7 @@ export const Order = ({
     orderId,
     selected = false,
     orderAt,
+    orderCreatedAt,
     userTel,
     status,
     deliverAt,
@@ -102,7 +104,6 @@ export const Order = ({
         [orderId, onDelayUpdate]
     );
 
-    // Computed once per render, not inline inside JSX
     const isDeliveryPast = useMemo(
         () => new Date(deliverAt).getTime() <= Date.now(),
         [deliverAt]
@@ -116,6 +117,15 @@ export const Order = ({
             }).format(totalAmount),
         [totalAmount]
     );
+
+    const acceptButtonDisabled = useMemo(() => {
+        const nowMs = Date.now();
+        const parsedOrderAtMs = new Date(orderCreatedAt).getTime();
+        const elapsedMs = nowMs - parsedOrderAtMs;
+        const thresholdMs = 3 * 60 * 1000;
+        const disabled = elapsedMs > thresholdMs;
+        return { disabled, nowMs, parsedOrderAtMs, elapsedMs, thresholdMs, orderAtRaw: orderAt, orderCreatedAtRaw: orderCreatedAt };
+    }, [orderAt, orderCreatedAt]);
 
     return (
         <div
@@ -261,8 +271,8 @@ export const Order = ({
                             size={lg ? "lg" : "md"}
                             className="w-full"
                             type="button"
-                            disabled={new Date().getTime() - new Date(orderAt).getTime() > 3}
-                            onClick={handleAccept}
+                            disabled={acceptButtonDisabled.disabled}
+                            onClick={() => handleAccept()}
                         >
                             <ScaledText large={lg}>รับออเดอร์</ScaledText>
                         </Button>
