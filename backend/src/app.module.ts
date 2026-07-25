@@ -48,6 +48,8 @@ import { InventoryService } from './inventory/inventory.service';
 import { TokenCleanService } from './auth/jobs/tokenClean.job';
 import { ScheduleModule } from '@nestjs/schedule';
 import { NotificationModule } from './notification/notification.module';
+import { AnalyticsModule } from './analytics/dto/analytics.module';
+import { AnalyticsService } from './analytics/analytics.service';
 
 @Module({
   imports: [
@@ -79,6 +81,7 @@ import { NotificationModule } from './notification/notification.module';
     ScheduleModule.forRoot(),
     PayoutModule,
     AuthModule,
+    AnalyticsModule,
     UserModule,
     AdminModule,
   ],
@@ -104,6 +107,7 @@ import { NotificationModule } from './notification/notification.module';
     TokenCleanService,
     CsrfTokenService,
     AppService,
+    AnalyticsService,
     RestaurantService,
     MenuService,
     PrismaService,
