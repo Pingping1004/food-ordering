@@ -21,6 +21,10 @@ export default function RefundProcessingPage() {
     const totalAmount = order?.totalAmount;
 
     useEffect(() => {
+        localStorage.removeItem('activeOrderId');
+    }, []);
+
+    useEffect(() => {
         if (!orderId) {
             setLoading(false);
             return;
