@@ -48,6 +48,7 @@ function OrderPaymentPage() {
     const [expired, setExpired] = useState(false);
     const [loading, setLoading] = useState(true);
     const [order, setOrder] = useState<Order>();
+    const [paymentImgUrl, setPaymentImgUrl] = useState<string>('');
     const failedCountRef = useRef(0);
     const hasRedirectedRef = useRef(false);
     const hasExpiredRef = useRef(false);
@@ -81,6 +82,23 @@ function OrderPaymentPage() {
                     router.replace(`/user/order/wait/${orderId}`);
                     return;
                 }
+
+                let qrUrl = data.restaurant.paymentQr;
+                try {
+                    const qrResponse = await api.get(`payment/qr-code/${orderId}`, {
+                        headers: { "x-order-secret": orderSecret }
+                    });
+                    const qrData = qrResponse.data;
+                    if (typeof qrData === 'string' && qrData.length > 0) {
+                        qrUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qrData)}&size=400x400`;
+                    } else if (qrData?.data?.qrImage || qrData?.qrImage) {
+                        qrUrl = qrData?.data?.qrImage || qrData?.qrImage;
+                    }
+                } catch (qrErr) {
+                    console.error("Failed to fetch dynamic QR code, using fallback", qrErr);
+                }
+                setPaymentImgUrl(qrUrl);
+
             } catch {
                 failedCountRef.current += 1;
 
@@ -286,16 +304,20 @@ function OrderPaymentPage() {
     if (!order) return <div>ไม่พบข้อมูลร้านค้า</div>;
 
     const paymentSlipImg = watch("paymentSlipImg");
-    const paymentImgUrl = order.restaurant.paymentQr;
     const isButtonDisabled = isSubmitting || expired || isLoading || !paymentSlipImg;
 
     const PAYMENT_WINDOW_MINS = 3;
-    const paymentDeadline = new Date(new Date(order.acceptAt).getTime() + PAYMENT_WINDOW_MINS * 60 * 1000);
+    const baseTime = (order.acceptAt && new Date(order.acceptAt).getTime() > 0)
+        ? new Date(order.acceptAt).getTime()
+        : new Date(order.orderAt).getTime();
+    const paymentDeadline = new Date(baseTime + PAYMENT_WINDOW_MINS * 60 * 1000);
 
     return (
         <form className="flex flex-col justify-center items-center py-10 px-6 gap-y-6" onSubmit={handleSubmit(handlePayment)}>
             <div className="flex flex-col gap-y-6">
                 <h2 className="text-2xl font-semibold text-center">ชำระเงินออเดอร์ {orderId?.substring(0, 4)}</h2>
+                <h3 className="text-red-500 font-bold text-center">ไม่รองรับการโอนเงินจากธนาคารกรุงเทพ</h3>
+                <h3 className="text-red-500 font-bold text-center">Don't accept payment from bangkok bank</h3>
 
                 <div className="flex flex-col gap-y-6">
                     <div className="flex flex-col w-full justify-center items-center gap-y-6">

@@ -8,7 +8,7 @@ import {
     NotFoundException,
     UnauthorizedException,
 } from '@nestjs/common';
-import { PaymentStatus, Prisma } from '@prisma/client';
+import { PaymentStatus, Prisma, PromptpayType } from '@prisma/client';
 import axios, { AxiosError } from 'axios';
 import { BANK_CODE_MAP, PaymentPayload } from 'src/common/interface/accountType';
 import { OrderService } from 'src/order/order.service';
@@ -111,9 +111,12 @@ export class PaymentService {
                         checkReceiver: [
                             {
                                 accountType: accountTypeCode,
-                                // accountNameTH: accountHolderFullName,
                                 accountNumber: accountNumber.toString(),
                             }
+                            // {
+                            //     accountType: "02001",
+                            //     accountNumber: "0970970098"
+                            // }
                         ]
                     }
                 }
@@ -128,7 +131,8 @@ export class PaymentService {
             });
 
             const result = response.data
-            this.logger.debug(`Payment account response data: ${JSON.stringify(result, null, 2)}`)
+
+            this.logger.debug(JSON.stringify({ sending: paymentData.payload.checkCondition.checkReceiver![0], decoded: result?.data?.receiver?.account?.proxy }, null, 2));
 
             if (result.code !== "200200") throw new HttpException({ message: result.message, code: result.code }, HttpStatus.BAD_REQUEST);
 
@@ -193,5 +197,73 @@ export class PaymentService {
             this.logger.warn(`ยืนยันการชำระเงินล้มเหลว: ${JSON.stringify(errorLog, null, 2)}`);
             throw new HttpException({ message: err.message }, HttpStatus.BAD_REQUEST);
         }
+    }
+
+    async createPayment(promptPayCode: string, promptPayType: PromptpayType, accountName: string, amount: number) {
+        let mappedType = 'phone_number';
+        if (promptPayType === PromptpayType.PHONE_NUMBER) {
+            mappedType = 'phone_number';
+        } else if (promptPayType === PromptpayType.NATIONAL_ID) {
+            mappedType = 'citizen_id';
+        }
+
+        const paymentPayload = {
+            promptPayCode,
+            promptPayType: mappedType,
+            accountName,
+            amount: amount.toFixed(2)
+        }
+
+        try {
+            const response = await axios.post("https://connect.slip2go.com/api/qr-payment/generate-qr-code", paymentPayload, {
+                timeout: 5000,
+                headers: {
+                    Authorization: `Bearer ${process.env.SLIP_VERIFY_SECRET}`
+                },
+            });
+
+            this.logger.debug(`Response data: ${JSON.stringify(response.data, null, 2)}`)
+            return response.data;
+        } catch (error) {
+            const err = error as AxiosError;
+            const errorLog = {
+                message: err.message,
+                status: err.response?.status,
+                statusText: err.response?.statusText,
+                data: err.response?.data,
+                headers: err.response?.headers,
+            };
+
+            this.logger.warn(`สร้างการชำระเงินล้มเหลว: ${JSON.stringify(errorLog, null, 2)}`);
+            throw new HttpException({ message: err.message }, HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    async generateQrCodeForOrder(orderId: string, orderSecret: string) {
+        const order = await this.orderService.findOneOrder(orderId, orderSecret);
+        if (order.orderSecret !== orderSecret) throw new UnauthorizedException("ไม่สามารถเข้าถึงออเดอร์ได้");
+
+        const restaurant = await this.restaurantService.findRestaurant(order.restaurantId);
+
+        let promptPayType: PromptpayType;
+        if (restaurant.bankAccount === 'PROMPTPAY_PHONE') {
+            promptPayType = PromptpayType.PHONE_NUMBER;
+        } else if (restaurant.bankAccount === 'PROMPTPAY_ID') {
+            promptPayType = PromptpayType.NATIONAL_ID;
+        } else {
+            promptPayType = PromptpayType.PHONE_NUMBER;
+        }
+
+        const { data } = await this.createPayment(
+            restaurant.accountNumber,
+            promptPayType,
+            restaurant.accountHolderFullName,
+            order.totalAmount
+        );
+
+        this.logger.debug(`Response data: ${data}}`);
+        this.logger.debug(`Response qrCode: ${data.qrCode}}`);
+
+        return data.qrCode;
     }
 }

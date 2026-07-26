@@ -75,13 +75,13 @@ export class CreateRestaurantDto {
   @IsString()
   adminEmail: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  accountNumber: string;
+  accountNumber?: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsEnum(AccountType)
-  bankAccount: AccountType;
+  bankAccount?: AccountType;
 
   @IsOptional()
   @IsString()

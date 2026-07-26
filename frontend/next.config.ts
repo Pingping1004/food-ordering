@@ -33,6 +33,11 @@ const nextConfig: NextConfig = {
                 protocol: 'https',
                 hostname: 'images.promptserve.online',
                 pathname: '/**',
+            },
+            {
+                protocol: 'https',
+                hostname: 'api.qrserver.com',
+                pathname: '/**',
             }
         ],
     },

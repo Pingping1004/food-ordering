@@ -69,7 +69,7 @@ model Restaurant {
   openTime            String
   closeTime           String
   avgCookingTime      Int
-  maxActiveOrder      Int?                @default(15)
+  maxActiveOrder      Int?                @default(25)
   isApproved          Boolean             @default(false)
   isAutoAcceptedOrder          Boolean             @default(false)
   adminName           String
@@ -352,6 +352,12 @@ enum PaymentMethod {
   promptpay
   mobileBanking
   cash
+}
+
+enum PromptpayType {
+  PHONE_NUMBER
+  NATIONAL_ID
+  EMAIL
 }
 
 enum OrderStatus {

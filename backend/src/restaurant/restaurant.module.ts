@@ -7,6 +7,7 @@ import { CsrfModule } from 'src/csrf/csrf.module';
 import { S3Module } from 'src/s3/s3.module';
 import { UploadModule } from 'src/upload/upload.module';
 import { AnalyticsModule } from 'src/analytics/dto/analytics.module';
+import { QrReaderService } from '../utils/qr-reader.service';
 
 @Module({
   imports: [
@@ -17,7 +18,7 @@ import { AnalyticsModule } from 'src/analytics/dto/analytics.module';
     S3Module,
   ],
   controllers: [RestaurantController],
-  providers: [RestaurantService, PrismaService],
+  providers: [RestaurantService, PrismaService, QrReaderService],
   exports: [RestaurantService],
 })
 export class RestaurantModule {}

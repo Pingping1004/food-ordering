@@ -138,8 +138,6 @@ export default function RestaurantRegisterPage() {
         formData.append('adminName', data.adminName);
         formData.append('adminSurname', data.adminSurname);
         formData.append('adminTel', data.adminTel);
-        formData.append('bankAccount', data.bankAccount);
-        formData.append('accountNumber', data.accountNumber);
         formData.append('accountHolderFullName', data.accountHolderFullName);
         if (data.adminEmail) formData.append('adminEmail', data.adminEmail);
 
@@ -314,7 +312,7 @@ export default function RestaurantRegisterPage() {
                     <div className="grid grid-cols-2 gap-x-4">
                         <Input
                             type="tel"
-                            label="เบอร์ติดต่อทางร้าน"
+                            label="เบอร์ติดต่อ(เบอร์เดียวกับที่ลงทะเบียนพร้อมเพย์ (ถ้ามี))"
                             placeholder="0xxxxxxxxx"
                             {...register('adminTel')}
                             error={errors.adminTel?.message}
@@ -336,28 +334,9 @@ export default function RestaurantRegisterPage() {
                         <p className="text-danger-main font-noto-thai text-bold text-sm">(ข้อมูลต้องตรงกับบัญชีธนาคารทุกประการ)</p>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-x-4">
-                        <Input
-                            type="select"
-                            label="ธนาคาร"
-                            options={ACCOUNT_TYPE_OPTIONS}
-                            placeholder="กสิกร, กรุงไทย, ฯลฯ"
-                            {...register('bankAccount')}
-                            error={errors.bankAccount?.message}
-                        />
-
-                        <Input
-                            type="text"
-                            label="เลขบัญชี(ต้องเป็นตัวเลขเท่านั้น)"
-                            placeholder="087XXXXXXX"
-                            {...register('accountNumber')}
-                            error={errors.accountNumber?.message}
-                        />
-
-                    </div>
                     <Input
                         type="text"
-                        label="ชื่อ-นามสกุลบัญชีธนาคาร(ห้ามมีคำนำหน้า)"
+                        label="ชื่อ-นามสกุลบัญชีธนาคาร(ไม่ต้องใส่มีคำนำหน้า)"
                         placeholder="สมชาย ใจรัก"
                         {...register('accountHolderFullName')}
                         error={errors.accountHolderFullName?.message}
