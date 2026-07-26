@@ -317,7 +317,7 @@ function OrderPaymentPage() {
             <div className="flex flex-col gap-y-6">
                 <h2 className="text-2xl font-semibold text-center">ชำระเงินออเดอร์ {orderId?.substring(0, 4)}</h2>
                 <h3 className="text-red-500 font-bold text-center">ไม่รองรับการโอนเงินจากธนาคารกรุงเทพ</h3>
-                <h3 className="text-red-500 font-bold text-center">Don't accept payment from bangkok bank</h3>
+                <h3 className="text-red-500 font-bold text-center">Don&apos;t accept payment from bangkok bank</h3>
 
                 <div className="flex flex-col gap-y-6">
                     <div className="flex flex-col w-full justify-center items-center gap-y-6">

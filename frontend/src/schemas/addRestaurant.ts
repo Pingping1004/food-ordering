@@ -1,4 +1,4 @@
-import { ACCOUNT_TYPES } from "@/common/bank-type.enum";
+
 import { z } from "zod";
 
 export const createRestaurantSchema = z.object({
