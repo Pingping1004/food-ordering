@@ -147,7 +147,6 @@ export default function AdminRoleRequestsPage() {
                   <Button type="button" size="full" variant="secondaryDanger" onClick={() => reject(r.requestId)}>
                     ปฏิเสธ
                   </Button>
-
                 </div>
               )}
             </div>

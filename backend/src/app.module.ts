@@ -9,7 +9,6 @@ import { HttpExceptionFilter } from './libs/http-exception.filter';
 import { CatchEverythingFilter } from './libs/catch-everything.filter';
 import { RequestLoggerMiddleware } from 'src/logger.middleware';
 
-// Service and controller
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { RestaurantModule } from './restaurant/restaurant.module';
@@ -50,6 +49,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { NotificationModule } from './notification/notification.module';
 import { AnalyticsModule } from './analytics/dto/analytics.module';
 import { AnalyticsService } from './analytics/analytics.service';
+import { QrReaderService } from './utils/qr-reader.service';
 
 @Module({
   imports: [
@@ -76,7 +76,7 @@ import { AnalyticsService } from './analytics/analytics.service';
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
-      envFilePath: process.env.NODE_ENV === 'production' ? '.env.production' : '.env.local'
+      envFilePath: process.env.NODE_ENV === 'production' ? '.env.production' : '.env'
     }),
     ScheduleModule.forRoot(),
     PayoutModule,
@@ -116,6 +116,7 @@ import { AnalyticsService } from './analytics/analytics.service';
     PayoutService,
     RefreshTokenService,
     S3Service,
+    QrReaderService,
   ],
 })
 export class AppModule implements NestModule {
