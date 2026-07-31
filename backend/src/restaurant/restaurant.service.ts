@@ -50,17 +50,8 @@ export class RestaurantService {
             try {
                 const qrInfo = await this.qrReaderService.processPaymentQr(paymentFile.buffer);
 
-                if (
-                    qrInfo.bankAccount === 'PROMPTPAY_PHONE' ||
-                    qrInfo.bankAccount === 'PROMPTPAY_ID' ||
-                    qrInfo.bankAccount === 'PROMPTPAY_EWALLET'
-                ) {
-                    extractedAccount = createRestaurantDto.adminTel;
-                    extractedBank = qrInfo.bankAccount === 'PROMPTPAY_PHONE' ? qrInfo.bankAccount : 'PROMPTPAY_PHONE' as any;
-                } else {
-                    extractedAccount = qrInfo.accountNumber;
-                    extractedBank = qrInfo.bankAccount;
-                }
+                extractedAccount = qrInfo.accountNumber;
+                extractedBank = qrInfo.bankAccount;
 
                 if (qrInfo.warnings.length > 0) {
                     this.logger.warn(`QR Warnings for restaurant ${createRestaurantDto.name}: ${qrInfo.warnings.join(', ')}`);
