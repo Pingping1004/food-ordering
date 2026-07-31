@@ -110,13 +110,8 @@ export class PaymentService {
                         checkDuplicate: false,
                         checkReceiver: [
                             {
-                                accountType: accountTypeCode,
                                 accountNumber: accountNumber.toString(),
                             }
-                            // {
-                            //     accountType: "02001",
-                            //     accountNumber: "0970970098"
-                            // }
                         ]
                     }
                 }
