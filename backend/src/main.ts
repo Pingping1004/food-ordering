@@ -39,7 +39,7 @@ declare global {
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    httpsOptions: process.env.NODE_ENV === 'development' ? {
+    httpsOptions: process.env.NODE_ENV === 'production' ? {
       key: fs.readFileSync('./cert/localhost-key.pem'),
       cert: fs.readFileSync('./cert/localhost.pem'),
     } : undefined,
@@ -67,6 +67,8 @@ async function bootstrap() {
     'https://localhost:8000',
     'https://localhost:3000',
     'http://localhost:3000',
+    'http://localhost:3001',
+    'https://localhost:3001',
     process.env.FRONTEND_BASE_URL,
     process.env.NEXT_PUBLIC_BACKEND_API_URL,
     process.env.WEBHOOK_ENDPOINT,

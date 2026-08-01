@@ -23,7 +23,7 @@ const nextConfig: NextConfig = {
         return [
             {
                 source: '/api/:path*',
-                destination: 'https://api.promptserve.online/api/:path*',
+                destination: process.env.NODE_ENV === 'development' ? 'http://localhost:4000/api/:path*' : 'https://api.promptserve.online/api/:path*',
             },
         ];
     },

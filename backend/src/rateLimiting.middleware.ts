@@ -20,7 +20,7 @@ export const globalRateLimit = rateLimit({
 
 export const authRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 20,
   message: {
     error: 'รีเควสในการลงทะเบียน/เข้าสู่ระบบเกินขีดจำกัด กรุณาลองใหม่อีกครั้ง',
     retryAfter: '1 minutes'
