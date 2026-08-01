@@ -98,6 +98,8 @@ async function bootstrap() {
       'x-order-secret',
       'x-xsrf-token',
       'Authorization',
+      'sentry-trace',
+      'baggage',
       'skipauth',
       'skipAuth',
       'stripe-signature'
