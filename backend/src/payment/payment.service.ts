@@ -87,8 +87,6 @@ export class PaymentService {
         }
 
         try {
-            const accountTypeCode = BANK_CODE_MAP[bankAccount];
-            if (!accountTypeCode) throw new ConflictException("ไม่พบข้อมูลบัญชีธนาคาร")
             if (!order.acceptAt) throw new ConflictException("ออเดอร์ยังไม่ถูกรับโดยร้านอาหร")
 
             const acceptAtDate = new Date((order.acceptAt))
