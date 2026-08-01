@@ -137,6 +137,13 @@ export class OrderService {
     this.logger.debug("Restaurant in createOrder: ", isAutoAcceptedOrder);
 
     try {
+      const menuIds = createOrderDto.orderMenus.map((m) => m.menuId);
+      const quotas = await this.inventoryService.getRemainingQuotas(menuIds);
+
+      for (const item of validatedMenus) {
+        if (quotas[item.menuId] < item.quantity) throw new BadRequestException(`เมนู ${item.menuName} เหลือไม่พอ`);
+      }
+      
       const order = await this.prisma.$transaction(async (tx) => {
         const order = await tx.order.create({
           data: {
