@@ -25,10 +25,7 @@ import {
 } from './rateLimiting.middleware';
 import './auth/jobs/tokenClean.job';
 
-// Load env BEFORE NestJS boots — PrismaService reads DATABASE_URL
-// in its constructor, before ConfigModule has a chance to run.
-const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.local';
-dotenv.config({ path: envFile });
+dotenv.config();
 declare global {
   namespace Express {
     interface Request {
@@ -39,7 +36,7 @@ declare global {
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    httpsOptions: process.env.NODE_ENV === 'production' ? {
+    httpsOptions: process.env.NODE_ENV === 'development' ? {
       key: fs.readFileSync('./cert/localhost-key.pem'),
       cert: fs.readFileSync('./cert/localhost.pem'),
     } : undefined,
@@ -67,8 +64,6 @@ async function bootstrap() {
     'https://localhost:8000',
     'https://localhost:3000',
     'http://localhost:3000',
-    'http://localhost:3001',
-    'https://localhost:3001',
     process.env.FRONTEND_BASE_URL,
     process.env.NEXT_PUBLIC_BACKEND_API_URL,
     process.env.WEBHOOK_ENDPOINT,
@@ -155,19 +150,17 @@ async function bootstrap() {
       validateCustomDecorators: true,
 
       exceptionFactory: (errors) => {
-        // This helper function recursively formats validation errors
         const formatErrors = (validationErrors: any[]) => {
           return validationErrors.map((error) => {
             if (error.children && error.children.length > 0) {
               return {
                 property: error.property,
-                children: formatErrors(error.children), // Recursively call formatErrors for children
+                children: formatErrors(error.children),
               };
             }
-            // For individual errors, get the constraint messages
             return {
               property: error.property,
-              constraints: error.constraints, // Keep the original constraints object for debugging
+              constraints: error.constraints,
               messages: error.constraints
                 ? Object.values(error.constraints)
                 : [],
