@@ -721,3 +721,51 @@ The next objective is therefore not to assume the thesis is correct.
 
 The next objective is to **validate it through real school conversations and real cafeteria pilots.**
 
+---
+
+## 24. Current Codebase Reality (2026-09-12)
+
+The `production` branch contains a working food-ordering system built during MVP development. The codebase is on NestJS + Next.js + Prisma + PostgreSQL. However, the Prisma schema and the application code have drifted apart during rapid MVP iteration. The following discrepancies are known and must be resolved before pilot deployment:
+
+### Schema vs code mismatches
+
+1. **OrderStatus enum:** The Prisma schema defines `receive | cooking | ready | done | delay | rejected`, but the application code uses `sent | accepted | cancelled | rejected | completed`. These are different state machines. The schema needs to match the code's intended order lifecycle.
+
+2. **OrderMenu model:** The schema has `unitPrice: Int` and `totalPrice: Int`, but the code treats `unitPrice` as a `Decimal` and passes `maxDaily` from the OrderMenu create payload (which the schema doesn't have). The `details` field lives on `Order` in the schema but the code passes it nested inside `OrderMenu.create`.
+
+3. **PaymentStatus enum:** Schema uses `PENDING_VERIFICATION | UNPAID | PAID | FAILED | CANCELLED | REFUNDED`, code uses `unpaid | paid | verifying | failed` and treats `verified` as a gateway status string. The naming and values need alignment.
+
+4. **Restaurant operating model:** The schema has `RestaurantOperatingHour` (day-of-week-based) and `CanteenOperatingHour`, but the `Restaurant` model itself doesn't expose `openTime`, `closeTime`, `openDate`, or `isTemporarilyClosed` — yet the code reads and writes these fields as if they exist on Restaurant. The operating-hours model needs to be coherent: either Restaurant carries its own hours, or hours live strictly on the OperatingHour models and Restaurant delegates to them.
+
+5. **Order vs OrderMenu field placement:** `details` is on `Order` in the schema, but `OrderService.createOrder` passes `details` inside `orderMenus.create` blocks, which would fail at the Prisma level. The `OrderMenu` create payload also includes `maxDaily` which isn't a field on `OrderMenu` in the schema.
+
+6. **Missing fields on Restaurant used by code:** `isApproved`, `isTemporarilyClosed`, `paymentQr`, `accountNumber`, `bankAccount`, `accountHolderFullName`, `openTime`, `closeTime`, `openDate` — these are all read/written by `RestaurantService` but don't exist on the `Restaurant` model in the schema. Either the schema is missing fields, or the service is operating on stale assumptions.
+
+7. **Payout model:** Exists in schema but payment flow in code uses Omise-style concepts (charges, webhooks) alongside the Payout model. The relationship between payment verification, payout creation, and order state needs a single source of truth.
+
+These mismatches mean the schema cannot be used to generate a working Prisma client that matches the current code. The refactor must reconcile the schema with the code's actual domain model before anything else.
+
+---
+
+## 25. Refactor Principles
+
+1. **Reconcile schema with code first.** The Prisma schema must accurately represent the domain the code actually implements. No code change is worth making until the schema matches the intended model.
+2. **Pick one order lifecycle and commit to it.** Either `receive → cooking → ready → done` or `sent → accepted → completed` or a fresh design. Don't maintain two conflicting state machines.
+3. **Centralize operating-hours logic.** Whether hours live on Restaurant or on RestaurantOperatingHour, there must be a single service that answers "is this restaurant open right now?" and "can this restaurant accept orders at this time?".
+4. **Make DTOs, services, and schema agree.** If the frontend sends a field, the DTO validates it, the service uses it, and the schema stores it — all four must be consistent.
+5. **Keep what works.** The payment-slip verification flow, order creation flow, and restaurant-facing order management are functional. The refactor should make them correct, not rewrite them from scratch.
+6. **Discard prototype artifacts.** Fields and models that were experimented with during MVP but never reached production (e.g. school/canteen models not wired to the actual restaurant flow) should be removed or clearly marked as future work.
+
+---
+
+## 26. What Success Looks Like
+
+After the refactor, deploying to a pilot school means:
+
+- The Prisma schema generates a client that matches the code.
+- Creating an order flows through validated DTOs → service → transaction → database without field mismatches.
+- Restaurant operating status is computed by one service, used by order validation, menu display, and restaurant listing consistently.
+- Order status transitions are explicit, validated, and match the schema's enum.
+- Payment state is unambiguous: a payment is pending, verified, or failed — not a mix of enum values and gateway status strings.
+- The restaurant sees orders in a clear production queue and can accept/reject/complete them without ambiguity.
+- The student sees accurate menu availability, accurate pricing, and accurate order status.
