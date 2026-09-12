@@ -14,17 +14,20 @@ datasource db {
 }
 
 enum RoleRequestStatus {
-  pending
-  accepted
-  rejected
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
 }
 
-enum PaymentMethodType {
-  promptpay
-  kbank
-  krungsri
-  scb
-  bbl
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
 }
 
 enum OrderStatus {
@@ -36,10 +39,37 @@ enum OrderStatus {
   rejected
 }
 
+enum Status {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  REMOVED
+}
+
+enum PaymentStatus {
+  PENDING_VERIFICATION
+  UNPAID
+  PAID
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
 enum Role {
-  admin
-  cooker
-  user
+  ADMIN
+  COOKER
+  USER
+}
+
+enum SchoolRole {
+    ADMIN
+    STAFF
+}
+
+enum RestaurantRole {
+  OWNER
+  ADMIN
+  STAFF
 }
 
 enum IsPaid {
@@ -60,140 +90,247 @@ enum RestaurantCategory {
 }
 
 model RoleRequest {
-  requestId    String    @id @default(uuid())
+  requestId     String    @id @default(uuid())
 
-  userId    String  @unique
-  user    User  @relation("UserToRoleRequest", fields: [userId], references: [userId])
+  userId        String      @unique
+  user          User        @relation(fields: [userId], references: [userId], onDelete: Cascade)
 
   requestRole   Role
-  status    RoleRequestStatus
+  status        RoleRequestStatus
 
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime?
+  createdAt 		DateTime 	@default(now()) 		@db.Timestamptz(3)
+  updatedAt		DateTime	@updatedAt			@db.Timestamptz(3)
+
+	@@index([userId])
+	@@index([requestRole])
+	@@index([status])
 }
 
-model Payout {
-  payoutId   String  @default(uuid())  @id
-  restaurantRevenue  Int
-  platformFee   Int
-  isPaid  Boolean   @default(false)
-  startDate   DateTime
-  endDate   DateTime
-  paidAt  DateTime?
-  createdAt   DateTime  @default(now())
+model School {
+	schoolId			String		@default(uuid())		@id
+	name			String		@unique
+	email			String		@unique
+	profile			String?
+	studentAmount	Int
+	status			Status
 
+	canteens			Canteen[]
+	schoolMemberships	SchoolMembership[]
+	operatingHours 	SchoolOperatingHour[]
+    	dateOverrides 	SchoolDateOverride[]
 
-  orderId   String  @unique
-  order   Order   @relation("OrderToPayout", fields: [orderId], references: [orderId])
+	createdAt 		DateTime 	@default(now()) 		@db.Timestamptz(3)
+	updatedAt		DateTime	@updatedAt			@db.Timestamptz(3)
 
-  restaurantId  String
-  restaurant  Restaurant  @relation("RestaurantPayment", fields: [restaurantId], references: [restaurantId])
+	@@index([name])
+	@@index([email])
+}
+
+model Canteen {
+	canteenId		String		@default(uuid())		@id
+	name			String
+	profile			String?
+	status			Status
+
+	schoolId			String
+	school			School		@relation(fields: [schoolId], references: [schoolId], onDelete: Cascade)
+	restaurants		Restaurant[]
+	operatingHours 	CanteenOperatingHour[]
+
+	createdAt 		DateTime 	@default(now()) 		@db.Timestamptz(3)
+	updatedAt		DateTime	@updatedAt			@db.Timestamptz(3)
+
+	@@index([name])
+	@@index([schoolId])
+	@@unique([schoolId, name])
 }
 
 model Restaurant {
-  restaurantId  String @default(uuid()) @id
-  email String @unique
-  restaurantImg String?
-  name  String  @unique
-  location  String?
-  categories  RestaurantCategory[]
-  openTime  String
-  closeTime String
+	restaurantId  		String 		@default(uuid()) 		@id
+  	name 			String
+  	profile 			String?
+  	email  			String 
+  	location  			String?
+  	categories  		RestaurantCategory[]
+	maxActiveOrders	Int?
+	avgCookingTimeMins	Int?
+	status			Status
+	isAutoAcceptedOrder	Boolean  @default(false)
   
-  adminName    String
-  adminSurname String
-  adminTel     String
-  adminEmail   String
+  	contactName    	String
+  	contactTel     		String
+  	contactEmail   		String
 
-  menus Menu[]  @relation("RestaurantMenus")
+	accountNumber	String
+	accountName	String
+	paymentQr		String
 
-  orders  Order[]   @relation("restaurantToOrder")
+	canteenId		String
+	canteen			Canteen		@relation(fields: [canteenId], references: [canteenId], onDelete: Cascade)
+	memberships		RestaurantMembership[]
+	operatingHours	RestaurantOperatingHour[]
+	menus            		Menu[]
+  	orders           		Order[]
 
-  payout   Payout[]  @relation("RestaurantPayment")
+	@@index([canteenId])
+	@@unique([canteenId, name])
 }
 
 model Menu {
-  menuId  String  @default(uuid()) @id
-  name  String
-  menuImg String?
-  price   Int
-  maxDaily  Int
-  cookingTime Int
-  createdAt DateTime  @default(now())
-  isAvailable Boolean @default(true)
+  	menuId  			String  		@default(uuid()) 		@id
+  	name  			String
+  	menuImg 		String?
+  	price   			Int
+  	maxDaily 		Int?
+  	cookingTimeMins	Int
+ 	 isAvailable 		Boolean 		@default(true)
+	createdAt 		DateTime 	@default(now()) 		@db.Timestamptz(3)
+	updatedAt		DateTime	@updatedAt			@db.Timestamptz(3)
 
-  restaurantId  String
-  restaurant  Restaurant  @relation("RestaurantMenus", fields: [restaurantId], references: [restaurantId], onDelete: Cascade)
+  	restaurantId  		String
+ 	restaurant  		Restaurant  	@relation(fields: [restaurantId], references: [restaurantId], onDelete: Cascade)
+  	orderMenus  		OrderMenu[]
 
-  orderMenus  OrderMenu[]  @relation("menuToOrderMenus")
+  	@@unique([restaurantId, name])
+  	@@index([restaurantId])
+  	@@index([isAvailable])
+}
 
-  @@unique([restaurantId, name])
+model Order {
+  	orderId 			String 		@default(uuid()) 		@id
+  	status  			OrderStatus 	@default(receive)
+    details             String?
+  	paymentStatus  	PaymentStatus	@default(UNPAID)
+  	totalAmount   	Int
+  	orderAt 			DateTime  	@default(now())		@db.Timestamptz(3)
+  	pickupAt 		DateTime	@db.Timestamptz(3)
+	paidAt			DateTime?	@db.Timestamptz(3)
+  	isDelay 			Boolean 		@default(false)
 
-  @@index([restaurantId])
-  @@index([isAvailable])
-  @@index([cookingTime])
+  	restaurantId  		String
+  	restaurant  		Restaurant  	@relation(fields: [restaurantId], references: [restaurantId], onDelete: Cascade)
+  	orderMenus 		OrderMenu[]
+
+  	@@index([restaurantId])
+  	@@index([status])
+	@@index([paymentStatus])
+	@@index([pickupAt])
+  	@@index([orderAt])
 }
 
 model OrderMenu {
-  orderMenuId      String @default(uuid()) @id
-  quantity   Int
-  menuName   String
-  menuImg   String?
-  unitPrice Float
-  totalPrice Float?
+  	orderMenuId      	String 		@default(uuid()) 		@id
+	quantity   		Int
+  	menuName   		String
+  	menuImg   		String?
+  	unitPrice 		Int
+  	totalPrice 		Int
 
-  orderId String
-  order   Order  @relation("OrderToMenu", fields: [orderId], references: [orderId], onDelete: Cascade)
+  	orderId 			String
+  	order   			Order 		 @relation(fields: [orderId], references: [orderId], onDelete: Cascade)
+  	menuId  			String
+  	menu  			Menu  		@relation(fields: [menuId], references: [menuId], onDelete: Restrict)
 
-  menuId  String
-  menu  Menu  @relation("menuToOrderMenus", fields: [menuId], references: [menuId], onDelete: Cascade)
-
-  @@index([menuId])
-  @@index([orderId])
+  	@@index([menuId])
+  	@@index([orderId])
 }
 
-// must validate that restaurantName is included in restaurantNameList
-model Order {
-  orderId String @default(uuid()) @id
-  status  OrderStatus @default(receive)
-  orderAt DateTime  @default(now())
-  deliverAt DateTime
-  isPaid  IsPaid  @default(unpaid)
-  isDelay Boolean @default(false)
-  totalAmount   Int
-  paidAt    DateTime?
+model RestaurantMembership {
+	id				String		@default(uuid())		@id
+	role				RestaurantRole
 
-  omiseChargeId   String?   @unique   @map("omise_charge_id")
-  paymentMethodType   String?   @map("payment_method_type")
-  paymentCurrency   String?   @map("payment_currency")
-  paymentGatewayStatus  String? @map("payment_gateway_status")
-  failureReason String?
+	userId			String
+	user				User		@relation(fields: [userId], references: [userId], onDelete: Cascade)
+	restaurantId		String
+	restaurant		Restaurant	@relation(fields: [restaurantId], references: [restaurantId], onDelete: Cascade)
 
-  restaurantId  String
-  restaurant  Restaurant  @relation("restaurantToOrder", fields: [restaurantId], references: [restaurantId], onDelete: Cascade)
-  
-  orderMenus OrderMenu[] @relation("OrderToMenu")
+	createdAt 		DateTime 	@default(now()) 		@db.Timestamptz(3)
+   	updatedAt 		DateTime 	@updatedAt 			@db.Timestamptz(3)
 
-  payout  Payout?   @relation("OrderToPayout")
 
-  @@index([restaurantId])
-  @@index([status])
-  @@index([isPaid])
-  @@index([orderAt])
+	@@unique([userId, restaurantId])
+	@@index([restaurantId])
+}
+
+model SchoolMembership {
+	id			String	@default(uuid())	@id
+	role				SchoolRole
+	userId			String
+	user				User		@relation(fields: [userId], references: [userId], onDelete: Cascade)
+	schoolId			String
+	school			School		@relation(fields: [schoolId], references: [schoolId], onDelete: Cascade)
+	createdAt 		DateTime 	@default(now()) 		@db.Timestamptz(3)
+	updatedAt		DateTime	@updatedAt			@db.Timestamptz(3)
+
+	@@unique([userId, schoolId])
+	@@index([schoolId])
+}
+
+model SchoolOperatingHour {
+    	id 				String		 @default(uuid())			@id
+   	schoolId 			String
+	school   			School 		@relation(fields: [schoolId], references: [schoolId], onDelete: Cascade)
+    	dayOfWeek 		DayOfWeek
+    	openMinute  		Int
+    	closeMinute 		Int
+
+    	@@unique([schoolId, dayOfWeek])
+    	@@index([schoolId])
+}
+
+model CanteenOperatingHour {
+    id 				String 		@default(uuid())			@id
+    canteenId		String
+    canteen   		Canteen 		@relation(fields: [canteenId], references: [canteenId], onDelete: Cascade)
+    dayOfWeek 		DayOfWeek
+    openMinute  		Int
+    closeMinute 		Int
+
+    @@unique([canteenId, dayOfWeek])
+    @@index([canteenId])
+}
+
+
+model RestaurantOperatingHour {
+	id				String		 @default(uuid())			@id
+	restaurantId	String
+	restaurant		Restaurant	@relation(fields: [restaurantId], references: [restaurantId], onDelete: Cascade)
+    dayOfWeek 		DayOfWeek
+    openMinute		Int
+    closeMinute 		Int
+
+	@@unique([restaurantId, dayOfWeek])
+	@@index([restaurantId])
+}
+
+model SchoolDateOverride {
+    id 				String 		@default(uuid())			@id
+    schoolId 		String
+    school 			School 		@relation(fields: [schoolId], references: [schoolId], onDelete: Cascade)
+    date 			DateTime 	@db.Date
+    isClosed 		Boolean 		@default(false)
+    openMinute  	Int?
+    closeMinute 	Int?
+    reason			String?
+
+    createdAt 		DateTime 	@default(now()) 			@db.Timestamptz(3)
+    updatedAt 		DateTime 	@updatedAt 				@db.Timestamptz(3)
+
+    @@unique([schoolId, date])
+    @@index([schoolId, date])
 }
 
 model User {
-  userId  String @id  @default(uuid())
-  email   String  @unique
-  name    String?
-  password    String
-  profileImg  String?
-  role    Role    @default(user)
+   	 userId 		String 		@default(uuid())		@id
+    name 			String
+    email 			String? 	@unique
+	password		String
+    role			Role        @default(USER)
 
-  RoleRequest   RoleRequest?  @relation("UserToRoleRequest")
+    schoolMemberships SchoolMembership[]
+    restaurantMemberships RestaurantMembership[]
+    roleRequest     RoleRequest[]
 
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
-  @@index([name])
+    createdAt 		DateTime 	@default(now()) 		@db.Timestamptz(3)
+    updatedAt 		DateTime 	@updatedAt 			@db.Timestamptz(3)
 }

@@ -1,6 +1,5 @@
-import { IsNotEmpty, IsString, IsEnum, IsArray, IsOptional, IsEmail } from "class-validator";
-import { Prisma, RestaurantCategory } from "@prisma/client";
-import { Role } from "./update-restaurant.dto";
+import { IsNotEmpty, IsString, IsEnum, IsArray, IsOptional, IsEmail, IsNumber, IsBoolean } from "class-validator";
+import { Prisma, RestaurantCategory, RestaurantOperatingHour, Status } from "@prisma/client";
 
 export class CreateRestaurantDto {
     @IsNotEmpty()
@@ -9,38 +8,62 @@ export class CreateRestaurantDto {
 
     @IsOptional()
     @IsString()
-    restaurantImg?: string;
+    profile?: string;
 
     @IsNotEmpty()
     @IsEmail()
     email: string;
+
+    @IsOptional()
+    @IsString()
+    location?: string;
 
     @IsArray()
     @IsEnum(RestaurantCategory, { each: true })
     @IsNotEmpty()
     categories: RestaurantCategory[];
 
+    @IsNumber()
+    @IsOptional()
+    maxActiveOrders?: number;
+
+    @IsNumber()
+    @IsOptional()
+    avgCookingTimeMins?: number;
+
+    @IsEnum(Status)
     @IsNotEmpty()
-    @IsString()
-    openTime: string;
+    status: Status
 
     @IsNotEmpty()
     @IsString()
-    closeTime: string;
+    contactName: string;
 
     @IsNotEmpty()
     @IsString()
-    adminName: string;
+    contactTel: string;
+
+    @IsNotEmpty()
+    @IsEmail()
+    contactEmail: string;
 
     @IsNotEmpty()
     @IsString()
-    adminSurname: string;
+    accountNumber: string;
 
     @IsNotEmpty()
     @IsString()
-    adminTel: string;
+    accountName: string;
 
     @IsNotEmpty()
     @IsString()
-    adminEmail: string;
+    paymentQr: string;
+
+    @IsNotEmpty()
+    @IsString()
+    canteenId: string;
+
+    @IsArray()
+    @IsNotEmpty()
+    operatingHours: RestaurantOperatingHour[];
 }

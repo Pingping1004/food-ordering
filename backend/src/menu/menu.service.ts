@@ -87,7 +87,7 @@ export class MenuService {
           name: dto.name,
           price: dto.price,
           maxDaily: dto.maxDaily,
-          cookingTime: dto.cookingTime,
+          cookingTimeMins: dto.cookingTimeMins,
           menuImg: menuImgUrl,
 
           restaurant: {
@@ -237,7 +237,7 @@ export class MenuService {
         if (dto.name !== undefined) updateLists.name = dto.name;
         if (dto.price !== undefined) updateLists.price = dto.price;
         if (dto.maxDaily !== undefined) updateLists.maxDaily = dto.maxDaily;
-        if (dto.cookingTime !== undefined) updateLists.cookingTime = dto.cookingTime;
+        if (dto.cookingTimeMins !== undefined) updateLists.cookingTimeMins = dto.cookingTimeMins;
         if (dto.isAvailable !== undefined) updateLists.isAvailable = dto.isAvailable;
         if (menuImgUrl !== undefined) updateLists.menuImg = menuImgUrl;
 

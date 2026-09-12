@@ -16,8 +16,6 @@ import {
   ArrayMinSize,
   ArrayMaxSize
 } from "class-validator";
-import { PaymentMethodType, OrderStatus } from "@prisma/client";
-import { CreatePaymentDto } from "src/payment/dto/create-payment.dto";
 
 export class CreateOrderMenusDto {
   @IsUUID('4', { message: 'menuId must be a valida UUID' })
@@ -43,10 +41,6 @@ export class CreateOrderMenusDto {
   @IsOptional()
   @IsString()
   menuImg?: string;
-
-  @IsOptional()
-  @IsString()
-  details?: string;
 }
 
 export class CreateOrderDto {
@@ -54,18 +48,14 @@ export class CreateOrderDto {
   @IsUUID()
   restaurantId!: string;
 
-  @IsDate()
-  @IsNotEmpty()
-  @Type(() => Date)
-  deliverAt: Date;
-
   @IsOptional()
   @IsString()
   details?: string;
 
-  @IsOptional()
-  @IsBoolean()
-  isDelay?: boolean;
+  @IsDate()
+  @IsNotEmpty()
+  @Type(() => Date)
+  pickupAt: Date;
 
   @IsArray()
   @IsNotEmpty({ message: 'Order must contain at least one menu item' })
@@ -74,20 +64,4 @@ export class CreateOrderDto {
   @ValidateNested({ each: true })
   @Type(() => CreateOrderMenusDto)
   orderMenus: CreateOrderMenusDto[];
-
-  @IsOptional()
-  @Type(() => CreatePaymentDto)
-  paymentDetails?: CreatePaymentDto;
-
-  @IsOptional() // Could be null if no payment initiated or failed initiation
-  @IsString()
-  omiseChargeId?: string;
-
-  @IsOptional()
-  @IsEnum(PaymentMethodType)
-  paymentMethod?: PaymentMethodType;
-
-  @IsOptional() // Could be null if no payment initiated or before first update
-  @IsString() // Use string as Omise provides various statuses
-  paymentGatewayStatus?: string;
 }
