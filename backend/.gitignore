@@ -78,3 +78,6 @@ dist
 cert/
 *.pem
 *.key
+
+.hermes/
+.DS_Store
