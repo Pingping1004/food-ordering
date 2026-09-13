@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import { Pool } from 'pg';
@@ -7,8 +8,8 @@ import { Pool } from 'pg';
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PrismaService.name);
 
-  constructor() {
-    const connectionString = process.env.DATABASE_URL;
+  constructor(private readonly configService: ConfigService) {
+    const connectionString = configService.get<string>('DATABASE_URL') || process.env.DATABASE_URL;
 
     if (!connectionString) throw new Error("DATABASE_URL missing");
 
@@ -17,8 +18,6 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
     const pool = new Pool({
       connectionString,
-      // Transaction Pooler (port 6543): PgBouncer releases server connections
-      // after each transaction. PgBouncer handles pooling server-side.
       max: 10,
       idleTimeoutMillis: 20000,
       connectionTimeoutMillis: 15000,
