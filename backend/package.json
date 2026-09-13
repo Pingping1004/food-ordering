@@ -8,8 +8,10 @@
   "scripts": {
     "build": "NODE_OPTIONS='--max-old-space-size=400' nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "prisma:generate": "prisma generate --schema=./prisma/schema.prisma",
-    "prisma:push": "prisma db push --schema=./prisma/schema.prisma",
+    "prisma:generate:dev": "NODE_ENV=development prisma generate --schema=./prisma/schema.prisma",
+    "prisma:generate:prod": "NODE_ENV=production prisma generate --schema=./prisma/schema.prisma",
+    "prisma:push:dev": "NODE_ENV=development prisma db push --schema=./prisma/schema.prisma",
+    "prisma:push:prod": "NODE_ENV=production prisma db push --schema=./prisma/schema.prisma",
     "start": "nest start",
     "start:dev": "NODE_ENV=development nest start --watch",
     "dev:backend": "nest start --watch --project backend",
