@@ -85,7 +85,6 @@ export class OrderService {
         quantity: item.quantity,
         unitPrice: markupUnitPrice,
         menuImg: existingMenu.menuImg ?? null,
-        details: item.details,
         maxDaily: existingMenu.maxDaily
       });
     }
@@ -161,7 +160,6 @@ export class OrderService {
                 menuName: item.menuName,
                 unitPrice: item.unitPrice,
                 menuImg: item.menuImg,
-                details: item.details,
                 maxDaily: item.maxDaily,
                 menu: { connect: { menuId: item.menuId } },
               })),
