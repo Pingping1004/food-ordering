@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -12,70 +6,353 @@ datasource db {
   provider = "postgresql"
 }
 
-enum RoleRequestStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  CANCELLED
+model RoleRequest {
+  requestId   String            @id @default(uuid())
+  userId      String            @unique
+  username    String
+  requestRole Role
+  status      RoleRequestStatus
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime?
+  user        User              @relation("UserToRoleRequest", fields: [userId], references: [userId])
 }
 
-enum DayOfWeek {
-  MONDAY
-  TUESDAY
-  WEDNESDAY
-  THURSDAY
-  FRIDAY
-  SATURDAY
-  SUNDAY
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  jti       String   @unique
+  userId    String
+  expiresAt DateTime
+  issuedAt  DateTime @default(now())
+  isUsed    Boolean  @default(false)
+  isRevoked Boolean  @default(false)
+  user      User     @relation("UserToRefreshTokens", fields: [userId], references: [userId], onDelete: Cascade)
+}
+
+model Payout {
+  payoutId          String     @id @default(uuid())
+  idempotencyKey    String     @unique
+  requestHash       String
+  transactionId     String?    @unique
+  grossAmount       Decimal    @db.Decimal(10, 2)
+  restaurantRevenue Decimal    @db.Decimal(10, 2)
+  platformFee       Decimal    @db.Decimal(10, 2)
+  transactionFee    Decimal    @db.Decimal(10, 2)
+  vat               Decimal    @db.Decimal(10, 2)
+  refundAmount      Decimal?   @db.Decimal(10, 2)
+  payoutStatus      PayoutStatus  @default(processing)
+  startDate         DateTime
+  endDate           DateTime
+  paidAt            DateTime?
+  refundAt          DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt            DateTime    @updatedAt
+  orderId           String     @unique
+  restaurantName    String
+  restaurantId      String
+  order             Order      @relation("OrderToPayout", fields: [orderId], references: [orderId], onDelete: Cascade)
+  restaurant        Restaurant @relation("RestaurantPayment", fields: [restaurantId], references: [restaurantId], onDelete: Cascade)
+
+  @@index([payoutStatus, endDate])
+  @@index([transactionId])
+
+  @@unique([idempotencyKey, orderId])
+}
+
+model Restaurant {
+  restaurantId        String               @id @default(uuid())
+  email               String               @unique
+  restaurantImg       String?
+  name                String               @unique
+  location            String?
+  categories          RestaurantCategory[]
+  openTime            String
+  closeTime           String
+  avgCookingTime      Int
+  isApproved          Boolean             @default(false)
+  adminName           String
+  adminSurname        String
+  adminTel            String
+  adminEmail          String
+
+  accountNumber       String
+  bankAccount         AccountType
+  accountHolderFullName   String
+  paymentQr           String              @unique
+
+  openDate            DateWeek[]
+  userId              String               @unique
+  isTemporarilyClosed Boolean              @default(false)
+  menus               Menu[]               @relation("RestaurantMenus")
+  orders              Order[]              @relation("restaurantToOrder")
+  payout              Payout[]             @relation("RestaurantPayment")
+  user                User                 @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([restaurantId])
+  @@index([openTime])
+}
+
+model Menu {
+  menuId       String      @id @default(uuid())
+  name         String
+  menuImg      String
+  price        Decimal     @db.Decimal(10, 2)
+  maxDaily     Int         @default(100)
+  cookingTime  Int?
+  createdAt    DateTime    @default(now())
+  isAvailable  Boolean     @default(true)
+  restaurantId String
+  restaurant   Restaurant  @relation("RestaurantMenus", fields: [restaurantId], references: [restaurantId], onDelete: Cascade)
+
+  inventories   Inventory[]
+  orderMenus   OrderMenu[] @relation("menuToOrderMenus")
+
+  @@unique([restaurantId, name])
+  @@index([restaurantId])
+  @@index([isAvailable])
+  @@index([cookingTime])
+}
+
+model Inventory {
+  id          String    @id @default(uuid())
+  menuId      String
+  date        DateTime
+  remaining   Int
+  dailyQuota  Int
+
+  menu        Menu      @relation(fields: [menuId], references: [menuId], onDelete: Cascade)
+
+  @@unique([menuId, date])
+}
+
+model OrderMenu {
+  orderMenuId String  @id @default(uuid())
+  quantity    Int
+  menuName    String
+  menuImg     String?
+  unitPrice   Decimal @db.Decimal(10, 2)
+  maxDaily    Int
+  orderId     String
+  menuId      String
+  menu        Menu    @relation("menuToOrderMenus", fields: [menuId], references: [menuId], onDelete: Cascade)
+  order       Order   @relation("OrderToMenu", fields: [orderId], references: [orderId], onDelete: Cascade)
+
+  @@index([menuId])
+  @@index([orderId])
+}
+
+model Order {
+  orderId              String      @id @default(uuid())
+  orderSecret          String?      @default(uuid())    @unique
+  status               OrderStatus @default(sent)
+  userTel              String
+  orderAt              DateTime    @default(now())
+  acceptAt             DateTime?
+  deliverAt            DateTime
+  paymentStatus        PaymentStatus      @default(unpaid)
+  isDelay              Boolean     @default(false)
+  totalAmount          Decimal    @db.Decimal(10, 2)
+
+  paidAt               DateTime?
+  transactionId        String?     @unique
+  paymentSlipImg       String?
+  paymentMethod        String?     @map("payment_method_type")
+  paymentGatewayStatus String?     @map("payment_gateway_status")
+  
+  updatedAt            DateTime    @updatedAt
+  completedAt          DateTime?
+  cancelledAt          DateTime?
+  rejectedAt           DateTime?
+  refundAt             DateTime?
+
+  restaurantId         String
+  restaurant           Restaurant  @relation("restaurantToOrder", fields: [restaurantId], references: [restaurantId], onDelete: Cascade)
+  orderMenus           OrderMenu[] @relation("OrderToMenu")
+  
+  payoutId             String?
+  payout               Payout?     @relation("OrderToPayout")
+  userId               String?
+  user                 User?       @relation("OrderToUser", fields: [userId], references: [userId], onDelete: Cascade)
+  pushNotificationJobs PushNotificationJob[]
+  pushDeliveries       PushDelivery[]
+
+  @@index([restaurantId])
+  @@index([restaurantId, orderAt])
+  @@index([status])
+  @@index([orderAt])
+  @@index([payoutId])
+  @@index([userTel])
+}
+
+model User {
+  userId        String         @id @default(uuid())
+  email         String         @unique
+  name          String
+  password      String
+  profileImg    String?
+  role          Role           @default(user)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  refreshTokens RefreshToken[] @relation("UserToRefreshTokens")
+  restaurant    Restaurant?
+  RoleRequest   RoleRequest?   @relation("UserToRoleRequest")
+  order         Order[]        @relation("OrderToUser")
+  deviceTokens  DeviceToken[]
+  pushNotificationJobs PushNotificationJob[]
+  pushDeliveries PushDelivery[]
+
+  @@index([name])
+  @@index([userId])
+  @@index([role])
+}
+
+model DeviceToken {
+  deviceTokenId String   @id @default(uuid())
+  token         String   @unique
+  platform      String?
+  userAgent     String?
+  isActive      Boolean  @default(true)
+  lastSeenAt    DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  userId        String
+  user          User     @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  pushDeliveries PushDelivery[]
+
+  @@index([userId, isActive])
+}
+
+model PushNotificationJob {
+  pushNotificationJobId String        @id @default(uuid())
+  orderId               String
+  userId                String
+  restaurantId          String
+  eventType             PushEventType
+  attemptCount          Int           @default(0)
+  maxAttempts           Int           @default(3)
+  nextAttemptAt         DateTime      @default(now())
+  lastAttemptAt         DateTime?
+  completedAt           DateTime?
+  cancelledAt           DateTime?
+  lastError             String?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  order                 Order         @relation(fields: [orderId], references: [orderId], onDelete: Cascade)
+  user                  User          @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  pushDeliveries        PushDelivery[]
+
+  @@unique([orderId, userId, eventType])
+  @@index([nextAttemptAt, completedAt, cancelledAt])
+}
+
+model PushDelivery {
+  pushDeliveryId        String        @id @default(uuid())
+  orderId               String
+  userId                String
+  restaurantId          String
+  eventType             PushEventType
+  attemptNumber         Int
+  success               Boolean
+  providerMessageId     String?
+  errorCode             String?
+  errorMessage          String?
+  createdAt             DateTime      @default(now())
+  deviceTokenId         String?
+  pushNotificationJobId String?
+  deviceToken           DeviceToken?  @relation(fields: [deviceTokenId], references: [deviceTokenId], onDelete: SetNull)
+  order                 Order         @relation(fields: [orderId], references: [orderId], onDelete: Cascade)
+  user                  User          @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  pushNotificationJob   PushNotificationJob? @relation(fields: [pushNotificationJobId], references: [pushNotificationJobId], onDelete: SetNull)
+
+  @@index([orderId, eventType, createdAt])
+  @@index([userId, createdAt])
+}
+
+enum PayoutStatus {
+  initiated
+  processing
+  success
+  failed
+}
+
+enum PushEventType {
+  new_order
+  payment_verified
+}
+
+enum DateWeek {
+  mon
+  tue
+  wed
+  thu
+  fri
+  sat
+  sun
+}
+
+enum AccountType {
+  BANGKOK_BANK        // 01002
+  KASIKORN_BANK       // 01004
+  KRUNG_THAI_BANK     // 01006
+  TTB                 // 01011
+  SCB                 // 01014
+  KRUNGSRI            // 01025
+  KKP                 // 01069
+  CIMB_THAI           // 01022
+  TISCO               // 01067
+  UOB                 // 01024
+  THAI_CREDIT         // 01071
+  LH_BANK             // 01073
+  ICBC_THAI           // 01070
+  SME_BANK            // 01098
+  BAAC                // 01034
+  EXIM                // 01035
+  GSB                 // 01030
+  GHB                 // 01033
+  ISLAMIC_BANK        // 01066
+
+  PROMPTPAY_PHONE     // 02001
+  PROMPTPAY_ID        // 02003
+  PROMPTPAY_EWALLET   // 02004
+
+  MERCHANT_QR         // 03000
+  TRUEMONEY_WALLET    // 04000
+}
+
+enum RoleRequestStatus {
+  pending
+  accepted
+  rejected
+}
+
+enum PaymentMethod {
+  promptpay
+  mobileBanking
+  cash
 }
 
 enum OrderStatus {
-  receive
-  cooking
-  ready
-  done
-  delay
+  sent
+  accepted
+  cancelled
   rejected
-}
-
-enum Status {
-  ACTIVE
-  INACTIVE
-  SUSPENDED
-  REMOVED
-}
-
-enum PaymentStatus {
-  PENDING_VERIFICATION
-  UNPAID
-  PAID
-  FAILED
-  CANCELLED
-  REFUNDED
+  completed
 }
 
 enum Role {
-  ADMIN
-  COOKER
-  USER
+  admin
+  cooker
+  user
+  guest
 }
 
-enum SchoolRole {
-    ADMIN
-    STAFF
-}
-
-enum RestaurantRole {
-  OWNER
-  ADMIN
-  STAFF
-}
-
-enum IsPaid {
+enum PaymentStatus {
   paid
   unpaid
-  processing
-  rejected
+  verifying
+  failed
+  refund_pending
+  refund_complete
 }
 
 enum RestaurantCategory {
@@ -86,250 +363,5 @@ enum RestaurantCategory {
   Rice
   Appetizer
   Noodle
-}
-
-model RoleRequest {
-  requestId     String    @id @default(uuid())
-
-  userId        String      @unique
-  user          User        @relation(fields: [userId], references: [userId], onDelete: Cascade)
-
-  requestRole   Role
-  status        RoleRequestStatus
-
-  createdAt 		DateTime 	@default(now()) 		@db.Timestamptz(3)
-  updatedAt		DateTime	@updatedAt			@db.Timestamptz(3)
-
-	@@index([userId])
-	@@index([requestRole])
-	@@index([status])
-}
-
-model School {
-	schoolId			String		@default(uuid())		@id
-	name			String		@unique
-	email			String		@unique
-	profile			String?
-	studentAmount	Int
-	status			Status
-
-	canteens			Canteen[]
-	schoolMemberships	SchoolMembership[]
-	operatingHours 	SchoolOperatingHour[]
-    	dateOverrides 	SchoolDateOverride[]
-
-	createdAt 		DateTime 	@default(now()) 		@db.Timestamptz(3)
-	updatedAt		DateTime	@updatedAt			@db.Timestamptz(3)
-
-	@@index([name])
-	@@index([email])
-}
-
-model Canteen {
-	canteenId		String		@default(uuid())		@id
-	name			String
-	profile			String?
-	status			Status
-
-	schoolId			String
-	school			School		@relation(fields: [schoolId], references: [schoolId], onDelete: Cascade)
-	restaurants		Restaurant[]
-	operatingHours 	CanteenOperatingHour[]
-
-	createdAt 		DateTime 	@default(now()) 		@db.Timestamptz(3)
-	updatedAt		DateTime	@updatedAt			@db.Timestamptz(3)
-
-	@@index([name])
-	@@index([schoolId])
-	@@unique([schoolId, name])
-}
-
-model Restaurant {
-	restaurantId  		String 		@default(uuid()) 		@id
-  	name 			String
-  	profile 			String?
-  	email  			String 
-  	location  			String?
-  	categories  		RestaurantCategory[]
-	maxActiveOrders	Int?
-	avgCookingTimeMins	Int?
-	status			Status
-	isAutoAcceptedOrder	Boolean  @default(false)
-  
-  	contactName    	String
-  	contactTel     		String
-  	contactEmail   		String
-
-	accountNumber	String
-	accountName	String
-	paymentQr		String
-
-	canteenId		String
-	canteen			Canteen		@relation(fields: [canteenId], references: [canteenId], onDelete: Cascade)
-	memberships		RestaurantMembership[]
-	operatingHours	RestaurantOperatingHour[]
-	menus            		Menu[]
-  	orders           		Order[]
-
-	@@index([canteenId])
-	@@unique([canteenId, name])
-}
-
-model Menu {
-  	menuId  			String  		@default(uuid()) 		@id
-  	name  			String
-  	menuImg 		String?
-  	price   			Int
-  	maxDaily 		Int?
-  	cookingTimeMins	Int
- 	 isAvailable 		Boolean 		@default(true)
-	createdAt 		DateTime 	@default(now()) 		@db.Timestamptz(3)
-	updatedAt		DateTime	@updatedAt			@db.Timestamptz(3)
-
-  	restaurantId  		String
- 	restaurant  		Restaurant  	@relation(fields: [restaurantId], references: [restaurantId], onDelete: Cascade)
-  	orderMenus  		OrderMenu[]
-
-  	@@unique([restaurantId, name])
-  	@@index([restaurantId])
-  	@@index([isAvailable])
-}
-
-model Order {
-  	orderId 			String 		@default(uuid()) 		@id
-  	status  			OrderStatus 	@default(receive)
-    details             String?
-  	paymentStatus  	PaymentStatus	@default(UNPAID)
-  	totalAmount   	Int
-  	orderAt 			DateTime  	@default(now())		@db.Timestamptz(3)
-  	pickupAt 		DateTime	@db.Timestamptz(3)
-	paidAt			DateTime?	@db.Timestamptz(3)
-  	isDelay 			Boolean 		@default(false)
-
-  	restaurantId  		String
-  	restaurant  		Restaurant  	@relation(fields: [restaurantId], references: [restaurantId], onDelete: Cascade)
-  	orderMenus 		OrderMenu[]
-
-  	@@index([restaurantId])
-  	@@index([status])
-	@@index([paymentStatus])
-	@@index([pickupAt])
-  	@@index([orderAt])
-}
-
-model OrderMenu {
-  	orderMenuId      	String 		@default(uuid()) 		@id
-	quantity   		Int
-  	menuName   		String
-  	menuImg   		String?
-  	unitPrice 		Int
-  	totalPrice 		Int
-
-  	orderId 			String
-  	order   			Order 		 @relation(fields: [orderId], references: [orderId], onDelete: Cascade)
-  	menuId  			String
-  	menu  			Menu  		@relation(fields: [menuId], references: [menuId], onDelete: Restrict)
-
-  	@@index([menuId])
-  	@@index([orderId])
-}
-
-model RestaurantMembership {
-	id				String		@default(uuid())		@id
-	role				RestaurantRole
-
-	userId			String
-	user				User		@relation(fields: [userId], references: [userId], onDelete: Cascade)
-	restaurantId		String
-	restaurant		Restaurant	@relation(fields: [restaurantId], references: [restaurantId], onDelete: Cascade)
-
-	createdAt 		DateTime 	@default(now()) 		@db.Timestamptz(3)
-   	updatedAt 		DateTime 	@updatedAt 			@db.Timestamptz(3)
-
-
-	@@unique([userId, restaurantId])
-	@@index([restaurantId])
-}
-
-model SchoolMembership {
-	id			String	@default(uuid())	@id
-	role				SchoolRole
-	userId			String
-	user				User		@relation(fields: [userId], references: [userId], onDelete: Cascade)
-	schoolId			String
-	school			School		@relation(fields: [schoolId], references: [schoolId], onDelete: Cascade)
-	createdAt 		DateTime 	@default(now()) 		@db.Timestamptz(3)
-	updatedAt		DateTime	@updatedAt			@db.Timestamptz(3)
-
-	@@unique([userId, schoolId])
-	@@index([schoolId])
-}
-
-model SchoolOperatingHour {
-    	id 				String		 @default(uuid())			@id
-   	schoolId 			String
-	school   			School 		@relation(fields: [schoolId], references: [schoolId], onDelete: Cascade)
-    	dayOfWeek 		DayOfWeek
-    	openMinute  		Int
-    	closeMinute 		Int
-
-    	@@unique([schoolId, dayOfWeek])
-    	@@index([schoolId])
-}
-
-model CanteenOperatingHour {
-    id 				String 		@default(uuid())			@id
-    canteenId		String
-    canteen   		Canteen 		@relation(fields: [canteenId], references: [canteenId], onDelete: Cascade)
-    dayOfWeek 		DayOfWeek
-    openMinute  		Int
-    closeMinute 		Int
-
-    @@unique([canteenId, dayOfWeek])
-    @@index([canteenId])
-}
-
-
-model RestaurantOperatingHour {
-	id				String		 @default(uuid())			@id
-	restaurantId	String
-	restaurant		Restaurant	@relation(fields: [restaurantId], references: [restaurantId], onDelete: Cascade)
-    dayOfWeek 		DayOfWeek
-    openMinute		Int
-    closeMinute 		Int
-
-	@@unique([restaurantId, dayOfWeek])
-	@@index([restaurantId])
-}
-
-model SchoolDateOverride {
-    id 				String 		@default(uuid())			@id
-    schoolId 		String
-    school 			School 		@relation(fields: [schoolId], references: [schoolId], onDelete: Cascade)
-    date 			DateTime 	@db.Date
-    isClosed 		Boolean 		@default(false)
-    openMinute  	Int?
-    closeMinute 	Int?
-    reason			String?
-
-    createdAt 		DateTime 	@default(now()) 			@db.Timestamptz(3)
-    updatedAt 		DateTime 	@updatedAt 				@db.Timestamptz(3)
-
-    @@unique([schoolId, date])
-    @@index([schoolId, date])
-}
-
-model User {
-   	 userId 		String 		@default(uuid())		@id
-    name 			String
-    email 			String? 	@unique
-	password		String
-    role			Role        @default(USER)
-
-    schoolMemberships SchoolMembership[]
-    restaurantMemberships RestaurantMembership[]
-    roleRequest     RoleRequest[]
-
-    createdAt 		DateTime 	@default(now()) 		@db.Timestamptz(3)
-    updatedAt 		DateTime 	@updatedAt 			@db.Timestamptz(3)
+  Dessert
 }
