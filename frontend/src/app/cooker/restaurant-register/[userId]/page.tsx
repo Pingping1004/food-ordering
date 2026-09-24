@@ -14,7 +14,6 @@ import { getCurrentTime, getApproxCloseTime } from '@/util/time';
 import { useToggle } from '@/hook/useToggle';
 import { useRouter } from 'next/navigation';
 import { toastDanger, toastSuccess } from '@/components/ui/Toast';
-import { ACCOUNT_TYPE_OPTIONS } from '@/common/bank-type.enum';
 import { useCreateRestaurant } from '@/hook/useCooker';
 
 export default function RestaurantRegisterPage() {
