@@ -58,19 +58,6 @@ export default function Hero() {
                                 ดูวิธีใช้งาน
                             </a>
                         </div>
-
-                        {/* Trust badge */}
-                        <div className="flex items-center gap-3 mt-10 justify-center lg:justify-start animate-fade-in" style={{ animationDelay: '0.4s' }}>
-                            <div className="flex items-center gap-3 px-4 py-2.5 bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-2xl shadow-sm hover:shadow-md transition-all cursor-default">
-                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white font-bold text-lg shadow-inner">
-                                    TU
-                                </div>
-                                <div className="text-left">
-                                    <div className="text-[11px] text-slate-500 font-medium tracking-wide">ออกแบบและพัฒนาเพื่อ</div>
-                                    <div className="text-sm font-extrabold text-slate-900">นักศึกษามหาวิทยาลัยธรรมศาสตร์</div>
-                                </div>
-                            </div>
-                        </div>
                     </div>
 
                     {/* Right: Phone mockup */}
