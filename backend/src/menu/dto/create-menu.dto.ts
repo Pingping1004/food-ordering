@@ -66,13 +66,7 @@ export class CreateMenuDto {
   @IsNumber()
   @IsPositive()
   @Type(() => Number)
-  cookingTime: number;
-
-    @IsNotEmpty()
-    @IsNumber()
-    @IsPositive()
-    @Type(() => Number)
-    cookingTimeMins: number;
+  cookingTimeMins: number;
 
   @IsBoolean()
   @IsOptional()
