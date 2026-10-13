@@ -1,4 +1,13 @@
-import { IsNotEmpty, IsString, IsEnum, IsArray, IsOptional, IsEmail, IsNumber, IsDate } from "class-validator";
+import {
+  IsNotEmpty,
+  IsString,
+  IsEnum,
+  IsArray,
+  IsOptional,
+  IsEmail,
+  IsNumber,
+  IsDate,
+} from 'class-validator';
 import { AccountType, DateWeek, RestaurantCategory } from '@prisma/client';
 import { Type, Transform } from 'class-transformer';
 
@@ -6,10 +15,6 @@ export class CreateRestaurantDto {
   @IsNotEmpty()
   @IsString()
   name: string;
-
-  @IsOptional()
-  @IsString()
-  profile?: string;
 
   @IsOptional()
   @IsString()

@@ -72,3 +72,6 @@ prisma/migrations/
 .env.production
 .env.local
 .env.*.local
+
+# cert
+./cert/
