@@ -41,6 +41,7 @@ lerna-debug.log*
 .env.test.local
 .env.production.local
 .env.local
+.env.production
 
 # temp directory
 .temp
@@ -73,3 +74,4 @@ prisma/migrations/
 
 # Private project context
 **/IDEA.md
+docs/superpowers/specs/2026-10-13-school-canteen-refactor-plan.md
