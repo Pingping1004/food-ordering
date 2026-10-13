@@ -1,27 +1,28 @@
 import { cva, VariantProps } from "class-variance-authority";
 import clsx from "clsx";
-import React from "react";
 import { IconNumber } from "./IconNumber";
 
-const button = cva("noto-sans-regular justify-center text-sm", {
+const button = cva("font-noto-thai justify-center text-sm", {
     variants: {
         variant: {
-            primary: "bg-primary-main text-white",
+            primary: "bg-primary-main text-white border-1",
             secondary: "bg-primary-light text-primary-main",
+            tertiary: "border-1 border-primary-main text-primary-main text-sm",
             danger: "bg-danger-main text-white",
             success: "bg-success-main text-white",
             secondaryDanger: "bg-danger-light text-danger-main",
             secondarySuccess: "bg-success-light text-success-main",
         },
         size: {
-            sm: "px-3 py-2 rounded-2xl text-xs noto-sans-regular",
+            sm: "px-3 py-2 rounded-2xl text-xs font-noto-thai",
             md: "px-5 py-2.5 rounded-2xl",
             lg: "px-6 py-3 rounded-2xl",
-            full: "w-full py-3 rounded-2xl noto-sans-bold",
+            full: "w-full py-3 rounded-2xl font-noto-thai text-bold!",
             half: "w-1/2 py-2.5 rounded-2xl",
+            select: "rounded-2xl p-3 border-1 border-[#006CFE]"
         },
         disabled: {
-            true: "opacity-50 cursor-not-allowed",
+            true: "opacity-50 cursor-not-allowed pointer-events-none",
             false: "cursor-pointer",
         },
     },
@@ -54,7 +55,11 @@ export const Button = ({
     const icon = numberIcon !== undefined && (
         <IconNumber
             numberIcon={numberIcon}
-            size={size === "sm" ? "md" : size || undefined}
+            size={
+                size === "sm" || size === "select"
+                    ? "md"
+                    : (size as "md" | "lg" | "full" | "half" | undefined)
+            }
             className={clsx(
                 "bg-white text-primary p-1",
                 iconPosition === "start" ? "mr-2" : "ml-2"

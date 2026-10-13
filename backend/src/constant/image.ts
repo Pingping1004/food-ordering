@@ -1,0 +1,1 @@
+export const DEFAULT_FALLBACK_IMG_URL = 'https://images.promptserve.online/picture.webp';

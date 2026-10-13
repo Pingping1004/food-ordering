@@ -1,4 +1,3 @@
-import React from "react";
 import clsx from "clsx";
 import { cva, VariantProps } from "class-variance-authority";
 import Image from "next/image";
@@ -9,7 +8,7 @@ const menuProfileVariant = cva("", {
     variants: {
         variant: {
             on: '',
-            off: 'opacity-50 cursor-not-allowed',
+            off: 'opacity-50 cursor-not-allowed pointer-events-none',
         },
     },
     defaultVariants: {
@@ -21,33 +20,34 @@ export type MenuProfileProps = React.HTMLAttributes<HTMLDivElement> &
     VariantProps<typeof menuProfileVariant> & {
         menuId: string;
         name: string;
-        menuImg?: string;
+        menuImg: string;
         totalPrice?: number;
-        unitPrice: number;
-        maxDaily: number;
-        cookingTime: number;
+        sellPriceDisplay: number;
+        // unitPrice: number;
+        // maxDaily: number;
+        // cookingTime: number;
         isAvailable: boolean;
         restaurantId: string;
+        isPriority: boolean;
     }
 
 export default function MenuProfile({
     menuId,
-    variant = 'on',
+    variant,
     className,
     name,
     menuImg,
-    unitPrice,
-    totalPrice,
-    maxDaily,
-    cookingTime,
+    // unitPrice, //
+    // totalPrice, //
+    sellPriceDisplay,
+    // maxDaily, //
+    // cookingTime, //
     isAvailable,
-    restaurantId,
-    children,
+    restaurantId, //
+    isPriority,
     ...props
 }: MenuProfileProps) {
     const { getQuantity, addToCart, removeFromCart } = useCart();
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-    const src = menuImg ? `${baseUrl}/${menuImg}` : `/picture.svg`;
     const quantity = getQuantity(menuId) > 0 ? `${getQuantity(menuId)}` : '';
 
     return (
@@ -60,36 +60,40 @@ export default function MenuProfile({
 
             {...props}
         >
-            <div className="relative w-[163px] h-[163px] aspect-square">
+            <div className="relative w-[183px] h-[183px] aspect-square">
                 <Image
-                    width={163}
-                    height={163}
-                    src={src}
+                    width={183}
+                    height={183}
+                    sizes="(max-width: 768px) 120px, 183px"
+                    src={menuImg}
+                    priority={isPriority}
+                    fetchPriority={isPriority ? "high" : "auto"}
+                    quality={50}
                     alt="Menu profile"
-                    className="rounded-lg object-cover w-full h-full"
+                    className="rounded-lg object-cover aspect-auto w-full h-full"
                 />
             </div>
 
             <div className="flex flex-col gap-y-2 w-full">
-                <h3 className="noto-sans-bold text-sm text-primary">{name.substring(0, 21)}</h3>
+                <h3 className="font-noto-thai font-semibold text-base text-primary">{name}</h3>
                 <div className="flex justify-between items-center text-sm">
-                    <p className="text-light noto-sans-regular">{unitPrice}</p>
+                    <p className="text-light font-noto-thai">{sellPriceDisplay} บาท</p>
 
-                    <div className="flex items=center gap-x-2">
+                    <div className="flex items-center gap-x-1">
                         <Button
                             type="button"
                             size="sm"
-                            variant="secondarySuccess"
+                            variant="secondary"
                             onClick={() => removeFromCart(menuId)}
                         >
                             -
                         </Button>
-                        <p className="flex text-secondary noto-sans-bold items-center">{quantity}</p>
+                        <p className="flex text-secondary font-noto-thai text-bold items-center">{quantity}</p>
                         <Button
                             type="button"
                             size="sm"
-                            variant="success"
-                            onClick={() => addToCart(menuId, name, unitPrice, menuImg || "", restaurantId)}
+                            variant="primary"
+                            onClick={() => addToCart(menuId, name, sellPriceDisplay, menuImg, isAvailable, restaurantId)}
                         >
                             +
                         </Button>

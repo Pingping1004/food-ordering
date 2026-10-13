@@ -1,123 +1,135 @@
-"use client";
-
 import clsx from "clsx";
 import { VariantProps, cva } from "class-variance-authority";
-import React, { useState } from "react";
+import React, { useCallback } from "react";
 import { Button } from "../Button";
 import Image from "next/image";
 import { Toggle } from "../Toggle";
+import { useRouter } from "next/navigation";
 
 const menuVariants = cva("", {
-  variants: {
-    variant: {
-      default: "",
-      managing: "",
+    variants: {
+        variant: {
+            default: "",
+            managing: "",
+        },
+        isAvailable: {
+            true: "",
+            false: "",
+        },
     },
-    isAvailable: {
-      true: "",
-      false: "",
+    defaultVariants: {
+        variant: "default",
+        isAvailable: true,
     },
-  },
-  defaultVariants: {
-    variant: "default",
-    isAvailable: true,
-  },
 });
 
 type MenuProps = React.HtmlHTMLAttributes<HTMLDivElement> &
-  VariantProps<typeof menuVariants> & {
-    menuId: string;
-    name: string;
-    menuImg?: string;
-    restaurantName: string;
-    maxDaily: number;
-    cookingTime: number;
-    createdAt: Date | string | number;
-    price: number;
-    isAvailable: boolean;
-  };
+    VariantProps<typeof menuVariants> & {
+        restaurantid: string;
+        menuId: string;
+        name: string;
+        menuImg: string;
+        maxDaily: number;
+        cookingTime: number;
+        price: number;
+        isAvailable: boolean;
+        onAvailabilityChanged: (menuId: string, newAvailability: boolean) => void;
+        onDelete: (menuId: string) => void;
+    };
 
 export const Menu = ({
-  className,
-  menuId,
-  name,
-  menuImg,
-  restaurantName,
-  maxDaily,
-  cookingTime,
-  createdAt = new Date(),
-  price,
-  isAvailable = true,
-  children,
-  variant = "default",
-  ...props
+    className,
+    menuId,
+    name,
+    menuImg,
+    maxDaily,
+    cookingTime,
+    price,
+    isAvailable,
+    variant = "default",
+    onAvailabilityChanged,
+    onDelete,
+    ...props
 }: MenuProps) => {
 
-  const [isMenuAvailable, setIsMenuAvailable] = useState(isAvailable);
-  const handleToggle = (isAvailable: boolean): boolean => {
-    const updatedAvailable = !isAvailable;
-    setIsMenuAvailable(updatedAvailable);
-    console.log(
-      "Current available:",
-      isAvailable,
-      "Updated available:",
-      updatedAvailable
-    );
-    return updatedAvailable;
-  };
 
-  const isBlob = menuImg?.startsWith("blob:");
-  const src = menuImg ?? "/picture.svg";
+    const router = useRouter();
 
-  return (
-    <div
-      className={clsx(
-        "flex flex-col p-4 border-1 border-[#E1E1E1] rounded-2xl gap-y-6",
-        menuVariants({ variant, isAvailable }),
-        className
-      )}
-      {...props}
-    >
-      <header className="flex items-center gap-x-6">
-        {isBlob ? (
-          /* blob URLs work fine in a normal <img> */
-          <img src={src} alt={name} className="h-24 w-24 object-cover" />
-        ) : (
-          /* static or remote image → still use next/image */
-          <Image src={src} alt={name} width={96} height={96} />
-        )}
-        <div className="flex flex-col gap-y-2">
-          <div className="flex items-center gap-x-1">
-            <h3 className="noto-sans-bold text-md text-primary">{name}</h3>
-            <p className="text-sm text-light">(price)</p>
-          </div>
+    const handleToggleClick = useCallback((checked: boolean) => {
+        // Pass the new checked state directly to the parent
+        onAvailabilityChanged(menuId, checked);
+    }, [menuId, onAvailabilityChanged]);
 
-          <div>
-            <p className="text-secondary text-xs">
-              เวลาในการปรุง: {cookingTime}
-            </p>
-            <p className="text-secondary text-xs">
-              จำนวนมากสุดต่อจาน: {maxDaily}
-            </p>
-          </div>
-        </div>
-      </header>
+    const handleDelete = () => {
+        // Call the parent's onDelete function immediately with the menuId
+        // The parent function will handle optimistic UI and backend call
+        onDelete(menuId);
+    };
 
-      <footer className="flex gap-x-6 justify-between">
-        <Button size="md" className="flex w-full" type="button">
-          แก้ไขเมนู
-        </Button>
-
-        <Button
-          variant="secondaryDanger"
-          size="md"
-          className="flex w-full"
-          type="button"
+    return (
+        <div
+            className={clsx(
+                "flex flex-col p-4 border-1 border-[#E1E1E1] rounded-2xl gap-y-6",
+                menuVariants({ variant, isAvailable }),
+                className
+            )}
+            {...props}
         >
-          ลบเมนู
-        </Button>
-        <Toggle label="เปิดขาย" onClick={() => handleToggle(isMenuAvailable)} />
-      </footer>
-    </div>
-  );
+            <header className="flex items-center">
+                <Image
+                    src={menuImg}
+                    alt={name}
+                    width={96}
+                    height={96}
+                    className="h-24 w-24 object-cover aspect-square mr-6 rounded-2xl"
+                />
+                <div className="flex w-full flex-col justify-between gap-y-2">
+                    <div className="flex items-start justify-between gap-x-1">
+                        <h3 className="w-[140px] font-noto-thai text-bold text-lg text-primary">{name}</h3>
+                        <div className="flex items-center gap-x-2">
+                            <p className=" text-light font-noto-thai text-bold">{price}</p>
+                            <p className=" text-light">บาท</p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <p className="text-secondary text-sm">
+                            เวลาในการปรุง: {cookingTime}
+                        </p>
+                        <p className="text-secondary text-sm">
+                            จำนวนมากสุดต่อจาน: {maxDaily}
+                        </p>
+                    </div>
+                </div>
+            </header>
+
+            <footer className="flex gap-x-6 justify-between">
+                <Button
+                    size="md"
+                    className="flex w-full"
+                    type="button"
+                    onClick={() => router.push(`/cooker/restaurant/edit-menu/${menuId}`)}
+                >
+                    แก้ไขเมนู
+                </Button>
+
+                <Button
+                    variant="secondaryDanger"
+                    size="md"
+                    className="flex w-full"
+                    type="button"
+                    onClick={handleDelete}
+                >
+                    ลบเมนู
+                </Button>
+
+                <Toggle
+                    id={menuId}
+                    label="เปิดขาย"
+                    checked={isAvailable}
+                    onCheckedChange={handleToggleClick}
+                />
+            </footer>
+        </div>
+    );
 };

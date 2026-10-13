@@ -1,226 +1,489 @@
 import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-  Logger,
+    Injectable,
+    NotFoundException,
+    ConflictException,
+    BadRequestException,
+    Logger,
 } from '@nestjs/common';
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
-import { PrismaService } from 'prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
-import { OrderService } from 'src/order/order.service';
-import { DayOfWeek } from '@prisma/client';
+import moment from 'moment-timezone';
+import { UploadService } from 'src/upload/upload.service';
+import { clearRestaurantCache, getRestaurantCache, OpenRestaurant, RestaurantCache, setRestaurantCache } from './restaurantCache';
+import { DEFAULT_FALLBACK_IMG_URL } from 'src/constant/image';
+import { AnalyticsService } from 'src/analytics/analytics.service';
+import { EventName, EventSource } from '@prisma/client';
 
-const DAYS_OF_WEEK: DayOfWeek[] = [
-  DayOfWeek.SUNDAY,
-  DayOfWeek.MONDAY,
-  DayOfWeek.TUESDAY,
-  DayOfWeek.WEDNESDAY,
-  DayOfWeek.THURSDAY,
-  DayOfWeek.FRIDAY,
-  DayOfWeek.SATURDAY,
-];
+import { QrReaderService } from '../utils/qr-reader.service';
 
 @Injectable()
 export class RestaurantService {
-  constructor(
-    private prisma: PrismaService,
-    private orderService: OrderService,
-    private logger: Logger,
-  ) {}
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly uploadService: UploadService,
+        private readonly analyticsService: AnalyticsService,
+        private readonly qrReaderService: QrReaderService,
+    ) { }
 
-  async createRestaurant(
-    createRestaurantDto: CreateRestaurantDto,
-    file?: Express.Multer.File,
-  ) {
-    try {
-      const restaurantImgUrl = file
-        ? `uploads/restaurants/${file.filename}`
-        : createRestaurantDto.profile;
+    private readonly logger = new Logger('RestaurantService');
+    private pendingRestaurantRequests = new Map<string, Promise<RestaurantCache[]>>();
+    private requestVersion = new Map<string, number>();
 
-      const result = await this.prisma.restaurant.create({
-        data: {
-          name: createRestaurantDto.name,
-          profile: createRestaurantDto.profile,
-          email: createRestaurantDto.email,
-          location: createRestaurantDto.location,
-          categories: createRestaurantDto.categories,
-          maxActiveOrders: createRestaurantDto.maxActiveOrders,
-          avgCookingTimeMins: createRestaurantDto.avgCookingTimeMins,
-          status: createRestaurantDto.status,
+    async createRestaurant(
+        createRestaurantDto: CreateRestaurantDto,
+        userId: string,
+        paymentFile: Express.Multer.File,
+        file?: Express.Multer.File,
+    ) {
+        try {
+            const existingRestaurant = await this.findExistingRestaurant(userId);
+            if (existingRestaurant) throw new ConflictException(`ผู้ใช้ได้ลงทะเบียนกับร้าน: ${existingRestaurant.name}แล้ว`);
 
-          contactName: createRestaurantDto.contactName,
-          contactTel: createRestaurantDto.contactTel,
-          contactEmail: createRestaurantDto.contactEmail,
+            const restaurantImgUrl = file ? (await this.uploadService.saveImage(file)).url : DEFAULT_FALLBACK_IMG_URL;
 
-          accountNumber: createRestaurantDto.accountNumber,
-          accountName: createRestaurantDto.accountName,
-          paymentQr: createRestaurantDto.paymentQr,
+            if (!paymentFile) throw new NotFoundException(`กรุณาอัพโหลดQR สำหรับให้ลูกค้าชำระเงิน`);
 
-          canteenId: createRestaurantDto.canteenId,
+            let extractedAccount = createRestaurantDto.accountNumber;
+            let extractedBank = createRestaurantDto.bankAccount;
 
-          operatingHours: {
-            create: createRestaurantDto.operatingHours.map((hour) => ({
-              dayOfWeek: hour.dayOfWeek,
-              openMinute: hour.openMinute,
-              closeMinute: hour.closeMinute,
-            })),
-          },
-        },
-      });
+            try {
+                const qrInfo = await this.qrReaderService.processPaymentQr(paymentFile.buffer);
 
-      this.logger.log('Created restaurant in service : ', result);
-      return { message: 'File uploaded successfully', result, fileInfo: file };
-    } catch (error) {
-      this.logger.error('Failed to create restaurant service: ', error);
-      throw error;
-    }
-  }
+                extractedAccount = qrInfo.accountNumber;
+                extractedBank = qrInfo.bankAccount;
 
-  async findAllRestaurant() {
-    return this.prisma.restaurant.findMany({
-      include: {
-        operatingHours: true,
-      },
-    });
-  }
+                if (qrInfo.warnings.length > 0) {
+                    this.logger.warn(`QR Warnings for restaurant ${createRestaurantDto.name}: ${qrInfo.warnings.join(', ')}`);
+                }
+            } catch (qrError) {
+                throw new BadRequestException(`รูป QR ไม่ถูกต้องหรืออ่านไม่ได้: ${(qrError as Error).message}`);
+            }
 
-  async findRestaurant(restaurantId: string) {
-    try {
-      const restaurant = await this.prisma.restaurant.findUnique({
-        where: { restaurantId },
-      });
+            const paymentQr = (await this.uploadService.saveImage(paymentFile)).url;
 
-      if (!restaurant) {
-        throw new NotFoundException(`ไม่พบร้านอาหารที่มีID: ${restaurantId}`);
-      }
+            let openTime: string = '';
+            let closeTime: string = '';
 
-      return restaurant;
-    } catch (error) {
-      // Wrap Prisma errors or other errors if needed
-      if (error.code === 'P2025') {
-        // Prisma "Record not found"
-        throw new NotFoundException(`ไม่พบร้านอาหารที่มีID: ${restaurantId}`);
-      }
-      // Rethrow any other unexpected errors
-      throw error;
-    }
-  }
+            if (typeof createRestaurantDto.openTime === 'string') {
+                openTime = createRestaurantDto.openTime;
+            } else if (createRestaurantDto.openTime instanceof Date) {
+                openTime = moment(createRestaurantDto.openTime)
+                    .tz('Asia/Bangkok')
+                    .format('HH:mm');
+            }
 
-  async getOpenRestaurants() {
-    const allRestaurants = await this.findAllRestaurant();
+            if (typeof createRestaurantDto.closeTime === 'string') {
+                closeTime = createRestaurantDto.closeTime;
+            } else if (createRestaurantDto.closeTime instanceof Date) {
+                closeTime = moment(createRestaurantDto.closeTime)
+                    .tz('Asia/Bangkok')
+                    .format('HH:mm');
+            }
 
-    const now = new Date();
+            const newRestaurant = {
+                userId,
+                name: createRestaurantDto.name,
+                email: createRestaurantDto.email,
+                categories: createRestaurantDto.categories,
+                restaurantImg: restaurantImgUrl,
+                avgCookingTime: createRestaurantDto.avgCookingTime,
+                openDate: createRestaurantDto.openDate,
+                openTime: openTime,
+                closeTime: closeTime,
+                isApproved: true,
+                adminName: createRestaurantDto.adminName,
+                adminSurname: createRestaurantDto.adminSurname,
+                adminTel: createRestaurantDto.adminTel,
+                adminEmail: createRestaurantDto.adminEmail,
+                accountNumber: extractedAccount as string,
+                bankAccount: extractedBank as any,
+                paymentQr: paymentQr,
+                accountHolderFullName: createRestaurantDto.accountHolderFullName,
+            };
 
-    const currentDay = DAYS_OF_WEEK[now.getDay()];
-    const currentMinute = now.getHours() * 60 + now.getMinutes();
+            const result = await this.prisma.restaurant.create({
+                data: newRestaurant,
+            });
 
-    const restaurantsWithStatus = allRestaurants.map((restaurant) => {
-      const todayHours = restaurant.operatingHours.find(
-        (hour) => hour.dayOfWeek === currentDay,
-      );
+            this.requestVersion.set("restaurants:all", Date.now());
+            this.requestVersion.set("restaurants:open", Date.now());
 
-      let isOpen = false;
-      if (todayHours) {
-        if (todayHours.openMinute <= todayHours.closeMinute) {
-          isOpen =
-            currentMinute >= todayHours.openMinute &&
-            currentMinute <= todayHours.closeMinute;
-        } else {
-          isOpen =
-            currentMinute >= todayHours.openMinute ||
-            currentMinute <= todayHours.closeMinute;
+            clearRestaurantCache("restaurants:all")
+            clearRestaurantCache("restaurants:open")
+
+            return { message: 'อัพโหลดไฟล์สำเร็จ', result, imageUrl: restaurantImgUrl };
+        } catch (error) {
+            this.logger.error('ลงทะเบียนร้านอาหารล้มเหลว: ', error);
+            throw error;
         }
-      }
-
-      return {
-        ...restaurant,
-        isOpen,
-      };
-    });
-
-    return restaurantsWithStatus;
-  }
-
-  async updateRestaurant(
-    restaurantId: string,
-    updateRestaurantDto: UpdateRestaurantDto,
-    file?: Express.Multer.File,
-  ) {
-    try {
-      const restaurantImgUrl = file
-        ? `uploads/restaurants/${file.filename}`
-        : updateRestaurantDto.restaurantImg;
-      const dataToUpdate: Partial<UpdateRestaurantDto> = {
-        ...updateRestaurantDto,
-      };
-
-      if (file) {
-        dataToUpdate.restaurantImg = restaurantImgUrl;
-      } else if (file === undefined) {
-        dataToUpdate.restaurantImg = updateRestaurantDto.restaurantImg;
-      }
-
-      if (Object.keys(dataToUpdate).length === 0) {
-        throw new BadRequestException('ไม่พบข้อมูลให้อัปเดต.');
-      }
-
-      const result = await this.prisma.restaurant.update({
-        where: { restaurantId },
-        data: dataToUpdate,
-      });
-
-      return result;
-    } catch (error) {
-      if (error.code === 'P2025') {
-        throw new NotFoundException(
-          `ไม่สามารถแก้ไขข้อมูลได้ เนื่องจากไม่พบร้านอาหารที่มีID: ${restaurantId}`,
-        );
-      }
-      if (error.code === 'P2002') {
-        // Unique constraint failed
-        throw new BadRequestException(
-          'ชื่อร้านอาหารนี้ถูกใช้ไปแล้ว โปรดใช้ชื่อใหม่',
-        );
-      }
-      throw error;
     }
-  }
 
-  async removeRestaurant(restaurantId: string) {
-    const orders = await this.prisma.order.findMany({
-      where: { restaurantId },
-      select: { orderId: true, status: true },
-    });
+    async findAllRestaurant(limit: number = 6): Promise<RestaurantCache[]> {
+        const cacheKey = `restaurants:all`;
+        const cached = getRestaurantCache<OpenRestaurant[]>(cacheKey);
 
-    const allOrderDone = orders.every((order) => order.status === 'done');
-    if (!allOrderDone)
-      throw new BadRequestException(
-        'ไม่สามารถลบร้านอาหารในขณะที่ยังมีออเดอร์ค้างอยู่',
-      );
+        if (cached) return cached.slice(0, limit)
 
-    const orderIds = orders.map((order) => order.orderId);
+        const pendingRequest = this.pendingRestaurantRequests.get(cacheKey);
+        if (pendingRequest) {
+            this.logger.debug(`Using pending request for key: ${cacheKey}`);
+            return pendingRequest;
+        }
 
-    return this.prisma.$transaction(async (tx) => {
-      await tx.orderMenu.deleteMany({
-        where: {
-          orderId: { in: orderIds },
-        },
-      });
+        const requestPromise = (async () => {
+            const currentVersion = Date.now();
+            this.requestVersion.set(cacheKey, currentVersion);
 
-      await tx.order.deleteMany({
-        where: {
-          restaurantId,
-          status: 'done',
-        },
-      });
+            const restaurants = await this.prisma.safeRead(() =>
+                this.prisma.restaurant.findMany({
+                    where: { isApproved: true },
+                    take: limit * 3,
+                    select: {
+                        restaurantId: true,
+                        restaurantImg: true,
+                        name: true,
+                        location: true,
+                        categories: true,
+                        openDate: true,
+                        openTime: true,
+                        closeTime: true,
+                        avgCookingTime: true,
+                        isTemporarilyClosed: true,
+                        accountNumber: true,
+                        bankAccount: true,
+                        accountHolderFullName: true,
+                        paymentQr: true,
+                    }
+                }));
 
-      await tx.menu.deleteMany({
-        where: { restaurantId },
-      });
+            if (this.requestVersion.get(cacheKey) === currentVersion) {
+                setRestaurantCache(cacheKey, restaurants, 15 * 60 * 1000);
+            }
 
-      return tx.restaurant.delete({
-        where: { restaurantId },
-      });
-    });
-  }
+            return restaurants.slice(0, limit)
+        })();
+
+        this.pendingRestaurantRequests.set(cacheKey, requestPromise)
+
+        try {
+            return await requestPromise;
+        } finally {
+            this.pendingRestaurantRequests.delete(cacheKey)
+        }
+    }
+
+    async findExistingRestaurant(userId: string) {
+        const result = await this.prisma.restaurant.findUnique({
+            where: { userId },
+        });
+
+        return result;
+    }
+
+    async findRestaurant(restaurantId: string) {
+        const cacheKey = `restaurant:${restaurantId}`;
+        const cached = getRestaurantCache<RestaurantCache>(cacheKey);
+
+        const currentTimeString = moment().tz('Asia/Bangkok').format('HH:mm');
+
+        if (cached) {
+            const isScheduledOpenDay = this.isTodayOpen(
+                cached.openDate,
+                cached.openTime,
+                cached.closeTime
+            );
+
+            const isScheduledOpenTime = this.isTimeBetween(
+                currentTimeString,
+                cached.openTime,
+                cached.closeTime
+            );
+
+            const isActuallyOpen =
+                isScheduledOpenDay &&
+                isScheduledOpenTime &&
+                !cached.isTemporarilyClosed;
+
+            return { ...cached, isActuallyOpen };
+        }
+
+        try {
+            const restaurant = await this.prisma.safeRead(() =>
+                this.prisma.restaurant.findUnique({
+                    where: { restaurantId },
+                }));
+
+            if (!restaurant) throw new NotFoundException(`ไม่พบร้านอาหารที่มีID: ${restaurantId}`);
+
+            const isScheduledOpenDay = this.isTodayOpen(restaurant.openDate, restaurant.openTime, restaurant.closeTime);
+            const isScheduledOpenTime = this.isTimeBetween(
+                currentTimeString,
+                restaurant.openTime,
+                restaurant.closeTime,
+            );
+
+            const isOpen = isScheduledOpenDay && isScheduledOpenTime;
+            const isManuallyClosed = restaurant.isTemporarilyClosed;
+            const isActuallyOpen = isOpen && !isManuallyClosed;
+
+            setRestaurantCache(cacheKey, restaurant, 15 * 60 * 1000);
+            return { ...restaurant, isActuallyOpen };
+        } catch (error) {
+            if (error.code === 'P2025') {
+                // Prisma "Record not found"
+                throw new NotFoundException(`ไม่พบร้านอาหารที่มีID: ${restaurantId}`);
+            }
+            throw error;
+        }
+    }
+
+    private isTimeBetween(now: string, open: string, close: string): boolean {
+        const nowParts = now.split(':').map(Number);
+        const openParts = open.split(':').map(Number);
+        const closeParts = close.split(':').map(Number);
+
+        const nowMinutes = nowParts[0] * 60 + nowParts[1];
+        const openMinutes = openParts[0] * 60 + openParts[1];
+        const closeMinutes = close === '00:00' ? 1440 : closeParts[0] * 60 + closeParts[1];
+
+        if (openMinutes <= closeMinutes) {
+            return nowMinutes >= openMinutes && nowMinutes < closeMinutes;
+        } else {
+            return nowMinutes >= openMinutes || nowMinutes < closeMinutes;
+        }
+    }
+
+    private isTodayOpen(openDate: string[], openTime: string, closeTime: string): boolean {
+        const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+        const now = new Date();
+        const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+        const todayIndex = now.getDay();
+        const yesterdayIndex = (todayIndex + 6) % 7;
+
+        const today = days[todayIndex];
+        const yesterday = days[yesterdayIndex];
+
+        const openParts = openTime.split(':').map(Number);
+        const closeParts = closeTime.split(':').map(Number);
+
+        const openMinutes = openParts[0] * 60 + openParts[1];
+        const closeMinutes = closeParts[0] * 60 + closeParts[1];
+
+        const isOvernight = openMinutes > closeMinutes;
+
+        // If it's an overnight shift, check if yesterday was in openDate
+        if (isOvernight) {
+            return openDate.includes(today) || (nowMinutes < closeMinutes && openDate.includes(yesterday));
+        }
+
+        // Normal schedule (e.g. 09:00–17:00)
+        return openDate.includes(today);
+    }
+
+    async getOpenRestaurants(limit: number = 6) {
+        const cacheKey = `restaurants:open`;
+        const cached = getRestaurantCache<RestaurantCache[]>(cacheKey);
+
+        if (cached) return cached.slice(0, limit);
+
+        const currentTimeString = moment().tz('Asia/Bangkok').format('HH:mm');
+
+        const allRestaurants = await this.findAllRestaurant(limit);
+        const openRestaurants = allRestaurants
+            .map(restaurant => {
+                const isScheduledOpenDay = this.isTodayOpen(restaurant.openDate, restaurant.openTime, restaurant.closeTime);
+                const isScheduledOpenTime = this.isTimeBetween(currentTimeString, restaurant.openTime, restaurant.closeTime);
+                const isOpen = isScheduledOpenDay && isScheduledOpenTime;
+                const isManuallyClosed = restaurant.isTemporarilyClosed;
+                const isActuallyOpen = isOpen && !isManuallyClosed;
+
+                return {
+                    ...restaurant,
+                    isScheduledOpenDay,
+                    isScheduledOpenTime,
+                    isOpen,
+                    isActuallyOpen,
+                };
+            })
+            .filter(restaurant => restaurant.isActuallyOpen)
+            .slice(0, limit);
+
+        setRestaurantCache(cacheKey, openRestaurants, 2 * 60 * 1000)
+
+        return openRestaurants;
+    }
+
+    async updateRestaurant(
+        restaurantId: string,
+        updateRestaurantDto: UpdateRestaurantDto,
+        file?: Express.Multer.File,
+    ) {
+        try {
+            const dataToUpdate: Partial<UpdateRestaurantDto> = {
+                ...updateRestaurantDto,
+            };
+
+            const existingRestaurant = await this.prisma.restaurant.findUnique({
+                where: { restaurantId },
+                select: { restaurantImg: true }
+            });
+
+            if (!existingRestaurant) throw new NotFoundException(`ไมพบร้านอาหาร`)
+
+            if (file) {
+                const { url } = await this.uploadService.saveImage(file);
+                dataToUpdate.restaurantImg = url;
+
+                if (existingRestaurant.restaurantImg) {
+                    const oldR2Key = this.uploadService.extractKeyFromUrl(existingRestaurant.restaurantImg);
+                    if (oldR2Key) {
+                        await this.uploadService.cleanupImage(oldR2Key);
+                    }
+                }
+            } else if (updateRestaurantDto.restaurantImg === undefined) {
+                dataToUpdate.restaurantImg = undefined;
+            }
+
+            if (Object.keys(dataToUpdate).length === 0) {
+                throw new BadRequestException('ไม่พบข้อมูลให้อัปเดต.');
+            }
+
+            const result = await this.prisma.restaurant.update({
+                where: { restaurantId },
+                data: dataToUpdate,
+            });
+
+            this.requestVersion.set(`restaurant:${restaurantId}`, Date.now());
+            this.requestVersion.set(`restaurants:all`, Date.now());
+            this.requestVersion.set(`restaurants:open`, Date.now());
+
+            clearRestaurantCache(`restaurant:${restaurantId}`)
+            clearRestaurantCache(`restaurants:all`)
+            clearRestaurantCache("restaurants:open")
+
+            return result;
+        } catch (error) {
+            if (error.code === 'P2025') throw new NotFoundException(`ไม่พบร้านอาหารที่มีID: ${restaurantId}`);
+            // Unique constraint failed
+            if (error.code === 'P2002') throw new BadRequestException('ชื่อร้านอาหารนี้ถูกใช้ไปแล้ว โปรดใช้ชื่อใหม่');
+            throw error;
+        }
+    }
+
+    async updateIsTemporailyClose(
+        restaurantId: string,
+        updateRestaurantDto: UpdateRestaurantDto,
+    ) {
+        try {
+            const result = await this.prisma.restaurant.update({
+                where: { restaurantId },
+                data: { isTemporarilyClosed: updateRestaurantDto.isTemporarilyClosed },
+            });
+
+            this.requestVersion.set(`restaurant:${restaurantId}`, Date.now());
+            this.requestVersion.set(`restaurants:all`, Date.now());
+            this.requestVersion.set(`restaurants:open`, Date.now());
+
+            clearRestaurantCache(`restaurant:${restaurantId}`)
+            clearRestaurantCache(`restaurants:all`)
+            clearRestaurantCache("restaurants:open")
+
+            if (updateRestaurantDto.isTemporarilyClosed === true) {
+                await this.analyticsService.trackEvent({
+                    name: EventName.restaurant_closed,
+                    source: EventSource.restaurant_cms,
+                    restaurantId,
+                });
+            }
+
+            if (updateRestaurantDto.isTemporarilyClosed === false) {
+                await this.analyticsService.trackEvent({
+                    name: EventName.restaurant_reopened,
+                    source: EventSource.restaurant_cms,
+                    restaurantId,
+                });
+            }
+
+            return {
+                result,
+                message: `อัพเดทสถานะเปิด/ปิดชั่วคราวของร้านอาหาร ${result.name} เป็น ${result.isTemporarilyClosed} สำเร็จ`,
+            };
+        } catch (error) {
+            this.logger.error('Failed to update temporary close status of restaurant', error.message, error.stack);
+            throw error
+        }
+    }
+
+    async updateIsAutoAcceptedOrder(
+        restaurantId: string,
+        updateRestaurantDto: UpdateRestaurantDto,
+    ) {
+        try {
+            const result = await this.prisma.restaurant.update({
+                where: { restaurantId },
+                data: { isAutoAcceptedOrder: updateRestaurantDto.isAutoAcceptedOrder },
+            });
+
+            this.requestVersion.set(`restaurant:${restaurantId}`, Date.now());
+            this.requestVersion.set(`restaurants:all`, Date.now());
+
+            clearRestaurantCache(`restaurant:${restaurantId}`);
+            clearRestaurantCache(`restaurants:all`);
+
+            return {
+                result,
+                message: `อัพเดทสถานะรับออเดอร์อัตโนมัติของร้านอาหาร ${result.name} เป็น ${result.isAutoAcceptedOrder} สำเร็จ`,
+            };
+        } catch (error) {
+            this.logger.error('Failed to update auto accept order status of restaurant', error.message, error.stack);
+            throw error;
+        }
+    }
+
+    async removeRestaurant(restaurantId: string) {
+        const orders = await this.prisma.order.findMany({
+            where: { restaurantId },
+            select: { orderId: true, status: true },
+        });
+
+        const allOrderDone = orders.every((order) => order.status === 'accepted');
+        if (!allOrderDone) throw new BadRequestException('ไม่สามารถลบร้านอาหารในขณะที่ยังมีออเดอร์ค้างอยู่');
+
+        const orderIds = orders.map((order) => order.orderId);
+
+        const result = await this.prisma.$transaction(async (tx) => {
+            await tx.orderMenu.deleteMany({
+                where: {
+                    orderId: { in: orderIds },
+                },
+            });
+
+            await tx.order.deleteMany({
+                where: {
+                    restaurantId,
+                    status: 'accepted',
+                },
+            });
+
+            await tx.menu.deleteMany({
+                where: { restaurantId },
+            });
+
+            return tx.restaurant.delete({
+                where: { restaurantId },
+            });
+        });
+
+        this.requestVersion.set(`restaurant:${restaurantId}`, Date.now());
+        this.requestVersion.set(`restaurants:all`, Date.now());
+        this.requestVersion.set(`restaurants:open`, Date.now());
+
+        clearRestaurantCache(`restaurant:${restaurantId}`)
+        clearRestaurantCache(`restaurants:all`)
+        clearRestaurantCache("restaurants:open")
+
+        return result
+    }
 }

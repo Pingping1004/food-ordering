@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,83 +7,123 @@ import { loginSchema, loginSchemaType } from "@/schemas/auth/loginSchema";
 import Link from "next/link";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
-import { api } from "@/lib/api";
-import { useAuth } from "@/context/Authcontext";
+import { useAuth } from "@/auth/auth.hooks";
+import { toastDanger } from "@/components/ui/Toast";
+import LoadingPage from "@/components/LoadingPage";
 
-export default function SignupPage() {
-  const { register, handleSubmit, formState: { errors } } = useForm<loginSchemaType>({
-    resolver: zodResolver(loginSchema),
-  });
+export default function LoginPage() {
+    const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<loginSchemaType>({
+        resolver: zodResolver(loginSchema),
+        mode: 'onBlur',
+    });
 
-  const router = useRouter();
-  const { login } = useAuth();
-  const submitForm = async (loginData: loginSchemaType) => {
-    await login(loginData.email, loginData.password);
-    router.push('/user/restaurant');
-  };
+    const router = useRouter();
+    const { login, initializing } = useAuth();
 
-  return (
-    <>
-      <div className="container flex items-center justify-center min-w-screen min-h-screen">
-        <div className="flex justify-center items-center w-full h-full xl:gap-14 lg:justify-normal md:gap-5 draggable">
-          <div className="flex items-center justify-center w-full h-full lg:p-12">
-            <div className="flex items-center justify-center w-full h-full xl:p-10">
-              <form
-                onSubmit={handleSubmit(submitForm)}
-                className="flex flex-col w-full h-full p-20 text-center bg-white rounded-3xl"
-              >
-                <h3 className="mb-3 text-4xl font-extrabold text-gray-900">
-                  Already Have an Account?
-                </h3>
-                <p className="mb-16 text-gray-700">
-                  Enter your email and password
-                </p>
+    const onError = (formErrors: typeof errors) => {
+        const messages = Object.entries(formErrors)
+            .map(([field, error]) => `${field}: ${error?.message}`)
+            .join('\n');
 
-               <Input
-                    type="email"
-                    label="Email"
-                    placeholder="Email"
-                    name="email"
-                    register={register}
-                    variant={errors.email ? "error" : "primary"}
-               />
-                {errors.email && <span className="text-red-500">{errors.email.message}</span>}
-                
-                <Input
-                    type="password"
-                    label="Password"
-                    placeholder="Password"
-                    name="password"
-                    register={register}
-                    variant={errors.password ? "error" : "primary"}
-               />
-               {errors.password && <span className="text-red-500">{errors.password.message}</span>}
+        toastDanger(`กรุณากรอกข้อมูลให้ถูกต้อง:\n\n${messages}`);
+    };
 
-                <div className="flex flex-row justify-end mb-8">
+    const submitForm = async (loginData: loginSchemaType) => {
+        try {
+            const user = await login(loginData.email, loginData.password);
+            document.cookie = `role=${user.role}; path=/`;
+
+            if (user.role === "admin") {
+                router.push('/admin/role-requests');
+            } else if (user.role === "user") {
+                router.push('/user/restaurant');
+            } else if (user.role === 'cooker') {
+                const restaurantId = user.restaurant?.restaurantId;
+                if (restaurantId) {
+                    router.push(`/cooker/${restaurantId}`);
+                } else {
+                    router.push(`/cooker/restaurant-register/${user.userId}`);
+                }
+            }
+        } catch (error: unknown) {
+            if (typeof error === 'object' && error !== null && 'response' in error) {
+                const err = error as { response: { status: number; data?: { message?: string, code?: string } } };
+                const backendMessage = err.response.data?.message;
+
+                toastDanger(backendMessage ?? "เกิดข้อผิดพลาด");
+            }
+        }
+    };
+
+    if (initializing) return <LoadingPage />;
+
+    return (
+        <div className="container flex items-center justify-center min-w-screen min-h-screen">
+            <div className="flex justify-center items-center w-full h-full xl:gap-14 lg:justify-normal md:gap-5 draggable">
+                <div className="flex items-center justify-center w-full h-full lg:p-12">
+                    <div className="flex items-center justify-center w-full h-full xl:p-10">
+                        <form
+                            onSubmit={handleSubmit(submitForm, onError)}
+                            className="flex flex-col w-full h-full p-20 text-center bg-white rounded-3xl"
+                        >
+                            <h3 className="mb-3 text-4xl font-extrabold text-gray-900">
+                                มีบัญชีอยู่แล้ว?
+                            </h3>
+                            <p className="mb-16 text-gray-700">
+                                ใส่อีเมลและรหัสผ่านของคุณ
+                            </p>
+
+                            <div className="flex flex-col gap-y-4">
+                                <Input
+                                    type="email"
+                                    label="อีเมล"
+                                    placeholder="อีเมล"
+                                    // register={register}
+                                    {...register('email')}
+                                    variant={errors.email ? "error" : "primary"}
+                                    error={errors.email?.message}
+                                />
+
+                                <Input
+                                    type="password"
+                                    label="รหัสผ่าน"
+                                    placeholder="รหัสผ่าน"
+                                    // register={register}
+                                    {...register('password')}
+                                    variant={errors.password ? "error" : "primary"}
+                                    error={errors.password?.message}
+                                />
+                            </div>
+
+                            <div className="flex flex-row justify-end mb-8">
+                            </div>
+                            <div className="flex flex-col justify-center gap-y-4">
+                                <Button
+                                    variant="primary"
+                                    size="full"
+                                    type="submit"
+                                    disabled={isSubmitting}
+                                >
+                                    {isSubmitting ? "กำลังโหลด..." : "เข้าสู่ระบบ"}
+                                </Button>
+                                <p className="text-light font-thai text-sm">หรือ</p>
+                                <Button type="button" size="full" variant="secondary" disabled={isSubmitting} onClick={() => router.push('/user/restaurant')}>
+                                    สั่งอาหารเลยโดยไม่ล็อกอิน!
+                                </Button>
+                            </div>
+                            <p className="mt-6  leading-relaxed text-gray-900">
+                                ยังไม่เคยลงทะเบียน?{" "}
+                                <Link
+                                    href="/signup"
+                                    className="font-[700]  text-blue-400 transition duration-500 hover:text-blue-600"
+                                >
+                                    สร้างบัญชีผู้ใช้
+                                </Link>
+                            </p>
+                        </form>
+                    </div>
                 </div>
-                <div className="flex justify-center">
-                  <Button
-                      variant="primary"
-                      size="full"
-                      type="submit"
-                    >
-                    Login to Account
-                  </Button>
-                </div>
-                <p className="text-sm leading-relaxed text-gray-900">
-                  Not Register Yet?{" "}
-                  <Link
-                    href="/signup"
-                    className="font-[700] text-blue-400 transition duration-500 hover:text-blue-600"
-                  >
-                    Signup
-                  </Link>
-                </p>
-              </form>
             </div>
-          </div>
         </div>
-      </div>
-    </>
-  );
+    );
 }

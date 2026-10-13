@@ -1,13 +1,14 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { UpdateAdminDto } from './dto/update-admin.dto';
-import { PrismaService } from 'prisma/prisma.service';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 import { RoleRequestStatus } from '@prisma/client';
 
 @Injectable()
 export class AdminService {
-  constructor(
-    private prisma: PrismaService,
-  ){}
+  constructor(private readonly prisma: PrismaService) {}
 
   async findAllRequest() {
     return await this.prisma.roleRequest.findMany({
@@ -35,8 +36,9 @@ export class AdminService {
       include: { user: true },
     });
 
-    if (!request) throw new NotFoundException('Role request not found');
-    if (request.status !== RoleRequestStatus.pending) throw new BadRequestException('This request has already been processed');
+    if (!request) throw new NotFoundException('ไม่พบคำขอ');
+    if (request.status !== RoleRequestStatus.pending)
+      throw new BadRequestException('คำขอนี้ถูกดำเนินการไปแล้ว');
 
     return this.prisma.$transaction(async (tx) => {
       // Update user role
@@ -51,8 +53,8 @@ export class AdminService {
         data: { status: RoleRequestStatus.accepted },
       });
 
-      return { user: updatedUser, request: updatedRoleRequestStatus }
-    })
+      return { user: updatedUser, request: updatedRoleRequestStatus };
+    });
   }
 
   async rejectRoleRequest(requestId: string) {
@@ -60,7 +62,8 @@ export class AdminService {
       where: { requestId },
     });
 
-    if (!request || request.status !== RoleRequestStatus.pending) throw new BadRequestException('This request has already been processed');
+    if (!request || request.status !== RoleRequestStatus.pending)
+      throw new BadRequestException('คำขอนี้ถูกดำเนินการไปแล้ว');
 
     return this.prisma.roleRequest.update({
       where: { requestId },

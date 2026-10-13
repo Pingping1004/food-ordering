@@ -1,94 +1,112 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, BadRequestException, UseGuards, UseInterceptors, UploadedFile, Query, Res } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Req,
+  Logger,
+  Query,
+  NotFoundException,
+  Headers,
+} from '@nestjs/common';
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
-import { UpdateOrderDto } from './dto/update-order.dto';
+import { Request } from 'express';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from '../decorators/role.decorator';
-import { Public } from '../decorators/public.decorator';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { CreateOrderMenusDto } from './dto/create-order.dto';
-import { diskStorage } from 'multer';
-import { imageFileFilter, editFileName } from 'src/utils/file-upload.utils';
-import * as fs from 'fs/promises'
-import { plainToInstance } from 'class-transformer';
-import { validate } from 'class-validator';
-import { Response } from 'express';
-import Omise from 'omise';
+import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
+import { Role, User } from '@prisma/client';
+import { CsrfGuard } from 'src/guards/csrf.guard';
+import { Public } from 'src/decorators/public.decorator';
+import { UpdateOrderDto } from './dto/update-order.dto';
 
 @Controller('order')
-// @UseGuards(RolesGuard)
-// @Roles(['user'])
+@UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
+@Roles([Role.user, Role.admin, Role.cooker])
 export class OrderController {
   constructor(private readonly orderService: OrderService) { }
 
-  @Public()
-  @Post('omise')
-  async createOrder(@Body() createOrderDto: CreateOrderDto) {
-    try {
-      const result = await this.orderService.createOrderWithPayment(createOrderDto);
-      console.log('Result object: ', result);
+  private readonly logger = new Logger('OrderController');
 
-      return {
-        message: 'Order created and payment initiated successfully',
-        orderId: result.orderId,
-        chargeId: result.chargeId,
-        authorizeUri: result.authorizeUri,
-        status: result.status,
-        qrDownloadUri: result.qrDownloadUri,
-      };
+  @Public()
+  @Post('create')
+  async createOrder(
+    @Body() createOrderDto: CreateOrderDto,
+    @Req() req: Request & { user?: User },
+  ) {
+    try {
+      const userId = req.user?.userId || undefined;
+
+      const result = await this.orderService.createOrder(createOrderDto, userId);
+      return result;
     } catch (error) {
-      console.error('Error in createOrder controller function: ', error.message, error.stack);
+      this.logger.error('Error in createOrder controller function: ', error.message, error.stack);
       throw error;
     }
   }
 
-  @Get('omise/complete')
-  async handleOmiseReturn(
-    @Query('charge_id') chargeId: string,
-    @Query('orderId') orderId: string,
-    @Res() res: Response
-  ) {
-    if (!chargeId) {
-      console.error('Omise return_uri called without charge_id');
-      return res.redirect(`${process.env.NGROK_FRONTEND_URL}/user/order/done/error`);
-    }
-
-    const omise = Omise({
-      publicKey: process.env.OMISE_PUBLIC_KEY,
-      secretKey: process.env.OMISE_SECRET_KEY,
-    });
-
-    try {
-      const retrievedCharge = await omise.charges.retrieve(chargeId);
-
-      if (retrievedCharge.paid) {
-        console.log(`Omise charge ${chargeId} for order ${orderId} is paid successfully.`);
-        // res.redirect(`${process.env.NGROK_FRONTEND_URL}/user/order/done`)
-      } else {
-        console.log(`Omise charge ${chargeId} not paid. Status: ${retrievedCharge.status}. Failure: ${retrievedCharge.failure_message}`);
-        // res.redirect(`${process.env.NGROK_FRONTEND_URL}/user/order/done/${orderId}?status=failed`);
-      }
-    } catch (error) {
-      console.error('Error handling Omise return: ', error);
-      // res.redirect(`${process.env.NGROK_FRONTEND_URL}/user/order/done/${orderId}?status=error&message=${error.message}`);
-    }
+  @Get('today/:restaurantId')
+  async findRestaurantTodayOrders(@Param('restaurantId') restaurantId: string) {
+    return this.orderService.findRestaurantTodayOrders(restaurantId);
   }
 
   @Public()
-  @Get()
-  async findAllOrders() {
-    return this.orderService.findAllOrders();
+  @Get('active-count/:restaurantId')
+  async countActiveKitchenOrders(@Param('restaurantId') restaurantId: string) {
+    const count = await this.orderService.countActiveKitchenOrders(restaurantId);
+    return { activeOrderCount: count };
   }
 
+  @Public()
   @Get(':orderId')
-  async findOneOrder(@Param('orderId') orderId: string) {
-    return this.orderService.findOneOrder(orderId);
+  async findOneOrder(@Param('orderId') orderId: string, @Headers('x-order-secret') orderSecret: string) {
+    return this.orderService.findOneOrder(orderId, orderSecret);
+  }
+
+  @Get('new/:restaurantId')
+  async getNewOrders(@Param('restaurantId') restaurantId: string, @Query('after') after?: Date) {
+    const timestamp = after ? new Date(after) : undefined
+    return this.orderService.getOrdersAfterTimeStamp(restaurantId, timestamp)
+  }
+
+  @Patch('delay/:orderId')
+  async updateDelay(
+    @Param('orderId') orderId: string,
+    @Body() updateOrderDto: UpdateOrderDto,
+  ) {
+    if (!updateOrderDto.isDelay) throw new NotFoundException('ไม่พบสถานะออเดอร์ที่ต้องการแก้ไข')
+
+    return this.orderService.updateDelay(orderId, updateOrderDto.isDelay);
   }
 
   @Public()
-  @Patch(':orderId')
-  async updateOrder(@Param('orderId') orderId: string, @Body() updateOrderDto: UpdateOrderDto) {
-    return this.orderService.updateOrder(orderId, updateOrderDto);
+  @Patch('cancel/:orderId')
+  async cancelOrder(@Param('orderId') orderId: string, @Body('orderSecret') orderSecret: string) {
+    if (!orderId) throw new NotFoundException("ไม่พบออเดอร์ไอดี")
+
+    return this.orderService.cancelOrder(orderId, orderSecret);
+  }
+
+  @Public()
+  @Patch('expire/:orderId')
+  async expireOrder(@Param('orderId') orderId: string, @Body('orderSecret') orderSecret: string) {
+    if (!orderId) throw new NotFoundException("ไม่พบออเดอร์ไอดี")
+
+    return this.orderService.expireOrder(orderId, orderSecret);
+  }
+
+  @Patch('reject/:orderId')
+  async rejectOrder(@Param('orderId') orderId: string) {
+    return this.orderService.updateOrderStatus(orderId, "rejected");
+  }
+
+  @Patch('accept/:orderId')
+  async acceptOrder(@Param('orderId') orderId: string) {
+    return this.orderService.updateOrderStatus(orderId, "accepted");
   }
 
   @Delete(':orderId')

@@ -1,5 +1,3 @@
-import React from "react";
-
 type IconNumberProps = {
   numberIcon: number;
   size?: "md" | "lg" | "full" | "half";
@@ -7,16 +5,16 @@ type IconNumberProps = {
 };
 
 export const IconNumber = ({
-  numberIcon,
-  size = "md",
-  className = "",
+    numberIcon,
+    size = "md",
+    className = "",
 }: IconNumberProps) => {
-  const sizeClasses = size === "lg" ? "w-5 h-5 text-sm" : "w-4 h-4 text-xs";
-  return (
-    <div
-      className={`flex items-center justify-center rounded-full noto-sans-bold text-[10px] ${sizeClasses} ${className}`}
-    >
-      {numberIcon > 0 ? numberIcon : 0}
-    </div>
-  );
+    const sizeClasses = size === "lg" ? "w-5 h-5 text-sm" : "w-4 h-4 text-xs";
+    return (
+        <div
+            className={`flex items-center justify-center rounded-full font-noto-thai text-bold text-[10px] ${sizeClasses} ${className}`}
+        >
+            {numberIcon > 0 ? numberIcon : 0}
+        </div>
+    );
 };

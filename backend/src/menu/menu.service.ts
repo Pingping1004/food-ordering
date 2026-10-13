@@ -1,276 +1,619 @@
-import { Injectable, Inject, forwardRef, NotFoundException, ConflictException, InternalServerErrorException, BadRequestException, ForbiddenException } from '@nestjs/common';
-import { CreateMenuDto } from './dto/create-menu.dto';
+import {
+    Injectable,
+    Inject,
+    OnModuleInit,
+    forwardRef,
+    NotFoundException,
+    ConflictException,
+    InternalServerErrorException,
+    BadRequestException,
+    ForbiddenException,
+    Logger,
+} from '@nestjs/common';
+import { CreateMenuDto, CsvMenuItemData } from './dto/create-menu.dto';
 import { UpdateMenuDto } from './dto/update-menu.dto';
-import { PrismaService } from 'prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { RestaurantService } from 'src/restaurant/restaurant.service';
 import { Menu } from '@prisma/client';
 import Decimal from 'decimal.js';
+import { UploadService } from 'src/upload/upload.service';
+import { randomUUID } from 'crypto';
+import { InventoryService } from 'src/inventory/inventory.service';
+import { clearMenuCache, clearMenuQuotaCache, getMenuCache, getMenuQuotaCache, setMenuCache, setMenuQuotaCache } from './menuCache';
+import { DEFAULT_FALLBACK_IMG_URL } from 'src/constant/image';
 
 export interface MenusWithDisplayPrices {
-  menuId: string;
-  name: string;
-  menuImg?: string;
-  price: number;
-  restaurantId: string;
-  isAvailable: boolean;
-  sellPriceDisplay: number;
-  platformFeeDisplay: number;
+    menuId: string;
+    name: string;
+    menuImg?: string;
+    price: Decimal;
+    restaurantId: string;
+    maxDaily: number;
+    isAvailable: boolean;
+    sellPriceDisplay: number;
+    platformFeeDisplay?: number;
+}
+
+export interface BulkCreateMenuResult {
+    message: string;
+    createdMenus: Menu[];
+    failedMenus: { item: CsvMenuItemData; error: string }[]; // Items that failed with their original data and error
+    totalAttempted: number;
+    totalCreated: number;
+    totalFailed: number;
 }
 
 @Injectable()
-export class MenuService {
-  constructor(
-    private prisma: PrismaService,
-    @Inject(forwardRef(() => RestaurantService))
-    private restaurantService: RestaurantService,
-  ) { }
+export class MenuService implements OnModuleInit {
+    constructor(
+        private readonly prisma: PrismaService,
+        @Inject(forwardRef(() => RestaurantService))
+        private readonly restaurantService: RestaurantService,
+        private readonly uploadService: UploadService,
+        @Inject(forwardRef(() => InventoryService))
+        private readonly inventoryService: InventoryService,
+    ) { }
 
-  async createMenu(
-    restaurantId: string,
-    createMenuDto: CreateMenuDto[],
-    files?: Express.Multer.File | Express.Multer.File[]
-  ) {
-    try {
-      if (!restaurantId) throw new BadRequestException('RestaurantId is required');
-      const existingRestaurant = await this.restaurantService.findRestaurant(restaurantId);
+    onModuleInit() {
+        this.scheduleTempImageCleanup();
+        this.logger.log(`Temp image cleanup scheduler initialized`);
+    }
 
-      const newMenuNames = createMenuDto.map(dto => dto.name);
-      // 2a. Check for duplicates *within the incoming batch itself*
-      const uniqueNewMenuNames = new Set(newMenuNames);
-      if (uniqueNewMenuNames.size !== newMenuNames.length) {
-        const duplicateNamesInBatch = newMenuNames.filter((name, index) => newMenuNames.indexOf(name) !== index);
-        throw new ConflictException(
-          `Duplicate menu names found within the batch: ${[...new Set(duplicateNamesInBatch)].join(', ')}. ` +
-          `Each menu name in a bulk creation request must be unique.`
-        );
-      }
+    private readonly logger = new Logger('menuService');
+    private pendingMenuRequest = new Map<string, Promise<MenusWithDisplayPrices[]>>();
+    private requestVersion = new Map<string, number>();
+    private readonly tempImageStore = new Map<string, { url: string; createdAt: Date }>();
+    private readonly MENU_CACHE_TTL_MS = 10 * 60 * 1000;
+    private readonly QUOTA_CACHE_TTL_MS = 5 * 1000;
+    private markupRate = new Decimal(process.env.SELL_PRICE_MARKUP_RATE ?? '0');
+    private commissionRate = new Decimal(process.env.PLATFORM_COMMISSION_RATE ?? '0');
 
-      // 2b. Check against existing menu names in the database for THIS restaurant
-      const existingMenusWithSameNames = await this.prisma.menu.findMany({
-        where: {
-          name: { in: newMenuNames }, // Check if any of the new names exist in DB
-          restaurantId: restaurantId, // IMPORTANT: Scope to the current restaurant
-        },
-        select: { name: true }, // Only retrieve the name for the check
-      });
+    private getMenuCacheKey(restaurantId: string): string {
+        return `menus:restaurant:${restaurantId}`;
+    }
 
-      if (existingMenusWithSameNames.length > 0) {
-        const duplicateNamesInDb = existingMenusWithSameNames.map(menu => menu.name);
-        throw new ConflictException(
-          `The following menu names already exist for restaurant ${restaurantId}: ${duplicateNamesInDb.join(', ')}. ` +
-          `Menu names must be unique per restaurant.`
-        );
-      }
+    private getMenuQuotaCacheKey(restaurantId: string): string {
+        return `menuQuota:restaurant:${restaurantId}`;
+    }
 
-      // 3. Check for different restaurantId
-      const differentRestaurantId = createMenuDto.filter(dto => dto.restaurantId !== undefined && dto.restaurantId !== restaurantId);
-      if (differentRestaurantId.length > 0) {
-        const inconsistentIds = [...new Set(differentRestaurantId.map(m => m.name))];
-        throw new BadRequestException(
-          `Menu (${inconsistentIds.join(', ')}) ` +
-          `have restaurantId that does not match the authenticated restaurant ID (${restaurantId}). ` +
-          `All menus in a bulk creation must belong to the authenticated restaurant.`
-        )
-      }
+    private invalidateRestaurantMenuCache(restaurantId: string): void {
+        const menuCacheKey = this.getMenuCacheKey(restaurantId);
+        const quotaCacheKey = this.getMenuQuotaCacheKey(restaurantId);
+        clearMenuCache(menuCacheKey);
+        clearMenuQuotaCache(quotaCacheKey);
+        this.requestVersion.set(menuCacheKey, Date.now());
 
-      const menuLists = createMenuDto.map(async (dto, index) => {
-        const file = files && files[index];
+        this.pendingMenuRequest.delete(menuCacheKey);
+        this.logger.debug(`Cache cleared for key: ${menuCacheKey}`);
+    }
 
-        let menuImgUrl: string | undefined;
-        if (file) {
-          menuImgUrl = `uploads/menus/${file.filename};`
-        } else if (dto.menuImg) {
-          menuImgUrl = dto.menuImg;
+    async createSingleMenu(createMenuDto: CreateMenuDto, file: Express.Multer.File) {
+        const existingName = await this.checkDuplicateMenuNameInRestaurant(createMenuDto.name, createMenuDto.restaurantId);
+        if (existingName) throw new BadRequestException(`เมนู ${createMenuDto.name} มีอยู่แล้ว`);
+
+        const menuImgUrl = file ? (await this.uploadService.saveImage(file)).url : DEFAULT_FALLBACK_IMG_URL;
+        try {
+            const newMenu: CreateMenuDto & { menuImg: string } = {
+                restaurantId: createMenuDto.restaurantId,
+                name: createMenuDto.name,
+                price: createMenuDto.price,
+                maxDaily: createMenuDto.maxDaily,
+                menuImg: menuImgUrl,
+                cookingTimeMins: createMenuDto.cookingTimeMins,
+                isAvailable: true,
+            };
+
+            const result = await this.prisma.menu.create({
+                data: newMenu,
+            });
+
+            this.invalidateRestaurantMenuCache(createMenuDto.restaurantId);
+
+            return result;
+        } catch (error) {
+            this.logger.error(`Failed to create menu ${createMenuDto.name}:`, error);
+            throw new InternalServerErrorException('สร้างเมนูล้มเหลว: ' + error.message);
+        }
+    }
+
+    async createBulkMenus(
+        restaurantId: string,
+        menusData: CsvMenuItemData[],
+    ): Promise<BulkCreateMenuResult> {
+        try {
+            // 1. Validate inputs and check for duplicate names
+            const existingRestaurant = await this.validateBulkInput(restaurantId, menusData);
+
+            // 3. Process each menu item and create database records
+            const { createdMenus, failedCreations } = await this.processMenuCreations(menusData, existingRestaurant.restaurantId);
+
+            this.invalidateRestaurantMenuCache(restaurantId);
+
+            // 4. Format and return the final comprehensive result
+            return this.formatResponse(menusData.length, createdMenus, failedCreations);
+        } catch (error: any) {
+            this.logger.error(`สร้างหลายเมนูพร้อมกันล้มเหลว ${restaurantId}: `, error);
+            if (error instanceof BadRequestException || error instanceof ConflictException) {
+                throw error;
+            }
+
+            throw new InternalServerErrorException('เซิฟเวอร์ขัดข้อง กรุณาลองใหม่');
+        }
+    }
+
+    private async validateBulkInput(restaurantId: string, menusData: CsvMenuItemData[]) {
+        if (!restaurantId) throw new BadRequestException('ไม่พบไอดีร้านอาหาร.');
+        const existingRestaurant = await this.restaurantService.findRestaurant(restaurantId);
+
+        const newMenuNames = menusData.map((dto) => dto.name);
+        await this.checkDuplicateNames(newMenuNames, restaurantId);
+
+        return existingRestaurant;
+    }
+
+    private async checkDuplicateNames(newMenuNames: string[], restaurantId: string): Promise<void> {
+        // Check for Duplicates Within the Incoming Batch
+        const uniqueNewMenuNames = new Set(newMenuNames);
+        if (uniqueNewMenuNames.size !== newMenuNames.length) {
+            const duplicateNamesInBatch = newMenuNames.filter(
+                (name, index) => newMenuNames.indexOf(name) !== index,
+            );
+
+            throw new ConflictException(
+                `พบเมนูซ้ำดังต่อไปนี้: ${[...new Set(duplicateNamesInBatch)].join(', ')}. ` +
+                `ชื่อเมนูในร้านต้องไม่ซ้ำกัน`);
         }
 
-        const newMenuLists = {
-          name: dto.name,
-          price: dto.price,
-          maxDaily: dto.maxDaily,
-          cookingTimeMins: dto.cookingTimeMins,
-          menuImg: menuImgUrl,
-
-          restaurant: {
-            connect: {
-              restaurantId: existingRestaurant.restaurantId,
+        const existingMenusWithSameNames = await this.prisma.menu.findMany({
+            where: {
+                name: { in: newMenuNames },
+                restaurantId: restaurantId,
             },
-          },
-        };
-
-        const createdMenus = await this.prisma.menu.create({
-          data: newMenuLists,
+            select: { name: true },
         });
 
-        return createdMenus
-      });
-
-      const results = await Promise.all(menuLists);
-      console.log(`Bulk menu creation successful for restaurant ${restaurantId}. Created menus:`, results.map(m => m.name)); // Log menu names for brevity
-      return {
-        message: `Menus created successfully for restaurant ${restaurantId}`,
-        results: results,
-        fileInfos: files, // Optionally return information about processed files
-      };
-    } catch (error) {
-      console.error(`Failed to create menus for ${restaurantId}: `, error);
-      throw error;
-    }
-  }
-
-  async findAllMenus() {
-    return this.prisma.menu.findMany();
-  }
-
-  private calculateDisplayPrice(menu: Partial<Menu>): { sellPriceDisplay: number; platformFeeDisplay: number } {
-    if (!menu.price) throw new NotFoundException('Cannot find menu price, cannot calculate display price');
-    const markup = new Decimal(Number(process.env.SELL_PRICE_MARKUP_RATE));
-    const rate = new Decimal(Number(process.env.PLATFORM_COMMISSION_RATE));
-
-    const priceInSatang = new Decimal(menu.price);
-    const sellingPriceInSatang = priceInSatang.times(new Decimal(1).plus(markup));
-    const platformFeeInSatang = sellingPriceInSatang.times(rate);
-
-    return {
-      sellPriceDisplay: sellingPriceInSatang.toNumber(),
-      platformFeeDisplay: platformFeeInSatang.toNumber(),
-    }
-  }
-
-  async getRestaurantMenusDisplay(restaurantId: string): Promise<MenusWithDisplayPrices[]> {
-    try {
-      const menus = await this.prisma.menu.findMany({
-        where: {
-          restaurantId,
-          isAvailable: true,
-        },
-        select: {
-          menuId: true,
-          name: true,
-          menuImg: true,
-          price: true,
-          restaurantId: true,
-          isAvailable: true,
+        if (existingMenusWithSameNames.length > 0) {
+            const duplicateNamesInDb = existingMenusWithSameNames.map((menu) => menu.name);
+            throw new ConflictException(
+                `เมนูดังต่อไปนี้มีอยู่แล้ว: ${duplicateNamesInDb.join(', ')}. ` +
+                `ชื่อเมนูในร้านต้องไม่ซ้ำกัน`,
+            );
         }
-      });
-
-      const menusWithCalculatedPrices: MenusWithDisplayPrices[] = menus.map(menu => {
-        const displayPrices = this.calculateDisplayPrice(menu);
-        return {
-          ...menu,
-          menuImg: menu.menuImg ?? undefined,
-          sellPriceDisplay: displayPrices.sellPriceDisplay,
-          platformFeeDisplay: displayPrices.platformFeeDisplay,
-        };
-      });
-
-      return menusWithCalculatedPrices;
-    } catch (error) {
-      throw new InternalServerErrorException('ค้นหาเมนูขัดข้อง');
     }
-  }
 
-  async findMenu(menuId: string) {
-    try {
+    generateTempId(): string {
+        return `temp_${randomUUID()}`;
+    }
 
-      const menu = await this.prisma.menu.findUnique({
-        where: { menuId },
-      });
+    uploadTempImages(files: Express.Multer.File[]) {
+        return Promise.all(files.map(async (file) => {
+            const tempId = this.generateTempId();
+            const { url } = await this.uploadService.saveImage(file);
+            this.tempImageStore.set(tempId, { url, createdAt: new Date() }); // store for later use
 
-      if (!menu) throw new Error('ไม่พบเมนูที่ค้นหา');
+            return { originalName: file.originalname, tempId, url };
+        }));
+    }
 
-      await this.restaurantService.findRestaurant(menu.restaurantId);
+    private scheduleTempImageCleanup() {
+        const interval = 1000 * 60 * 2; // cleanup every 2 minutes
+        const maxLifetimeMs = 1000 * 60 * 10; // max 10 mins
 
-      return menu;
-    } catch (error) {
-      if (error.code === 'P2025') {
-        // Prisma "Record not found"
-        throw new NotFoundException(
-          `ไม่พบออเดอร์ที่มีID: ${menuId}`,
+        setInterval(() => {
+            const now = Date.now();
+            for (const [tempId, data] of this.tempImageStore.entries()) {
+                if (now - data.createdAt.getTime() > maxLifetimeMs) {
+                    this.tempImageStore.delete(tempId);
+                }
+            }
+        }, interval);
+    }
+
+    private async processMenuCreations(menusData: CsvMenuItemData[], restaurantId: string) {
+        const results = await Promise.all(
+            menusData.map(async (dto) => {
+                try {
+                    const imageData = this.tempImageStore.get(dto.menuImgTempId);
+                    if (!imageData) throw new BadRequestException(`ไม่พบรูปภาพ: ${dto.menuImgTempId}`);
+
+                    const menuDataToCreate = {
+                        name: dto.name,
+                        // description: dto.description,
+                        price: dto.price,
+                        maxDaily: dto.maxDaily,
+                        cookingTime: dto.cookingTime ?? 5,
+                        isAvailable: dto.isAvailable,
+                        menuImg: imageData.url,
+                        restaurant: { connect: { restaurantId: restaurantId } },
+                    };
+                    const createdMenu = await this.prisma.menu.create({ data: menuDataToCreate });
+
+                    return {
+                        success: true as const,
+                        menu: createdMenu,
+                    }
+                } catch (itemError: any) {
+                    this.logger.error(
+                        `Failed to create menu item "${dto.name}" (Original file: ${dto.originalFileName || 'N/A'}): `,
+                        itemError.message,
+                        itemError.stack,
+                    );
+
+                    return {
+                        success: false as const,
+                        error: itemError.message,
+                        item: dto,
+                    };
+                }
+            }),
         );
-      }
 
-      throw error;
+        const createdMenus: Menu[] = [];
+        const failedCreations: { item: CsvMenuItemData; error: string }[] = [];
+
+        for (const result of results) {
+            if (result.success) {
+                createdMenus.push(result.menu);
+            } else {
+                failedCreations.push({
+                    item: result.item,
+                    error: result.error,
+                });
+            }
+        }
+
+        return { createdMenus, failedCreations }
     }
-  }
 
-  private async isOwnerOfMenu(restaurantId: string, menuIds: string[]) {
-    await this.restaurantService.findRestaurant(restaurantId);
-    const ownedAndExistingMenus = await this.prisma.menu.findMany({
-      where: {
-        menuId: { in: menuIds },
-        restaurantId,
-      },
-      select: { menuId: true, restaurantId: true },
-    });
+    private formatResponse(
+        totalAttempted: number,
+        createdMenus: Menu[],
+        failedCreations: { item: CsvMenuItemData; error: string }[],
+    ): BulkCreateMenuResult {
+        const totalCreated = createdMenus.length;
+        const totalFailed = failedCreations.length;
 
-    if (ownedAndExistingMenus.length !== menuIds.length) {
-      const foundOwnedMenuids = new Set(ownedAndExistingMenus.map(menu => menu.menuId));
-      const problematicMenuIds = menuIds.filter(id => !foundOwnedMenuids.has(id));
+        let responseMessage = `สร้างหลายเมนูสำเร็จ `;
+        if (totalFailed > 0) {
+            const failedNames = failedCreations.map((f) => f.item.name).join(', ');
+            responseMessage += `เพิ่ม: ${totalCreated}, ล้มเหลว: ${totalFailed} เมนูดังนี้: ${failedNames}.`;
+        } else {
+            responseMessage += `${totalCreated} เมนู`;
+        }
 
-      const allRequestMenus = await this.prisma.menu.findMany({
-        where: { menuId: { in: problematicMenuIds } },
-        select: { menuId: true, restaurantId: true },
-      });
-
-      if (allRequestMenus.length === 0) {
-        throw new NotFoundException('The following menus were not found: ', problematicMenuIds.join(', '));
-      } else {
-        throw new ForbiddenException(`The following menus exist but do not belong to restaurant "${restaurantId}": ${problematicMenuIds.join(', ')}.`);
-      }
+        return {
+            message: responseMessage,
+            createdMenus: createdMenus,
+            failedMenus: failedCreations,
+            totalAttempted,
+            totalCreated,
+            totalFailed,
+        };
     }
-  }
 
-  async updateMenu(restaurantId: string, menuIds: string[], updateMenuDto: UpdateMenuDto[]) {
-    try {
-      // Find existing restaurant
-      await this.restaurantService.findRestaurant(restaurantId);
-
-      // Check for menu ownership
-      await this.isOwnerOfMenu(restaurantId, menuIds);
-
-      const updateMenuLists = updateMenuDto.map(async (dto, index) => {
-        const menuId = menuIds[index];
-        // const file = files && files[index];
-        const menuImgUrl = dto.menuImg;
-
-        const updateLists: Partial<Menu> = {};
-        if (dto.name !== undefined) updateLists.name = dto.name;
-        if (dto.price !== undefined) updateLists.price = dto.price;
-        if (dto.maxDaily !== undefined) updateLists.maxDaily = dto.maxDaily;
-        if (dto.cookingTimeMins !== undefined) updateLists.cookingTimeMins = dto.cookingTimeMins;
-        if (dto.isAvailable !== undefined) updateLists.isAvailable = dto.isAvailable;
-        if (menuImgUrl !== undefined) updateLists.menuImg = menuImgUrl;
-
-        const updateMenus = await this.prisma.menu.update({
-          where: {
-            menuId: menuId,
-            restaurantId,
-          },
-          data: updateLists,
+    async checkDuplicateMenuNameInRestaurant(name: string, restaurantId: string) {
+        const menu = await this.prisma.menu.findFirst({
+            where: {
+                name: {
+                    equals: name,
+                    mode: 'insensitive',
+                },
+                restaurantId,
+            },
         });
 
-        return updateMenus;
-      });
-
-      if (Object.keys(updateMenuLists).length === 0) {
-        throw new BadRequestException('ไม่พบข้อมูลให้อัพเดต');
-      }
-
-      const results = await Promise.all(updateMenuLists);
-      console.log(`Bulk menus update successful for restaurant ${restaurantId}. Updated menus: `, results.map(m => m.name));
-      return {
-        message: `Menus updated successfully for restaurant ${restaurantId}`,
-        results: results
-      };
-    } catch (error: any) {
-      console.error(`Failed to update menus for ${restaurantId}: `, error);
-      throw error;
+        return menu;
     }
-  }
 
-  async removeMenu(menuId: string) {
-    return this.prisma.menu.delete({
-      where: { menuId },
-    });
-  }
+    private calculateDisplayPrice(menu: Pick<Menu, 'price'>) {
+        if (menu.price === null) throw new NotFoundException('ไม่สามารถคำนวณราคาของเมนูได้');
+
+        const priceInSatang = new Decimal(menu.price);
+        const sellingPriceInSatang = priceInSatang.times(new Decimal(1).plus(this.markupRate));
+        const platformFeeInSatang = sellingPriceInSatang.times(this.commissionRate);
+
+        return {
+            sellPriceDisplay: sellingPriceInSatang.toNumber(),
+            platformFeeDisplay: platformFeeInSatang.toNumber(),
+        };
+    }
+
+    async getRestaurantMenusDisplay(restaurantId: string): Promise<MenusWithDisplayPrices[]> {
+        const cacheKey = this.getMenuCacheKey(restaurantId);
+        const quotaCacheKey = this.getMenuQuotaCacheKey(restaurantId);
+
+        const cachedMenus = getMenuCache(cacheKey);
+        if (cachedMenus) {
+            this.logger.debug(`Menu cache hit for key: ${cacheKey}`);
+
+            const menuIds = cachedMenus.map(m => m.menuId);
+            let quotas = getMenuQuotaCache(quotaCacheKey);
+
+            if (quotas) {
+                this.logger.debug(`Quota cache hit for key: ${quotaCacheKey}`);
+            } else {
+                quotas = await this.inventoryService.getRemainingQuotas(menuIds);
+                setMenuQuotaCache(quotaCacheKey, quotas, this.QUOTA_CACHE_TTL_MS);
+            }
+
+            return cachedMenus.map(menu => {
+                const remainingQuota = quotas[menu.menuId] ?? menu.maxDaily;
+
+                return {
+                    ...menu,
+                    isOrderable: menu.isAvailable && remainingQuota > 0,
+                };
+            });
+        }
+
+        const pending = this.pendingMenuRequest.get(cacheKey);
+        if (pending) {
+            this.logger.debug(`Using pending request for key: ${cacheKey}`);
+            return pending;
+        }
+
+        const requestPromise = (async () => {
+            const currentVersion = Date.now();
+            this.requestVersion.set(cacheKey, currentVersion);
+
+            const dbMenus = await this.prisma.safeRead(() =>
+                this.prisma.menu.findMany({
+                    where: { restaurantId },
+                    select: {
+                        menuId: true,
+                        name: true,
+                        menuImg: true,
+                        price: true,
+                        restaurantId: true,
+                        isAvailable: true,
+                        cookingTime: true,
+                        maxDaily: true,
+                    },
+                    orderBy: {
+                        name: "asc"
+                    },
+                }));
+
+            const menuIds = dbMenus.map(m => m.menuId);
+            let quotas = getMenuQuotaCache(quotaCacheKey);
+
+            if (quotas) {
+                this.logger.debug(`Quota cache hit for key: ${quotaCacheKey}`);
+            } else {
+                quotas = await this.inventoryService.getRemainingQuotas(menuIds);
+                setMenuQuotaCache(quotaCacheKey, quotas, this.QUOTA_CACHE_TTL_MS);
+            }
+
+            const menus = dbMenus.map(menu => {
+                const displayPrices = this.calculateDisplayPrice(menu);
+                const remainingQuota = quotas[menu.menuId] ?? menu.maxDaily;
+
+                return {
+                    ...menu,
+                    menuImg: menu.menuImg ?? undefined,
+                    sellPriceDisplay: displayPrices.sellPriceDisplay,
+                    isOrderable: menu.isAvailable && remainingQuota > 0
+                };
+            });
+
+            if (this.requestVersion.get(cacheKey) === currentVersion) {
+                setMenuCache(cacheKey, menus, this.MENU_CACHE_TTL_MS);
+            }
+
+            return menus;
+        })();
+
+        this.pendingMenuRequest.set(cacheKey, requestPromise);
+
+        try {
+            return await requestPromise;
+        } finally {
+            this.pendingMenuRequest.delete(cacheKey);
+        }
+    }
+
+    async findMenu(menuId: string) {
+        try {
+            const menu = await this.prisma.safeRead(() =>
+                this.prisma.menu.findUnique({
+                    where: { menuId },
+                }))
+
+            if (!menu) throw new Error('ไม่พบเมนูที่ค้นหา');
+
+            await this.restaurantService.findRestaurant(menu.restaurantId);
+            return menu;
+        } catch (error) {
+            if (error.code === 'P2025') throw new NotFoundException(`ไม่พบออเดอร์ที่มีID: ${menuId}`); // Prisma "Record not found"
+
+            throw error;
+        }
+    }
+
+    private async isOwnerOfMultipleMenus(restaurantId: string, menuIds: string[]) {
+        if (menuIds.length === 0) throw new BadRequestException("ไม่พบเมนูไอดี");
+
+        await this.restaurantService.findRestaurant(restaurantId);
+
+        const allMenus = await this.prisma.menu.findMany({
+            where: { menuId: { in: menuIds } },
+            select: { menuId: true, restaurantId: true, name: true },
+        });
+
+        if (allMenus.length !== menuIds.length) {
+            const foundMenuIds = new Set(allMenus.map(menu => menu.menuId));
+            const notFoundMenuIds = menuIds.filter(id => !foundMenuIds.has(id));
+
+            if (notFoundMenuIds.length > 0) throw new NotFoundException(`ไม่พบเมนูดังนี้: ${notFoundMenuIds.join(", ")}`);
+        }
+
+        const unauthorizedMenus = allMenus.filter(
+            menu => menu.restaurantId !== restaurantId
+        );
+
+        if (unauthorizedMenus.length > 0) {
+            const unauthorizedMenuName = unauthorizedMenus.map(menu => menu.name);
+
+            throw new ForbiddenException(`เมนูดังต่อไปนี้เป็นของร้านอื่น: ${unauthorizedMenuName.join(", ")}`);
+        }
+    }
+
+    omitUnchangedMenuFields(original: Menu, updates: Partial<Menu>): Partial<Menu> {
+        const changedFields: Partial<Menu> = {};
+
+        for (const key in updates) {
+            const newValue = updates[key];
+            const oldValue = original[key];
+
+            if (newValue === undefined) continue;
+
+            // skip invalid menuImg
+            if (key === 'menuImg' && newValue === '/') continue;
+
+            // Decimal comparison
+            if (newValue instanceof Decimal && oldValue instanceof Decimal) {
+                if (!newValue.equals(oldValue)) changedFields[key] = newValue;
+                continue;
+            }
+
+            // normal comparison
+            if (newValue !== oldValue) changedFields[key] = newValue;
+        }
+
+        return changedFields;
+    }
+
+    private mapDtoToMenuUpdate(dto: UpdateMenuDto): Partial<Menu> {
+        return {
+            name: dto.name,
+            menuImg: dto.menuImg,
+            maxDaily: dto.maxDaily,
+            cookingTime: dto.cookingTime,
+            isAvailable: dto.isAvailable,
+            price: dto.price != null ? new Decimal(dto.price) : undefined,
+        };
+    }
+
+    async updateMenu(menuId: string, updateMenuDto: UpdateMenuDto, file?: Express.Multer.File) {
+        const results: Menu[] = [];
+
+        await this.isOwnerOfSingleMenu(updateMenuDto.restaurantId, menuId);
+
+        const existingMenu = await this.findMenu(menuId);
+        const transformedUpdate = this.mapDtoToMenuUpdate(updateMenuDto)
+        const updateData = this.omitUnchangedMenuFields(existingMenu, transformedUpdate);
+
+        // filter undefined explicitly
+        Object.keys(updateData).forEach((key) => {
+            if (updateData[key] === undefined) delete updateData[key];
+        });
+
+        if (file) {
+            const { url } = await this.uploadService.saveImage(file);
+            updateData.menuImg = url;
+        }
+
+        const result = await this.prisma.$transaction(async (tx) => {
+            const updatedMenu = await tx.menu.update({
+                where: { menuId },
+                data: updateData,
+            });
+
+            if (updateData.maxDaily !== undefined) await this.inventoryService.syncInventoryQuotaTx(tx, menuId, updateData.maxDaily);
+
+            return updatedMenu;
+        });
+
+        this.invalidateRestaurantMenuCache(existingMenu.restaurantId);
+        results.push(result);
+
+        return results;
+    }
+
+    async bulkUpdateMenus(
+        menuIds: string[],
+        updateDtos: UpdateMenuDto[],
+        files?: Express.Multer.File[],
+    ) {
+        if (menuIds.length !== updateDtos.length) throw new BadRequestException('เมนูไอดีไม่ถูกต้อง');
+
+        const restaurantId = updateDtos[0].restaurantId;
+        await this.isOwnerOfMultipleMenus(restaurantId, menuIds)
+
+        // Upload images optionally and concurrently
+        const imageUrl = await this.uploadService.saveOptionalBulkImages(files);
+
+        // Prepare the updates with the new image URLs
+        const updates = updateDtos.map((dto, index) => {
+            const menuImgUrl = imageUrl[index].url;
+
+            if (menuImgUrl) dto.menuImg = menuImgUrl;
+
+            return {
+                where: { menuId: menuIds[index] },
+                data: dto,
+            };
+        });
+
+        try {
+            const updatePromises = updates.map(update => this.prisma.menu.update(update));
+
+            const result = await this.prisma.$transaction(updatePromises);
+
+            this.invalidateRestaurantMenuCache(restaurantId);
+            return result;
+        } catch (error) {
+            this.logger.error('Failed to perform bulk menu update in transaction:', error);
+            throw new InternalServerErrorException('อัพเดทหลายเมนูล้มเหลว ไม่มีการแก้ไขเมนูใดๆ');
+        }
+    }
+
+    private async isOwnerOfSingleMenu(restaurantId: string, menuId: string) {
+        await this.restaurantService.findRestaurant(restaurantId);
+        const isOwner = await this.prisma.menu.findFirst({
+            where: {
+                menuId,
+                restaurantId,
+            },
+        });
+
+        if (!isOwner) throw new BadRequestException(`คุณไม่ใช่ผู้ดูแลของร้านนี้`);
+    }
+
+    async updateIsAvailable(menuId: string, updateMenuDto: UpdateMenuDto) {
+        try {
+            await this.isOwnerOfSingleMenu(updateMenuDto.restaurantId, menuId);
+
+            const result = await this.prisma.menu.update({
+                where: { menuId },
+                data: { isAvailable: updateMenuDto.isAvailable },
+            });
+
+            this.invalidateRestaurantMenuCache(updateMenuDto.restaurantId);
+
+            return {
+                result,
+                message: `อัพเดทสถานะเมนู ${result.name} ให้เป็น ${result.isAvailable} สำเร็จ`,
+            };
+        } catch (error) {
+            this.logger.error(`An unexpected error occurred during update menu isavailable`, error);
+            throw new InternalServerErrorException('อัพเดทสถานะเมนูล้มเหลว');
+        }
+    }
+
+    async removeMenu(menuId: string) {
+        const restaurant = await this.prisma.menu.findUnique({
+            where: { menuId },
+            select: { restaurantId: true }
+        });
+
+        const result = await this.prisma.menu.delete({
+            where: { menuId },
+        });
+
+        if (restaurant?.restaurantId) {
+            this.invalidateRestaurantMenuCache(restaurant.restaurantId);
+        }
+        return result
+    }
 }

@@ -1,66 +1,115 @@
 "use client";
 
-import { Button } from "@/components/Button";
-import { RestaurantProfile } from "@/components/users/RestaurantProfile";
-import React, { useEffect, useState } from "react";
-import { Restaurant } from "@/context/MenuContext";
-
+import dynamic from "next/dynamic";
+import { useEffect, useState } from "react";
+import UserHeader from "@/components/users/UserHeader";
+import type { Restaurant } from "@/app/data/type";
 import { api } from "@/lib/api";
-import { useCart } from "@/context/CartContext";
-import { useRouter } from "next/navigation";
-import UserHeader from "@/components/users/Header";
+import RestaurantProfile from "../../../components/users/RestaurantProfile";
+import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/Button";
+import LoadingPage from "@/components/LoadingPage";
 
+const Modal = dynamic(() => import("../../../components/users/Modal"), { ssr: false });
+
+const fetchRestaurants = async (limit: number): Promise<Restaurant[]> => {
+    const res = await api.get("/restaurant", {
+        params: { limit },
+    });
+
+    return res.data;
+};
 
 export default function UserHomePage() {
-    const { cart } = useCart();
-    const router = useRouter();
-    const [data, setData] = useState<Restaurant[] | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
+    const [showModal, setShowModal] = useState(false);
+    const [visibleCount, setVisibleCount] = useState(6);
+
+    const {
+        data: restaurants = [],
+        isLoading,
+        isError,
+        refetch,
+        isFetching,
+    } = useQuery({
+        queryKey: ["restaurants", { limit: visibleCount }],
+        queryFn: () => fetchRestaurants(visibleCount),
+    })
 
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const response = await api.get<Restaurant[]>(`/restaurant`);
-                setData(response.data);
-            } catch (error) {
-                setError('Error fetching data');
-                console.error(error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchData();
+        const seen = localStorage.getItem("order-before-lunch-modal");
+        if (!seen) setShowModal(true);
     }, []);
 
-    if (loading) return <div>Loading...</div>;
-    if (error) return <div>{error}</div>;
-    if (!data) return <div>No Data found</div>
-
-    console.log('Fetch restaurant data: ', data);
+    if (isLoading) return <LoadingPage />
+    if (isError) {
+        return (
+            <div className="text-center">
+                <p>โหลดร้านอาหารไม่สำเร็จ</p>
+                <Button
+                    type="button"
+                    variant="secondaryDanger"
+                    onClick={() => refetch()}
+                >
+                    {isFetching ? "กำลังโหลด..." : "ลองใหม่"}
+                </Button>
+            </div>
+        );
+    }
 
     return (
-        <div className="flex flex-col gap-y-10 py-10 px-6">
-            <UserHeader />
-            <div className="grid md:grid-cols-4 lg:grid-cols-6 grid-cols-2 gap-x-4">
-                {data.map((restaurant) => {
+        <>
+            {showModal && (
+                <Modal
+                    isOpen={showModal}
+                    onClose={() => setShowModal(false)}
+                    title="สั่งอาหารก่อน 11:45"
+                    body="กรุณาสั่งอาหารก่อนเวลา 11:45 น. เพื่อให้ร้านอาหารสามารถเตรียมอาหารของคุณได้ทันเวลา"
+                    confirmText="เข้าใจแล้ว"
+                    onConfirm={() => {
+                        localStorage.setItem("order-before-lunch-modal", "true");
+                        setShowModal(false);
+                    }}
+                />
+            )}
 
-                    return (
-                        <RestaurantProfile
-                            key={restaurant.restaurantId}
-                            name={restaurant.name}
-                            categories={restaurant.categories}
-                            openTime={restaurant.openTime}
-                            closeTime={restaurant.closeTime}
-                            restaurantId={restaurant.restaurantId}
-                            restaurantImg={restaurant.restaurantImg}
-                            isOpen={restaurant.isOpen}
-                            variant={restaurant.isOpen ? "isOpen" : "isClose"}
-                        />
-                    );
-                })}
+            <div className="flex flex-col gap-y-10 py-10 px-6">
+                <UserHeader />
+
+                {isFetching && !isLoading && (
+                    <p className="text-sm text-gray-400">กำลังอัปเดต...</p>
+                )}
+
+                <div className="grid md:grid-cols-4 lg:grid-cols-6 grid-cols-2 gap-x-4 gap-y-6">
+                    {restaurants.length > 0 ? (
+                        restaurants.map((restaurant, i) => (
+                            <RestaurantProfile
+                                key={restaurant.restaurantId}
+                                name={restaurant.name}
+                                categories={restaurant.categories}
+                                restaurantId={restaurant.restaurantId}
+                                restaurantImg={restaurant.restaurantImg}
+                                isOpen={restaurant.isActuallyOpen}
+                                isPriority={i < 4}
+                                variant={restaurant.isActuallyOpen ? "isOpen" : "isClose"}
+                            />
+                        ))
+                    ) : (
+                        <div className="col-span-full flex items-center justify-center min-h-screen text-gray-500 text-lg">
+                            ไม่มีร้านอาหารที่พร้อมให้บริการในขณะนี้
+                        </div>
+                    )}
+                </div>
+
+                {visibleCount < restaurants.length && (
+                    <Button
+                        onClick={() => setVisibleCount(prev => prev + 12)}
+                        type="button"
+                        variant="secondary"
+                    >
+                        โหลดเพิ่ม
+                    </Button>
+                )}
             </div>
-        </div>
-    )
+        </>
+    );
 }

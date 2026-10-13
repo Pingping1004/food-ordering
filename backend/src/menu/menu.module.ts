@@ -1,28 +1,23 @@
 import { forwardRef, Module } from '@nestjs/common';
 import { MenuService } from './menu.service';
 import { MenuController } from './menu.controller';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { RestaurantModule } from '../restaurant/restaurant.module';
-import { MulterModule } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
+import { UploadModule } from 'src/upload/upload.module';
+import { CsrfModule } from 'src/csrf/csrf.module';
 import { OrderModule } from 'src/order/order.module';
+import { InventoryModule } from 'src/inventory/inventory.module';
 
 @Module({
   imports: [
-    OrderModule,
-    RestaurantModule,
-    MulterModule.register({
-      storage: diskStorage({
-        destination: './uploads/menus',
-        filename: (req, file, cb) => {
-          const filename = `${Date.now()}-${file.originalname}`;
-          cb(null, filename);
-        },
-      }),
-    }),
+    forwardRef(() => OrderModule),
+    forwardRef(() => RestaurantModule),
+    UploadModule,
+    CsrfModule,
+    InventoryModule,
   ],
   controllers: [MenuController],
   providers: [MenuService, PrismaService],
   exports: [MenuService],
 })
-export class MenuModule { }
+export class MenuModule {}

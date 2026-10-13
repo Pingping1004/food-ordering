@@ -1,52 +1,93 @@
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
-import { CreatePayoutDto } from './dto/create-payout.dto';
-import { UpdatePayoutDto } from './dto/update-payout.dto';
-import { PrismaService } from 'prisma/prisma.service';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 import { calculatePayout, calculateWeeklyInterval } from './payout-calculator';
+import { Payout, PayoutStatus, Prisma } from '@prisma/client';
+import Decimal from 'decimal.js';
+import moment from 'moment';
 import { OrderService } from 'src/order/order.service';
-import { Payout } from '@prisma/client';
 
 @Injectable()
 export class PayoutService {
   constructor(
-    private prisma: PrismaService,
-    @Inject(forwardRef(() => OrderService))
-    private orderService: OrderService,
-  ) { }
+    private readonly orderService: OrderService,
+    private readonly prisma: PrismaService,
+  ) {}
 
-  async createPayout(orderId: string) {
-    const order = await this.orderService.findOneOrder(orderId);
-    const markupRate = Number(process.env.SELL_PRICE_MARKUP_RATE);
-    const sellingPrice = order.totalAmount * (1 + markupRate);
-    const { restaurantEarning, platformFee } = calculatePayout(sellingPrice);
+  async updatePayoutTx(tx: Prisma.TransactionClient, payoutId: string, orderId: string, idempotencyKey: string, transactionId: string, status: PayoutStatus, paidAt: Date) {
+    const order = await this.validateOrderExistence(orderId)
+    const totalAmount = order.totalAmount;
+    const totalAmountDecimal = new Prisma.Decimal(totalAmount);
 
-    const now = new Date();
-    const { startDate, endDate } = calculateWeeklyInterval(now);
+    const payout = calculatePayout(totalAmountDecimal);
 
-    const newPayout: CreatePayoutDto = {
-      restaurantRevenue: restaurantEarning,
-      platformFee,
-      startDate,
-      endDate,
-      orderId: order.orderId,
-      restaurantId: order.restaurantId,
-    };
-
-    console.log('Created new payout service: ', newPayout);
-    const result = await this.prisma.payout.create({
-      data: newPayout,
-    });
-
-    return result;
+    return await tx.payout.update({
+      where: { payoutId },
+      data: {
+        orderId,
+        restaurantId: order.restaurantId,
+        grossAmount: order.totalAmount,
+        restaurantRevenue: payout.restaurantEarning,
+        platformFee: payout.platformNetEarning,
+        idempotencyKey,
+        transactionId: transactionId,
+        payoutStatus: status,
+        transactionFee: payout.transactionFee,
+        vat: new Decimal(0),
+        restaurantName: order.restaurant.name,
+        startDate: paidAt,
+        endDate: new Date(),
+        paidAt: paidAt,
+      }
+    })
   }
 
-  async findWeeklyPayout(date?: string, restaurantId?: string): Promise<Payout[]> {
-    const { startDate, endDate, formattedStartDate, formattedEndDate } = calculateWeeklyInterval(date);
+  async validateOrderExistence(orderId: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { orderId },
+      include: {
+        orderMenus: true,
+        restaurant: {
+          select: {
+            restaurantId: true,
+            name: true
+          }
+        }
+      }
+    });
+
+    if (!order) throw new NotFoundException("ไม่พบออดดอร์สำหรับไอดี: ", orderId);
+
+    return order
+  }
+
+  async findPayoutByIdempotencyKey(idempotencyKey: string, orderId: string): Promise<Payout | null> {
+    const payout = await this.prisma.payout.findUnique({
+      where: {
+        idempotencyKey_orderId: { idempotencyKey, orderId }
+      },
+    });
+
+    return payout;
+  }
+
+  async findPayoutByTransactionId(transactionId: string): Promise<Payout | null> {
+    const payout = await this.prisma.payout.findUnique({
+      where: { transactionId },
+    });
+
+    return payout;
+  }
+
+  async findWeeklyPayout(
+    date?: string,
+    restaurantId?: string,
+  ): Promise<Payout[]> {
+    const { startDate, endDate } = calculateWeeklyInterval(date);
 
     const payouts = await this.prisma.payout.findMany({
       where: {
-        ...( restaurantId && {restaurantId }),
-        startDate: { gte: startDate ,},
+        ...(restaurantId && { restaurantId }),
+        startDate: { gte: startDate },
         endDate: { lte: endDate },
       },
       include: {
@@ -54,14 +95,31 @@ export class PayoutService {
       },
       orderBy: {
         startDate: 'desc',
-      }
+      },
     });
 
-    console.log(`Get weekly payouts from: ${formattedStartDate} - ${formattedEndDate}: \n ${payouts}`);
     return payouts;
   }
 
-  async findPayout(payoutId?: string) {
+  async getTodayPayout() {
+    const startOfDay = moment().tz('Asia/Bangkok').startOf('day').toDate();
+    const endOfDay = moment().tz('Asia/Bangkok').endOf('day').toDate();
+
+    const payouts = await this.prisma.payout.findMany({
+      where: {
+        createdAt: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      include: { restaurant: true },
+    });
+
+    return payouts;
+  }
+
+  async findPayout(payoutId: string) {
     const payout = await this.prisma.payout.findUnique({
       where: { payoutId },
     });
@@ -69,11 +127,19 @@ export class PayoutService {
     return payout;
   }
 
+  async findExistingPayout(orderId: string): Promise<boolean> {
+    const existingPayout = await this.prisma.payout.findUnique({
+      where: { orderId },
+    });
+
+    return !!existingPayout;
+  }
+
   async findAllPayout() {
     const payout = await this.prisma.payout.findMany({
       orderBy: {
         createdAt: 'desc',
-      }
+      },
     });
 
     return payout;
@@ -82,27 +148,30 @@ export class PayoutService {
   async findAllPayoutFromRestaurant(restaurantId: string): Promise<Payout[]> {
     const payouts = await this.prisma.payout.findMany({
       where: {
-        restaurantId
+        restaurantId,
       },
       orderBy: {
         startDate: 'desc',
-      }
+      },
     });
 
     return payouts;
   }
 
+  async updatePayoutStatus(payoutId: string, payoutStatus: PayoutStatus) {
+    const payout = await this.prisma.payout.update({
+      where: { payoutId },
+      data: { payoutStatus }
+    });
+
+    return payout;
+  }
+
   private async getAllRevenue() {
     const payouts = await this.prisma.payout.findMany();
-    const allRevenue = payouts.reduce((total, store) => total + store.platformFee, 0);
-    console.log('This is all platform revenue: ', allRevenue);
-  }
-
-  update(id: number, updatePayoutDto: UpdatePayoutDto) {
-    return `This action updates a #${id} payout`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} payout`;
+    const allRevenue = payouts.reduce((acc: Decimal, item) => {
+      return acc.add(item.platformFee);
+    }, new Decimal(0))
+    return allRevenue;
   }
 }

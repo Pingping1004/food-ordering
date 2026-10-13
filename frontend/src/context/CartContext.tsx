@@ -1,66 +1,77 @@
 "use client";
-import React, { createContext, useContext, useState } from "react";
 
-export type CartItem = {
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+
+export interface CartItem {
     menuId: string;
     menuName: string;
     unitPrice: number;
     menuImg: string;
+    isAvailable: boolean;
     quantity: number;
-    totalPrice: number;
     restaurantId: string;
 };
 
 type CartContextType = {
     cart: CartItem[];
-    addToCart: (menuId: string, menuName: string, unitPrice: number, menuImg: string, restaurantId: string) => void;
+    addToCart: (menuId: string, menuName: string, unitPrice: number, menuImg: string, isAvailable: boolean, restaurantId: string) => void;
     removeFromCart: (menuId: string) => void;
     getQuantity: (menuId: string) => number;
+    clearCart: () => void;
+    hydrated: boolean;
 };
 
 const CartContext = createContext<CartContextType | null>(null);
 
 export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     const [cart, setCart] = useState<CartItem[]>([]);
+    const [hydrated, setHydrated] = useState(false);
+    const cartRef = useRef(cart);
 
-    const addToCart = (menuId: string, menuName: string, unitPrice: number, menuImg: string, restaurantId: string) => {
+    useEffect(() => {
+        try {
+            const stored = localStorage.getItem("cart");
+            if (stored) setCart(JSON.parse(stored));
+        } finally {
+            setHydrated(true);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!hydrated) return;
+        localStorage.setItem("cart", JSON.stringify(cart));
+    }, [cart, hydrated]);
+
+    useEffect(() => { cartRef.current = cart }, [cart]);
+
+    const addToCart = useCallback((menuId: string, menuName: string, unitPrice: number, menuImg: string, isAvailable: boolean, restaurantId: string) => {
+        const current = cartRef.current;
+        if (current.length > 0 && current[0].restaurantId !== restaurantId) {
+            return { success: false, reason: "คนละร้านอาหาร" };
+        }
+
+        if (!isAvailable) return { success: false, reason: "เมนูนี้ไม่พร้อมให้บริการ" }
+
         setCart((prev) => {
-            if (prev.length > 0 && prev[0].restaurantId !== restaurantId) {
-                alert('ไม่สามารถสั่งเมนูจากร้านอาหารอื่นได้');
-                console.log('Blocked add from different restaurant');
-                return prev;
-            }
             const existingCartItem = prev.find((item) => item.menuId === menuId);
-            let newCart;
 
             if (existingCartItem) {
-                newCart = prev.map((item) =>
+                return prev.map((item) =>
                     item.menuId === menuId
-                        ? {
-                            ...item,
-                            quantity: item.quantity + 1,
-                            totalPrice: item.unitPrice * (item.quantity + 1)
-                        }
+                        ? { ...item, quantity: item.quantity + 1 }
                         : item);
-            } else {
-                // Assign default price as 0, modify as needed.
-                newCart = [
-                    ...prev,
-                    { menuId, menuName, unitPrice, menuImg, quantity: 1, totalPrice: unitPrice, restaurantId }
-                ];
             }
 
-            return newCart;
+            return [...prev, { menuId, menuName, unitPrice, menuImg, isAvailable, quantity: 1, restaurantId }];
         });
-    };
 
-    const removeFromCart = (menuId: string) => {
+        return { success: true }
+    }, []);
+
+    const removeFromCart = useCallback((menuId: string) => {
         setCart((prev) => {
             const existingCartItem = prev.find((item) => item.menuId === menuId);
-            if (!existingCartItem) {
-                console.error('Item does not exist to delete');
-                return prev;
-            }
+            if (!existingCartItem) return prev;
 
             if (existingCartItem.quantity > 1) {
                 return prev.map((item) =>
@@ -68,7 +79,6 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
                         ? {
                             ...item,
                             quantity: item.quantity - 1,
-                            totalPrice: item.unitPrice * (item.quantity - 1),
                         }
                         : item
                 );
@@ -76,16 +86,24 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
                 return prev.filter((item) => item.menuId !== menuId);
             }
         });
-    };
+    }, []);
 
-    const getQuantity = (menuId: string) => {
+    const clearCart = useCallback(() => {
+        setCart([]);
+    }, []);
+
+    const getQuantity = useCallback((menuId: string) => {
         const item = cart.find(item => menuId === item.menuId);
         return item ? item.quantity : 0;
-    }
+    }, [cart]);
+
+    const contextValue = useMemo(() => ({
+        cart, addToCart, removeFromCart, getQuantity, clearCart, hydrated
+    }), [cart, addToCart, removeFromCart, getQuantity, clearCart, hydrated]);
 
     return (
         <CartContext.Provider
-            value={{ cart, addToCart, removeFromCart, getQuantity }}
+            value={contextValue}
         >
             {children}
         </CartContext.Provider>

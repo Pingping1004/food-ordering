@@ -1,21 +1,143 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe, BadRequestException, HttpStatus } from '@nestjs/common';
+import {
+  ValidationPipe,
+  BadRequestException,
+  HttpStatus,
+  Logger,
+} from '@nestjs/common';
 import { HttpExceptionFilter } from './libs/http-exception.filter';
-import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import * as express from 'express';
-import { json } from 'express';
-import * as cookieParser from 'cookie-parser'
+import { Request, Response } from 'express';
+import cookieParser from 'cookie-parser';
+import * as dotenv from 'dotenv';
+import helmet from 'helmet';
+import compression from 'compression';
+import * as fs from 'fs';
+import * as bodyParser from 'body-parser';
+import {
+  globalRateLimit,
+  authRateLimit,
+  paymentRateLimit,
+  orderRateLimit,
+  orderFetchingLimit
+} from './rateLimiting.middleware';
+import './auth/jobs/tokenClean.job';
+
+dotenv.config();
+declare global {
+  namespace Express {
+    interface Request {
+      rawBody?: Buffer;
+    }
+  }
+}
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, { cors: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    httpsOptions: process.env.NODE_ENV === 'development' ? {
+      key: fs.readFileSync('./cert/localhost-key.pem'),
+      cert: fs.readFileSync('./cert/localhost.pem'),
+    } : undefined,
+    bodyParser: false
+  });
+
+  app.setGlobalPrefix('api');
+  const logger = new Logger('Bootstrap');
+
+  app.use(
+    '/api/payment/webhook',
+    bodyParser.raw({ type: 'application/json' })
+  );
+
+  app.use(
+    express.json({
+      limit: '10mb',
+    })
+  );
+
+  const allowedOrigins = [
+    'https://promptserve.online',
+    'https://api.promptserve.online',
+    'https://promptserve-mvp.onrender.com',
+    'https://localhost:8000',
+    'https://localhost:3000',
+    'http://localhost:3000',
+    process.env.FRONTEND_BASE_URL,
+    process.env.NEXT_PUBLIC_BACKEND_API_URL,
+    process.env.WEBHOOK_ENDPOINT,
+  ].map((origin) => origin?.replace(/\/$/, ''));
+
+  app.enableCors({
+    origin: (origin, callback) => {
+      const cleanOrigin = origin?.replace(/\/$/, '');
+      const isAllowed = !origin || allowedOrigins.includes(cleanOrigin);
+
+      if (isAllowed) {
+        callback(null, true);
+      } else {
+        logger.warn(`🚫 Blocked by CORS: ${origin}`);
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: [
+      'Content-Type',
+      'Accept',
+      'X-CSRF-Token',
+      'x-csrf-token',
+      'XSRF-TOKEN',
+      'X-Csrf-Token',
+      'x-order-secret',
+      'x-xsrf-token',
+      'Authorization',
+      'sentry-trace',
+      'baggage',
+      'skipauth',
+      'skipAuth',
+      'stripe-signature'
+    ],
+    exposedHeaders: ['Set-Cookie'],
+  });
+
+  logger.log('Webhook endpoint: ', process.env.WEBHOOK_ENDPOINT);
 
   app.use(cookieParser());
+  app.set('trust proxy', 1);
+  app.enableShutdownHooks();
+  app.use(helmet());
+  app.use(compression());
+  
+  app.use(globalRateLimit);
+  app.use('/api/auth', authRateLimit);
+  app.use('/api/payment', paymentRateLimit);
+  app.use('/api/order/create', orderRateLimit);
+  app.use('/api/order/new', orderFetchingLimit)
 
-  const uploadsDir = join(process.cwd(), 'uploads');
-  app.use('/uploads', express.static(uploadsDir));
-  console.log('Serving uploads from:', uploadsDir);
+  app.getHttpAdapter().get('/health', (req: Request, res: Response) => {
+    res.send('OK');
+  });
+
+  function assertEnvVar(name: string): string {
+    const value = process.env[name];
+    if (!value) {
+      throw new Error(`Environment variable ${name} is missing.`);
+    }
+    return value;
+  }
+
+  const APP_GLOBAL_SECRET = assertEnvVar('APP_GLOBAL_SECRET');
+  if (!APP_GLOBAL_SECRET) {
+    const errorMessage = '❌ CRITICAL: APP_GLOBAL_SECRET is missing. Cannot start the server.';
+    logger.error(errorMessage);
+
+    setTimeout(() => {
+      process.exit(1);
+    }, 1000);
+  }
+  app.set('secret', APP_GLOBAL_SECRET);
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -28,71 +150,49 @@ async function bootstrap() {
       validateCustomDecorators: true,
 
       exceptionFactory: (errors) => {
-        console.log('----- Raw errors received by exceptionFactory -----');
-        console.dir(errors, { depth: null, colors: true });
-        // This helper function recursively formats validation errors
         const formatErrors = (validationErrors: any[]) => {
-          return validationErrors.map(error => {
+          return validationErrors.map((error) => {
             if (error.children && error.children.length > 0) {
-              // If there are nested errors (like for orderMenus), recurse into them
               return {
                 property: error.property,
-                children: formatErrors(error.children), // Recursively call formatErrors for children
+                children: formatErrors(error.children),
               };
             }
-            // For individual errors, get the constraint messages
             return {
               property: error.property,
-              constraints: error.constraints, // Keep the original constraints object for debugging
-              messages: error.constraints ? Object.values(error.constraints) : [], // Get just the string messages
+              constraints: error.constraints,
+              messages: error.constraints
+                ? Object.values(error.constraints)
+                : [],
             };
           });
         };
 
-        const detailedErrors = formatErrors(errors); // Call the recursive formatter
+        const detailedErrors = formatErrors(errors);
 
-        // Return a BadRequestException with the detailed, structured errors
         return new BadRequestException({
           statusCode: HttpStatus.BAD_REQUEST,
-          message: 'Validation failed', // A general message for the client
-          errors: detailedErrors, // THIS IS THE KEY: The array of structured, detailed errors
+          message: 'Validation failed',
+          errors: detailedErrors,
         });
       },
     }),
   );
 
-  // IMPORTANT for webhooks: Configure body parser to get raw body
-  app.use(
-    json({
-      verify: (req: any, res, buf) => {
-        if (req.originalUrl === '/payments/webhooks') {
-          req.rawBody = buf;
-        }
-      },
-      limit: '10mb',
-    }),
-  );
-
   app.useGlobalFilters(new HttpExceptionFilter());
 
-  // Global unhandled exception/rejection handlers
   process.on('uncaughtException', (err) => {
-    console.error('GLOBAL UNCAUGHT EXCEPTION:', err);
-    process.exit(1); // Exit to prevent process from becoming zombie
+    logger.error('GLOBAL UNCAUGHT EXCEPTION:', err);
+    process.exit(1);
   });
 
   process.on('unhandledRejection', (reason, promise) => {
-    console.error('GLOBAL UNHANDLED REJECTION at:', promise, 'reason:', reason);
+    logger.error('GLOBAL UNHANDLED REJECTION at:', promise, 'reason:', reason);
     process.exit(1);
   });
-  app.enableCors({
-    origin: 'http://localhost:3000',
-    methods: 'GET, HEAD, PUT, PATCH, POST, DELETE',
-    credentials: true,
-  })
 
-  const port = process.env.PORT || 5000;
-  console.log('NESTJS is running on port: ', port);
+  const port = process.env.PORT || 4000;
+  logger.log('NESTJS is running on port: ', port);
   await app.listen(port);
 }
 bootstrap();

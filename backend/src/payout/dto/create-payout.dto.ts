@@ -1,31 +1,45 @@
-import { IsDate, IsNotEmpty, IsNumber, IsOptional, IsUUID } from "class-validator";
+import { Type } from 'class-transformer';
+import {
+  IsDate,
+  IsISO8601,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 
 export class CreatePayoutDto {
-    @IsNumber()
-    @IsNotEmpty()
-    restaurantRevenue: number;
+  @IsString()
+  @IsNotEmpty()
+  restaurantEarning: string;
 
-    @IsNumber()
-    @IsNotEmpty()
-    platformFee: number;
+  @IsString()
+  @IsNotEmpty()
+  platformNetEarning: string;
 
-    @IsDate()
-    @IsOptional()
-    paidAt?: string;
-    
-    @IsDate()
-    @IsNotEmpty()
-    startDate: Date;
-    
-    @IsDate()
-    @IsNotEmpty()
-    endDate: Date;
+  @IsString()
+  @IsNotEmpty()
+  transactionFee: string;
 
-    @IsUUID()
-    @IsNotEmpty()
-    orderId: string;
+  @IsISO8601()
+  @IsOptional()
+  paidAt?: string;
 
-    @IsUUID()
-    @IsNotEmpty()
-    restaurantId: string;
+  @Type(() => Date)
+  @IsDate()
+  startDate: Date;
+
+  @Type(() => Date)
+  @IsDate()
+  endDate: Date;
+
+  @IsUUID()
+  orderId: string;
+
+  @IsUUID()
+  restaurantId: string;
+
+  @IsString()
+  restaurantName: string;
 }

@@ -1,16 +1,9 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 enum RoleRequestStatus {
@@ -196,6 +189,18 @@ model Menu {
   	@@index([isAvailable])
 }
 
+model Inventory {
+  id          String    @id @default(uuid())
+  menuId      String
+  date        DateTime
+  remaining   Int
+  dailyQuota  Int
+
+  menu        Menu      @relation(fields: [menuId], references: [menuId], onDelete: Cascade)
+
+  @@unique([menuId, date])
+}
+
 model Order {
   	orderId 			String 		@default(uuid()) 		@id
   	status  			OrderStatus 	@default(receive)
@@ -318,6 +323,53 @@ model SchoolDateOverride {
 
     @@unique([schoolId, date])
     @@index([schoolId, date])
+}
+
+model PushNotificationJob {
+  pushNotificationJobId String        @id @default(uuid())
+  orderId               String
+  userId                String
+  restaurantId          String
+  eventType             PushEventType
+  attemptCount          Int           @default(0)
+  maxAttempts           Int           @default(1)
+  nextAttemptAt         DateTime      @default(now())
+  lastAttemptAt         DateTime?
+  completedAt           DateTime?
+  cancelledAt           DateTime?
+  lastError             String?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  order                 Order         @relation(fields: [orderId], references: [orderId], onDelete: Cascade)
+  user                  User          @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  pushDeliveries        PushDelivery[]
+
+  @@unique([orderId, userId, eventType])
+  @@index([nextAttemptAt, completedAt, cancelledAt])
+}
+
+
+model PushDelivery {
+  pushDeliveryId        String        @id @default(uuid())
+  orderId               String
+  userId                String
+  restaurantId          String
+  eventType             PushEventType
+  attemptNumber         Int
+  success               Boolean
+  providerMessageId     String?
+  errorCode             String?
+  errorMessage          String?
+  createdAt             DateTime      @default(now())
+  deviceTokenId         String?
+  pushNotificationJobId String?
+  deviceToken           DeviceToken?  @relation(fields: [deviceTokenId], references: [deviceTokenId], onDelete: SetNull)
+  order                 Order         @relation(fields: [orderId], references: [orderId], onDelete: Cascade)
+  user                  User          @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  pushNotificationJob   PushNotificationJob? @relation(fields: [pushNotificationJobId], references: [pushNotificationJobId], onDelete: SetNull)
+
+  @@index([orderId, eventType, createdAt])
+  @@index([userId, createdAt])
 }
 
 model User {

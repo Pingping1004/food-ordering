@@ -1,178 +1,297 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import React from "react";
-import Image from "next/image";
+import React, { useCallback, useMemo } from "react";
 import { Button } from "../Button";
-import { cva, VariantProps } from "class-variance-authority";
+import { cva } from "class-variance-authority";
 import clsx from "clsx";
+import { getTimeFormat } from "@/util/time";
+import { OrderStatus, PaymentStatus } from "./OrderNavbar";
 
-const orderVariants = cva("noto-sans-regular justify-center text-sm", {
-    variants: {
-        variant: {
-            receive: "",
-            cooking: "",
-            ready: "",
-            done: "",
+const orderCardVariants = cva(
+    "flex flex-col border border-[#E1E1E1] rounded-2xl font-noto-thai",
+    {
+        variants: {
+            selected: {
+                true: "ring-2 ring-primary",
+                false: "",
+            },
+            size: {
+                default: "p-4 gap-y-6 text-sm",
+                large: "p-6 gap-y-8 text-lg",
+            },
         },
-        isPaid: {
-            paid: "",
-            unpaid: "",
-            processing: "",
-            rejected: "",
+        defaultVariants: {
+            selected: false,
+            size: "default",
         },
-        selected: {
-            default: "",
-            true: "",
-            false: "",
-        },
-        isDelay: {
-            true: "",
-            false: "",
-        }
-    },
-    defaultVariants: {
-        variant: "receive",
-        isPaid: "unpaid",
-        selected: "default",
-        isDelay: false,
-    },
-});
+    }
+);
 
-export type OrderProps = React.HTMLAttributes<HTMLDivElement> &
-  VariantProps<typeof orderVariants> & {
+export type OrderMenuEntry = {
+    quantity: number;
+    menuName: string;
+    menuImg?: string;
+};
+
+export type OrderProps = React.HTMLAttributes<HTMLDivElement> & {
     orderId: string;
-    name: string;
-    price: number;
-    restaurantName: string;
-    orderAt: Date | string | number;
-    deliverAt: Date | string | number;
-    selected: "default" | boolean;
-    isPaid: "paid" | "unpaid" | "selected" | "rejected";
-    isDelay: boolean;
-    orderMenu: { units: number; value: string }[];
+    orderAt: string;
+    orderCreatedAt: string;
+    deliverAt: string;
+    status: OrderStatus;
+    selected?: boolean;
+    totalAmount: number;
+    paymentStatus: PaymentStatus;
+    isDelay?: boolean;
+    orderMenus: OrderMenuEntry[];
     details?: string;
-  };
+    userTel: string;
+    acceptAt?: Date;
+    completedAt?: Date;
+    cancelledAt?: Date;
+    refundAt?: Date;
+    isLargeTextMode?: boolean;
+    isDelayDisabled?: boolean;
+    isRejectedDisabled?: boolean;
+    onDelayUpdate: (orderId: string) => void;
+    onStatusUpdate: (orderId: string, status: OrderStatus) => void;
+};
+
+type ScaledTextProps = {
+    large?: boolean;
+    className?: string;
+    children: React.ReactNode;
+};
+
+const ScaledText = ({ large, className, children }: ScaledTextProps) => (
+    <span className={clsx(large ? "text-2xl font-bold" : "text-lg", className)}>
+        {children}
+    </span>
+);
 
 export const Order = ({
     orderId,
-    variant = "done",
-    selected = "default",
-    name,
-    price = 0,
-    restaurantName,
-    orderAt = new Date(),
+    selected = false,
+    orderAt,
+    orderCreatedAt,
+    userTel,
+    status,
     deliverAt,
-    isPaid = "unpaid",
+    totalAmount,
+    paymentStatus,
     isDelay = false,
-    orderMenu = [],
+    orderMenus = [],
     details,
     className,
-    children,
+    isLargeTextMode = false,
+    isDelayDisabled = false,
+    isRejectedDisabled = false,
+    onDelayUpdate,
+    onStatusUpdate,
     ...props
 }: OrderProps) => {
+    const lg = isLargeTextMode;
+
+    // Stable references so child Buttons don't re-render unnecessarily
+    const handleAccept = useCallback(
+        () => onStatusUpdate(orderId, OrderStatus.accepted),
+        [orderId, onStatusUpdate]
+    );
+    const handleReject = useCallback(
+        () => onStatusUpdate(orderId, OrderStatus.rejected),
+        [orderId, onStatusUpdate]
+    );
+    const handleDelay = useCallback(
+        () => onDelayUpdate(orderId),
+        [orderId, onDelayUpdate]
+    );
+
+    const isDeliveryPast = useMemo(
+        () => new Date(deliverAt).getTime() <= Date.now(),
+        [deliverAt]
+    );
+
+    const formattedAmount = useMemo(
+        () =>
+            new Intl.NumberFormat("th-TH", {
+                style: "currency",
+                currency: "THB",
+            }).format(totalAmount),
+        [totalAmount]
+    );
+
+    const acceptButtonDisabled = useMemo(() => {
+        const nowMs = Date.now();
+        const parsedOrderAtMs = new Date(orderCreatedAt).getTime();
+        const elapsedMs = nowMs - parsedOrderAtMs;
+        const thresholdMs = 3 * 60 * 1000;
+        const disabled = elapsedMs > thresholdMs;
+        return { disabled, nowMs, parsedOrderAtMs, elapsedMs, thresholdMs, orderAtRaw: orderAt, orderCreatedAtRaw: orderCreatedAt };
+    }, [orderAt, orderCreatedAt]);
 
     return (
         <div
             className={clsx(
-                "flex flex-col p-4 border-1 border-[#E1E1E1] rounded-2xl gap-y-6",
-                orderVariants({ variant, isPaid, selected, isDelay }),
+                orderCardVariants({ selected, size: lg ? "large" : "default" }),
                 className
             )}
             {...props}
         >
+
             <header className="flex items-start justify-between">
-                <div className="flex grid-rows-2 text-left gap-x-2">
-                    {selected === true && (
-                        <Image
-                            src="/selected.svg"
-                            alt="Selected orders"
-                            width={18}
-                            height={18}
-                        />
-                    )}
-
-                    {selected === false && (
-                        <Image
-                            src="/non-select.svg"
-                            alt="Non-selected orders"
-                            width={18}
-                            height={18}
-                        />
-                    )}
-
-                    {/* No icon for "default" */}
-                    <div>
-                        <h3 className="noto-sans-bold text-lg text-primary">
-              ออเดอร์: 145
+                <div className="flex flex-col gap-y-1 text-left">
+                    <div className="flex items-center gap-x-2">
+                        <h3
+                            className={clsx(
+                                "font-bold text-primary",
+                                lg ? "text-3xl" : "text-xl"
+                            )}
+                        >
+                            {orderId.substring(0, 4)}
                         </h3>
-                        <p className="text-light text-xs">สั่งเมื่อ 11:45 - 12/01/67</p>
-                    </div>
-                </div>
 
-                <Button
-                    variant={isPaid ? "secondarySuccess" : "secondaryDanger"}
-                    size="sm"
-                    type="button"
-                >
-                    {isPaid ? "ชำระแล้ว" : "ยังไม่ชำระ"}
-                </Button>
+                        <p
+                            className={clsx(
+                                "flex items-center text-secondary",
+                                lg ? "text-xl" : "text-sm"
+                            )}
+                        >
+                            (<span className="mr-1">เบอร์ติดต่อ:</span>
+
+                            <a href={`tel:${userTel}`}
+                                className="text-info underline hover:opacity-80"
+                            >
+                                {userTel}
+                            </a>
+                            )
+                        </p>
+                    </div>
+
+                    <p className={clsx("text-light", lg ? "" : "text-sm")}>
+                        สั่งเมื่อ {orderAt}
+                    </p>
+                </div>
             </header>
 
-            <main className="flex grid-rows-2 justify-between">
-                <div className="w-1/2 text-sm text-secondary">
+            <main className="flex justify-between gap-x-4">
+                <div className={clsx("w-1/2 text-secondary", lg && "text-lg")}>
                     <p className="mb-2 text-primary">รายละเอียดออเดอร์:</p>
-                    <p>1x - ข้าวผัดสเต็กแซลม่อน</p>
-                    <p>1x - ข้าวผัดสเต็กแซลม่อน</p>
+                    {orderMenus.map((item, index) => (
+                        <p
+                            key={`${item.menuName}-${index}`}
+                            className={clsx(lg ? "text-2xl mb-1 font-bold" : "text-lg")}
+                        >
+                            {item.quantity}× {item.menuName}
+                        </p>
+                    ))}
                 </div>
 
-                <div className="flex w-1/2 grid-cols-2 items-end justify-end md:gap-x-6 gap-x-4">
+                <div className="flex w-1/2 items-end justify-end gap-x-4 md:gap-x-6">
                     <div className="text-center">
-                        <p className="text-xs">รับออเดอร์:</p>
-                        <h4 className="text-base text-secondary">12:15</h4>
+                        <p className={clsx(!lg && "text-sm")}>จัดส่ง:</p>
+                        <h4
+                            className={clsx(
+                                "text-secondary",
+                                lg ? "text-2xl font-bold" : "text-xl"
+                            )}
+                        >
+                            {getTimeFormat(deliverAt)}
+                        </h4>
                     </div>
 
                     <div className="text-center">
-                        <p className="text-xs">ราคา:</p>
-                        <h4 className="text-base text-secondary">240 บาท</h4>
+                        <p className={clsx(!lg && "text-sm")}>ราคา:</p>
+                        <h4
+                            className={clsx(
+                                "text-secondary",
+                                lg ? "text-2xl font-bold" : "text-xl"
+                            )}
+                        >
+                            {formattedAmount}
+                        </h4>
                     </div>
                 </div>
             </main>
 
-            <section>
-                <p className="noto-sans-bold text-sm">ปล. ขอไม่เผ็ด กินเผ็ดไม่เก่ง</p>
-            </section>
-
-            {variant === "done" ? (
-                <Button
-                    variant="secondarySuccess"
-                    size="md"
-                    className="flex w-full"
-                    type="button"
-                >
-          ออเดอร์เสร็จสิ้น
-                </Button>
-            ) : (
-                <div className="flex gap-x-6">
-                    <Button variant="primary" size="md" className="flex w-full" type="button">
-                        <span className="noto-sans-regular">
-                            {variant === "receive" && "รับออเดอร์"}
-                            {variant === "cooking" && "เริ่มปรุงอาหาร"}
-                            {variant === "ready" && "พร้อมเสิร์ฟ"}
-                        </span>
-                    </Button>
-
-                    <Button
-                        variant="secondaryDanger"
-                        disabled={isDelay === true ? true : false}
-                        size="md"
-                        type="button"
-                        className="flex w-full"
-                    >
-                        <span className="noto-sans-regular">
-              ล่าช้า10นาที
-                        </span>
-                    </Button>
-                </div>
+            {details && (
+                <section>
+                    <p className={clsx("text-secondary", lg ? "text-lg" : "text-sm")}>
+                        {details}
+                    </p>
+                </section>
             )}
+
+            <footer>
+                {status === OrderStatus.completed && (
+                    <Button
+                        variant="secondarySuccess"
+                        size={lg ? "lg" : "md"}
+                        className="w-full"
+                        type="button"
+                    >
+                        <ScaledText large={lg}>ออเดอร์เสร็จสิ้น</ScaledText>
+                    </Button>
+                )}
+
+                {status === OrderStatus.accepted && (
+                    <div className="flex w-full gap-x-4">
+                        <Button
+                            variant={
+                                paymentStatus === PaymentStatus.paid
+                                    ? "secondarySuccess"
+                                    : "secondaryDanger"
+                            }
+                            size="full"
+                            type="button"
+                        >
+                            <ScaledText large={lg}>
+                                {paymentStatus === PaymentStatus.paid
+                                    ? "ชำระเงินแล้ว"
+                                    : "ยังไม่ชำระเงิน"}
+                            </ScaledText>
+                        </Button>
+
+                        <Button
+                            variant={isDelay ? "secondary" : "tertiary"}
+                            disabled={isDelay || isDelayDisabled || isDeliveryPast}
+                            size="full"
+                            type="button"
+                            className="w-full"
+                            onClick={handleDelay}
+                        >
+                            <ScaledText large={lg}>
+                                {isDelay ? "แจ้งล่าช้าสำเร็จ" : "ล่าช้า 10 นาที"}
+                            </ScaledText>
+                        </Button>
+                    </div>
+                )}
+
+                {status === OrderStatus.sent && (
+                    <div className="grid grid-cols-2 gap-x-2">
+                        <Button
+                            variant="primary"
+                            size={lg ? "lg" : "md"}
+                            className="w-full"
+                            type="button"
+                            disabled={acceptButtonDisabled.disabled}
+                            onClick={() => handleAccept()}
+                        >
+                            <ScaledText large={lg}>รับออเดอร์</ScaledText>
+                        </Button>
+
+                        <Button
+                            variant="secondaryDanger"
+                            disabled={isRejectedDisabled}
+                            size={lg ? "lg" : "md"}
+                            type="button"
+                            className="w-full"
+                            onClick={handleReject}
+                        >
+                            <ScaledText large={lg}>ปฏิเสธ</ScaledText>
+                        </Button>
+                    </div>
+                )}
+            </footer>
         </div>
     );
 };
+
+export default Order;

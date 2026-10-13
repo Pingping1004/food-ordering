@@ -1,89 +1,77 @@
-import { startOfWeek, endOfWeek, format } from "date-fns";
-import Decimal from "decimal.js";
+import { startOfWeek, endOfWeek, format } from 'date-fns';
+import Decimal from 'decimal.js';
+
+const envBaseTransactionRate = new Decimal(process.env.TRANSACTION_RATE || "0");
+const envVatRate = new Decimal(process.env.VAT_RATE || "0");
+const envCommissionRate = new Decimal(process.env.PLATFORM_COMMISSION_RATE || "0");
 
 export interface PayoutCalculationType {
-    totalRevenue: number;
-    restaurantEarning: number;
-    platformFee: number;
-    grossPlatformCommission: number;
-    transactionFee: number;
+  totalRevenue: number | Decimal;
+  restaurantEarning: number | Decimal;
+  platformNetEarning: number | Decimal;
+  grossPlatformCommission: number | Decimal;
+  transactionFee: number | Decimal;
+  vatRate: number | Decimal;
 }
 
 export interface WeeklyPayoutType {
-    startDate: Date,
-    endDate: Date,
-    formattedStartDate: string,
-    formattedEndDate: string,
+  startDate: Date;
+  endDate: Date;
+  formattedStartDate: string;
+  formattedEndDate: string;
 }
 
-export function calculatePayout(totalPrice: number): PayoutCalculationType {
-    const baseTransactionRate = new Decimal(Number(process.env.OMISE_BASE_TRANSACTION_RATE));
-    const vatRate = new Decimal(Number(process.env.OMISE_VAT_RATE));
-    const platformCommissionRate = new Decimal(Number(process.env.PLATFORM_COMMISSION_RATE));
+export function calculatePayout(
+  totalPrice: Decimal, 
+  platformCommissionRate: Decimal = envCommissionRate, 
+  baseTransactionRate: Decimal = envBaseTransactionRate, 
+  vatRate: Decimal = envVatRate
+): PayoutCalculationType {
 
-    const userPaidAmountDecimal = new Decimal(totalPrice);
+  const userPaidAmount = totalPrice;
+  const transactionFee = new Decimal(process.env.PAYMENT_VERIFICATION_API_FEE ?? '0')
 
-    // 1. Calculate Gross Platform Commission
-    const grossPlatformCommission = userPaidAmountDecimal.times(platformCommissionRate);
+  // const grossPlatformCommission = userPaidAmount.mul(config.platformCommissionRate);
+  // const baseFee = userPaidAmount.mul(config.baseTransactionRate);
+  // const totalTransactionFee = baseFee.mul(new Decimal(1).plus(config.vatRate));
+  // const restaurantEarning = userPaidAmount.minus(grossPlatformCommission);
+  // const platformNetEarning = grossPlatformCommission.minus(totalTransactionFee);
+  // const platformNetEarning = userPaidAmount.minus(transactionFee);
+  const restaurantEarning = userPaidAmount;
+  const platformNetEarning = transactionFee.neg()
 
-    // 2. Calculate the Transaction Fee (including VAT)
-    const baseFee = userPaidAmountDecimal.times(baseTransactionRate);
-    const totalTransactionFee = baseFee.times(new Decimal(1).plus(vatRate));
+  // if (platformNetEarning.isNegative()) throw new Error("Invalid pricing: platform losing money");
 
-    // 3. Calculate Restaurant's Net Earning
-    const restaurantEarning = userPaidAmountDecimal.minus(grossPlatformCommission);
-
-    // 4. Calculate Platform's Net Earning
-    const platformNetEarning = grossPlatformCommission.minus(totalTransactionFee);
-
-    const finalGrossPlatformCommission = grossPlatformCommission.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber();
-    const finalTotalTransactionFee = totalTransactionFee.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber();
-    const finalRestaurantEarning = restaurantEarning.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber();
-    const finalPlatformNetEarning = platformNetEarning.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber();
-    const finalUserPaidAmount = userPaidAmountDecimal.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber(); // Ensure consistent rounding for total
-
-    console.log('User Paid (Total Revenue): ', finalUserPaidAmount);
-    console.log('Gross Platform Commission: ', finalGrossPlatformCommission);
-    console.log('Transaction Fee + 7% VAT): ', finalTotalTransactionFee);
-    console.log('Restaurant Net Earning: ', finalRestaurantEarning);
-    console.log('Platform Net Earning (after Transaction Fee): ', finalPlatformNetEarning);
-
-    // Verification: Sum of all components should equal the total user paid amount
-    const verificationSum = new Decimal(finalRestaurantEarning)
-        .plus(finalPlatformNetEarning)
-        .plus(finalTotalTransactionFee)
-        .toNumber();
-    console.log('Verification (restaurant + platform_net + tx_fee):', verificationSum);
-    if (Math.abs(verificationSum - finalUserPaidAmount) > 0.01) {
-        console.warn('Payout sum does not exactly match total user paid amount after rounding!');
-    }
-
-
-    return {
-        totalRevenue: finalUserPaidAmount,
-        restaurantEarning: finalRestaurantEarning,
-        platformFee: finalPlatformNetEarning,
-        grossPlatformCommission: finalGrossPlatformCommission, // Expose gross for clarity/auditing
-        transactionFee: finalTotalTransactionFee,
-    };
+  return {
+    totalRevenue: userPaidAmount.toDecimalPlaces(2),
+    // restaurantEarning: restaurantEarning.toDecimalPlaces(2),
+    restaurantEarning: restaurantEarning.toDecimalPlaces(2),
+    platformNetEarning: platformNetEarning.toDecimalPlaces(2),
+    grossPlatformCommission: new Decimal(0),
+    transactionFee: transactionFee.toDecimalPlaces(2),
+    vatRate: totalPrice.mul(vatRate).toDecimalPlaces(2)
+  };
 }
 
-export function calculateWeeklyInterval(rawDate?: Date | string): WeeklyPayoutType {
-    let date: Date;
-    if (rawDate) {
-        date = typeof rawDate === 'string' ? new Date(rawDate) : rawDate;
-    } else {
-        date = new Date();
-    }
-    const startDate = startOfWeek(date, { weekStartsOn: 1 });
-    const endDate = endOfWeek(date, { weekStartsOn: 1 });
-    const formattedStartDate = format(startDate, 'dd/MM/yy');
-    const formattedEndDate = format(endDate, 'dd/MM/yy');
+export function calculateWeeklyInterval(
+  rawDate?: Date | string,
+): WeeklyPayoutType {
+  let baseDate: Date;
+  if (rawDate) {
+    baseDate = typeof rawDate === 'string' ? new Date(rawDate) : rawDate;
+  } else {
+    baseDate = new Date();
+  }
 
-    return {
-        startDate,
-        endDate,
-        formattedStartDate,
-        formattedEndDate,
-    }
+  const startDate = startOfWeek(baseDate, { weekStartsOn: 1 });
+  const endDate = endOfWeek(baseDate, { weekStartsOn: 1 });
+  const formattedStartDate = format(startDate, 'dd/MM/yy');
+  const formattedEndDate = format(endDate, 'dd/MM/yy');
+
+  return {
+    startDate,
+    endDate,
+    formattedStartDate,
+    formattedEndDate,
+  };
 }

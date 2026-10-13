@@ -1,144 +1,173 @@
-"use client";
-
 import clsx from "clsx";
 import { cva, VariantProps } from "class-variance-authority";
-import React, { useRef } from "react";
+import { forwardRef, Ref, InputHTMLAttributes, SelectHTMLAttributes } from "react";
 import { UseFormRegister, FieldValues, Path } from "react-hook-form";
 import { UploadIcon } from "./ui/UploadIcon";
 
+interface Option {
+    key: string;
+    value: string;
+}
+
 const inputVariants = cva(
-  "flex items-center w-full px-0 py-2 text-lg noto-sans-regular outline-none border-b-2 placeholder:text-gray-400",
-  {
-    variants: {
-      variant: {
-        primary: "border-color text-gray-900",
-        error: "border-danger-main text-danger-main",
-        success: "border-success-main text-green-900",
-      },
-    },
-    defaultVariants: {
-      variant: "primary",
-    },
-  }
+    "flex items-center w-full px-0 py-2 text-lg font-noto-thai outline-none border-b-2 placeholder:text-gray-400",
+    {
+        variants: {
+            variant: {
+                primary: "border-color text-gray-900",
+                error: "border-danger-main text-danger-main",
+                success: "border-success-main text-green-900",
+            },
+        },
+        defaultVariants: {
+            variant: "primary",
+        },
+    }
 );
 
-export type InputProps<TFieldValues extends FieldValues = FieldValues> = Omit<
-  React.InputHTMLAttributes<HTMLInputElement | HTMLSelectElement>,
-  "name"
+export type BaseInputProps<TFieldValues extends FieldValues = FieldValues> = Omit<
+    React.InputHTMLAttributes<HTMLInputElement | HTMLSelectElement>,
+    "name" | "value" | "onChange" | "onBlur" | "type" | "options" | "accept" | "tel"
 > &
-  VariantProps<typeof inputVariants> & {
-    label?: string;
-    name: Path<TFieldValues> | string;
-    placeholder?: string;
-    register?: UseFormRegister<TFieldValues>;
-    validation?: object;
-    type?: "text" | "email" | "password" | "select" | "file" | "number"; // Added "file" type
-    onChange?: (
-      event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-    ) => void;
-    options?: { key: string; value: string }[];
-    error?: string;
-    className?: string;
-    value?: string;
-    accept?: string; // For file input, specify accepted file types
-  };
+    VariantProps<typeof inputVariants> & {
+        label?: string;
+        name: Path<TFieldValues> | string;
+        placeholder?: string;
+        register?: UseFormRegister<TFieldValues>;
+        validation?: object;
+        type?: "text" | "email" | "password" | "select" | "file" | "number" | "tel"; // Added "file" type
+        onChange?: (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+        options?: { key: string; value: string }[];
+        error?: string;
+        className?: string;
+        value?: string | number;
+        accept?: string; // For file input, specify accepted file types
+        onBlur?: React.FocusEventHandler<HTMLInputElement | HTMLSelectElement>;
+        ref?: React.Ref<HTMLInputElement | HTMLSelectElement>;
+    };
 
-export const Input = <TFieldValues extends FieldValues = FieldValues>({
-  label,
-  name,
-  register,
-  validation,
-  placeholder,
-  type = "text",
-  options = [],
-  error,
-  variant,
-  className,
-  value,
-  onChange,
-  ...props
-}: InputProps<TFieldValues>) => {
-  const commonProps =
-    register && typeof name === "string"
-      ? register(name as Path<TFieldValues>, validation)
-      : {};
+export type InputProps<TFieldValues extends FieldValues = FieldValues> =
+    // For type="select" inputs
+    | (BaseInputProps<TFieldValues> & {
+        type: "select"; // Discriminator
+        options: Option[]; // Required for select type
+    } & SelectHTMLAttributes<HTMLSelectElement>) // Include standard <select> attributes
+    // For type="file" inputs
+    | (BaseInputProps<TFieldValues> & {
+        type: "file"; // Discriminator
+        accept?: string; // 'accept' attribute specific to file inputs
+    } & InputHTMLAttributes<HTMLInputElement>) // Include standard <input type="file"> attributes
+    // For all other <input> types (e.g., text, number, email, password)
+    | (BaseInputProps<TFieldValues> & {
+        type?: Exclude<InputHTMLAttributes<HTMLInputElement>['type'], "select" | "file">; // Type can be text, number, etc.
+    } & InputHTMLAttributes<HTMLInputElement>);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+export const Input = forwardRef<HTMLInputElement | HTMLSelectElement, InputProps>(
+    (
+        {
+            label,
+            name,
+            placeholder,
+            type = "text",
+            options = [],
+            error,
+            variant,
+            className,
+            ...props // All props, including value, onChange, onBlur, etc., are in here
+        },
+        ref // This is the ref from react-hook-form
+    ) => {
+        // Determine the variant based on the error state
+        const inputVariant = error ? "error" : (variant || 'primary');
+        const labelColorClass =
+            inputVariant === "error"
+                ? "text-danger-main"
+                : inputVariant === "success"
+                    ? "text-success"
+                    : "text-secondary";
 
-  return (
-    <div className="flex flex-col w-full">
-      {label && (
-        <label
-          htmlFor={typeof name === "string" ? name : ""}
-          className="mb-2 text-sm text-start noto-sans-regular text-secondary"
-        >
-          {label}
-        </label>
-      )}
+        if (type === "select") {
+            return (
+                <div className="flex flex-col w-full">
+                    {label && <label htmlFor={name}
+                        className={clsx("mb-2 text-sm text-start font-noto-thai", labelColorClass)}>{label}</label>}
+                    <select
+                        id={name}
+                        name={name}
+                        ref={ref as Ref<HTMLSelectElement>} // Pass ref to the native element
+                        className={clsx(inputVariants({ variant: inputVariant }), className)}
+                        {...props} // Spread all props from react-hook-form
+                    >
+                        <option value="" disabled hidden>
+                            {placeholder || "Select an option"}
+                        </option>
+                        {options.map((option) => {
+                            if (option.value.startsWith("divider")) {
+                                return (
+                                    <option key={option.value} disabled>
+                                        {option.key}
+                                    </option>
+                                );
+                            }
 
-      {type === "file" ? (
-        <>
-          <input
-            id={typeof name === "string" ? name : ""}
-            type="file"
-            ref={fileInputRef}
-            accept={props.accept || "image/*"}
-            {...commonProps}
-            {...props}
-            onChange={onChange}
-            className={clsx("hidden", className)}
-          />
+                            return (
+                                <option key={option.value} value={option.value}>
+                                    {option.key}
+                                </option>
+                            );
+                        })}
+                    </select>
+                    {error && <span className="text-sm text-danger-main">{error}</span>}
+                </div>
+            );
+        }
 
-          <label
-            htmlFor={typeof name === "string" ? name : ""}
-            className={clsx(
-              "flex md:w-full md:h-full h-40 w-40 cursor-pointer items-center justify-center bg-[#E1E1E1] rounded-2xl",
-              variant === "error" ? "text-danger-light" : "text-primary",
-              className
-            )}
-          >
-            <UploadIcon className="h-8 w-8 text-white" />
-          </label>
-        </>
-      ) : type === "select" ? (
-        <select
-          id={typeof name === "string" ? name : ""}
-          {...commonProps}
-          {...props}
-          value={value}
-          onChange={onChange}
-          className={clsx(
-            inputVariants({ variant: error ? "error" : "primary" }),
-            className
-          )}
-        >
-          <option value="" disabled hidden>
-            {placeholder || "Select an option"}
-          </option>
-          {options.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.key}
-            </option>
-          ))}
-        </select>
-      ) : (
-        <input
-          id={typeof name === "string" ? name : ""}
-          {...commonProps}
-          {...props}
-          value={value}
-          onChange={onChange}
-          placeholder={placeholder}
-          className={clsx(
-            inputVariants({ variant: error ? "error" : variant }),
-            (className = `${
-              variant === error ? "text-danger-light" : "text-primary"
-            }`)
-          )}
-        />
-      )}
+        if (type === "file") {
+            // You can still use a ref for the file input if needed, but it's separate from react-hook-form's ref
+            return (
+                <div className="flex flex-col w-full">
+                    {label && <label htmlFor={name}
+                        className={clsx("mb-2 text-sm text-start font-noto-thai", labelColorClass)}>{label}</label>}
+                    <input
+                        id={name}
+                        type="file"
+                        name={name}
+                        // onChange={onChange}
+                        ref={ref as Ref<HTMLInputElement>} // Pass ref to the file input
+                        className={clsx("hidden", className)}
+                        {...props} // Spread all props from react-hook-form
+                    />
+                    <label
+                        htmlFor={name}
+                        className="flex items-center justify-center gap-2 cursor-pointer rounded-lg border border-dashed border-gray-400 py-4 px-6 bg-gray-50 hover:bg-gray-100 transition"
+                    >
+                        <UploadIcon className="w-6 h-6 text-gray-500" />
+                        <span className="text-gray-700">{placeholder}</span>
+                    </label>
+                    {/* You can add a custom styled label here */}
+                    {error && <span className="text-sm text-danger-main">{error}</span>}
+                </div>
+            );
+        }
 
-      {error && <span className="text-sm text-danger-main">{error}</span>}
-    </div>
-  );
-};
+        return (
+            <div className="flex flex-col w-full">
+                {label && <label htmlFor={name}
+                    className={clsx("mb-2 text-sm text-start font-noto-thai", labelColorClass)}>{label}</label>}
+                <input
+                    id={name}
+                    name={name}
+                    type={type}
+                    placeholder={placeholder}
+                    ref={ref as Ref<HTMLInputElement>} // Pass ref to the native element
+                    className={clsx(inputVariants({ variant: inputVariant }), className)}
+                    {...props} // Spread all props from react-hook-form
+                />
+                {error && <span className="text-sm text-danger-main">{error}</span>}
+            </div>
+        );
+    }
+);
+
+Input.displayName = "Input";
+export default Input

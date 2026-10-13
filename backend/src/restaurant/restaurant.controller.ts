@@ -1,53 +1,78 @@
 import {
   Controller,
-  Post, Delete, Get, Patch,
+  Post,
+  Delete,
+  Get,
+  Patch,
   Body,
   Param,
   UseInterceptors,
   UploadedFile,
-  ParseFilePipe,
   Req,
+  UseGuards,
+  Logger,
+  InternalServerErrorException,
+  UploadedFiles,
   BadRequestException,
+  Query,
+  ParseIntPipe,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer'; // Import diskStorage
-import { imageFileFilter, editFileName } from '../utils/file-upload.utils'; // Your utility functions
-import { Public } from '../decorators/public.decorator';
-import * as fs from 'fs/promises';
+import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
+import { imageFileFilter } from '../utils/file-upload.utils'
 
 import { RestaurantService } from './restaurant.service';
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
 import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
+import { RolesGuard } from 'src/guards/roles.guard';
+import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
+import { Roles } from 'src/decorators/role.decorator';
+import { Role } from '@prisma/client';
+import { CsrfGuard } from 'src/guards/csrf.guard';
+import { Public } from 'src/decorators/public.decorator';
 
+@UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
+@Roles([Role.user, Role.admin, Role.cooker])
 @Controller('restaurant')
 export class RestaurantController {
   constructor(private readonly restaurantService: RestaurantService) { }
+
+  private readonly logger = new Logger('RestaurantController');
+
   @Post()
-  @UseInterceptors(FileInterceptor('restaurantImg', {
-    storage: diskStorage({
-      destination: './uploads/restaurants',
-      filename: editFileName,
-    }),
-    fileFilter: imageFileFilter,
-  }))
+  @UseInterceptors(FileFieldsInterceptor([
+    { name: 'restaurantImg', maxCount: 1 },
+    { name: 'paymentQr', maxCount: 1 },
+  ]))
   async createRestaurant(
+    @Req() req: any,
     @Body() createRestaurantDto: CreateRestaurantDto,
-    @UploadedFile(new ParseFilePipe({
-      fileIsRequired: false,
-    }),
-    ) file?: Express.Multer.File
+    @UploadedFiles() files?: {
+      paymentQr?: Express.Multer.File[],
+      restaurantImg?: Express.Multer.File[],
+    },
   ) {
-    console.log('Controller: DTO (createRestaurantDto):', createRestaurantDto);
-    return this.restaurantService.createRestaurant(createRestaurantDto, file);
+    const paymentQr = files?.paymentQr?.[0];
+  
+    if (!paymentQr) throw new BadRequestException('กรุณาอัพโหลด QR');
+  
+    const userId = req.user.userId;
+    return this.restaurantService.createRestaurant(
+      createRestaurantDto,
+      userId,
+      paymentQr,
+      files.restaurantImg?.[0],
+    );
   }
 
   @Public()
   @Get()
-  async findAllRestaurant() {
-    return this.restaurantService.getOpenRestaurants();
+  async findAllRestaurant(@Query("limit") limit?: string) {
+    const parsedLimit = Math.min(Math.max(Number(limit) || 6, 1), 50);
+    return this.restaurantService.getOpenRestaurants(parsedLimit);
   }
 
   @Public()
+  // @Roles([Role.user, Role.admin, Role.cooker])
   @Get(':restaurantId')
   async findRestaurant(@Param('restaurantId') restaurantId: string) {
     return this.restaurantService.findRestaurant(restaurantId);
@@ -56,56 +81,54 @@ export class RestaurantController {
   @Patch(':restaurantId')
   @UseInterceptors(
     FileInterceptor('restaurantImg', {
-      storage: diskStorage({
-        destination: './uploads/restaurants',
-        filename: editFileName,
-      }),
+      storage: null,
       fileFilter: imageFileFilter,
-    })
+    }),
   )
   async updateRestaurant(
-    @Req() req: any,
     @Param('restaurantId') restaurantId: string,
     @Body() updateRestaurantDto: UpdateRestaurantDto,
-    @UploadedFile() file?: Express.Multer.File
+    @UploadedFile() file?: Express.Multer.File,
   ) {
-    // const authRestaurantId = req.user.restaurantId;
-
-    // if (!authRestaurantId) {
-    //   throw new BadRequestException('Authentication context missing restaurant ID.');
-    // }
-
-    // // Ensure the authenticated user is trying to update their own restaurant
-    // if (restaurantId !== authRestaurantId) {
-    //   throw new BadRequestException('You are not authorized to update this restaurant profile.');
-    // }
-
-    let uploadedFilePath: string | undefined;
     try {
       const dataToUpdate: UpdateRestaurantDto = { ...updateRestaurantDto };
 
-      if (file) {
-        dataToUpdate.restaurantImg = `uploads/restaurants/${file.filename}`;
-        uploadedFilePath = file.path;
-      }
-      return this.restaurantService.updateRestaurant(restaurantId, dataToUpdate);
+      return await this.restaurantService.updateRestaurant(
+        restaurantId,
+        dataToUpdate,
+        file,
+      );
     } catch (error) {
-      console.error(`Failed to update restaurant ${restaurantId} in controller:`, error);
+      this.logger.error(`Failed to update restaurant ${restaurantId} in controller: `, error);
 
-      // --- 4. Clean up Uploaded File on Error ---
-      if (uploadedFilePath) {
-        try {
-          await fs.unlink(uploadedFilePath);
-          console.log(`Controller: Successfully deleted temporary uploaded file: ${uploadedFilePath}`);
-        } catch (fileDeleteError) {
-          console.error(`Controller: Failed to delete uploaded file ${uploadedFilePath}:`, fileDeleteError);
-        }
-      }
-      // Re-throw the error so NestJS's global exception filters can handle it
-      throw error;
+      throw new InternalServerErrorException('อัพเดทร้านอาหรรล้มเหลว');
     }
   }
 
+  @Roles([Role.user, Role.admin, Role.cooker])
+  @Patch('temporarily-close/:restaurantId')
+  async updateIsTemporarilyClose(
+    @Param('restaurantId') restaurantId: string,
+    @Body() updateRestaurantDto: UpdateRestaurantDto,
+  ) {
+    const updateData = await this.restaurantService.updateIsTemporailyClose(
+      restaurantId,
+      updateRestaurantDto,
+    );
+    return updateData;
+  }
+
+  @Roles([Role.user, Role.admin, Role.cooker])
+  @Patch('auto-accepted/:restaurantId')
+  async updateIsAutoAcceptedOrder(
+    @Param('restaurantId') restaurantId: string,
+    @Body() updateRestaurantDto: UpdateRestaurantDto,
+  ) {
+    const updateData = await this.restaurantService.updateIsAutoAcceptedOrder(restaurantId, updateRestaurantDto);
+    return updateData;
+  }
+
+  @Roles([Role.user, Role.admin, Role.cooker])
   @Delete(':restaurantId')
   async deleteRestaurant(@Param('restaurantId') restaurantId: string) {
     return await this.restaurantService.removeRestaurant(restaurantId);

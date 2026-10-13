@@ -1,154 +1,106 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Req, UseGuards, UploadedFile, UploadedFiles, BadRequestException, UseInterceptors, NotFoundException, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  UploadedFile,
+  UploadedFiles,
+  BadRequestException,
+  UseInterceptors,
+  NotFoundException,
+  Query,
+  Logger,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { MenuService, MenusWithDisplayPrices } from './menu.service';
-import { CreateMenuDto } from './dto/create-menu.dto';
+import {
+  CreateBulkMenusJsonPayload,
+  CreateMenuDto,
+} from './dto/create-menu.dto';
 import { UpdateMenuDto } from './dto/update-menu.dto';
-import * as fs from 'fs/promises';
 import { Public } from '../decorators/public.decorator';
 import { RolesGuard } from '../guards/roles.guard';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { imageFileFilter, editFileName } from 'src/utils/file-upload.utils';
+
+import { imageFileFilter } from 'src/utils/file-upload.utils';
 import { Express } from 'express';
+import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
+import { Role } from '@prisma/client';
+import { Roles } from 'src/decorators/role.decorator';
+import { CsrfGuard } from 'src/guards/csrf.guard';
 
 @Controller('menu')
-// @UseGuards(RolesGuard)
-// @Roles(['cooker'])
+@UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
+@Roles([Role.admin, Role.cooker])
 export class MenuController {
-  constructor(private readonly menuService: MenuService) { }
+  constructor(
+    private readonly menuService: MenuService,
+  ) { }
+
+  private readonly logger = new Logger('MenuService');
 
   @Post('single')
   @UseInterceptors(
     FileInterceptor('menuImg', {
-      storage: diskStorage({
-        destination: './uploads/menus',
-        filename: editFileName,
-      }),
       fileFilter: imageFileFilter,
-    }
-    ))
-
+    }),
+  )
   async createSingleMenu(
-    @Req() req: any,
     @Body() createMenuDto: CreateMenuDto,
-    @UploadedFile() file?: Express.Multer.File
+    @UploadedFile() file: Express.Multer.File,
   ) {
-    // const restaurantId = req.user.restaurantId;
-    const restaurantId = createMenuDto.restaurantId;
-    console.log('Request object: ', req.user);
-    if (!restaurantId) throw new NotFoundException('RestaurantId not found in create mneu controller');
-    
-    let uploadedFilePath: string | undefined;
+    if (!createMenuDto.restaurantId)
+      throw new NotFoundException('ไม่พบร้านอาหารที่ต้องการสร้างเมนู');
 
     try {
       const menuData: CreateMenuDto = { ...createMenuDto };
-      if (file) {
-        menuData.menuImg = `uploads/menus/${file.filename}`;
-        uploadedFilePath = file.path;
-      }
 
-      const result = await this.menuService.createMenu(
-        restaurantId,
-        [menuData],
-        file ? [file] : undefined);
-
-      console.log('Create menu in controller: ', result);
+      const result = await this.menuService.createSingleMenu(menuData, file);
       return result;
     } catch (error) {
-      if (uploadedFilePath) {
-        try {
-          await fs.unlink(uploadedFilePath);
-          console.log(`Controller: Successfully deleted temporary uploaded file: ${uploadedFilePath}`)
-        } catch (fileDeleteError) {
-          console.error(`Controller: Failed to delete uploaded file ${uploadedFilePath}:`, fileDeleteError)
-        }
-      }
+      this.logger.error(`Create menu controller failed: ${error}`);
+      throw new InternalServerErrorException(`สร้างเมนู ${createMenuDto.name}ล้มเหลว`);
+    }
+  }
 
-      console.error('Create menu controller failed: ', error);
+  @Post('bulk-images')
+  @UseInterceptors(FilesInterceptor('images'))
+  uploadMenuImages(@UploadedFiles() files: Express.Multer.File[]) {
+    return this.menuService.uploadTempImages(files);
+  }
+
+  @Post('bulk')
+  async createBulkMenus(@Body() payload: CreateBulkMenusJsonPayload) {
+    this.logger.log(`Req body for bulk menus: `, payload);
+
+    if (!payload.createMenuDto || !Array.isArray(payload.createMenuDto) || payload.createMenuDto.length === 0) {
+      throw new BadRequestException('ไม่พบข้อมูลสำหรับการสร้างเมนู');
+    }
+
+    try {
+      const result = await this.menuService.createBulkMenus(payload.restaurantId, payload.createMenuDto);
+      return result;
+    } catch (error) {
+      this.logger.error('Bulk menu creation failed in controller: ', error);
       throw error;
     }
   }
 
-  @Post('bulk')
-  @UseInterceptors(
-    FilesInterceptor('menuImg', 20, {
-      storage: diskStorage({
-        destination: './uploads/menus',
-        filename: editFileName,
-      }),
-      fileFilter: imageFileFilter,
-    })
-  )
-  async createBulkMenus(
-    @Req() req: any,
-    @Body('createMenuDto') createMenuDto: string,
-    @UploadedFiles() files?: Express.Multer.File[],
-  ) {
-    let parsedCreateMenuDtos: CreateMenuDto[];
-    let uploadFilePaths: string[] = [];
-
-    try {
-      try {
-        parsedCreateMenuDtos = JSON.parse(createMenuDto);
-        if (!Array.isArray(parsedCreateMenuDtos)) {
-          throw new BadRequestException('The "createMenuDtos" field must be a JSON array.');
-        }
-      } catch (parseError) {
-        throw new BadRequestException('Invalid JSON format for createMenuDto field');
-      }
-
-      // const restaurantId = req.user.restaurantId;
-      const restaurantId = req.body.restaurantId;
-      console.log(req);
-      if (!restaurantId) throw new NotFoundException('RestaurantId not found in create mneu controller');
-
-      if (files && files.length !== parsedCreateMenuDtos.length) {
-        throw new BadRequestException('The number of upload files must match the nubmer of create menus');
-      }
-
-      parsedCreateMenuDtos.forEach((dto, index) => {
-        const file = files && files[index];
-
-        if (file) {
-          dto.menuImg = `uploads/emnus/${file.filename}`;
-          uploadFilePaths.push(file.path);
-        }
-      });
-
-      const result = await this.menuService.createMenu(restaurantId, parsedCreateMenuDtos, files);
-
-      console.log('Successfully create menu in controller: ', result);
-      return result;
-    } catch (error) {
-      console.error('Bulk menu creation failed in controller: ', error);
-
-      // Clean up all uploaded files if any error occurred during processing
-      await Promise.all(uploadFilePaths.map(async (filePath) => {
-        try {
-          await fs.unlink(filePath);
-          console.log(`Controller: Successfully deleted temporary uploaded file: ${filePath}`);
-        } catch (fileDeleteError) {
-          console.error(`Controller: Failed to delete uploaded file ${filePath}:`, fileDeleteError);
-        }
-      }));
-      throw error; // Re-throw the original error
-    }
-  }
-
-  @Public()
-  @Get()
-  async findAllMenus() {
-    return this.menuService.findAllMenus();
-  }
-
   @Public()
   @Get(':restaurantId')
-  async getRestaurantMenus(@Param('restaurantId') restaurantId: string): Promise<MenusWithDisplayPrices[]> {
+  async getRestaurantMenus(
+    @Param('restaurantId') restaurantId: string,
+  ): Promise<MenusWithDisplayPrices[]> {
     const menuList = this.menuService.getRestaurantMenusDisplay(restaurantId);
     return menuList;
   }
 
   @Public()
-  @Get(':menuId')
+  @Get('find/:menuId')
   async findMenu(@Param('menuId') menuId: string) {
     return this.menuService.findMenu(menuId);
   }
@@ -156,121 +108,93 @@ export class MenuController {
   @Patch('single/:menuId')
   @UseInterceptors(
     FileInterceptor('menuImg', {
-      storage: diskStorage({
-        destination: './uploads/menus',
-        filename: editFileName,
-      }),
+      storage: null,
       fileFilter: imageFileFilter,
-    })
+    }),
   )
-
   async updateSingleMenu(
-    @Req() req: any,
     @Param('menuId') menuId: string,
     @Body() updateMenuDto: UpdateMenuDto,
-    @UploadedFile() file?: Express.Multer.File
+    @UploadedFile() file?: Express.Multer.File,
   ) {
-    // const restaurantId = req.user.restaurantId;
-    const restaurantId = req.body.restaurantId;
-    if (!restaurantId) throw new NotFoundException('RestaurantId not found in update mneu controller');
+    const restaurantId = updateMenuDto.restaurantId;
+    if (!restaurantId) throw new NotFoundException('ไม่พบร้านอาหารที่ต้องการแก้ไขเมนู');
 
-    let uploadedFilePath: string | undefined;
     try {
-      if (!menuId) throw new BadRequestException('Menu ID is required in URL params');
+      if (!menuId) throw new BadRequestException('ไม่พบเมนูไอดี');
 
       const menuData: UpdateMenuDto = { ...updateMenuDto };
+      const result = await this.menuService.updateMenu(menuId, menuData, file);
 
-      if (file) {
-        menuData.menuImg = `uploads/menus/${file.filename}`;
-        uploadedFilePath = file.path;
-      } else if (updateMenuDto.menuImg === undefined) {
-        menuData.menuImg = updateMenuDto.menuImg;
-      }
-
-      const result = await this.menuService.updateMenu(
-        restaurantId,
-        [menuId],
-        [menuData],
-      );
-
-      console.log('Single menu update successful in controller: ', result);
       return result;
     } catch (error) {
-      console.error('Single menu update failed in controller: ', error);
-      if (uploadedFilePath) {
-        try {
-          await fs.unlink(uploadedFilePath);
-          console.log(`Controller: Successfully deleted temporary uploaded file: ${uploadedFilePath}`);
-        } catch (fileDeleteError) {
-          console.error(`Controller: Failed to delete uploaded file ${uploadedFilePath}:`, fileDeleteError);
-        }
-      }
-      throw error;
+      this.logger.error('Single menu update failed in controller: ', error);
+      throw new InternalServerErrorException('แก้ไขเมนูล้มเหลว');
     }
   }
 
   @Patch('bulk')
   @UseInterceptors(
     FilesInterceptor('menuImg', 20, {
-      storage: diskStorage({
-        destination: './uploads/menus',
-        filename: editFileName,
-      }),
+      storage: null,
+      limits: {
+        fileSize: 10 * 1024 * 1024,
+      },
       fileFilter: imageFileFilter,
-    })
+    }),
   )
   async bulkUpdateMenus(
-    @Req() req: any,
     @Query('menuIds') menuIds: string[],
-    @Body('updateMenuDto') updateMenuDto: string,
-    @UploadedFiles() files?: Express.Multer.File[]
+    @Body() updateMenuDto: string,
+    @UploadedFiles() files?: Express.Multer.File[],
   ) {
-    // const restaurantId = req.user.restaurantId;
-    const restaurantId = req.body.restaurantId;
-    if (!restaurantId) throw new NotFoundException('RestaurantId not found in bulk update menu controller');
-
     let parsedUpdateMenuDtos: UpdateMenuDto[];
-    let uploadedFilePaths: string[] = [];
+
+    if (!menuIds || menuIds.length === 0) {
+      throw new BadRequestException('ไม่พบเมนูที่ต้องการแก้ไข');
+    }
+
     try {
       try {
         parsedUpdateMenuDtos = JSON.parse(updateMenuDto);
-        if (!Array.isArray(parsedUpdateMenuDtos)) {
-          throw new BadRequestException('UpdateMenuDto field must be a JSON array');
-        }
+
+        if (!Array.isArray(parsedUpdateMenuDtos)) throw new BadRequestException('รูปแบบไม่ถูกต้อง');
       } catch (parseError) {
-        throw new BadRequestException('Invalida JSON format for updateMenuDto field');
+        this.logger.error('Failed to parse updateMenuDto:', parseError);
+        throw new BadRequestException('รูปแบบข้อมูลไม่ถูกต้อง');
       }
 
-      parsedUpdateMenuDtos.forEach((dto, index) => {
-        const file = files && files[index];
-
-        if (file) {
-          dto.menuImg = `uploads/menus/${file.filename}`;
-          uploadedFilePaths.push(file.path);
-        }
+      parsedUpdateMenuDtos.forEach((dto) => {
+        const restaurantId = dto.restaurantId;
+        if (!restaurantId)
+          throw new NotFoundException(
+            'RestaurantId is missing in the update payload',
+          );
       });
 
-      const result = await this.menuService.updateMenu(
-        restaurantId,
+      const result = await this.menuService.bulkUpdateMenus(
         menuIds,
         parsedUpdateMenuDtos,
-        // files,
+        files,
       );
 
-      console.log('Bulk menu update successfully in controller: ', result);
       return result;
     } catch (error) {
-      console.error('Bulk menu update failed in controller: ', error);
-      await Promise.all(uploadedFilePaths.map(async (filePath) => {
-        try {
-          await fs.unlink(filePath);
-          console.log(`Controller: Successfully deleted temporary uploaded file: ${filePath}`);
-        } catch (fileDeleteError) {
-          console.error(`Controller: Failed to delete uploaded file ${filePath}:`, fileDeleteError);
-        }
-      }));
-      throw error;
+      this.logger.error('Bulk menu update failed in controller: ', error);
+      throw new InternalServerErrorException('แก้ไขเมนูล้มเหบว');
     }
+  }
+
+  @Patch('is-available/:menuId')
+  async updateAvailability(
+    @Param('menuId') menuId: string,
+    @Body() updateMenuDto: UpdateMenuDto,
+  ) {
+    const updateAvailability = await this.menuService.updateIsAvailable(
+      menuId,
+      updateMenuDto,
+    );
+    return updateAvailability;
   }
 
   @Delete(':menuId')

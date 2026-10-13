@@ -1,27 +1,24 @@
-import { forwardRef, Module, OnModuleInit } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { RestaurantController } from './restaurant.controller';
 import { RestaurantService } from './restaurant.service';
-import { PrismaService } from 'prisma/prisma.service';
-import { MulterModule } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
+import { PrismaService } from '../prisma/prisma.service';
 import { OrderModule } from 'src/order/order.module';
-import { MenuModule } from 'src/menu/menu.module';
+import { CsrfModule } from 'src/csrf/csrf.module';
+import { S3Module } from 'src/s3/s3.module';
+import { UploadModule } from 'src/upload/upload.module';
+import { AnalyticsModule } from 'src/analytics/dto/analytics.module';
+import { QrReaderService } from '../utils/qr-reader.service';
 
 @Module({
   imports: [
+    UploadModule,
+    AnalyticsModule,
     OrderModule,
-    MulterModule.register({
-      storage: diskStorage({
-        destination: './uploads/restaurants',
-        filename: (req, file, cb) => {
-          const filename = `${Date.now()}-${file.originalname}`;
-          cb(null, filename);
-        },
-      }),
-    }),
+    CsrfModule,
+    S3Module,
   ],
   controllers: [RestaurantController],
-  providers: [RestaurantService, PrismaService],
+  providers: [RestaurantService, PrismaService, QrReaderService],
   exports: [RestaurantService],
 })
 export class RestaurantModule {}

@@ -1,9 +1,8 @@
-import { Type, Transform } from "class-transformer";
+import { Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
   IsDate,
-  IsEnum,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -12,13 +11,12 @@ import {
   IsUUID,
   Min,
   ValidateNested,
-  IsIn,
   ArrayMinSize,
   ArrayMaxSize
 } from "class-validator";
 
 export class CreateOrderMenusDto {
-  @IsUUID('4', { message: 'menuId must be a valida UUID' })
+  @IsUUID('4', { message: 'menuId must be a valid UUID' })
   @IsNotEmpty()
   menuId: string;
 
@@ -32,9 +30,9 @@ export class CreateOrderMenusDto {
   @IsString()
   menuName: string;
 
-  @IsNumber()
   @IsNotEmpty()
   @IsPositive()
+  @IsNumber()
   @Type(() => Number)
   unitPrice: number;
 
@@ -48,9 +46,19 @@ export class CreateOrderDto {
   @IsUUID()
   restaurantId!: string;
 
-  @IsOptional()
   @IsString()
-  details?: string;
+  @IsNotEmpty()
+  userTel: string;
+
+  @IsDate()
+  @IsNotEmpty()
+  @Type(() => Date)
+  deliverAt: Date;
+
+  @IsOptional()
+  @IsDate()
+  @Type(() => Date)
+  acceptAt?: Date;
 
   @IsDate()
   @IsNotEmpty()
@@ -60,7 +68,9 @@ export class CreateOrderDto {
   @IsArray()
   @IsNotEmpty({ message: 'Order must contain at least one menu item' })
   @ArrayMinSize(1, { message: 'Order must contain at least one menu item' })
-  @ArrayMaxSize(10, { message: 'Order cannot contain more than 10 different items' })
+  @ArrayMaxSize(10, {
+    message: 'Order cannot contain more than 10 different items',
+  })
   @ValidateNested({ each: true })
   @Type(() => CreateOrderMenusDto)
   orderMenus: CreateOrderMenusDto[];

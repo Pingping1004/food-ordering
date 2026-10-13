@@ -1,26 +1,72 @@
-import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString } from 'class-validator'
+import {
+  IsBoolean,
+  IsArray,
+  ValidateNested,
+  IsNotEmpty,
+  Min,
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  IsString,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
+export class CsvMenuItemData {
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @IsNumber()
+  @Min(0)
+  price: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  maxDaily?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  cookingTime?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isAvailable?: boolean;
+
+  @IsNotEmpty()
+  @IsString()
+  menuImgTempId: string;
+
+  @IsOptional()
+  @IsString()
+  originalFileName?: string;
+}
+
 export class CreateMenuDto {
-    @IsString()
-    @IsNotEmpty()
-    name: string;
+  @IsString()
+  @IsNotEmpty()
+  restaurantId: string;
 
-    @IsOptional()
-    @IsString()
-    menuImg?: string;
-
+  @IsString()
+  @IsNotEmpty()
+  name: string;
     @IsNotEmpty()
     @IsNumber({}, { message: 'Price must be a number' })
     @IsPositive()
     @Type(() => Number)
     price: number;
+  @IsNotEmpty()
+  @IsPositive()
+  @IsNumber()
+  @Type(() => Number)
+  maxDaily: number;
 
-    @IsNotEmpty()
-    @IsPositive()
-    @IsNumber()
-    @Type(() => Number)
-    maxDaily: number;
+  @IsNotEmpty()
+  @IsNumber()
+  @IsPositive()
+  @Type(() => Number)
+  cookingTime: number;
 
     @IsNotEmpty()
     @IsNumber()
@@ -28,12 +74,20 @@ export class CreateMenuDto {
     @Type(() => Number)
     cookingTimeMins: number;
 
-    @IsBoolean()
-    @IsOptional()
-    @Type(() => Boolean)
-    isAvailable?: boolean;
+  @IsBoolean()
+  @IsOptional()
+  @Type(() => Boolean)
+  isAvailable?: boolean;
+}
 
-    @IsString()
-    @IsNotEmpty()
-    restaurantId: string;
+export class CreateBulkMenusJsonPayload {
+  @IsString()
+  @IsNotEmpty()
+  restaurantId: string;
+
+  @IsArray()
+  @IsNotEmpty()
+  @ValidateNested({ each: true })
+  @Type(() => CsvMenuItemData)
+  createMenuDto: CsvMenuItemData[];
 }

@@ -1,69 +1,88 @@
-import { IsNotEmpty, IsString, IsEnum, IsArray, IsOptional, IsEmail, IsNumber, IsBoolean } from "class-validator";
-import { Prisma, RestaurantCategory, RestaurantOperatingHour, Status } from "@prisma/client";
+import { IsNotEmpty, IsString, IsEnum, IsArray, IsOptional, IsEmail, IsNumber, IsDate } from "class-validator";
+import { AccountType, DateWeek, RestaurantCategory } from '@prisma/client';
+import { Type, Transform } from 'class-transformer';
 
 export class CreateRestaurantDto {
-    @IsNotEmpty()
-    @IsString()
-    name: string;
+  @IsNotEmpty()
+  @IsString()
+  name: string;
 
-    @IsOptional()
-    @IsString()
-    profile?: string;
+  @IsOptional()
+  @IsString()
+  profile?: string;
 
-    @IsNotEmpty()
-    @IsEmail()
-    email: string;
+  @IsOptional()
+  @IsString()
+  restaurantImg?: string;
 
-    @IsOptional()
-    @IsString()
-    location?: string;
+  @IsNotEmpty()
+  @IsEmail()
+  email: string;
 
-    @IsArray()
-    @IsEnum(RestaurantCategory, { each: true })
-    @IsNotEmpty()
-    categories: RestaurantCategory[];
+  @Transform(({ value }) => {
+    if (value === null || value === undefined || Array.isArray(value)) {
+      return value;
+    }
+    return [value];
+  })
+  @IsArray()
+  @IsEnum(RestaurantCategory, { each: true })
+  @IsNotEmpty()
+  categories: RestaurantCategory[];
 
-    @IsNumber()
-    @IsOptional()
-    maxActiveOrders?: number;
+  @Transform(({ value }) => {
+    if (value === null || value === undefined || Array.isArray(value)) {
+      return value;
+    }
+    return [value];
+  })
+  @IsArray()
+  @IsEnum(DateWeek, { each: true })
+  @IsNotEmpty()
+  openDate: DateWeek[];
 
-    @IsNumber()
-    @IsOptional()
-    avgCookingTimeMins?: number;
+  @IsNotEmpty()
+  @IsDate()
+  openTime: Date;
 
-    @IsEnum(Status)
-    @IsNotEmpty()
-    status: Status
+  @IsNotEmpty()
+  @IsDate()
+  closeTime: Date;
 
-    @IsNotEmpty()
-    @IsString()
-    contactName: string;
+  @IsNumber()
+  @Type(() => Number)
+  @IsNotEmpty()
+  avgCookingTime: number;
 
-    @IsNotEmpty()
-    @IsString()
-    contactTel: string;
+  @IsNotEmpty()
+  @IsString()
+  adminName: string;
 
-    @IsNotEmpty()
-    @IsEmail()
-    contactEmail: string;
+  @IsNotEmpty()
+  @IsString()
+  adminSurname: string;
 
-    @IsNotEmpty()
-    @IsString()
-    accountNumber: string;
+  @IsNotEmpty()
+  @IsString()
+  adminTel: string;
 
-    @IsNotEmpty()
-    @IsString()
-    accountName: string;
+  @IsNotEmpty()
+  @IsString()
+  adminEmail: string;
 
-    @IsNotEmpty()
-    @IsString()
-    paymentQr: string;
+  @IsOptional()
+  @IsString()
+  accountNumber?: string;
 
-    @IsNotEmpty()
-    @IsString()
-    canteenId: string;
+  @IsOptional()
+  @IsEnum(AccountType)
+  bankAccount?: AccountType;
 
-    @IsArray()
-    @IsNotEmpty()
-    operatingHours: RestaurantOperatingHour[];
+  @IsOptional()
+  @IsString()
+  paymentQr?: string;
+
+  @IsNotEmpty()
+  @IsString()
+  accountHolderFullName: string;
 }

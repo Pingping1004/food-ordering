@@ -4,15 +4,15 @@ import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { Role } from '@prisma/client';
 
 export class UpdateUserDto extends PartialType(CreateUserDto) {
-    @IsString()
-    @IsOptional()
-    profileImg?: string;
+  @IsString()
+  @IsOptional()
+  profileImg?: string;
 
-    @IsString()
-    @IsOptional()
-    name?: string;
+  @IsString()
+  @IsOptional()
+  name?: string;
 
-    @IsEnum(Role)
-    @IsOptional()
-    role?: Role;
+  @IsEnum(Role)
+  @IsOptional()
+  role?: Role;
 }

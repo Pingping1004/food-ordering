@@ -1,12 +1,14 @@
-import { Module, NestModule, OnModuleInit, MiddlewareConsumer, RequestMethod, Type } from '@nestjs/common';
+import {
+  Module,
+  NestModule,
+  MiddlewareConsumer,
+  RequestMethod,
+} from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { HttpExceptionFilter } from './libs/http-exception.filter';
 import { CatchEverythingFilter } from './libs/catch-everything.filter';
-import { RequestLoggerMiddleware } from 'logger.middleware';
-import { MulterModule } from '@nestjs/platform-express';
-import configuration from './config/configuration';
+import { RequestLoggerMiddleware } from 'src/logger.middleware';
 
-// Service and controller
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { RestaurantModule } from './restaurant/restaurant.module';
@@ -15,49 +17,83 @@ import { RestaurantService } from './restaurant/restaurant.service';
 import { MenuService } from './menu/menu.service';
 import { RestaurantController } from './restaurant/restaurant.controller';
 import { MenuController } from './menu/menu.controller';
-import { PrismaModule } from 'prisma/prisma.module';
-import { PrismaService } from 'prisma/prisma.service';
+import { PrismaModule } from './prisma/prisma.module';
+import { PrismaService } from './prisma/prisma.service';
 import { OrderModule } from './order/order.module';
 import { OrderService } from './order/order.service';
 import { OrderController } from './order/order.controller';
 import { PaymentModule } from './payment/payment.module';
 import { PaymentService } from './payment/payment.service';
 import { PaymentController } from './payment/payment.controller';
-import { ConfigModule } from '@nestjs/config';
 import { PayoutModule } from './payout/payout.module';
 import { PayoutController } from './payout/payout.controller';
 import { PayoutService } from './payout/payout.service';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { AdminModule } from './admin/admin.module';
+import { UploadModule } from './upload/upload.module';
+import { UploadController } from './upload/upload.controller';
+import { RefreshTokenModule } from './refreshToken/refresh-token.module';
+import { CsrfTokenService } from './csrf/csrf.service';
+import { CsrfModule } from './csrf/csrf.module';
+import { RefreshTokenService } from './refreshToken/refresh-token.service';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { S3Module } from './s3/s3.module';
+import { S3Service } from './s3/s3.service';
+import { ConfigModule } from '@nestjs/config';
+import configuration from './config/configuration';
+import { InventoryModule } from './inventory/inventory.module';
+import { InventoryService } from './inventory/inventory.service';
+import { TokenCleanService } from './auth/jobs/tokenClean.job';
+import { ScheduleModule } from '@nestjs/schedule';
+import { NotificationModule } from './notification/notification.module';
+import { AnalyticsModule } from './analytics/dto/analytics.module';
+import { AnalyticsService } from './analytics/analytics.service';
+import { QrReaderService } from './utils/qr-reader.service';
 
 @Module({
   imports: [
     RestaurantModule,
+    InventoryModule,
     MenuModule,
     PrismaModule,
+    PaymentModule,
     OrderModule,
     PaymentModule,
-
+    UploadModule,
+    NotificationModule,
+    CsrfModule,
+    RefreshTokenModule,
+    S3Module,
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: 60000,
+          limit: 10,
+        },
+      ],
+    }),
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
-      envFilePath: '.env',
+      envFilePath: process.env.NODE_ENV === 'production' ? '.env.production' : '.env'
     }),
-
-    MulterModule.registerAsync({
-      useFactory: () => ({
-        dest: './uploads',
-        limits: { fileSize: 30 * 1024 * 1024 },
-      }),
-    }),
-
+    ScheduleModule.forRoot(),
     PayoutModule,
     AuthModule,
+    AnalyticsModule,
     UserModule,
     AdminModule,
   ],
-  controllers: [AppController, RestaurantController, MenuController, OrderController, PaymentController, PayoutController],
+  controllers: [
+    AppController,
+    RestaurantController,
+    MenuController,
+    OrderController,
+    PaymentController,
+    PayoutController,
+    UploadController,
+  ],
   providers: [
     {
       provide: APP_FILTER,
@@ -67,23 +103,27 @@ import { AdminModule } from './admin/admin.module';
       provide: APP_FILTER,
       useClass: CatchEverythingFilter,
     },
+    InventoryService,
+    TokenCleanService,
+    CsrfTokenService,
     AppService,
+    AnalyticsService,
     RestaurantService,
     MenuService,
     PrismaService,
     OrderService,
     PaymentService,
     PayoutService,
+    RefreshTokenService,
+    S3Service,
+    QrReaderService,
   ],
 })
-
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer
-      .apply(RequestLoggerMiddleware)
-      .forRoutes({
-        path: '*',
-        method: RequestMethod.ALL,
-      });
+    consumer.apply(RequestLoggerMiddleware).forRoutes({
+      path: '*',
+      method: RequestMethod.ALL,
+    });
   }
 }

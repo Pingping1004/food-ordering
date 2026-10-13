@@ -1,33 +1,32 @@
 import { PartialType } from '@nestjs/swagger';
 import { CreatePayoutDto } from './create-payout.dto';
-import { IsOptional, IsDate, IsNumber, IsNotEmpty, IsUUID } from 'class-validator';
+import {
+  IsOptional,
+  IsDate,
+  IsNotEmpty,
+  IsNumber,
+  IsPositive,
+  IsEnum,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+import { PayoutStatus } from '@prisma/client';
 
 export class UpdatePayoutDto extends PartialType(CreatePayoutDto) {
-        @IsNumber()
-        @IsOptional()
-        restaurantRevenue?: number;
-    
-        @IsNumber()
-        @IsOptional()
-        platformFee?: number;
-    
-        @IsDate()
-        @IsOptional()
-        paidAt: string;
-        
-        @IsDate()
-        @IsOptional()
-        startDate?: Date;
-        
-        @IsDate()
-        @IsOptional()
-        endDate?: Date;
-    
-        @IsUUID()
-        @IsNotEmpty()
-        orderId: string;
-    
-        @IsUUID()
-        @IsNotEmpty()
-        restaurantId: string;
+  @IsEnum(PayoutStatus)
+  @IsNotEmpty()
+  payoutStatus: PayoutStatus
+
+  @IsOptional()
+  @IsPositive()
+  @IsNumber()
+  @Type(() => Number)
+  refundAmount?: number;
+
+  @IsDate()
+  @IsOptional()
+  paidAt?: string;
+
+  @IsDate()
+  @IsOptional()
+  refundAt?: string;
 }

@@ -1,18 +1,57 @@
+import { withSentryConfig } from '@sentry/nextjs';
 import type { NextConfig } from "next";
+import bundleAnalyzer from "@next/bundle-analyzer"
+
+// next.config.js
+const withBundleAnalyzer = bundleAnalyzer({
+    enabled: process.env.ANALYZE === "true",
+});
 
 /** @type {import('next').NextConfig} */
 const nextConfig: NextConfig = {
+    // async redirects() {
+    //     return [
+    //         {
+    //             source: '/',
+    //             destination: '/',
+    //             permanent: true,
+    //         },
+    //     ];
+    // },
+
+    async rewrites() {
+        return [
+            {
+                source: '/api/:path*',
+                destination: process.env.NODE_ENV === 'development' ? 'http://localhost:4000/api/:path*' : 'https://api.promptserve.online/api/:path*',
+            },
+        ];
+    },
     images: {
         remotePatterns: [
             {
-                protocol: 'http',
-                hostname: 'localhost',
-                port: '5000',
-                pathname: '/uploads/**',
+                protocol: 'https',
+                hostname: 'images.promptserve.online',
+                pathname: '/**',
+            },
+            {
+                protocol: 'https',
+                hostname: 'api.qrserver.com',
+                pathname: '/**',
             }
         ],
     },
-    // allowedDevOrigins: ['http://192.168.1.33:3000'],
 };
 
-export default nextConfig;
+export default withSentryConfig(
+    withBundleAnalyzer(nextConfig),
+    {
+      org: "pings-org",
+      project: "javascript-nextjs",
+      silent: !process.env.CI,
+      widenClientFileUpload: true,
+      tunnelRoute: "/monitoring",
+      disableLogger: true,
+      automaticVercelMonitors: true,
+    }
+  )
