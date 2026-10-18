@@ -81,3 +81,18 @@ SQL statements per request (counted from the Postgres log): `me/school` 4 · sho
 3. Set `DB_POOL_MAX` to fit the database plan; confirm the connection string is the pooler.
 4. Run a 30-minute soak (`SCENARIO=soak DURATION=30m`).
 5. Watch these during the first lunches: 429 and 503 counts, p95 of `POST /order/create`, DB connections, API RSS, and the age of the oldest pending `PushNotificationJob`.
+
+## Scale limits (single API process; laptop numbers, see method above)
+
+| Dimension | Clean limit (p95 < 800 ms, 0 errors) | Degrades / sheds beyond | Basis |
+|---|---|---|---|
+| Orders created per second | ≈ 55 /s (≈ 3,300 /min) | 80+ /s: latency climbs, still no errors | knee runs |
+| Requests per second (all types) | ≈ 370–400 /s clean; ≈ 900 /s served at 4 s p95 | ≈ 1,500 /s offered: 45 % answered 429 | knee-60, spike |
+| Concurrent *active* students (browsing + ordering, each ≈ 1 journey per 11 s) | ≈ 650 | 2,500 at once: no errors, p95 1–4 s, some shed | knee-60 (53 journeys/s × 11 s), spike |
+| Orders submitted in one minute | 2,500+ (tested: 2,520, p95 11–21 ms) | — | bell |
+| Concurrent open (unaccepted) orders | 2,500 tested across 12 shops | the per-shop cap (50) is a business limit, 600 across 12 shops | bell |
+| Students *waiting* on an order (1 status poll / 20 s) | ≈ 5,000–7,000 (370 req/s ÷ 0.05) | — | **estimate** from request rate |
+| Orders in the database | 90,000+ checked (index-only scans) | — | load DB |
+| Hard per-user ceilings | 30 orders/min, 10 payments/5 min, 5 refunds/5 min, 240 req/min | 429 | code |
+
+**Practical ceiling for one API instance of this size: roughly 5,000–6,000 students whose lunch rush is spread over ≥ 10 minutes, or ≈ 3,000 if all of them order inside a single minute.** The pilot (2,500) is about half of the first figure. Remember these numbers assume a database a millisecond away; at 30 ms per query the order rate and the concurrent-user figures fall by roughly an order of magnitude until the API is moved next to the database. Going past one instance needs Redis for the limiters and caches.
