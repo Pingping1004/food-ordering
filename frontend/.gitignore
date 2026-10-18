@@ -16,6 +16,7 @@
 # next.js
 /.next/
 /.next-lh/
+/.next-e2e/
 .env.lh
 /lh-reports/
 /out/
