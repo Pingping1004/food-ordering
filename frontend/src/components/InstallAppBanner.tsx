@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import clsx from "clsx";
 import { useAuth } from "@/auth/auth.hooks";
 import { isSystemAdmin } from "@/auth/access";
+import type { User } from "@/auth/auth.types";
 import { ActionButton, Icon } from "@/components/ui/kit";
 import { toastSuccess } from "@/components/ui/Toast";
 import {
@@ -17,6 +18,31 @@ import {
 
 const DISMISSED_KEY = "install_banner_dismissed_at";
 const SNOOZE_MS = 14 * 24 * 60 * 60 * 1000;
+
+type Audience = "shop" | "student" | "other";
+
+/** Shop owners/cooks lose orders (and money) without alerts; students miss "accepted, pay now" and "ready". */
+function audienceOf(user: User): Audience {
+    if (user.restaurant || user.restaurantMemberships?.some((m) => m.status !== "REJECTED")) return "shop";
+    if (user.schoolMemberships?.some((m) => m.role === "ADMIN" && m.status !== "REJECTED")) return "other";
+    return "student";
+}
+
+/** Why install, in the reader's own terms. Alerts reach a locked phone / another app only from the installed app on iPhone. */
+const WHY: Record<Audience, { title: string; body: string }> = {
+    shop: {
+        title: "ติดตั้งแอปไว้ จะได้ไม่พลาดออเดอร์",
+        body: "มือถือเด้งเตือนทันทีเมื่อมีออเดอร์ใหม่หรือลูกค้าจ่ายเงินแล้ว แม้ปิดจอหรือเปิดแอปอื่นอยู่ ไม่พลาดออเดอร์ ไม่พลาดรายได้",
+    },
+    student: {
+        title: "ติดตั้งแอปไว้ จะรู้ทันทีเมื่ออาหารพร้อม",
+        body: "มือถือเด้งเตือนทันทีเมื่อร้านรับออเดอร์ (ต้องจ่ายเงินภายใน 3 นาที) และเมื่ออาหารพร้อมรับ แม้ปิดจออยู่ ไม่ต้องคอยเปิดดู",
+    },
+    other: {
+        title: "ติดตั้ง Promptserve ไว้บนหน้าจอมือถือ",
+        body: "เปิดได้ในแตะเดียวจากไอคอน ไม่ต้องพิมพ์ชื่อเว็บทุกครั้ง และรับแจ้งเตือนได้",
+    },
+};
 
 function snoozed(): boolean {
     try {
@@ -72,6 +98,7 @@ export function InstallAppBanner() {
         setGuideOpen(true);
     };
     const later = () => { snooze(); setVisible(false); };
+    const why = WHY[audienceOf(user)];
 
     return (
         <>
@@ -80,8 +107,11 @@ export function InstallAppBanner() {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src="/icon-192.png" alt="" width={48} height={48} className="h-12 w-12 shrink-0 rounded-xl" />
                     <div className="flex min-w-0 flex-col gap-1">
-                        <h2 className="text-[18px] font-bold leading-snug">ติดตั้ง Promptserve ไว้บนหน้าจอมือถือ</h2>
-                        <p className="text-[16px] leading-snug text-brand-dark">เปิดได้ในแตะเดียวจากไอคอน ไม่ต้องพิมพ์ชื่อเว็บทุกครั้ง และรับแจ้งเตือนได้</p>
+                        <h2 className="text-[18px] font-bold leading-snug">{why.title}</h2>
+                        <p className="text-[16px] leading-snug text-brand-dark">{why.body}</p>
+                        {env.platform === "ios" && (
+                            <p className="text-[15px] font-semibold leading-snug text-primary-main">iPhone: ต้องติดตั้งก่อน จึงจะรับแจ้งเตือนได้</p>
+                        )}
                     </div>
                 </div>
                 <div className="flex gap-2.5">
@@ -151,7 +181,7 @@ function InstallGuide({ env, onClose }: Readonly<{ env: InstallEnv; onClose: () 
                 )}
 
                 <p className="rounded-2xl bg-white px-4 py-3.5 text-[16px] leading-relaxed text-brand-dark">
-                    <strong>หลังติดตั้ง:</strong> เปิดจากไอคอน Promptserve บนหน้าจอทุกครั้ง ครั้งแรกอาจต้องเข้าสู่ระบบใหม่อีกหนึ่งครั้ง
+                    <strong>หลังติดตั้ง:</strong> เปิดจากไอคอน Promptserve บนหน้าจอทุกครั้ง ครั้งแรกอาจต้องเข้าสู่ระบบใหม่อีกหนึ่งครั้ง แล้วแตะ <strong>อนุญาต</strong> เมื่อแอปขอส่งการแจ้งเตือน (ไม่อย่างนั้นจะไม่มีเสียงเตือน)
                 </p>
                 <ActionButton full onClick={onClose}>เข้าใจแล้ว</ActionButton>
             </div>
