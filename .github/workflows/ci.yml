@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   backend:
-    name: Backend (types, unit, integration, security)
+    name: 'Backend (types, unit, integration, security)'
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -41,7 +41,7 @@ jobs:
         run: npm run typecheck
       - name: Unit tests (+ coverage gate on access/refund/common)
         run: npx jest --coverage
-      - name: Integration tests (real HTTP + real Postgres; RBAC matrix, idempotency, races, payments, refunds, security)
+      - name: 'Integration tests (real HTTP + real Postgres - RBAC matrix, idempotency, races, payments, refunds, security)'
         run: npm run test:int:cov
       - name: Dependency audit (production deps, high+)
         run: npm run audit:prod
@@ -53,7 +53,7 @@ jobs:
           if-no-files-found: ignore
 
   load-smoke:
-    name: Load smoke (k6 bell-time scenario, thresholds enforced)
+    name: 'Load smoke (k6 bell-time scenario, thresholds enforced)'
     runs-on: ubuntu-latest
     needs: backend
     services:
@@ -107,7 +107,7 @@ jobs:
       - run: npx tsc --noEmit
 
   e2e:
-    name: Browser E2E (Playwright: real Next.js + real API + real Postgres)
+    name: 'Browser E2E (Playwright - real Next.js + real API + real Postgres)'
     runs-on: ubuntu-latest
     needs: backend
     services:
