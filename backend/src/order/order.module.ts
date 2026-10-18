@@ -1,7 +1,6 @@
 import { forwardRef, Module } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { OrderController } from './order.controller';
-import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { PayoutModule } from 'src/payout/payout.module';
 import { UserModule } from 'src/user/user.module';
@@ -22,7 +21,7 @@ import { AnalyticsModule } from 'src/analytics/dto/analytics.module';
     NotificationModule,
   ],
   controllers: [OrderController],
-  providers: [OrderService, PrismaService, ConfigService],
+  providers: [OrderService, ConfigService],
   exports: [OrderService],
 })
 export class OrderModule {}
