@@ -7,6 +7,8 @@ import { TextSizeProvider, TEXT_SIZE_BOOT_SCRIPT } from "@/components/TextSizePr
 import StorageGuard from "@/components/StorageGuard";
 import { ReactQueryProvider } from "@/lib/provider/ReactQueryProvider";
 import { INSTALL_PROMPT_BOOT_SCRIPT } from "@/lib/install-app";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 /** One family for Thai + Latin: Kanit's Latin glyphs are geometric, so no second font is needed. */
 const kanit = Kanit({
@@ -60,6 +62,10 @@ export default function RootLayout({
                         </TextSizeProvider>
                     </AuthProvider>
                 </ReactQueryProvider>
+                {/* Vercel Web Analytics + Speed Insights (real-user Core Web Vitals): cookieless, no user ids; inert
+                    outside Vercel deployments. */}
+                <Analytics />
+                <SpeedInsights />
             </body>
         </html>
     );
