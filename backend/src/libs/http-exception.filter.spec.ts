@@ -24,6 +24,17 @@ describe('HttpExceptionFilter', () => {
     expect(run(new Error('timeout exceeded when trying to connect')).statusCode).toBe(503);
   });
 
+  it('should answer 503 (not 500) when the database is down or restarting', () => {
+    expect(run(Object.assign(new Error('x'), { code: 'ECONNREFUSED' })).statusCode).toBe(503);
+    expect(run(Object.assign(new Error('x'), { code: 'P2039', meta: { driverAdapterError: { cause: { originalCode: '57P03' } } } })).statusCode).toBe(503);
+    expect(run(new Error('Connection terminated unexpectedly')).statusCode).toBe(503);
+    expect(run(new Error('the database system is starting up')).statusCode).toBe(503);
+  });
+
+  it('should not treat ordinary Prisma errors as outages', () => {
+    expect(run(Object.assign(new Error('Unique constraint failed'), { code: 'P2002' })).statusCode).toBe(500);
+  });
+
   it('should never echo internal error text for unexpected 500s', () => {
     const res = run(new Error('relation "Order" does not exist at /srv/app/secret.ts'));
     expect(res.statusCode).toBe(500);

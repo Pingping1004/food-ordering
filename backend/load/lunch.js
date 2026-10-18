@@ -22,6 +22,8 @@ http.setResponseCallback(http.expectedStatuses({ min: 200, max: 299 }, 400, 404,
 export const ordersCreated = new Counter('orders_created');
 export const shed429 = new Counter('shed_429');
 export const serverErrors = new Counter('server_5xx');
+export const status503 = new Counter('status_503');
+export const status500 = new Counter('status_500');
 export const orderCreateMs = new Trend('order_create_ms', true);
 export const readMs = new Trend('read_ms', true);
 export const okRate = new Rate('journey_ok');
@@ -34,6 +36,8 @@ const authHeaders = (userId, extra = {}) => ({
 const track = (res) => {
   if (res.status === 429) shed429.add(1);
   if (res.status >= 500) serverErrors.add(1);
+  if (res.status === 503) status503.add(1);
+  if (res.status === 500) status500.add(1);
   return res;
 };
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];

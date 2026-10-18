@@ -8,13 +8,29 @@ import {
 } from '@nestjs/common';
 import { Response, Request } from 'express';
 
-/** Prisma P2028 (transaction could not start in time) / P2024 (pool timeout) or pg's connect timeout. */
+const DB_BUSY_OR_DOWN_CODES = new Set([
+  'P2028', // interactive transaction could not start in time (pool saturated)
+  'P2024', // timed out fetching a connection from the pool
+  'P2039', // transaction failed to start (DB not accepting connections)
+  'P1001', 'P1002', 'P1008', 'P1017', // cannot reach / timed out / connection closed
+  'ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT',
+  '57P01', '57P03', // admin shutdown / starting up
+  '08001', '08004', '08006', // connection failures
+]);
+
+/** The database is saturated or unreachable: a temporary condition clients should retry, not a bug (500). */
 const isOverloadError = (e: unknown): boolean => {
-  const err = e as { code?: string; message?: string } | null;
-  return (
-    err?.code === 'P2028' ||
-    err?.code === 'P2024' ||
-    /timeout exceeded when trying to connect/i.test(err?.message ?? '')
+  const err = e as {
+    code?: string;
+    message?: string;
+    meta?: { driverAdapterError?: { cause?: { originalCode?: string } } };
+  } | null;
+  if (!err) return false;
+  if (err.code && DB_BUSY_OR_DOWN_CODES.has(err.code)) return true;
+  const original = err.meta?.driverAdapterError?.cause?.originalCode;
+  if (original && DB_BUSY_OR_DOWN_CODES.has(original)) return true;
+  return /timeout exceeded when trying to connect|Connection terminated unexpectedly|not yet accepting connections|database system is (starting up|shutting down)/i.test(
+    err.message ?? '',
   );
 };
 
@@ -90,7 +106,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       status = HttpStatus.SERVICE_UNAVAILABLE;
       message = 'ระบบกำลังใช้งานหนาแน่น กรุณาลองใหม่อีกครั้งในอีกสักครู่';
       response.setHeader('Retry-After', '2');
-      this.logger.warn(`${request.method} ${request.url} -> 503 (database busy)`);
+      this.logger.warn(`${request.method} ${request.url} -> 503 (database busy or unavailable)`);
     } else if (exception instanceof Error) {
       // Express middleware errors (body-parser 413 / malformed JSON 400) carry their own 4xx status.
       const e = exception as Error & { status?: number; statusCode?: number };
