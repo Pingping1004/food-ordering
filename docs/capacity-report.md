@@ -123,3 +123,26 @@ Plain reading: **raw speed on a quiet database did not change** (the old code wa
 | Duplicate-safe under retries/double-taps | no | yes |
 | Behaviour past capacity | all requests slow (p95 > 11 s), no shedding | sheds with 429 and recovers; 503 + `Retry-After` on DB trouble |
 | Practical students per instance | unusable for a school behind one IP | ≈ 5,000–6,000 spread rush |
+
+## Caching pass (React Query on the student order flow, two server caches) — and why not Redis
+
+Bell scenario (2,520 orders in 60 s, now also calling the shop page's queue-count endpoint), fresh database for each run, `pg_stat_statements` on:
+
+| Measure | Before | After |
+|---|---|---|
+| DB statements for 20,160 requests | 160,480 | **143,461 (−10.6 %)** |
+| Shop visibility check (3 queries per menu / queue-count / order request) | 7,563 × 3 | 2,663 × 3 (order creation still reads fresh) |
+| Queue `COUNT(*)` (the costliest read) | 5,042 | 2,743 (the order-cap check stays exact) |
+| Menu p50 / p95 | 1.2 / 2.3 ms | 0.7 / 1.7 ms |
+| Order create p95 · order poll p95 | 8.5 · 4.2 ms | 9.7 · 4.4 ms (unchanged path; noise) |
+| 5xx | 0 | 0 |
+
+Locally a query costs well under 1 ms, so the saved time is small here. On hosted Postgres every query is a network round trip (~1–2 ms in-region, far more cross-region), so menu and queue-count requests each skip three sequential round trips and the database sees ~280 fewer queries/s at the bell.
+
+What changed:
+
+- **Server:** `restaurantVisibilityCache` (5 s, invalidated on every shop/school status change; a mutation test proves the approve → visible journey fails without the invalidation) and a 3 s display cache for `GET /order/active-count`. `TtlCache` no longer writes back a load that started before an invalidation, and can skip caching "not found".
+- **Client:** one React Query entry per order (`useStudentOrder`) shared by the shop-list card and the payment, wait, done, failed and slip-failed screens; polling pauses in background tabs and stops after retries fail; redirects act only on freshly fetched data. Fixed: the payment page dead-ended on one dropped request (new browser test, which fails on the old page); the shop page refetched the queue count on every re-render; a failed first load left the cook board on its skeleton forever.
+- **Left as is, on purpose:** the cook board's delta poller (`/order/new?after=` with 3→8 s back-off) sends only changed orders, which is cheaper than refetching the whole queue on an interval; order confirm and admin payout are one-shot writes/low-traffic pages with nothing to gain; access-context lookups (memberships) are not cached because a removed cook must lose access on the very next request.
+
+**Redis: not added.** With one API instance an in-process cache answers in microseconds; a Redis lookup is a network round trip about as long as the indexed Postgres query it would replace, so it would remove most of the gain above, add a paid service and a second thing that can fail at 11:45, and add another credential and network surface. Redis becomes the right choice the moment a **second API instance** runs: rate limits and caches would otherwise be per instance (limits × N, invalidations local only, up to 5 s stale visibility on the other instance). `TtlCache` and the fixed-window limiter are the two places to swap.

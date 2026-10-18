@@ -22,6 +22,7 @@ import { Cron } from '@nestjs/schedule';
 
 import { InventoryService } from 'src/inventory/inventory.service';
 import moment from 'moment-timezone';
+import { TtlCache } from '../common/ttl-cache';
 import { RestaurantService } from 'src/restaurant/restaurant.service';
 import { NotificationService } from 'src/notification/notification.service';
 import { AnalyticsService } from 'src/analytics/analytics.service';
@@ -59,6 +60,8 @@ export class OrderService {
   ) {}
 
   private readonly logger = new Logger('OrderService');
+  /** Display-only queue length (shop page header); every student opening a shop asked for a fresh COUNT(*). */
+  private readonly activeCountCache = new TtlCache<number>(3_000, 1_000);
 
   async validateOrderMenus(
     orderMenus: CreateOrderMenusDto[],
@@ -626,6 +629,13 @@ export class OrderService {
         orderAt: { gte: startOfDay },
       },
     });
+  }
+
+  /** Up to 3 s stale. Never use it for the queue-cap check in order creation (that one must be exact). */
+  countActiveKitchenOrdersForDisplay(restaurantId: string): Promise<number> {
+    return this.activeCountCache.get(restaurantId, () =>
+      this.countActiveKitchenOrders(restaurantId),
+    );
   }
 
   async assertOrderOwner(orderId: string, userId: string): Promise<void> {

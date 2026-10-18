@@ -7,36 +7,46 @@
 export class TtlCache<T> {
   private readonly entries = new Map<string, { value: T; expiresAt: number }>();
   private readonly inflight = new Map<string, Promise<T>>();
+  /** Bumped by `invalidate`, so a load that started before an invalidation never stores its (possibly old) result. */
+  private generation = 0;
 
   constructor(
     private readonly ttlMs: number,
     private readonly maxEntries = 500,
   ) {}
 
-  async get(key: string, load: () => Promise<T>): Promise<T> {
+  /** `cacheIf` lets callers skip caching some results (e.g. "not found", so a newly created row shows up at once). */
+  async get(key: string, load: () => Promise<T>, cacheIf: (value: T) => boolean = () => true): Promise<T> {
     const hit = this.entries.get(key);
     if (hit && hit.expiresAt > Date.now()) return hit.value;
 
     const pending = this.inflight.get(key);
     if (pending) return pending;
 
+    const startedAt = this.generation;
     const p = load()
       .then((value) => {
-        this.entries.delete(key);
-        this.entries.set(key, { value, expiresAt: Date.now() + this.ttlMs });
-        if (this.entries.size > this.maxEntries) {
-          const oldest = this.entries.keys().next().value;
-          if (oldest !== undefined) this.entries.delete(oldest);
+        if (startedAt === this.generation && cacheIf(value)) {
+          this.entries.delete(key);
+          this.entries.set(key, { value, expiresAt: Date.now() + this.ttlMs });
+          if (this.entries.size > this.maxEntries) {
+            const oldest = this.entries.keys().next().value;
+            if (oldest !== undefined) this.entries.delete(oldest);
+          }
         }
         return value;
       })
-      .finally(() => this.inflight.delete(key));
+      .finally(() => {
+        if (this.inflight.get(key) === p) this.inflight.delete(key);
+      });
     this.inflight.set(key, p);
     return p;
   }
 
-  /** Drop every entry whose key starts with `prefix` (e.g. `schoolId:`). */
+  /** Drop every entry whose key starts with `prefix` (e.g. `schoolId:`; `''` drops everything). */
   invalidate(prefix: string) {
+    this.generation++;
     for (const k of this.entries.keys()) if (k.startsWith(prefix)) this.entries.delete(k);
+    for (const k of this.inflight.keys()) if (k.startsWith(prefix)) this.inflight.delete(k);
   }
 }

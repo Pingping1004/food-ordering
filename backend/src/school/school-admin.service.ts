@@ -21,6 +21,7 @@ import {
 import { CreateCanteenDto, UpdateCanteenDto } from './dto/school.dto';
 import { UploadService } from '../upload/upload.service';
 import { TtlCache } from '../common/ttl-cache';
+import { invalidateRestaurantVisibility } from '../access/restaurant-visibility.cache';
 
 /** Allowed restaurant status moves a school admin can make. */
 const STATUS_TRANSITIONS: Record<Status, Status[]> = {
@@ -463,6 +464,7 @@ export class SchoolAdminService {
   }
 
   private invalidateRestaurantCaches(restaurantId?: string) {
+    invalidateRestaurantVisibility(restaurantId);
     if (restaurantId) clearRestaurantCache(`restaurant:${restaurantId}`);
     clearRestaurantCacheByPrefix('restaurants:');
   }

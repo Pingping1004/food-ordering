@@ -49,7 +49,7 @@ Injection: SQL/NoSQL/path/script payloads in ids and query values never produce 
 
 1. **Database TLS is not verified** (`ssl: { rejectUnauthorized: false }` for any non-local host). Traffic is encrypted but the server certificate is not checked, so a network attacker between the API and the database could impersonate it. Supply the provider's CA and enable verification.
 2. **`trust proxy = 1`** is correct only with exactly one proxy hop (e.g. Render). A second hop (Cloudflare in front of Render) makes `req.ip` wrong and the IP limiter meaningless; per-user limits still hold.
-3. **Rate limits and caches are per process.** With more than one API instance every limit is multiplied by the instance count. Fine for a single instance; add Redis before scaling out.
+3. **Rate limits and caches are per process.** With more than one API instance every limit is multiplied by the instance count, and a shop/school suspension is seen by the other instances' read paths only after the 5 s visibility cache expires (order creation always reads fresh). Fine for a single instance; add Redis before scaling out.
 4. **Frontend dependencies**: 11 high advisories (Next/PostCSS, Firebase, Sentry plugins) need major-version bumps. They are build/transitive for the most part; schedule an upgrade, don't `npm audit fix --force` blindly.
 5. **Secrets hygiene**: no `.env*` with real values is tracked (checked history). `backend/cert/localhost*.pem` (dev TLS key) and an empty `backend/dump.sql` are tracked — untrack them.
 6. **Supabase service-role key** is used by the API for account deletion; keep it server-side only and rotate if it was ever shared.

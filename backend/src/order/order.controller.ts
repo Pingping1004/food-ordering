@@ -55,10 +55,12 @@ export class OrderController {
   @Post('create')
   async createOrder(@Body() createOrderDto: CreateOrderDto, @Req() req: any) {
     const idempotencyKey = parseIdempotencyKey(req.headers?.['idempotency-key']);
+    // Fresh read: a shop or school suspended a second ago must not take this order.
     const { status, schoolStatus } = await this.access.assertRestaurantVisible(
       req.user,
       createOrderDto.restaurantId,
       req,
+      { fresh: true },
     );
     if (!isDebugAlwaysOpen()) {
       if (schoolStatus === Status.SUSPENDED) throw schoolSuspendedException();
@@ -125,7 +127,7 @@ export class OrderController {
   ) {
     await this.access.assertRestaurantVisible(req.user, restaurantId, req);
     const count =
-      await this.orderService.countActiveKitchenOrders(restaurantId);
+      await this.orderService.countActiveKitchenOrdersForDisplay(restaurantId);
     return { activeOrderCount: count };
   }
 

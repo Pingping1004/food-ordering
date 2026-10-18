@@ -53,6 +53,7 @@ export function student() {
       ['me_school', '/api/me/school'],
       ['shop_list', '/api/restaurant'],
       ['menu', `/api/menu/${shop.restaurantId}`],
+      ['active_count', `/api/order/active-count/${shop.restaurantId}`], // shop page header
     ]) {
       const r = track(http.get(`${BASE}${path}`, { ...authHeaders(userId), tags: { endpoint: name } }));
       readMs.add(r.timings.duration);
