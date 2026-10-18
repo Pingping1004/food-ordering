@@ -15,7 +15,8 @@ import { api } from "@/lib/api";
 import type { Restaurant } from "@/app/data/type";
 import { buttonLabels } from "@/common/restaurant.enum";
 import { getDayStatus, readSelection } from "@/lib/services/student";
-import { routeForOrder, screenForOrder, type StudentOrder } from "@/lib/order-flow";
+import { routeForOrder, screenForOrder } from "@/lib/order-flow";
+import { useStudentOrder } from "@/hook/useStudentOrder";
 import { ORDER_STATUS, orderCode } from "@/lib/schema/format";
 import { normalizeStatus, fmtTime, pickupAtOf } from "@/lib/order-flow";
 
@@ -30,12 +31,7 @@ function ActiveOrderCard() {
     const [id, setId] = useState<string | null>(null);
     useEffect(() => { try { setId(localStorage.getItem("activeOrderId")); } catch { setId(null); } }, []);
 
-    const { data } = useQuery({
-        queryKey: ["active-order", id],
-        enabled: !!id,
-        refetchInterval: 20_000,
-        queryFn: async () => (await api.get<StudentOrder>(`/order/${id}`, { headers: { "x-order-secret": localStorage.getItem(`orderSecret:${id}`) } })).data,
-    });
+    const { data } = useStudentOrder(id, { poll: true, minPollMs: 20_000 });
 
     if (!id || !data) return null;
     const screen = screenForOrder(data);

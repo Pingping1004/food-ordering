@@ -11,8 +11,11 @@ import {
   Query,
   NotFoundException,
   BadRequestException,
+  Res,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { isDebugAlwaysOpen } from '../utils/debug';
+import { pollAfterSeconds } from './poll-policy';
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { RestaurantRole, Status, OrderStatus } from '@prisma/client';
@@ -33,6 +36,15 @@ const KITCHEN_BY_ORDER = {
   roles: KITCHEN_BY_RESTAURANT.roles,
 };
 
+const IDEMPOTENCY_KEY = /^[A-Za-z0-9_.:-]{8,128}$/;
+/** Optional `Idempotency-Key` header; a malformed one is rejected instead of silently ignored. */
+export function parseIdempotencyKey(raw: unknown): string | undefined {
+  if (raw === undefined) return undefined;
+  if (typeof raw !== 'string' || !IDEMPOTENCY_KEY.test(raw))
+    throw new BadRequestException('Idempotency-Key ไม่ถูกต้อง');
+  return raw;
+}
+
 @Controller('order')
 export class OrderController {
   constructor(
@@ -45,10 +57,13 @@ export class OrderController {
   /** Login required; the shop must be in the caller's school. The order is bound to the caller. */
   @Post('create')
   async createOrder(@Body() createOrderDto: CreateOrderDto, @Req() req: any) {
+    const idempotencyKey = parseIdempotencyKey(req.headers?.['idempotency-key']);
+    // Fresh read: a shop or school suspended a second ago must not take this order.
     const { status, schoolStatus } = await this.access.assertRestaurantVisible(
       req.user,
       createOrderDto.restaurantId,
       req,
+      { fresh: true },
     );
     if (!isDebugAlwaysOpen()) {
       if (schoolStatus === Status.SUSPENDED) throw schoolSuspendedException();
@@ -60,6 +75,7 @@ export class OrderController {
       return await this.orderService.createOrder(
         createOrderDto,
         req.user.userId,
+        idempotencyKey,
       );
     } catch (error) {
       this.logger.error(
@@ -114,7 +130,7 @@ export class OrderController {
   ) {
     await this.access.assertRestaurantVisible(req.user, restaurantId, req);
     const count =
-      await this.orderService.countActiveKitchenOrders(restaurantId);
+      await this.orderService.countActiveKitchenOrdersForDisplay(restaurantId);
     return { activeOrderCount: count };
   }
 
@@ -124,9 +140,46 @@ export class OrderController {
     return this.orderService.listOrdersForUser(req.user.userId);
   }
 
+  /**
+   * What student screens poll: status fields only, plus `X-Poll-After` (seconds until the next check, 0 = stop) so the
+   * server sets the pace. `?push=1` = this device receives push, so the accept-wait can poll slower.
+   */
+  @Get(':orderId/status')
+  async findOrderStatus(
+    @Req() req: any,
+    @Res({ passthrough: true }) res: Response,
+    @Param('orderId') orderId: string,
+    @Query('push') push?: string,
+  ) {
+    const state = await this.orderService.findOrderStatusForUser(
+      orderId,
+      req.user.userId,
+    );
+    res.setHeader(
+      'X-Poll-After',
+      String(pollAfterSeconds(state, push === '1')),
+    );
+    res.setHeader('Cache-Control', 'no-store');
+    return state;
+  }
+
   @Get(':orderId')
-  async findOneOrder(@Req() req: any, @Param('orderId') orderId: string) {
-    return this.orderService.findOneOrderForUser(orderId, req.user.userId);
+  async findOneOrder(
+    @Req() req: any,
+    @Res({ passthrough: true }) res: Response,
+    @Param('orderId') orderId: string,
+    @Query('push') push?: string,
+  ) {
+    const order = await this.orderService.findOneOrderForUser(
+      orderId,
+      req.user.userId,
+    );
+    // Same pacing hint as /status: the screen's first poll is already server-paced.
+    res.setHeader(
+      'X-Poll-After',
+      String(pollAfterSeconds(order, push === '1')),
+    );
+    return order;
   }
 
   @RestaurantScope(KITCHEN_BY_RESTAURANT)

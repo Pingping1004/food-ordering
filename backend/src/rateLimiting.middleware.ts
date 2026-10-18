@@ -1,9 +1,16 @@
 import rateLimit from 'express-rate-limit';
 import type { RequestHandler } from 'express';
 
+/**
+ * IP buckets are a flood backstop, NOT the fairness control: a whole school (up to ~2,500 students) sits behind
+ * one or a few egress IPs, so these are sized for the entire school. Per-user limits live in UserRateLimitGuard.
+ */
+const SCHOOL_NAT_MULTIPLIER = Number(process.env.IP_LIMIT_MULTIPLIER ?? '1');
+const ipMax = (n: number) => Math.round(n * SCHOOL_NAT_MULTIPLIER);
+
 export const globalRateLimit = rateLimit({
   windowMs: 1 * 60 * 1000,
-  max: 500,
+  max: ipMax(60000), // ~1,000 req/s from one IP: a whole school opening the app at the bell
   message: {
     error: 'รีเควสจากIP เกินขีดจำกัด กรุณาลองใหม่อีกครั้ง',
     retryAfter: '1 minutes',
@@ -14,14 +21,16 @@ export const globalRateLimit = rateLimit({
     res.status(429).json({
       error: 'Too many requests',
       message: 'จำนวนรีเควสเกินขีดจำกัด กรุณาลองใหม่อีกครั้ง',
-      retryAfter: Math.ceil(15 * 60),
+      retryAfter: 60,
     });
   },
 });
 
+// One school = one NAT IP, and ~all 2,500 students pay within a few minutes of the bell (plus slip re-sends), so this
+// is only a flood backstop: the per-user limit (10 per 5 min) is the real guard. 1,500 rejected ~1/3 of a lunch.
 export const paymentRateLimit = rateLimit({
   windowMs: 5 * 60 * 1000,
-  max: 10,
+  max: ipMax(10000),
   message: {
     error: 'รีเควสในการชำระเงินเกินขีดจำกัด กรุณาลองใหม่อีกครั้ง',
     retryAfter: '1 minutes',
@@ -30,7 +39,7 @@ export const paymentRateLimit = rateLimit({
 
 export const orderRateLimit = rateLimit({
   windowMs: 1 * 60 * 1000,
-  max: 30,
+  max: ipMax(6000),
   message: {
     error: 'จำนวนรีเควสในการสั่งออเดอร์เกินขีดจำกัด กรุณาลองใหม่อีกครั้ง',
     retryAfter: '1 minute',
@@ -39,7 +48,7 @@ export const orderRateLimit = rateLimit({
 
 export const orderFetchingLimit = rateLimit({
   windowMs: 1 * 60 * 1000,
-  max: 300,
+  max: ipMax(30000),
   message: {
     error: 'จำนวนรีเควสในการดึงข้อมูลออเดอร์เกินขีดจำกัด กรุณาลองใหม่อีกครั้ง',
     retryAfter: '1 minute',
@@ -49,7 +58,7 @@ export const orderFetchingLimit = rateLimit({
 /** Brute-force guard for invite codes: only FAILED attempts (4xx) count, 10 per 15 min per IP. */
 export const joinSchoolRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: ipMax(60),
   skipSuccessfulRequests: true,
   standardHeaders: true,
   legacyHeaders: false,

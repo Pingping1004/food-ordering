@@ -21,6 +21,7 @@ import {
 import { CreateCanteenDto, UpdateCanteenDto } from './dto/school.dto';
 import { UploadService } from '../upload/upload.service';
 import { TtlCache } from '../common/ttl-cache';
+import { invalidateRestaurantVisibility } from '../access/restaurant-visibility.cache';
 
 /** Allowed restaurant status moves a school admin can make. */
 const STATUS_TRANSITIONS: Record<Status, Status[]> = {
@@ -463,6 +464,7 @@ export class SchoolAdminService {
   }
 
   private invalidateRestaurantCaches(restaurantId?: string) {
+    invalidateRestaurantVisibility(restaurantId);
     if (restaurantId) clearRestaurantCache(`restaurant:${restaurantId}`);
     clearRestaurantCacheByPrefix('restaurants:');
   }
@@ -595,14 +597,12 @@ export class SchoolAdminService {
     const windowTo = new Date(Math.max(period.to.getTime(), period.prevTo.getTime()));
 
     const [
-      totalOrders,
       orders,
       commentRows,
       refundsCur,
       refundsPrev,
       eventRows,
     ] = await Promise.all([
-      this.prisma.order.count({ where: { restaurantId: { in: restaurantIds } } }),
       this.prisma.order.findMany({
         where: { restaurantId: { in: restaurantIds }, orderAt: { gte: windowFrom, lt: windowTo } },
         select: {
@@ -613,6 +613,7 @@ export class SchoolAdminService {
           orderAt: true,
           pickupAt: true,
           paidAt: true,
+          acceptAt: true,
           isDelay: true,
           userId: true,
         },
@@ -662,91 +663,6 @@ export class SchoolAdminService {
         : [];
     });
 
-    const isSample = totalOrders < 5;
-
-    if (isSample) {
-      // < 5 orders ever, so this per-shop all-time count is tiny.
-      const perShop = restaurantIds.length
-        ? await this.prisma.order.groupBy({
-            by: ['restaurantId'],
-            where: { restaurantId: { in: restaurantIds } },
-            _count: { _all: true },
-          })
-        : [];
-      const shopOrderCount = new Map(perShop.map((g) => [g.restaurantId, g._count._all]));
-      const sampleRestaurants =
-        restaurants.length > 0
-          ? restaurants.map((r) => ({
-              name: r.name,
-              orders: shopOrderCount.get(r.restaurantId) ?? 0,
-              acceptLabel: '45 วิ',
-              delayRate: 0,
-              rejected: 0,
-              revenue: 0,
-              revenueDeltaPct: null,
-              status: r.status,
-            }))
-          : [
-              { name: 'ร้านตามสั่ง', orders: 312, acceptLabel: '41 วิ', delayRate: 2.6, rejected: 5, revenue: 18400, revenueDeltaPct: 8.2, status: Status.ACTIVE },
-              { name: 'ร้านก๋วยเตี๋ยว', orders: 268, acceptLabel: '55 วิ', delayRate: 4.1, rejected: 9, revenue: 15200, revenueDeltaPct: -3.5, status: Status.ACTIVE },
-              { name: 'มุมเครื่องดื่ม', orders: 221, acceptLabel: '22 วิ', delayRate: 0.5, rejected: 1, revenue: 9800, revenueDeltaPct: 12.0, status: Status.ACTIVE },
-            ];
-
-      return {
-        weekLabel: period.label,
-        weekNumber: period.weekNumber,
-        isSample: true,
-        kpis: {
-          totalOrders: { value: totalOrders || 1000, deltaLabel: '+14% จากสัปดาห์ก่อน', good: true, direction: 'up' },
-          activeStudents: {
-            value: null,
-            enrolled: school.studentAmount ?? null,
-            percentOfEnrolled: null,
-            deltaLabel: `${school.studentAmount ? Math.min(100, Math.round(((totalOrders || 50) / school.studentAmount) * 100)) : '[X]'}% ของนักเรียนทั้งหมด`,
-            good: true,
-            direction: 'up',
-          },
-          successRate: { value: 96.2, deltaLabel: '+1.1%', good: true, direction: 'up' },
-          medianAcceptSeconds: { value: 48, deltaLabel: 'เร็วขึ้น 9 วินาที', good: true, direction: 'down' },
-          rating: { value: 4.4, responses: 312, deltaLabel: '+0.2', good: true, direction: 'up' },
-          onTime: { value: 96.9, deltaLabel: '+0.8%', good: true, direction: 'up' },
-          refunds: { value: 0, deltaLabel: `เท่ากับ${period.prevName}`, good: true, direction: 'up' },
-        },
-        ordersByDay: [
-          { label: 'จ.', count: Math.round((totalOrders || 1000) * 0.18) },
-          { label: 'อ.', count: Math.round((totalOrders || 1000) * 0.21) },
-          { label: 'พ.', count: Math.round((totalOrders || 1000) * 0.23) },
-          { label: 'พฤ.', count: Math.round((totalOrders || 1000) * 0.21) },
-          { label: 'ศ.', count: Math.round((totalOrders || 1000) * 0.17) },
-        ],
-        reliability: [
-          { label: 'ยกเลิกโดยร้าน', definition: 'ร้านกดปฏิเสธ', display: '1.4%', count: 14, total: 1000 },
-          { label: 'ร้านไม่กดรับทันเวลา', definition: 'ระบบยกเลิกอัตโนมัติ 3 นาที', display: '1.9%', count: 19, total: 1000 },
-          { label: 'ทำเสร็จช้ากว่าที่แจ้ง', definition: 'ร้านกดแจ้งล่าช้า', display: '3.0%', count: 30, total: 1000 },
-          { label: 'ตรวจสลิปไม่ผ่าน', definition: 'ต่อสลิปที่ส่งทั้งหมด', display: '0.8%', count: 8, total: 1000 },
-          { label: 'ออเดอร์ซ้ำ', definition: 'ระบบตรวจพบและกันไว้', display: '0', count: 0, total: 1000 },
-        ],
-        heatmap: {
-          slots: ['10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30'],
-          rows: [
-            { day: 'จันทร์', cells: [4, 12, 31, 58, 44, 22, 6] },
-            { day: 'อังคาร', cells: [6, 15, 36, 66, 49, 25, 8] },
-            { day: 'พุธ', cells: [7, 18, 41, 74, 56, 27, 8] },
-            { day: 'พฤหัสฯ', cells: [5, 16, 38, 70, 52, 26, 7] },
-            { day: 'ศุกร์', cells: [3, 10, 28, 55, 41, 24, 7] },
-          ].map((r) => ({ ...r, total: r.cells.reduce((a, b) => a + b, 0) })),
-        },
-        restaurants: sampleRestaurants,
-        feedback: {
-          mean: 4.4,
-          responses: 12,
-          distribution: [{ star: 5, count: 6 }, { star: 4, count: 3 }, { star: 3, count: 2 }, { star: 2, count: 1 }, { star: 1, count: 0 }],
-          waitedLongerPct: 11,
-          comments: allComments,
-        },
-      };
-    }
-
     const inRange = (o: { orderAt: Date }, from: Date, to: Date) => o.orderAt >= from && o.orderAt < to;
     const cur = orders.filter((o) => inRange(o, period.from, period.to));
     const prev = orders.filter((o) => inRange(o, period.prevFrom, period.prevTo));
@@ -775,7 +691,15 @@ export class SchoolAdminService {
       if (slotIdx >= 0 && slotIdx < SLOTS.length) heatRows[dayIdx].cells[slotIdx] += 1;
     }
 
-    const rate = (list: typeof orders) => (list.length > 0 ? Math.round((list.filter((o) => o.status === 'done').length / list.length) * 1000) / 10 : 100);
+    // Real figures from however many orders exist (4 orders → "75 %" is shown as is); no orders → null ("no data").
+    const rate = (list: typeof orders) => (list.length > 0 ? Math.round((list.filter((o) => o.status === 'done').length / list.length) * 1000) / 10 : null);
+    /** Median seconds from order placed to shop acceptance, over orders the shop accepted. */
+    const medianAccept = (list: typeof orders): number | null => {
+      const secs = list.filter((o) => o.acceptAt).map((o) => Math.max(0, Math.round((o.acceptAt!.getTime() - o.orderAt.getTime()) / 1000))).sort((x, y) => x - y);
+      if (secs.length === 0) return null;
+      const mid = Math.floor(secs.length / 2);
+      return secs.length % 2 ? secs[mid] : Math.round((secs[mid - 1] + secs[mid]) / 2);
+    };
     const students = (list: typeof orders) => new Set(list.map((o) => o.userId).filter((id): id is string => !!id && studentIds.has(id))).size;
     // on-time handover = completed orders the shop did not flag as delayed; < 5 completed orders → suppressed (null)
     const onTimeRate = (list: typeof orders) => {
@@ -791,7 +715,11 @@ export class SchoolAdminService {
         : { deltaLabel: `${onTimeDiff > 0 ? '+' : ''}${onTimeDiff}%`, good: onTimeDiff >= 0, direction: (onTimeDiff >= 0 ? 'up' : 'down') as 'up' | 'down' };
     const doneOrders = cur.filter((o) => o.status === 'done');
     const successRate = rate(cur);
-    const successDelta = Math.round((successRate - rate(prev)) * 10) / 10;
+    const successPrev = rate(prev);
+    const successDelta = successRate !== null && successPrev !== null ? Math.round((successRate - successPrev) * 10) / 10 : null;
+    const acceptNow = medianAccept(cur);
+    const acceptPrev = medianAccept(prev);
+    const acceptDiff = acceptNow !== null && acceptPrev !== null ? acceptNow - acceptPrev : null;
     const uniqueStudents = students(cur);
     const percentOfEnrolled = school.studentAmount
       ? Math.min(100, Math.round((uniqueStudents / school.studentAmount) * 100))
@@ -810,7 +738,7 @@ export class SchoolAdminService {
       return {
         name: r.name,
         orders: restOrders.length,
-        acceptLabel: '45 วิ',
+        acceptLabel: (() => { const m = medianAccept(restOrders); return m === null ? '-' : `${m} วิ`; })(),
         delayRate,
         rejected: restOrders.filter((o) => o.status === 'rejected').length,
         revenue,
@@ -822,7 +750,6 @@ export class SchoolAdminService {
     return {
       weekLabel: period.label,
       weekNumber: period.weekNumber,
-      isSample: false,
       kpis: {
         totalOrders: { value: cur.length, ...pctDelta(cur.length, prev.length, period.prevName) },
         activeStudents: {
@@ -831,9 +758,25 @@ export class SchoolAdminService {
           percentOfEnrolled,
           ...pctDelta(uniqueStudents, students(prev), period.prevName),
         },
-        successRate: { value: successRate, deltaLabel: `${successDelta > 0 ? '+' : ''}${successDelta}%`, good: successDelta >= 0, direction: successDelta >= 0 ? 'up' : 'down' },
-        medianAcceptSeconds: { value: 48, deltaLabel: 'เร็วขึ้น 9 วินาที', good: true, direction: 'down' },
-        rating: { value: 4.5, responses: doneOrders.length, deltaLabel: '+0.2', good: true, direction: 'up' },
+        successRate: {
+          value: successRate,
+          deltaLabel: successDelta === null ? `จาก ${cur.length} ออเดอร์` : `${successDelta > 0 ? '+' : ''}${successDelta}% จาก${period.prevName} (จาก ${cur.length} ออเดอร์)`,
+          good: (successDelta ?? 0) >= 0,
+          direction: (successDelta ?? 0) >= 0 ? 'up' : 'down',
+        },
+        medianAcceptSeconds: {
+          value: acceptNow,
+          deltaLabel: acceptDiff === null ? 'ยังไม่มีข้อมูลเทียบ' : acceptDiff === 0 ? `เท่ากับ${period.prevName}` : `${acceptDiff < 0 ? 'เร็วขึ้น' : 'ช้าลง'} ${Math.abs(acceptDiff)} วินาที`,
+          good: acceptDiff === null || acceptDiff <= 0,
+          direction: acceptDiff !== null && acceptDiff > 0 ? 'up' : 'down',
+        },
+        rating: {
+          value: ratings.length ? ratingMean : null,
+          responses: ratings.length,
+          deltaLabel: ratings.length ? `จาก ${ratings.length} ความเห็น` : 'ยังไม่มีความเห็น',
+          good: true,
+          direction: 'up',
+        },
         onTime: { value: onTimeRate(cur), ...onTimeDelta },
         refunds: { value: refundsCur, ...pctDelta(refundsCur, refundsPrev, period.prevName, true) },
       },

@@ -1,0 +1,150 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: 'Backend (types, unit, integration, security)'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: promptserve_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      NODE_ENV: test
+      # The integration harness refuses any non-local database, and uses fake identity/push providers.
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/promptserve_test
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/promptserve_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: backend/package-lock.json }
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npx prisma db push
+      - name: Type check
+        run: npm run typecheck
+      - name: Unit tests (+ coverage gate on access/refund/common)
+        run: npx jest --coverage
+      - name: 'Integration tests (real HTTP + real Postgres - RBAC matrix, idempotency, races, payments, refunds, security)'
+        run: npm run test:int:cov
+      - name: Dependency audit (production deps, high+)
+        run: npm run audit:prod
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-coverage
+          path: backend/coverage*/**
+          if-no-files-found: ignore
+
+  load-smoke:
+    name: 'Load smoke (k6 bell-time scenario, thresholds enforced)'
+    runs-on: ubuntu-latest
+    needs: backend
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: promptserve_load
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/promptserve_load
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/promptserve_load
+      PORT: '4010'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: backend/package-lock.json }
+      - uses: grafana/setup-k6-action@v1
+      - run: npm ci
+      - run: npx prisma generate && npx prisma db push
+      - run: npm run load:seed
+        env: { STUDENTS: '2500', SHOPS: '12' }
+      - name: Start API
+        run: |
+          npm run load:server > server.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf localhost:4010/api/ready && break; sleep 1; done
+      - name: Bell time - 2,500 students order within 60 s
+        run: k6 run -e SCENARIO=bell load/lunch.js
+      - name: Retry storm - 5x concurrent duplicate submits per student
+        run: k6 run -e SCENARIO=retry load/lunch.js
+      - if: always()
+        run: tail -n 50 server.log
+
+  frontend:
+    name: Frontend (types)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - run: npm ci
+      - run: npx tsc --noEmit
+
+  e2e:
+    name: 'Browser E2E (Playwright - real Next.js + real API + real Postgres)'
+    runs-on: ubuntu-latest
+    needs: backend
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      CI: 'true'
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci
+        working-directory: backend
+      - run: npm ci
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - name: Fresh database + seed
+        run: ./tests/e2e/prepare.sh
+        working-directory: frontend
+      - name: Run browser tests
+        run: npx playwright test
+        working-directory: frontend
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: |
+            frontend/test-results/**
+            frontend/playwright-report/**
+          if-no-files-found: ignore

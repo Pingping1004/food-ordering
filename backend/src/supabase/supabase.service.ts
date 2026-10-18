@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { Prisma, Role } from '@prisma/client';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { PrismaService } from '../prisma/prisma.service';
+import { TtlCache } from '../common/ttl-cache';
 
 /** The identity Supabase vouches for. */
 export interface AuthIdentity {
@@ -42,6 +43,10 @@ export function decodeAal(token: string): string | null {
 
 const TOKEN_CACHE_TTL_MS = 30_000;
 const TOKEN_CACHE_MAX = 5_000;
+/** Rejected tokens are remembered briefly so a flood of bad tokens cannot turn into a flood of Supabase calls. */
+const BAD_TOKEN_TTL_MS = 5_000;
+/** `req.user` (role, email) is re-read from our DB at most this often per user; role changes apply within seconds. */
+const USER_CACHE_TTL_MS = 5_000;
 
 @Injectable()
 export class SupabaseService implements OnModuleInit {
@@ -52,6 +57,12 @@ export class SupabaseService implements OnModuleInit {
     string,
     { identity: AuthIdentity; expiresAt: number }
   >();
+  private readonly badTokens = new Map<string, number>();
+  private readonly inflight = new Map<string, Promise<AuthIdentity | null>>();
+  private readonly userCache = new TtlCache<RequestUser>(
+    USER_CACHE_TTL_MS,
+    TOKEN_CACHE_MAX,
+  );
 
   constructor(
     private readonly config: ConfigService,
@@ -91,8 +102,31 @@ export class SupabaseService implements OnModuleInit {
     if (hit && hit.expiresAt > Date.now()) return hit.identity;
     this.cache.delete(token);
 
+    const badUntil = this.badTokens.get(token);
+    if (badUntil !== undefined) {
+      if (badUntil > Date.now()) return null;
+      this.badTokens.delete(token);
+    }
+
+    // Concurrent requests carrying the same token share one Supabase round-trip.
+    let pending = this.inflight.get(token);
+    if (!pending) {
+      pending = this.fetchIdentity(token).finally(() =>
+        this.inflight.delete(token),
+      );
+      this.inflight.set(token, pending);
+    }
+    return pending;
+  }
+
+  private async fetchIdentity(token: string): Promise<AuthIdentity | null> {
     const { data, error } = await this.client.auth.getUser(token);
-    if (error || !data.user) return null;
+    if (error || !data.user) {
+      // Only a definitive rejection (4xx) is remembered; a Supabase outage must not lock good tokens out.
+      if (error?.status && error.status >= 400 && error.status < 500)
+        this.remember(this.badTokens, token, Date.now() + BAD_TOKEN_TTL_MS);
+      return null;
+    }
 
     const meta = (data.user.user_metadata ?? {}) as Record<string, unknown>;
     const identity: AuthIdentity = {
@@ -107,20 +141,28 @@ export class SupabaseService implements OnModuleInit {
       aal: decodeAal(token),
     };
 
-    if (this.cache.size >= TOKEN_CACHE_MAX)
-      this.cache.delete(this.cache.keys().next().value as string);
-    this.cache.set(token, {
+    this.remember(this.cache, token, {
       identity,
       expiresAt: Date.now() + TOKEN_CACHE_TTL_MS,
     });
     return identity;
   }
 
+  private remember<V>(map: Map<string, V>, key: string, value: V) {
+    if (map.size >= TOKEN_CACHE_MAX)
+      map.delete(map.keys().next().value as string);
+    map.set(key, value);
+  }
+
   /**
    * Maps a Supabase identity to the app's `User` row (same uuid), creating it on first sign-in.
    * The row holds app data only (role, memberships) – credentials live in Supabase.
    */
-  async resolveUser(identity: AuthIdentity): Promise<RequestUser> {
+  resolveUser(identity: AuthIdentity): Promise<RequestUser> {
+    return this.userCache.get(identity.id, () => this.loadUser(identity));
+  }
+
+  private async loadUser(identity: AuthIdentity): Promise<RequestUser> {
     const select = { userId: true, email: true, role: true } as const;
     const existing = await this.prisma.user.findUnique({
       where: { userId: identity.id },
@@ -162,6 +204,7 @@ export class SupabaseService implements OnModuleInit {
 
   /** Drop cached tokens of a user (after role changes the next request re-reads the DB anyway; this is for sign-out-everywhere). */
   forgetUser(userId: string) {
+    this.userCache.invalidate(userId);
     for (const [token, v] of this.cache)
       if (v.identity.id === userId) this.cache.delete(token);
   }

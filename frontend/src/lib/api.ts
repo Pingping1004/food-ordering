@@ -76,12 +76,41 @@ export function notifySysadminReadOnly() {
     if (!event.detail.handled) toastDanger("แก้ไขข้อมูลโรงเรียนไม่ได้ตอนนี้", "บัญชีผู้ดูแลระบบดูข้อมูลได้อย่างเดียว หากต้องแก้ไข ให้เปิดโหมดช่วยเหลือที่หน้าโรงเรียนก่อน");
 }
 
+type RetryableConfig = import("axios").InternalAxiosRequestConfig & { __retries?: number };
+const MAX_OVERLOAD_RETRIES = 3;
+
+/**
+ * 429 (shed by a limiter) and 503 (database busy) are temporary: wait the server's Retry-After (plus jitter so a
+ * whole class does not retry in the same instant) and try again. Only requests that are safe to repeat are retried:
+ * every GET, and writes that carry an Idempotency-Key (the server returns the original result for a repeat).
+ */
+function overloadRetryDelayMs(error: AxiosError): number | null {
+    const status = error.response?.status;
+    const config = error.config as RetryableConfig | undefined;
+    if (!config || (status !== 429 && status !== 503)) return null;
+    if ((config.__retries ?? 0) >= MAX_OVERLOAD_RETRIES) return null;
+    const headers = AxiosHeaders.from(config.headers as AxiosHeaders);
+    const safe = (config.method ?? "get").toLowerCase() === "get" || headers.has("Idempotency-Key");
+    if (!safe) return null;
+    const retryAfter = Number(error.response?.headers?.["retry-after"]);
+    const baseMs = Number.isFinite(retryAfter) && retryAfter > 0 ? Math.min(retryAfter, 10) * 1000 : 1000 * 2 ** (config.__retries ?? 0);
+    return baseMs + Math.random() * 1000;
+}
+
 const PUBLIC_PATHS = ["/", "/login", "/signup", "/forgot-password", "/reset-password"];
 let signingOut = false;
 
 api.interceptors.response.use(
     (response) => response,
     async (error: AxiosError) => {
+        const delay = overloadRetryDelayMs(error);
+        if (delay !== null && error.config) {
+            const config = error.config as RetryableConfig;
+            config.__retries = (config.__retries ?? 0) + 1;
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            return api.request(config);
+        }
+
         const hadToken = !!error.config?.headers && AxiosHeaders.from(error.config.headers as AxiosHeaders).has("Authorization");
 
         // The API rejected a token Supabase still holds (revoked / user deleted) → end the session once.

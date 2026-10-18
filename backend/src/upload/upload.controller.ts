@@ -9,12 +9,15 @@ import {
   Req,
   Logger,
   UploadedFile,
+  UseGuards,
+  HttpException,
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { UploadService, UploadImageInfo } from './upload.service';
 import { AccessService } from 'src/access';
-import { imageFileFilter } from 'src/utils/file-upload.utils';
+import { imageFileFilter, imageUploadLimits } from 'src/utils/file-upload.utils';
+import { UploadAccessGuard } from './upload-access.guard';
 
 @Controller('upload')
 export class UploadController {
@@ -25,13 +28,13 @@ export class UploadController {
 
   private readonly logger = new Logger('UploadController');
 
+  // The guard runs BEFORE the interceptor, so an unauthorized caller never gets a file buffered in memory.
+  @UseGuards(UploadAccessGuard)
   @Post('image')
   @UseInterceptors(
     FileInterceptor('image', {
       storage: null,
-      limits: {
-        fileSize: 10 * 1024 * 1024,
-      },
+      limits: imageUploadLimits(1),
       fileFilter: imageFileFilter,
     }),
   )
@@ -50,6 +53,7 @@ export class UploadController {
         await this.uploadService.saveImage(file);
       res.status(200).json(uploadedInfo);
     } catch (error) {
+      if (error instanceof HttpException) throw error;
       this.logger.error(
         `Error during single image upload: ${error.message}`,
         error.stack,
@@ -58,13 +62,12 @@ export class UploadController {
     }
   }
 
+  @UseGuards(UploadAccessGuard)
   @Post('images')
   @UseInterceptors(
-    FilesInterceptor('images', 50, {
+    FilesInterceptor('images', 30, {
       storage: null,
-      limits: {
-        fileSize: 10 * 1024 * 1024,
-      },
+      limits: imageUploadLimits(30),
       fileFilter: imageFileFilter,
     }),
   )
@@ -83,6 +86,7 @@ export class UploadController {
         await this.uploadService.saveBulkImages(files);
       res.status(200).json(uploadedInfos);
     } catch (error) {
+      if (error instanceof HttpException) throw error;
       this.logger.error(
         `Error during bulk image upload: ${error.message}`,
         error.stack,

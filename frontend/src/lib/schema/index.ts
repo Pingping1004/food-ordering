@@ -112,6 +112,8 @@ export interface Order {
     /** Set when the shop (or auto-accept) accepted the order; the student can pay only after this. */
     acceptAt?: ISODate | null;
     isDelay: boolean;
+    /** Bumped on every change; student screens reload the full order when `GET /order/:id/status` reports a newer one. */
+    updatedAt?: ISODate;
     restaurantId: string;
     orderMenus: OrderMenu[];
     /** Only on the cooker order-history endpoint: approved / refunded refund requests. */

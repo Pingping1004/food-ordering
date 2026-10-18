@@ -75,3 +75,7 @@ prisma/migrations/
 
 # cert
 ./cert/
+!.env.test
+
+# load-test seed output
+/load/data.json

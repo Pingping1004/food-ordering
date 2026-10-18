@@ -17,6 +17,10 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import type { RequestUser } from '../supabase/supabase.service';
+import {
+  restaurantVisibilityCache,
+  type RestaurantVisibility,
+} from './restaurant-visibility.cache';
 
 export interface AccessContext {
   /** DB role is ADMIN **and** the token is aal2 (TOTP verified). */
@@ -233,28 +237,23 @@ export class AccessService {
   /**
    * Read access to a restaurant (menu, order creation, details). Anything outside the caller's school is a 404.
    * Inside the school: students see ACTIVE/SUSPENDED shops; PENDING/REMOVED only to members, school admins, sysadmin.
+   * `fresh` skips the shared cache: use it where the answer gates a write (order creation).
    */
   async assertRestaurantVisible(
     user: AccessUser,
     restaurantId: string,
     cacheKey?: object,
-  ): Promise<{ status: Status; schoolId: string; schoolStatus?: Status }> {
-    const restaurant = await this.prisma.restaurant.findUnique({
-      where: { restaurantId },
-      select: {
-        status: true,
-        canteen: { select: { schoolId: true, school: { select: { status: true } } } },
-      },
-    });
-    if (!restaurant) throw new NotFoundException('ไม่พบข้อมูล');
+    { fresh = false }: { fresh?: boolean } = {},
+  ): Promise<RestaurantVisibility> {
+    const load = () => this.loadRestaurantVisibility(restaurantId);
+    const found = fresh
+      ? await load()
+      : await restaurantVisibilityCache.get(restaurantId, load, (v) => v !== null);
+    if (!found) throw new NotFoundException('ไม่พบข้อมูล');
 
     const ctx = await this.getContext(user, cacheKey);
-    const schoolId = restaurant.canteen.schoolId;
-    const result = {
-      status: restaurant.status,
-      schoolId,
-      schoolStatus: restaurant.canteen.school?.status,
-    };
+    const { schoolId, status } = found;
+    const result = found;
 
     if (ctx.isSystemAdmin) return result;
     if (
@@ -264,8 +263,7 @@ export class AccessService {
       return result;
     if (
       ctx.schoolId === schoolId &&
-      (restaurant.status === Status.ACTIVE ||
-        restaurant.status === Status.SUSPENDED)
+      (status === Status.ACTIVE || status === Status.SUSPENDED)
     ) {
       return result;
     }
@@ -299,6 +297,20 @@ export class AccessService {
         await this.hideInvisibleRestaurant(user, restaurantId, opts.cacheKey);
       throw err;
     }
+  }
+
+  private async loadRestaurantVisibility(
+    restaurantId: string,
+  ): Promise<RestaurantVisibility | null> {
+    const r = await this.prisma.restaurant.findUnique({
+      where: { restaurantId },
+      select: {
+        status: true,
+        canteen: { select: { schoolId: true, school: { select: { status: true } } } },
+      },
+    });
+    if (!r) return null;
+    return { status: r.status, schoolId: r.canteen.schoolId, schoolStatus: r.canteen.school?.status };
   }
 
   /**

@@ -2,6 +2,7 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   S3Client,
@@ -11,7 +12,6 @@ import {
   DeleteObjectCommand,
 } from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
-import { extname } from 'path';
 import sharp from 'sharp';
 
 @Injectable()
@@ -48,27 +48,20 @@ export class S3Service {
   async uploadFile(
     file: Express.Multer.File,
   ): Promise<{ fileName: string; url: string }> {
-    const isImage = file.mimetype.startsWith('image/');
-
+    // Everything stored is re-encoded as WebP. Decoding is also the content check: a file that merely claims to
+    // be an image (HTML/script renamed to .png) fails here instead of being served from our storage domain.
     let uploadBuffer: Buffer;
-    let contentType: string;
-    let uniqueFilename: string;
-
-    if (isImage) {
+    try {
       uploadBuffer = await sharp(file.buffer)
-        .resize(500, 500, {
-          fit: 'inside',
-          withoutEnlargement: true,
-        })
+        .rotate()
+        .resize(500, 500, { fit: 'inside', withoutEnlargement: true })
         .webp({ quality: 50 })
         .toBuffer();
-      contentType = 'image/webp';
-      uniqueFilename = `${uuidv4()}.webp`; // always .webp for images
-    } else {
-      uploadBuffer = file.buffer;
-      contentType = file.mimetype;
-      uniqueFilename = `${uuidv4()}${extname(file.originalname)}`;
+    } catch {
+      throw new BadRequestException('ไฟล์ไม่ใช่รูปภาพที่ถูกต้อง');
     }
+    const contentType = 'image/webp';
+    const uniqueFilename = `${uuidv4()}.webp`;
 
     const uploadParams: PutObjectCommandInput = {
       Bucket: process.env.S3_BUCKET_NAME,

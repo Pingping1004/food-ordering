@@ -35,6 +35,11 @@ function sha256(data: string): string {
   return createHash('sha256').update(data).digest('hex');
 }
 
+const isUniqueViolationOn = (error: unknown, field: string): boolean =>
+  error instanceof Prisma.PrismaClientKnownRequestError &&
+  error.code === 'P2002' &&
+  JSON.stringify(error.meta ?? {}).includes(field);
+
 @Injectable()
 export class PaymentService {
   private readonly logger = new Logger(PaymentService.name);
@@ -63,6 +68,9 @@ export class PaymentService {
     if (!process.env.SLIP_VERIFY_SECRET)
       throw new NotFoundException('SLIP_VERIFY_SECRET key missing');
     if (order.paymentStatus === PaymentStatus.PAID) return { success: true };
+
+    // Reject junk before it costs a payout row and a (paid) verification API call.
+    this.uploadService.assertValidSlipImage(paymentSlipImg);
 
     const requestHash = sha256(
       JSON.stringify({ orderId, slip: paymentSlipImg.slice(0, 500) }),
@@ -209,6 +217,11 @@ export class PaymentService {
           );
         });
       } catch (error) {
+        // Two orders racing with the same slip: the unique index on Payout.transactionId lets exactly one win.
+        if (isUniqueViolationOn(error, 'transactionId')) {
+          await this.payoutService.updatePayoutStatus(payout.payoutId, 'failed');
+          throw new ConflictException('สลิปซ้ำ');
+        }
         this.logger.warn(
           `Payment DB transaction failed for order ${orderId}: ${error instanceof Error ? error.message : String(error)}`,
         );

@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Icon, type IconName } from "@/components/ui/kit";
 import { Logo } from "@/components/Logo";
+import { InstallAppBanner } from "@/components/InstallAppBanner";
 
 /**
  * One navigation rule for every signed-in area:
@@ -136,7 +137,11 @@ export function ResponsiveShell({ brand, navLabel, items, footer, footerTop, bra
                 </div>
             </aside>
 
-            <Content className={clsx("min-w-0 flex-1", mainClassName)}>{children}</Content>
+            <Content className={clsx("min-w-0 flex-1", mainClassName)}>
+                {/* phones only, every role but the system admin, hidden once installed (see the component) */}
+                <InstallAppBanner />
+                {children}
+            </Content>
         </div>
     );
 }

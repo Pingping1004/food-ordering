@@ -41,4 +41,22 @@ describe('TtlCache', () => {
     await cache.get('b:1', load);
     expect(load).toHaveBeenCalledTimes(5);
   });
+
+  it('never stores a load that started before an invalidation (no stale write-back)', async () => {
+    const cache = new TtlCache<string>(60_000);
+    let release!: (v: string) => void;
+    const slow = cache.get('shop', () => new Promise<string>((r) => (release = r)));
+    cache.invalidate('shop'); // e.g. the shop was suspended while the old status was being read
+    release('ACTIVE');
+    expect(await slow).toBe('ACTIVE'); // the caller already in flight gets its answer...
+    expect(await cache.get('shop', async () => 'SUSPENDED')).toBe('SUSPENDED'); // ...but it was not cached
+  });
+
+  it('skips caching values rejected by cacheIf (e.g. not found)', async () => {
+    const cache = new TtlCache<string | null>(60_000);
+    const load = jest.fn().mockResolvedValueOnce(null).mockResolvedValueOnce('created');
+    expect(await cache.get('k', load, (v) => v !== null)).toBeNull();
+    expect(await cache.get('k', load, (v) => v !== null)).toBe('created');
+    expect(load).toHaveBeenCalledTimes(2);
+  });
 });

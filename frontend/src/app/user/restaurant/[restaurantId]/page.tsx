@@ -9,6 +9,7 @@ import { useMenus } from '@/hook/useMenu';
 import { RestaurantDetailSkeleton } from '@/components/ui/Skeleton';
 import { useCooker } from '@/hook/useCooker';
 import { api } from '@/lib/api';
+import { useQuery } from '@tanstack/react-query';
 import { isMenuOrderable, sellPriceOf } from '@/lib/types/menu';
 import { todayHours } from '@/lib/schema/format';
 
@@ -23,8 +24,18 @@ function MenuContextPage() {
     const router = useRouter();
     const alertShownRef = useRef(false);
     const [isNowOpen, setIsNowOpen] = useState<boolean>(true);
-    const [orderAmount, setOrderAmount] = useState<number>(0);
     const [searchQuery, setSearchQuery] = useState("");
+
+    // Queue length shown in the header. Was refetched on every `cooker` re-render and failed silently; now one cached,
+    // periodically refreshed request per shop.
+    const { data: orderAmount = 0 } = useQuery({
+        queryKey: ["active-count", restaurantId],
+        enabled: !!cooker,
+        staleTime: 10_000,
+        refetchInterval: 30_000,
+        refetchIntervalInBackground: false,
+        queryFn: async () => (await api.get<{ activeOrderCount: number }>(`order/active-count/${restaurantId}`)).data.activeOrderCount,
+    });
 
     const { data, isLoading } = useMenus(restaurantId);
     const menus = useMemo(() => (data ?? []), [data]);
@@ -46,15 +57,6 @@ function MenuContextPage() {
             alertShownRef.current = true;
             setIsNowOpen(false);
         }
-
-        const fetchOrderAmnout = async (): Promise<void> => {
-            const orderResponse = await api.get(`order/active-count/${cooker?.restaurantId}`);
-            const data = orderResponse.data;
-    
-            setOrderAmount(data.activeOrderCount);
-        }
-    
-        fetchOrderAmnout();
     }, [cooker]);
 
     const filteredMenus = useMemo(() => {

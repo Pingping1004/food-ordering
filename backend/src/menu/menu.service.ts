@@ -426,7 +426,7 @@ export class MenuService implements OnModuleInit {
 
       const dbMenus = await this.prisma.safeRead(() =>
         this.prisma.menu.findMany({
-          where: { restaurantId },
+          where: { restaurantId, deletedAt: null },
           select: {
             menuId: true,
             name: true,
@@ -720,13 +720,28 @@ export class MenuService implements OnModuleInit {
       select: { restaurantId: true },
     });
 
-    const result = await this.prisma.menu.delete({
-      where: { menuId },
-    });
+    // Past orders keep a RESTRICT reference to the menu row: deleting it would fail with a raw FK error (500).
+    // Items that were ever ordered are archived instead (hidden, unorderable, name freed for re-use).
+    const ordered = await this.prisma.orderMenu.count({ where: { menuId } });
+    const result = ordered
+      ? await this.prisma.menu.update({
+          where: { menuId },
+          data: {
+            deletedAt: new Date(),
+            isAvailable: false,
+            name: `[deleted ${menuId.slice(0, 8)}] ${await this.menuName(menuId)}`.slice(0, 120),
+          },
+        })
+      : await this.prisma.menu.delete({ where: { menuId } });
 
     if (restaurant?.restaurantId) {
       this.invalidateRestaurantMenuCache(restaurant.restaurantId);
     }
     return result;
+  }
+
+  private async menuName(menuId: string) {
+    const m = await this.prisma.menu.findUnique({ where: { menuId }, select: { name: true } });
+    return m?.name ?? '';
   }
 }

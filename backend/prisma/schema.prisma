@@ -221,6 +221,8 @@ model Menu {
   maxDaily        Int?     @default(30)
   cookingTimeMins Int      @default(5)
   isAvailable     Boolean  @default(true)
+  /// Set instead of deleting a menu item that past orders reference (OrderMenu.menuId is RESTRICT); hidden from lists.
+  deletedAt       DateTime? @db.Timestamptz(3)
   createdAt       DateTime @default(now()) @db.Timestamptz(3)
   updatedAt       DateTime @updatedAt @db.Timestamptz(3)
 
@@ -258,6 +260,10 @@ model Order {
   acceptAt      DateTime?     @db.Timestamptz(3)
   paidAt        DateTime?     @db.Timestamptz(3)
   isDelay       Boolean       @default(false)
+  /// Bumped by every Prisma update. Student screens poll `GET /order/:id/status` and reload the full order only when this (or the status) changes.
+  updatedAt     DateTime      @default(now()) @updatedAt @db.Timestamptz(3)
+  /// Client-supplied `Idempotency-Key`: a retry or double-tap of the same submit returns the original order instead of creating a second one.
+  idempotencyKey String?
 
   restaurantId         String
   restaurant           Restaurant            @relation(fields: [restaurantId], references: [restaurantId], onDelete: Cascade)
@@ -278,6 +284,8 @@ model Order {
   @@index([orderAt])
   @@index([restaurantId, orderAt])
   @@index([userId, orderAt])
+  @@index([restaurantId, status, orderAt])
+  @@unique([userId, idempotencyKey])
 }
 
 model OrderMenu {
@@ -674,4 +682,35 @@ model Complaint {
   @@index([schoolId, target, status, createdAt])
   @@index([target, status, createdAt])
   @@index([userId])
+}
+
+/// One row per payment attempt for an order (slip verification). Durable on purpose: the idempotency key and the
+/// bank transaction reference (`transactionId`) are what stop a retry, a second API instance or a restart from
+/// letting the same slip pay for two orders. `orderId` is a plain reference (no FK) so deleting a shop can never
+/// erase financial history.
+model Payout {
+  payoutId          String    @id @default(uuid())
+  orderId           String
+  restaurantId      String
+  restaurantName    String
+  idempotencyKey    String?
+  requestHash       String?
+  /// Bank transaction reference from the verified slip. Unique: one slip pays at most one order.
+  transactionId     String?   @unique
+  /// initiated | processing | success | failed
+  payoutStatus      String
+  grossAmount       Decimal   @db.Decimal(12, 2)
+  restaurantRevenue Decimal   @db.Decimal(12, 2)
+  platformFee       Decimal   @db.Decimal(12, 2)
+  transactionFee    Decimal   @db.Decimal(12, 2)
+  vat               Decimal   @db.Decimal(12, 2)
+  startDate         DateTime  @db.Timestamptz(3)
+  endDate           DateTime  @db.Timestamptz(3)
+  paidAt            DateTime? @db.Timestamptz(3)
+  createdAt         DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@unique([idempotencyKey, orderId])
+  @@index([orderId])
+  @@index([restaurantId, startDate])
+  @@index([createdAt])
 }

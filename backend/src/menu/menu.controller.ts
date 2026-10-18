@@ -16,6 +16,7 @@ import {
   Query,
   Logger,
   InternalServerErrorException,
+  UseGuards,
 } from '@nestjs/common';
 import { MenuService, MenusWithDisplayPrices } from './menu.service';
 import {
@@ -26,7 +27,8 @@ import { UpdateMenuDto } from './dto/update-menu.dto';
 import { AccessService, RestaurantScope } from '../access';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 
-import { imageFileFilter } from 'src/utils/file-upload.utils';
+import { imageFileFilter, imageUploadLimits } from 'src/utils/file-upload.utils';
+import { MenuManageGuard } from './menu-manage.guard';
 import { Express } from 'express';
 import { RestaurantRole } from '@prisma/client';
 
@@ -71,6 +73,7 @@ export class MenuController {
   @Post('single')
   @UseInterceptors(
     FileInterceptor('menuImg', {
+      limits: imageUploadLimits(1),
       fileFilter: imageFileFilter,
     }),
   )
@@ -97,13 +100,20 @@ export class MenuController {
     }
   }
 
+  @UseGuards(MenuManageGuard)
   @Post('bulk-images')
-  @UseInterceptors(FilesInterceptor('images'))
+  @UseInterceptors(
+    FilesInterceptor('images', 30, {
+      limits: imageUploadLimits(30),
+      fileFilter: imageFileFilter,
+    }),
+  )
   async uploadMenuImages(
     @Req() req: any,
     @UploadedFiles() files: Express.Multer.File[],
   ) {
     await this.access.assertCanManageMenus(req.user, req);
+    if (!files?.length) throw new BadRequestException('กรุณาเลือกรูปภาพอย่างน้อย 1 รูป');
     return this.menuService.uploadTempImages(files);
   }
 

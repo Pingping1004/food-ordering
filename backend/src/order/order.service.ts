@@ -22,6 +22,7 @@ import { Cron } from '@nestjs/schedule';
 
 import { InventoryService } from 'src/inventory/inventory.service';
 import moment from 'moment-timezone';
+import { TtlCache } from '../common/ttl-cache';
 import { RestaurantService } from 'src/restaurant/restaurant.service';
 import { NotificationService } from 'src/notification/notification.service';
 import { AnalyticsService } from 'src/analytics/analytics.service';
@@ -59,6 +60,8 @@ export class OrderService {
   ) {}
 
   private readonly logger = new Logger('OrderService');
+  /** Display-only queue length (shop page header); every student opening a shop asked for a fresh COUNT(*). */
+  private readonly activeCountCache = new TtlCache<number>(3_000, 1_000);
 
   async validateOrderMenus(
     orderMenus: CreateOrderMenusDto[],
@@ -121,7 +124,7 @@ export class OrderService {
     const avgCookingTime =
       restaurant.avgCookingTimeMins ?? restaurant.avgCookingTime ?? 10;
     const maxActiveOrder =
-      restaurant.maxActiveOrders ?? restaurant.maxActiveOrder ?? 20;
+      restaurant.maxActiveOrders ?? restaurant.maxActiveOrder ?? 50;
 
     const ACCEPT_WINDOW_MINS = 3;
     const PAYMENT_WINDOW_MINS = 3;
@@ -158,10 +161,96 @@ export class OrderService {
     }
   }
 
+  private async afterOrderCreated(
+    order: Order,
+    isAutoAcceptedOrder: boolean,
+    totalAmount: number,
+    menuCount: number,
+  ): Promise<void> {
+    try {
+      await this.analyticService.trackOrderEvent(
+        EventName.order_submitted,
+        order,
+        {
+          actor: EventActor.user,
+          order: {
+            nextStatus: order.status,
+            autoAccepted: isAutoAcceptedOrder,
+          },
+          extra: { totalAmount, menuCount },
+        },
+      );
+      await this.notificationService
+        .queueOrderCreated(order.orderId)
+        .catch((error: unknown) => {
+          this.logger.warn(
+            `Order created but push queue failed: ${(error as Error).message}`,
+          );
+        });
+      if (isAutoAcceptedOrder) {
+        await this.analyticService.trackOrderEvent(
+          EventName.order_auto_accepted,
+          order,
+          {
+            actor: EventActor.system,
+            order: {
+              previousStatus: OrderStatus.receive,
+              nextStatus: OrderStatus.receive,
+            },
+            extra: { totalAmount, menuCount },
+          },
+        );
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Post-create side effects failed for ${order.orderId}: ${(error as Error).message}`,
+      );
+    }
+  }
+
+  /**
+   * Returns the order a previous submit with this key created, or null. A key reused for a different cart is a
+   * client bug (or tampering): 409 rather than silently returning someone else's order.
+   */
+  private async findIdempotentOrder(
+    userId: string,
+    idempotencyKey: string,
+    dto: CreateOrderDto,
+  ) {
+    const existing = await this.prisma.order.findUnique({
+      where: { userId_idempotencyKey: { userId, idempotencyKey } },
+      include: { orderMenus: true },
+    });
+    if (!existing) return null;
+    const lines = (items: { menuId: string; quantity: number }[]) =>
+      items
+        .map((i) => `${i.menuId}:${i.quantity}`)
+        .sort()
+        .join(',');
+    if (
+      existing.restaurantId !== dto.restaurantId ||
+      lines(existing.orderMenus) !== lines(dto.orderMenus)
+    ) {
+      throw new ConflictException(
+        'Idempotency-Key ถูกใช้กับคำสั่งซื้ออื่นแล้ว',
+      );
+    }
+    return existing;
+  }
+
   async createOrder(
     createOrderDto: CreateOrderDto,
     userId: string,
+    idempotencyKey?: string,
   ): Promise<Order> {
+    if (idempotencyKey) {
+      const replay = await this.findIdempotentOrder(
+        userId,
+        idempotencyKey,
+        createOrderDto,
+      );
+      if (replay) return replay;
+    }
     const pickupAt =
       createOrderDto.pickupAt ??
       createOrderDto.deliverAt ??
@@ -199,6 +288,7 @@ export class OrderService {
           data: {
             restaurantId: createOrderDto.restaurantId,
             userId,
+            idempotencyKey: idempotencyKey ?? null,
             pickupAt,
             status: initialStatus,
             acceptAt: isAutoAcceptedOrder ? new Date() : null,
@@ -226,53 +316,24 @@ export class OrderService {
         return newOrder;
       });
 
-      await this.analyticService.trackOrderEvent(
-        EventName.order_submitted,
-        order,
-        {
-          actor: EventActor.user,
-          order: {
-            nextStatus: order.status,
-            autoAccepted: isAutoAcceptedOrder,
-          },
-          extra: {
-            totalAmount,
-            menuCount: validatedMenus.length,
-          },
-        },
-      );
-
-      await this.notificationService
-        .queueOrderCreated(order.orderId)
-        .catch((error: unknown) => {
-          const pushError = error as Error;
-          this.logger.warn(
-            `Order created but push queue failed: ${pushError.message}`,
-          );
-        });
-
-      if (isAutoAcceptedOrder) {
-        await this.analyticService.trackOrderEvent(
-          EventName.order_auto_accepted,
-          order,
-          {
-            actor: EventActor.system,
-            order: {
-              previousStatus: OrderStatus.receive,
-              nextStatus: OrderStatus.receive,
-            },
-            extra: {
-              totalAmount,
-              menuCount: validatedMenus.length,
-            },
-          },
-        );
-      }
+      // Analytics and the shop push are best-effort and must not hold the student's response (or a DB connection
+      // slot) while they run: the order is already committed. Failures are logged, never surfaced.
+      void this.afterOrderCreated(order, isAutoAcceptedOrder, totalAmount, validatedMenus.length);
 
       return order;
     } catch (error) {
-      if (error.code === 'P2002')
+      if (error.code === 'P2002') {
+        // Lost the race against a concurrent submit with the same key: hand back the winner's order.
+        if (idempotencyKey) {
+          const winner = await this.findIdempotentOrder(
+            userId,
+            idempotencyKey,
+            createOrderDto,
+          );
+          if (winner) return winner;
+        }
         throw new BadRequestException('ชำระเงินซ้ำ/ใช้สลิปเก่า');
+      }
       throw error;
     }
   }
@@ -570,6 +631,13 @@ export class OrderService {
     });
   }
 
+  /** Up to 3 s stale. Never use it for the queue-cap check in order creation (that one must be exact). */
+  countActiveKitchenOrdersForDisplay(restaurantId: string): Promise<number> {
+    return this.activeCountCache.get(restaurantId, () =>
+      this.countActiveKitchenOrders(restaurantId),
+    );
+  }
+
   async assertOrderOwner(orderId: string, userId: string): Promise<void> {
     const order = await this.prisma.order.findUnique({
       where: { orderId },
@@ -616,6 +684,26 @@ export class OrderService {
     if (!userId || order.userId !== userId)
       throw new NotFoundException('ไม่พบออเดอร์ที่ค้นหา');
     return order;
+  }
+
+  /** One indexed single-row read (no items, no shop): what student screens poll. The full order is loaded only on change. */
+  async findOrderStatusForUser(orderId: string, userId: string) {
+    const order = await this.prisma.safeRead(() =>
+      this.prisma.order.findUnique({
+        where: { orderId },
+        select: {
+          userId: true,
+          status: true,
+          paymentStatus: true,
+          acceptAt: true,
+          updatedAt: true,
+        },
+      }),
+    );
+    if (!order || !userId || order.userId !== userId)
+      throw new NotFoundException('ไม่พบออเดอร์ที่ค้นหา');
+    const { userId: _owner, ...state } = order;
+    return state;
   }
 
   async findOneOrder(orderId: string) {
@@ -743,6 +831,16 @@ export class OrderService {
     return { result, message: `แจ้งส่งออเดอร์ล่าช้า10นาทีสำเร็จ` };
   }
 
+  /**
+   * Serializes state changes on one order. Every transition reads the order and then acts on what it read (deduct or
+   * release stock, move the status), so without a row lock two cooks pressing accept/reject at the same moment both
+   * act on the same stale read: stock is deducted twice, or reserved for an order that ended up rejected.
+   * The lock is held until the surrounding transaction ends.
+   */
+  private async lockOrder(tx: Prisma.TransactionClient, orderId: string) {
+    await tx.$queryRaw`SELECT "orderId" FROM "Order" WHERE "orderId" = ${orderId} FOR UPDATE`;
+  }
+
   /** Stock is reserved when the order is accepted; give it back if the order dies before being paid. */
   private async releaseReservedStock(
     tx: Prisma.TransactionClient,
@@ -761,6 +859,7 @@ export class OrderService {
    */
   async acceptOrder(orderId: string) {
     const result = await this.prisma.$transaction(async (tx) => {
+      await this.lockOrder(tx, orderId);
       const order = await tx.order.findUnique({
         where: { orderId },
         include: { orderMenus: true },
@@ -819,6 +918,9 @@ export class OrderService {
             `Failed to stop push retries for ${orderId}: ${(error as Error).message}`,
           );
         });
+      // The payment window starts now: tell the student at once instead of waiting for their next poll.
+      if (result.result.paymentStatus !== PaymentStatus.PAID)
+        void this.notificationService.notifyStudentOrderUpdate(orderId, 'accepted');
     }
 
     const { changed: _changed, ...rest } = result;
@@ -849,6 +951,7 @@ export class OrderService {
     };
 
     const result = await this.prisma.$transaction(async (tx) => {
+      await this.lockOrder(tx, orderId);
       const order = await tx.order.findUnique({
         where: { orderId },
         include: { orderMenus: true },
@@ -1019,25 +1122,34 @@ export class OrderService {
   }
 
   async cancelOrder(orderId: string) {
-    const order = await this.prisma.order.findUnique({ where: { orderId } });
-    if (!order) throw new NotFoundException('ไม่พบออเดอร์');
-    if (order.status === OrderStatus.done)
+    const existing = await this.prisma.order.findUnique({ where: { orderId } });
+    if (!existing) throw new NotFoundException('ไม่พบออเดอร์');
+    if (existing.status === OrderStatus.done)
       throw new BadRequestException('ไม่สามารถยกเลิกออเดอร์ที่เสร็จแล้ว');
-    if (order.status === OrderStatus.rejected) {
+    // Once paid the shop is cooking on the student's money: cancelling is a refund request, not a cancel.
+    if (existing.paymentStatus === PaymentStatus.PAID)
+      throw new ConflictException({
+        message: 'ออเดอร์ที่ชำระเงินแล้วยกเลิกเองไม่ได้ หากมีปัญหากรุณาขอคืนเงิน',
+        code: 'ORDER_ALREADY_PAID',
+      });
+    if (existing.status === OrderStatus.rejected) {
       return {
         skipped: true as const,
-        previousStatus: order.status,
-        result: order,
+        previousStatus: existing.status,
+        result: existing,
         message: 'ออเดอร์ถูกยกเลิกไปแล้ว',
       };
     }
 
-    const wasReservedUnpaid =
-      order.status === OrderStatus.receive &&
-      !!order.acceptAt &&
-      order.paymentStatus === PaymentStatus.UNPAID;
-
     const { count } = await this.prisma.$transaction(async (tx) => {
+      await this.lockOrder(tx, orderId);
+      // Re-read under the lock: whether stock is reserved depends on whether a cook accepted in the meantime.
+      const order = await tx.order.findUnique({ where: { orderId } });
+      if (!order) return { count: 0 };
+      const wasReservedUnpaid =
+        order.status === OrderStatus.receive &&
+        !!order.acceptAt &&
+        order.paymentStatus === PaymentStatus.UNPAID;
       const res = await tx.order.updateMany({
         where: {
           orderId,
@@ -1092,7 +1204,7 @@ export class OrderService {
         actor: EventActor.user,
         reason: 'user_cancelled',
         order: {
-          previousStatus: order.status,
+          previousStatus: existing.status,
           nextStatus: updatedOrder.status,
         },
       },
@@ -1100,7 +1212,7 @@ export class OrderService {
 
     return {
       skipped: false as const,
-      previousStatus: order.status,
+      previousStatus: existing.status,
       result: updatedOrder,
       message: 'ยกเลิกออเดอร์สำเร็จ',
     };

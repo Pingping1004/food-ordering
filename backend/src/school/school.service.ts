@@ -26,6 +26,7 @@ import {
 } from '../invite/invite-code.service';
 import { CreateSchoolDto, UpdateSchoolDto } from './dto/school.dto';
 import { schoolSuspendedException } from '../access/school-suspended';
+import { invalidateRestaurantVisibility } from '../access/restaurant-visibility.cache';
 
 export interface SchoolBlocker {
   code: 'HAS_RESTAURANT' | 'HAS_SCHOOL_ADMIN_ROLE';
@@ -45,10 +46,6 @@ export class SchoolService {
 
   // ---------------------------------------------------------------- today's opening status
 
-  /**
-   * Is the school's canteen open right now? Uses the weekly hours plus date overrides (holidays / special hours), in
-   * Bangkok time. A school with no hours configured counts as open. Debug mode (DEBUG_ALWAYS_OPEN) forces open.
-   */
   async getUserSchoolId(userId: string): Promise<string | null> {
     const u = await this.prisma.user.findUnique({ where: { userId }, select: { schoolId: true } });
     return u?.schoolId ?? null;
@@ -537,11 +534,13 @@ export class SchoolService {
     if (!school) throw new NotFoundException('ไม่พบโรงเรียน');
     if (school.status !== Status.ACTIVE && school.status !== Status.SUSPENDED)
       throw new ConflictException('ไม่สามารถเปลี่ยนสถานะโรงเรียนนี้ได้');
-    if (school.status !== status)
+    if (school.status !== status) {
       await this.prisma.school.update({
         where: { schoolId },
         data: { status },
       });
+      invalidateRestaurantVisibility(); // every shop in the school changes visibility
+    }
     return { schoolId, status, previous: school.status };
   }
 

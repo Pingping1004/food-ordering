@@ -34,6 +34,7 @@ import { assertHasOwnerGrant, consumeOwnerGrant } from '../invite/owner-grant';
 import { QrReaderService } from '../utils/qr-reader.service';
 import { AccountType } from '../common/interface/accountType';
 import { minutesToHHmm, summarizeHours } from '../utils/hours.util';
+import { invalidateRestaurantVisibility } from '../access/restaurant-visibility.cache';
 
 @Injectable()
 export class RestaurantService {
@@ -53,6 +54,7 @@ export class RestaurantService {
 
   /** Drop the per-school list caches (and optionally one restaurant). */
   private invalidateLists(restaurantId?: string) {
+    invalidateRestaurantVisibility(restaurantId);
     const now = Date.now();
     for (const key of this.requestVersion.keys()) {
       if (key.startsWith('restaurants:')) this.requestVersion.set(key, now);
@@ -166,7 +168,7 @@ export class RestaurantService {
             location: createRestaurantDto.location ?? null,
             categories: createRestaurantDto.categories,
             avgCookingTimeMins: avgCookingTime,
-            maxActiveOrders: createRestaurantDto.maxActiveOrders ?? 20,
+            maxActiveOrders: createRestaurantDto.maxActiveOrders ?? 50,
             status: Status.PENDING,
             contactName,
             contactSurname: createRestaurantDto.contactSurname ?? '',

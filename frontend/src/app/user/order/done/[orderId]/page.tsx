@@ -24,7 +24,7 @@ export default function PickupPage() {
     const params = useParams();
     const router = useRouter();
     const orderId = getParamId(params.orderId);
-    const { order, loading, error, retry } = useOrderPoll(orderId, "done", { intervalMs: 5000 });
+    const { order, loading, error, retry } = useOrderPoll(orderId, "done");
 
     const [rating, setRating] = useState(0);
     const [waitedLonger, setWaitedLonger] = useState<boolean | null>(null);

@@ -1,12 +1,12 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import clsx from "clsx";
 import { ActionButton, ButtonLink, Card, Icon, OrderTrackingSkeleton } from "@/components/ui/kit";
 import { StudentTopBar } from "@/components/users/StudentShell";
 import CountdownTimer from "@/components/Timer";
-import { api } from "@/lib/api";
+import { useStudentOrder } from "@/hook/useStudentOrder";
 import { getParamId } from "@/util/param";
 import { formatBaht, orderCode } from "@/lib/schema/format";
 import type { Order } from "@/lib/schema";
@@ -37,22 +37,9 @@ function SlipFailed() {
     const reason = REASONS[reasonKey];
     const paid = Number(search.get("paid")) || null;
 
-    const [order, setOrder] = useState<(Order & { restaurant?: { contactTel?: string } }) | null>(null);
+    // Usually already cached by the payment screen; on failure the page still explains the problem without order details.
+    const order = useStudentOrder(orderId).data as (Order & { restaurant?: { contactTel?: string } }) | undefined;
     const [expired, setExpired] = useState(false);
-
-    useEffect(() => {
-        let active = true;
-        (async () => {
-            try {
-                const secret = localStorage.getItem(`orderSecret:${orderId}`);
-                const res = await api.get(`order/${orderId}`, { headers: { "x-order-secret": secret } });
-                if (active) setOrder(res.data);
-            } catch {
-                /* page still explains the failure without order details */
-            }
-        })();
-        return () => { active = false; };
-    }, [orderId]);
 
     const deadline = order ? new Date(new Date(order.orderAt).getTime() + 3 * 60 * 1000) : null;
     const tel = order?.restaurant?.contactTel;
