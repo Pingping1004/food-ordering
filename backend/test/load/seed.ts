@@ -83,8 +83,28 @@ const MENUS_PER_SHOP = 12;
     await q(`INSERT INTO "User"("userId", name, email, role, "schoolId", "updatedAt") VALUES ${tuples.join(',')}`, params);
   }
 
-  fs.mkdirSync(path.resolve(__dirname, '../../load'), { recursive: true });
-  fs.writeFileSync(path.resolve(__dirname, '../../load/data.json'), JSON.stringify({ schoolId, students, restaurants }));
+  const extra: Record<string, unknown> = {};
+  if (process.env.E2E === '1') {
+    // Browser-test extras: a school admin, and a shop waiting for that admin's approval.
+    const adminId = randomUUID();
+    await q(`INSERT INTO "User"("userId", name, email, role, "schoolId", "updatedAt") VALUES ($1,'School Admin',$2,'USER',$3,$4)`, [adminId, `${adminId}@load.local`, schoolId, now]);
+    await q(`INSERT INTO "SchoolMembership"(id, role, status, "userId", "schoolId", "updatedAt") VALUES ($1,'ADMIN','APPROVED',$2,$3,$4)`, [randomUUID(), adminId, schoolId, now]);
+    const pendingId = randomUUID();
+    await q(
+      `INSERT INTO "Restaurant"("restaurantId", name, email, status, "isAutoAcceptedOrder", "maxActiveOrders", "avgCookingTimeMins", "contactName","contactSurname","contactTel","contactEmail","bankType","accountNumber","accountName","paymentQr","canteenId", categories)
+       VALUES ($1,'Pending Noodles','pending@load.local','PENDING',false,50,5,'P','N','0811111111','p@load.local','SCB','000','T','qr',$2,'{}')`,
+      [pendingId, canteenId],
+    );
+    const pendingOwner = randomUUID();
+    await q(`INSERT INTO "User"("userId", name, email, role, "schoolId", "updatedAt") VALUES ($1,'Pending Owner',$2,'USER',$3,$4)`, [pendingOwner, `${pendingOwner}@load.local`, schoolId, now]);
+    await q(`INSERT INTO "RestaurantMembership"(id, role, status, "userId", "restaurantId", "updatedAt") VALUES ($1,'OWNER','APPROVED',$2,$3,$4)`, [randomUUID(), pendingOwner, pendingId, now]);
+    extra.schoolAdminId = adminId;
+    extra.pending = { restaurantId: pendingId, ownerId: pendingOwner };
+  }
+
+  const out = process.env.OUT ?? path.resolve(__dirname, '../../load/data.json');
+  fs.mkdirSync(path.dirname(out), { recursive: true });
+  fs.writeFileSync(out, JSON.stringify({ schoolId, students, restaurants, ...extra }));
   console.log(`seeded school ${schoolId}: ${STUDENTS} students, ${SHOPS} shops x ${MENUS_PER_SHOP} menus`);
   await pool.end();
 })();

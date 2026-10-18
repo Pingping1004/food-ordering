@@ -50,6 +50,7 @@ function OrderPaymentPage() {
     const [loading, setLoading] = useState(true);
     const [order, setOrder] = useState<StudentOrder>();
     const [paymentImgUrl, setPaymentImgUrl] = useState<string>('');
+    const [qrFailed, setQrFailed] = useState(false);
     const failedCountRef = useRef(0);
     const hasRedirectedRef = useRef(false);
     const hasExpiredRef = useRef(false);
@@ -356,16 +357,20 @@ function OrderPaymentPage() {
                     <span className="text-[40px] font-bold leading-none">
                         {formatBaht(order.totalAmount)} <span className="text-xl">บาท</span>
                     </span>
-                    {paymentImgUrl && (
-                        <Image
+                    {paymentImgUrl && !qrFailed && (
+                        // Plain <img>, not next/image: next/image THROWS (blank "Application error" page) for a src that is
+                        // not an allow-listed host or is malformed, which would stop the student paying at all.
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
                             src={paymentImgUrl}
-                            loading="lazy"
                             alt={`QR พร้อมเพย์สำหรับชำระเงิน`}
                             width={220}
                             height={220}
+                            onError={() => setQrFailed(true)}
                             className="aspect-square rounded-2xl border-2 border-brand-dark object-cover"
                         />
                     )}
+                    {qrFailed && <span className="text-center text-sm text-danger-main">โหลด QR ไม่สำเร็จ กรุณาโทรหาร้านหรือสแกนจากหน้าร้าน</span>}
                     <button type="button" onClick={copyAmount} className="flex h-12 items-center gap-2 rounded-xl bg-primary-main px-5 text-base font-semibold text-white hover:bg-primary-dark">
                         {copied ? 'คัดลอกแล้ว ✓' : `คัดลอกยอด ${formatBaht(order.totalAmount)} บาท`}
                     </button>
