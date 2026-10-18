@@ -4,7 +4,6 @@ import { OrderController } from './order.controller';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { PayoutModule } from 'src/payout/payout.module';
-import { CsrfModule } from 'src/csrf/csrf.module';
 import { UserModule } from 'src/user/user.module';
 import { MenuModule } from 'src/menu/menu.module';
 import { InventoryModule } from 'src/inventory/inventory.module';
@@ -14,12 +13,11 @@ import { AnalyticsModule } from 'src/analytics/dto/analytics.module';
 
 @Module({
   imports: [
-    forwardRef(() => PayoutModule), 
-    CsrfModule, 
-    UserModule, 
+    forwardRef(() => PayoutModule),
+    UserModule,
     AnalyticsModule,
-    forwardRef(() => MenuModule), 
-    forwardRef(() => InventoryModule), 
+    forwardRef(() => MenuModule),
+    forwardRef(() => InventoryModule),
     forwardRef(() => RestaurantModule),
     NotificationModule,
   ],

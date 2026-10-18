@@ -1,9 +1,11 @@
 import { startOfWeek, endOfWeek, format } from 'date-fns';
 import Decimal from 'decimal.js';
 
-const envBaseTransactionRate = new Decimal(process.env.TRANSACTION_RATE || "0");
-const envVatRate = new Decimal(process.env.VAT_RATE || "0");
-const envCommissionRate = new Decimal(process.env.PLATFORM_COMMISSION_RATE || "0");
+const envBaseTransactionRate = new Decimal(process.env.TRANSACTION_RATE || '0');
+const envVatRate = new Decimal(process.env.VAT_RATE || '0');
+const envCommissionRate = new Decimal(
+  process.env.PLATFORM_COMMISSION_RATE || '0',
+);
 
 export interface PayoutCalculationType {
   totalRevenue: number | Decimal;
@@ -22,14 +24,15 @@ export interface WeeklyPayoutType {
 }
 
 export function calculatePayout(
-  totalPrice: Decimal, 
-  platformCommissionRate: Decimal = envCommissionRate, 
-  baseTransactionRate: Decimal = envBaseTransactionRate, 
-  vatRate: Decimal = envVatRate
+  totalPrice: Decimal,
+  platformCommissionRate: Decimal = envCommissionRate,
+  baseTransactionRate: Decimal = envBaseTransactionRate,
+  vatRate: Decimal = envVatRate,
 ): PayoutCalculationType {
-
   const userPaidAmount = totalPrice;
-  const transactionFee = new Decimal(process.env.PAYMENT_VERIFICATION_API_FEE ?? '0')
+  const transactionFee = new Decimal(
+    process.env.PAYMENT_VERIFICATION_API_FEE ?? '0',
+  );
 
   // const grossPlatformCommission = userPaidAmount.mul(config.platformCommissionRate);
   // const baseFee = userPaidAmount.mul(config.baseTransactionRate);
@@ -38,7 +41,7 @@ export function calculatePayout(
   // const platformNetEarning = grossPlatformCommission.minus(totalTransactionFee);
   // const platformNetEarning = userPaidAmount.minus(transactionFee);
   const restaurantEarning = userPaidAmount;
-  const platformNetEarning = transactionFee.neg()
+  const platformNetEarning = transactionFee.neg();
 
   // if (platformNetEarning.isNegative()) throw new Error("Invalid pricing: platform losing money");
 
@@ -49,7 +52,7 @@ export function calculatePayout(
     platformNetEarning: platformNetEarning.toDecimalPlaces(2),
     grossPlatformCommission: new Decimal(0),
     transactionFee: transactionFee.toDecimalPlaces(2),
-    vatRate: totalPrice.mul(vatRate).toDecimalPlaces(2)
+    vatRate: totalPrice.mul(vatRate).toDecimalPlaces(2),
   };
 }
 

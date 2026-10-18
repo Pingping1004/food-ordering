@@ -12,8 +12,8 @@ import {
   Min,
   ValidateNested,
   ArrayMinSize,
-  ArrayMaxSize
-} from "class-validator";
+  ArrayMaxSize,
+} from 'class-validator';
 
 export class CreateOrderMenusDto {
   @IsUUID('4', { message: 'menuId must be a valid UUID' })
@@ -47,13 +47,13 @@ export class CreateOrderDto {
   restaurantId!: string;
 
   @IsString()
-  @IsNotEmpty()
-  userTel: string;
+  @IsOptional()
+  userTel?: string;
 
   @IsDate()
-  @IsNotEmpty()
+  @IsOptional()
   @Type(() => Date)
-  deliverAt: Date;
+  deliverAt?: Date;
 
   @IsOptional()
   @IsDate()
@@ -61,9 +61,13 @@ export class CreateOrderDto {
   acceptAt?: Date;
 
   @IsDate()
-  @IsNotEmpty()
+  @IsOptional()
   @Type(() => Date)
-  pickupAt: Date;
+  pickupAt?: Date;
+
+  @IsOptional()
+  @IsString()
+  details?: string;
 
   @IsArray()
   @IsNotEmpty({ message: 'Order must contain at least one menu item' })

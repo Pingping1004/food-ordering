@@ -2,6 +2,8 @@ import Image from 'next/image'
 import clsx from 'clsx'
 import { cva, VariantProps } from 'class-variance-authority'
 import Link from 'next/link'
+import { CATEGORY_LABEL } from '@/lib/schema/format'
+import { Icon } from '@/components/ui/kit'
 
 export enum RestaurantCategory {
     Steak = 'Steak',
@@ -13,11 +15,11 @@ export enum RestaurantCategory {
     Noodle = 'Noodle',
 };
 
-const restaurantProfileVariant = cva("group relative flex flex-col bg-white rounded-2xl border border-slate-100 shadow-sm transition-all duration-300 overflow-hidden", {
+const restaurantProfileVariant = cva("flex gap-3.5 rounded-[18px] border border-line-soft bg-white p-3.5 text-brand-dark transition-shadow", {
     variants: {
         variant: {
-            isOpen: 'hover:shadow-xl hover:border-primary-light hover:-translate-y-1 cursor-pointer',
-            isClose: 'grayscale-[0.5] opacity-80 cursor-not-allowed',
+            isOpen: 'hover:shadow-md cursor-pointer',
+            isClose: 'opacity-60 cursor-not-allowed',
         },
     },
     defaultVariants: {
@@ -28,7 +30,8 @@ const restaurantProfileVariant = cva("group relative flex flex-col bg-white roun
 export type RestaurantProfileProps = React.HTMLAttributes<HTMLDivElement> &
     VariantProps<typeof restaurantProfileVariant> & {
         restaurantId: string;
-        restaurantImg: string;
+        /** `Restaurant.profile` in the new schema (may be empty) – the old API still calls it restaurantImg. */
+        restaurantImg?: string | null;
         name: string;
         categories: RestaurantCategory[];
         isOpen: boolean;
@@ -48,43 +51,38 @@ export const RestaurantProfile: React.FC<RestaurantProfileProps> = ({
 }: RestaurantProfileProps) => {
 
     const content = (
-        <div className={clsx(
-            restaurantProfileVariant({ variant }),
-            className
-        )}
-        {...props}
-        >
-            <div className="relative w-full aspect-square overflow-hidden bg-slate-50">
-                <Image
-                    fill
-                    sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-                    src={restaurantImg}
-                    priority={isPriority}
-                    fetchPriority={isPriority ? "high" : "auto"}
-                    quality={75}
-                    alt={`${name} Profile`}
-                    className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-110"
-                />
-                
-                {!isOpen && (
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[2px] z-10">
-                        <span className="bg-white/95 text-slate-800 font-bold text-[11px] px-3 py-1.5 rounded-full shadow-lg font-body">
-                            ปิดรับออเดอร์
-                        </span>
-                    </div>
+        <div className={clsx(restaurantProfileVariant({ variant }), className)} {...props}>
+            <div className="relative h-[76px] w-[76px] shrink-0 overflow-hidden rounded-[14px] bg-ground">
+                {restaurantImg ? (
+                    <Image
+                        fill
+                        sizes="76px"
+                        src={restaurantImg}
+                        priority={isPriority}
+                        fetchPriority={isPriority ? "high" : "auto"}
+                        quality={75}
+                        alt={`${name} Profile`}
+                        className="object-cover"
+                    />
+                ) : (
+                    <span className="flex h-full w-full items-center justify-center bg-primary-light text-primary-dark"><Icon name="plate" size={34} strokeWidth={1.8} /></span>
                 )}
             </div>
 
-            <div className="flex flex-col gap-y-1 p-3.5 sm:p-4">
-                <h3 className="font-noto-thai font-semibold text-base sm:text-base text-slate-900 line-clamp-1 group-hover:text-primary-main transition-colors">
-                    {name}
-                </h3>
-                
+            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                <div className="flex items-center justify-between gap-2">
+                    <h3 className="line-clamp-1 font-app text-[17px] font-bold">{name}</h3>
+                    <span className={clsx("inline-flex shrink-0 items-center gap-1.5 text-[13px] font-semibold", isOpen ? "text-success-main" : "text-brand-muted")}>
+                        <span className={clsx("h-2 w-2 rounded-full", isOpen ? "bg-success-main" : "bg-brand-muted")} />
+                        {isOpen ? "เปิดอยู่" : "ปิดรับออเดอร์"}
+                    </span>
+                </div>
+
                 {categories && categories.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-0.5">
-                        {categories.slice(0, 2).map(cat => (
-                            <span key={cat} className="text-[9px] sm:text-[10px] font-bold bg-primary-light text-slate-500 px-2 py-1 rounded-full uppercase tracking-wider font-body">
-                                {cat.replace(/_/g, ' ')}
+                    <div className="flex flex-wrap gap-1.5">
+                        {categories.slice(0, 3).map(cat => (
+                            <span key={cat} className="rounded-lg bg-[#F2F4F7] px-2.5 py-0.5 text-[13px] font-semibold text-[#344054]">
+                                {CATEGORY_LABEL[cat] ?? cat.replace(/_/g, ' ')}
                             </span>
                         ))}
                     </div>

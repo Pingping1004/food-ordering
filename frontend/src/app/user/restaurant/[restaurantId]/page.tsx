@@ -4,13 +4,13 @@ import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useCart } from '@/context/CartContext';
 import { useParams, useRouter } from 'next/navigation';
-import { Button } from '@/components/Button';
 import { toastDanger } from '@/components/ui/Toast';
-import Input from '@/components/Input';
 import { useMenus } from '@/hook/useMenu';
-import LoadingPage from '@/components/LoadingPage';
+import { RestaurantDetailSkeleton } from '@/components/ui/Skeleton';
 import { useCooker } from '@/hook/useCooker';
 import { api } from '@/lib/api';
+import { isMenuOrderable, sellPriceOf } from '@/lib/types/menu';
+import { todayHours } from '@/lib/schema/format';
 
 const MenuProfile = dynamic(() => import("../../../../components/users/MenuProfile"), { ssr: false })
 const RestaurantHeader = dynamic(() => import("@/components/users/RestaurantHeader"))
@@ -31,7 +31,7 @@ function MenuContextPage() {
 
     const checkOrderCart = () => {
         if (!cooker) {
-            toastDanger("ไม่พบข้อมูลร้าน");
+            toastDanger("ไม่พบข้อมูลร้าน", "ร้านอาจปิดหรือถูกลบไปแล้ว กรุณาเลือกร้านอื่น");
             return;
         }
 
@@ -42,7 +42,7 @@ function MenuContextPage() {
         if (!cooker) return;
 
         if (!cooker.isActuallyOpen && !alertShownRef.current) {
-            toastDanger(`ขณะนี้ร้าน ${cooker.name}ยังไม่เปิดให้บริการ`);
+            toastDanger(`ขณะนี้ร้าน ${cooker.name} ยังไม่เปิดให้บริการ`, "กรุณากลับมาสั่งใหม่ในเวลาเปิดร้าน");
             alertShownRef.current = true;
             setIsNowOpen(false);
         }
@@ -63,77 +63,82 @@ function MenuContextPage() {
         const query = searchQuery.trim().toLowerCase();
 
         return menus.filter(menu => {
-            if (!menu.isOrderable) return false;
+            if (!isMenuOrderable(menu)) return false;
             if (!query) return true;
 
             return menu.name.toLowerCase().includes(query);
         });
     }, [menus, searchQuery]);
 
-    if (isLoading) return <LoadingPage />
+    if (isLoading) return <RestaurantDetailSkeleton />;
+
+    const cartCount = cart.reduce((n, i) => n + i.quantity, 0);
+    const cartTotal = cart.reduce((n, i) => n + i.quantity * i.unitPrice, 0);
 
     return (
-        <div className="relative min-h-screen pb-10">
-            <div className="flex flex-col gap-y-10 py-10 px-6">
-                {cooker && (
-                    <RestaurantHeader
-                        orderAmount={orderAmount}
-                        restaurantId={cooker?.restaurantId}
-                        name={cooker?.name}
-                        restaurantImg={cooker?.restaurantImg}
-                        openTime={cooker?.openTime}
-                        closeTime={cooker?.closeTime}
-                        adminTel={cooker?.adminTel}
-                    />
-                )}
-
-                <h3 className="font-noto-thai text-bold  text-primary">เมนูสำหรับคุณ</h3>
-
-                <Input
-                    type="text"
-                    name="menuSearchQuery"
-                    placeholder="ค้นหาเมนู..."
-                    value={searchQuery || ""}
-                    onChange={(e => setSearchQuery(e.target.value))}
-                    className="w-full px-4 py-2 border rounded-lg"
+        <div className="mx-auto flex min-h-app w-full max-w-[640px] md:max-w-3xl lg:max-w-6xl flex-col bg-ground font-app text-brand-dark">
+            {cooker && (
+                <RestaurantHeader
+                    orderAmount={orderAmount}
+                    restaurantId={cooker?.restaurantId}
+                    name={cooker?.name}
+                    restaurantImg={cooker?.restaurantImg ?? cooker?.profile}
+                    openTime={cooker?.openTime ?? todayHours(cooker?.operatingHours)?.open}
+                    closeTime={cooker?.closeTime ?? todayHours(cooker?.operatingHours)?.close}
+                    adminTel={cooker?.contactTel ?? cooker?.adminTel}
                 />
+            )}
 
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-x-4 gap-y-6">
+            <main className="flex flex-1 flex-col gap-3.5 px-4 pb-28 pt-4">
+                <label className="flex h-12 items-center gap-2.5 rounded-xl border border-line-soft bg-white px-3.5 text-brand-muted">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+                    <input
+                        type="search"
+                        aria-label="ค้นหาเมนู"
+                        placeholder="ค้นหาเมนู"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="flex-1 bg-transparent text-base text-brand-dark outline-none"
+                    />
+                </label>
+
+                <h2 className="mt-1 text-lg font-bold">เมนูทั้งหมด</h2>
+
+                <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
                     {filteredMenus.map((menu, i) => (
                         <MenuProfile
                             key={menu.menuId}
                             menuId={menu.menuId}
                             menuImg={menu.menuImg}
                             name={menu.name}
-                            sellPriceDisplay={menu.sellPriceDisplay}
-                            // maxDaily={menu.maxDaily}
-                            // cookingTime={menu.cookingTime}
+                            sellPriceDisplay={sellPriceOf(menu)}
                             isAvailable={menu.isAvailable}
                             restaurantId={menu.restaurantId}
                             isPriority={i === 0}
                             variant={(menu.isAvailable && isNowOpen) ? "on" : "off"}
-
                         />
                     ))}
-
-                    {filteredMenus.length === 0 && (
-                        <p className="text-center text-gray-500">ไม่พบเมนูที่ค้นหา</p>
-                    )}
-                </div>
-
-                {cart.length > 0 && (
-                    <Button
-                        type="button"
-                        size="full"
-                        numberIcon={cart.length}
-                        iconPosition="start"
-                        className=""
-                        onClick={() => checkOrderCart()}
-                    >
-                        เช็คออเดอร์ของคุณ
-                    </Button>
+                </ul>
+                {filteredMenus.length === 0 && (
+                    <p className="py-10 text-center text-brand-muted">ไม่พบเมนูที่ค้นหา</p>
                 )}
-            </div>
+            </main>
+
+            {cart.length > 0 && (
+                <div className="fixed bottom-0 left-[var(--sidebar-w)] right-0 z-20 mx-auto max-w-[640px] bg-gradient-to-t from-ground from-30% to-transparent p-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:max-w-3xl lg:max-w-6xl">
+                    <button
+                        type="button"
+                        onClick={() => checkOrderCart()}
+                        className="flex h-[60px] w-full items-center justify-between rounded-2xl bg-primary-main px-5 text-[17px] font-bold text-white"
+                    >
+                        <span className="flex items-center gap-2.5">
+                            <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-white px-1 text-[15px] text-black">{cartCount}</span>
+                            ดูตะกร้า
+                        </span>
+                        <span>{cartTotal} บาท</span>
+                    </button>
+                </div>
+            )}
         </div>
     )
 }

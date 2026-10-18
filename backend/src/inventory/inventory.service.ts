@@ -1,132 +1,160 @@
-import { Inject, Injectable, NotFoundException, forwardRef } from "@nestjs/common";
-import { Prisma } from "@prisma/client";
-import moment from "moment";
-import { PrismaService } from "src/prisma/prisma.service";
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  forwardRef,
+} from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import moment from 'moment';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class InventoryService {
-    constructor(
-        private readonly prisma: PrismaService,
-    ) { }
+  constructor(private readonly prisma: PrismaService) {}
 
-    private pendingQuotaRequests = new Map<string, Promise<Record<string, number>>>();
+  private pendingQuotaRequests = new Map<
+    string,
+    Promise<Record<string, number>>
+  >();
 
-    async deductInventoryTx(
-        tx: Prisma.TransactionClient,
-        menuId: string,
-        quantity: number,
-        menuName: string,
-        maxDaily: number
-    ): Promise<string | null> {
-        const today = moment().tz('Asia/Bangkok').startOf('day').toDate();
+  async deductInventoryTx(
+    tx: Prisma.TransactionClient,
+    menuId: string,
+    quantity: number,
+    menuName: string,
+    maxDaily: number,
+  ): Promise<string | null> {
+    const today = moment().tz('Asia/Bangkok').startOf('day').toDate();
 
-        await tx.inventory.upsert({
-            where: {
-                menuId_date: { menuId, date: today }
+    await tx.inventory.upsert({
+      where: {
+        menuId_date: { menuId, date: today },
+      },
+      update: { dailyQuota: maxDaily },
+      create: {
+        menuId,
+        date: today,
+        dailyQuota: maxDaily,
+        remaining: maxDaily,
+      },
+    });
+
+    const result = await tx.inventory.updateMany({
+      where: {
+        menuId,
+        date: today,
+        remaining: { gte: quantity },
+      },
+      data: {
+        remaining: { decrement: quantity },
+      },
+    });
+
+    if (result.count === 0) return menuName;
+
+    return null;
+  }
+
+  /** Gives back stock reserved at accept time when the order never got paid (rejected / expired / cancelled). */
+  async restoreInventoryTx(
+    tx: Prisma.TransactionClient,
+    menuId: string,
+    quantity: number,
+  ): Promise<void> {
+    const today = moment().tz('Asia/Bangkok').startOf('day').toDate();
+    const row = await tx.inventory.findUnique({
+      where: { menuId_date: { menuId, date: today } },
+    });
+    if (!row) return;
+    await tx.inventory.update({
+      where: { menuId_date: { menuId, date: today } },
+      data: { remaining: Math.min(row.dailyQuota, row.remaining + quantity) },
+    });
+  }
+
+  async getRemainingQuotas(menuIds: string[]): Promise<Record<string, number>> {
+    if (menuIds.length === 0) return {};
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const sortedMenuIds = [...menuIds].sort();
+    const requestKey = `${today.toISOString()}-${JSON.stringify(sortedMenuIds)}`;
+
+    if (this.pendingQuotaRequests.has(requestKey))
+      return this.pendingQuotaRequests.get(requestKey)!;
+
+    const requestPromise = (async () => {
+      const inventories = await this.prisma.inventory.findMany({
+        where: {
+          menuId: { in: sortedMenuIds },
+          date: today,
+        },
+        select: {
+          menuId: true,
+          remaining: true,
+          menu: {
+            select: {
+              name: true,
             },
-            update: { dailyQuota: maxDaily },
-            create: {
-                menuId,
-                date: today,
-                dailyQuota: maxDaily,
-                remaining: maxDaily
-            }
-        })
+          },
+        },
+      });
 
-        const result = await tx.inventory.updateMany({
-            where: {
-                menuId,
-                date: today,
-                remaining: { gte: quantity }
-            },
-            data: {
-                remaining: { decrement: quantity }
-            }
-        });
+      const remainingMap: Record<string, number> = {};
 
-        if (result.count === 0) return menuName;
+      for (const inv of inventories) {
+        remainingMap[inv.menuId] = inv.remaining;
+      }
 
-        return null;
+      return remainingMap;
+    })();
+
+    this.pendingQuotaRequests.set(requestKey, requestPromise);
+
+    try {
+      return await requestPromise;
+    } finally {
+      this.pendingQuotaRequests.delete(requestKey);
+    }
+  }
+
+  async syncInventoryQuotaTx(
+    tx: Prisma.TransactionClient,
+    menuId: string,
+    newMaxDaily: number,
+  ) {
+    const today = moment().tz('Asia/Bangkok').startOf('day').toDate();
+
+    const inventory = await this.prisma.inventory.findUnique({
+      where: {
+        menuId_date: { menuId, date: today },
+      },
+    });
+
+    if (!inventory) {
+      await tx.inventory.create({
+        data: {
+          menuId,
+          date: today,
+          dailyQuota: newMaxDaily,
+          remaining: newMaxDaily,
+        },
+      });
+      return;
     }
 
-    async getRemainingQuotas(menuIds: string[]): Promise<Record<string, number>> {
-        if (menuIds.length === 0) return {}
+    const diff = newMaxDaily - inventory.dailyQuota;
+    const newRemaining = Math.max(0, inventory.remaining + diff);
 
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-
-        const sortedMenuIds = [...menuIds].sort()
-        const requestKey = `${today.toISOString()}-${JSON.stringify(sortedMenuIds)}`
-
-        if (this.pendingQuotaRequests.has(requestKey)) return this.pendingQuotaRequests.get(requestKey)!
-
-        const requestPromise = (async () => {
-            const inventories = await this.prisma.inventory.findMany({
-                where: {
-                    menuId: { in: sortedMenuIds },
-                    date: today
-                },
-                select: {
-                    menuId: true,
-                    remaining: true,
-                    menu: {
-                        select: {
-                            name: true
-                        }
-                    }
-                }
-            })
-
-            const remainingMap: Record<string, number> = {};
-
-            for (const inv of inventories) {
-                remainingMap[inv.menuId] = inv.remaining
-            }
-
-            return remainingMap
-        })()
-
-        this.pendingQuotaRequests.set(requestKey, requestPromise)
-
-        try {
-            return await requestPromise
-        } finally {
-            this.pendingQuotaRequests.delete(requestKey)
-        }
-    }
-
-    async syncInventoryQuotaTx(tx: Prisma.TransactionClient, menuId: string, newMaxDaily: number) {
-        const today = moment().tz('Asia/Bangkok').startOf('day').toDate();
-
-        const inventory = await this.prisma.inventory.findUnique({
-            where: {
-                menuId_date: { menuId, date: today }
-            }
-        });
-
-        if (!inventory) {
-            await tx.inventory.create({
-                data: {
-                    menuId,
-                    date: today,
-                    dailyQuota: newMaxDaily,
-                    remaining: newMaxDaily
-                }
-            });
-            return;
-        }
-
-        const diff = newMaxDaily - inventory.dailyQuota;
-        const newRemaining = Math.max(0, inventory.remaining + diff);
-
-        await tx.inventory.update({
-            where: {
-                menuId_date: { menuId, date: today }
-            },
-            data: {
-                dailyQuota: newMaxDaily,
-                remaining: newRemaining
-            }
-        });
-    }
+    await tx.inventory.update({
+      where: {
+        menuId_date: { menuId, date: today },
+      },
+      data: {
+        dailyQuota: newMaxDaily,
+        remaining: newRemaining,
+      },
+    });
+  }
 }

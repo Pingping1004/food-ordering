@@ -1,7 +1,5 @@
 import React from 'react'
-import Image from 'next/image'
 import { CartItem, useCart } from '@/context/CartContext';
-import { Button } from '../Button';
 import type { OrderStatus } from '../cookers/OrderNavbar';
 
 export interface OrderType {
@@ -31,58 +29,24 @@ export default function OrderList({ items }: Readonly<CartListProps>) {
     const { addToCart, removeFromCart } = useCart();
 
     return (
-        <div>
-            {items.map((menu) => {
-                return (
-                    <div
-                        key={menu.menuId}
-                        className="flex w-[calc(100%+3rem)] border-y border-color -mx-6"
-                    >
-                        <div className="flex w-full justify-between gap-x-4 py-4 px-6">
-                            <div className="relative w-[74px] h-[74px] aspect-square">
-                                <Image
-                                    width={74}
-                                    height={74}
-                                    src={menu.menuImg}
-                                    alt={menu.menuName}
-                                    className="rounded-lg object-cover aspect-square w-full h-full"
-                                />
-                            </div>
-
-                            <div className="flex flex-col w-full justify-between">
-                                <div className="flex justify-between">
-
-                                    <div className="w-full">
-                                        <h4 className="text-primary font-noto-thai text-bold text-sm">{menu.menuName}</h4>
-                                        <p className="text-light text-xs font-noto-thai">{menu.unitPrice} บาท</p>
-                                    </div>
-
-                                    <div className="flex items-center gap-x-2">
-                                        <Button
-                                            type="button"
-                                            size="sm"
-                                            variant="secondarySuccess"
-                                            onClick={() => removeFromCart(menu.menuId)}
-                                        >
-                      -
-                                        </Button>
-                                        <p>{menu.quantity}</p>
-                                        <Button
-                                            type="button"
-                                            size="sm"
-                                            variant="success"
-                                            onClick={() => addToCart(menu.menuId, menu.menuName, menu.unitPrice, menu.menuImg, menu.isAvailable, menu.restaurantId)}
-                                        >
-                      +
-                                        </Button>
-                                    </div>
-
-                                </div>
-                            </div>
-                        </div>
+        <div className="flex flex-col gap-3.5">
+            {items.map((menu) => (
+                <div key={menu.menuId} className="flex items-center gap-3 border-t border-[#EEF1F6] pt-3">
+                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                        <h4 className="font-app text-base font-semibold">{menu.menuName}</h4>
+                        <p className="font-app text-sm text-brand-muted">{menu.unitPrice} บาท / จาน</p>
                     </div>
-                );
-            })}
+                    <div className="flex items-center rounded-xl border border-line">
+                        <button type="button" aria-label={`ลดจำนวน ${menu.menuName}`} onClick={() => removeFromCart(menu.menuId)}
+                            className="h-11 w-11 text-xl">−</button>
+                        <span className="min-w-[22px] text-center text-base font-bold">{menu.quantity}</span>
+                        <button type="button" aria-label={`เพิ่มจำนวน ${menu.menuName}`}
+                            onClick={() => addToCart(menu.menuId, menu.menuName, menu.unitPrice, menu.menuImg, menu.isAvailable, menu.restaurantId)}
+                            className="h-11 w-11 text-xl">+</button>
+                    </div>
+                    <span className="w-16 text-right text-base font-bold">{menu.unitPrice * menu.quantity}</span>
+                </div>
+            ))}
         </div>
     )
 }

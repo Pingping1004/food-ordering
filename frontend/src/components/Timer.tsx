@@ -5,12 +5,6 @@ type CountdownTimerProps = {
     onExpire?: () => void;
 }
 
-const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${minutes}:${secs.toString().padStart(2, "0")}`;
-};
-
 const getSecondsLeft = (deadline: Date) => Math.max(0, Math.floor((deadline.getTime() - Date.now()) / 1000));
 
 export default function CountdownTimer({ deadline, onExpire }: CountdownTimerProps) {
@@ -52,9 +46,17 @@ export default function CountdownTimer({ deadline, onExpire }: CountdownTimerPro
         return () => clearInterval(interval);
     }, [deadline]);
 
+    const mins = Math.floor(timeLeft / 60);
+    const secs = timeLeft % 60;
+
     return (
-        <div className="text-center text-xl font-semibold text-red-500">
-            กรุณาชำระเงินภายใน: {formatTime(timeLeft)}
-        </div>
+        <span
+            role="timer"
+            aria-label={`เหลือเวลาชำระ ${mins} นาที ${secs} วินาที`}
+            className="inline-flex items-center gap-1.5 rounded-full bg-brand-orange-light px-3 py-2 text-base font-bold text-brand-orange-text"
+        >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2 2M9 2h6" /></svg>
+            {mins.toString().padStart(2, "0")}:{secs.toString().padStart(2, "0")}
+        </span>
     )
 }

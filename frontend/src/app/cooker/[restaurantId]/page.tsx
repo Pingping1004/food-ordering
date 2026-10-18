@@ -1,18 +1,26 @@
 "use client"
 
+import { useTextSize } from "@/components/TextSizeProvider";
 import dynamic from "next/dynamic";
 import { OrderProps } from "@/components/cookers/Order";
 import { NavState, OrderStatus } from "@/components/cookers/OrderNavbar";
-import LoadingPage from "@/components/LoadingPage";
+import { CookerBoardSkeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/Button";
 import { api } from "@/lib/api";
 import { getDateFormat, getTimeFormat } from "@/util/time";
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { toastDanger, toastSuccess } from "@/components/ui/Toast";
-import { useParams, usePathname } from "next/navigation";
+import { toastError, toastDanger, toastSuccess } from "@/components/ui/Toast";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import { useOrderSounds } from "@/hook/useOrderSounds";
 import { useCooker } from "@/hook/useCooker";
+import { CookerShell } from "@/components/cookers/CookerShell";
+import WarningBanner from "../../../components/cookers/WarningBanner";
+import CookerHeader from "../../../components/cookers/CookerHeader";
+import Order from "../../../components/cookers/Order";
+import OrderNavBar from "../../../components/cookers/OrderNavbar";
+import { todayHours } from "@/lib/schema/format";
 import { useAuth } from "@/auth/auth.hooks";
+import { canUseCooker } from "@/auth/access";
 import {
     getNotificationPermission,
     registerNotificationServiceWorker,
@@ -22,11 +30,21 @@ import {
 } from "@/lib/firebase-messaging";
 import type { MessagePayload } from "firebase/messaging";
 
+/** `Order.pickupAt` in the new schema; rows from the pre-migration API still say `deliverAt`. */
+type SortKey = "pickup" | "newest" | "oldest" | "amount";
+const SORT_KEY_STORAGE = "cook_order_sort";
+/** Plain-language labels on purpose: the board is used by cooks of all ages. */
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+    { value: "pickup", label: "ใกล้ถึงเวลารับก่อน (แนะนำ)" },
+    { value: "newest", label: "สั่งเข้ามาใหม่ล่าสุดก่อน" },
+    { value: "oldest", label: "สั่งเข้ามานานแล้วก่อน" },
+    { value: "amount", label: "ราคามากที่สุดก่อน" },
+];
+
+const pickupOf = (o: OrderProps & { deliverAt?: string }): string => o.pickupAt ?? o.deliverAt ?? o.orderAt;
+
+// Overlays only: lazy is fine because they take no space in the page flow. Layout pieces above are static to avoid late layout shifts.
 const Modal = dynamic(() => import("../../../components/users/Modal"), { ssr: false })
-const WarningBanner = dynamic(() => import("../../../components/cookers/WarningBanner"), { ssr: false })
-const CookerHeader = dynamic(() => import("../../../components/cookers/CookerHeader"), { ssr: false })
-const Order = dynamic(() => import("../../../components/cookers/Order"), { ssr: false })
-const OrderNavBar = dynamic(() => import("../../../components/cookers/OrderNavbar"), { ssr: false })
 const InstallGuideModal = dynamic(() => import("../../../components/cookers/InstallGuideModal"), { ssr: false })
 
 interface ServiceWorkerMessage {
@@ -88,14 +106,14 @@ function normalizePushPayload(payload: MessagePayload): PushBanner | null {
 }
 
 function Page() {
-    const [isLargeTextMode, setIsLargeTextMode] = useState(false)
+    const { largeText: isLargeTextMode, setLargeText } = useTextSize();
     const [orders, setOrders] = useState<Record<string, OrderProps>>({});
-    const [navbarStatus, setNavbarStatus] = useState<NavState>("sent");
+    const [navbarStatus, setNavbarStatus] = useState<NavState>("receive");
     const [showAutoCancelModal, setShowAutoCancelModal] = useState(false)
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [now, setNow] = useState(Date.now());
     const [showRuleBanner, setShowRuleBanner] = useState(true);
-    const [pushPermission, setPushPermission] = useState<NotificationPermission | "unsupported">("default");
+    const [pushPermission, setPushPermission] = useState<NotificationPermission | "unsupported" | null>(null); // null until read on mount, so no banner flashes in and out
     const [pushSyncState, setPushSyncState] = useState<"idle" | "syncing" | "ready" | "error">("idle");
     const [pushErrorMessage, setPushErrorMessage] = useState<string | null>(null);
     const [pushDebugMessage, setPushDebugMessage] = useState<string | null>(null);
@@ -118,6 +136,12 @@ function Page() {
     const { user } = useAuth();
     const restaurantId = (params.restaurantId) as string;
     const { data: cooker } = useCooker(restaurantId);
+    const router = useRouter();
+
+    // Not approved by the school yet (Restaurant.status = INACTIVE) → waiting screen instead of an empty order board.
+    useEffect(() => {
+        if (cooker?.status === "INACTIVE") router.replace(`/cooker/pending/${restaurantId}`);
+    }, [cooker?.status, restaurantId, router]);
 
     const segments = pathname.split("/").filter(Boolean);
     const isOrderPage = Boolean(restaurantId) && segments.length === 2;
@@ -133,7 +157,7 @@ function Page() {
             body,
         });
 
-        setNavbarStatus("sent");
+        setNavbarStatus("receive");
         playAlertOnce();
     }, [playAlertOnce]);
 
@@ -179,12 +203,12 @@ function Page() {
 
             announcedOrdersRef.current = new Set(
                 data.orders
-                    .filter((order: OrderProps) => order.status === OrderStatus.sent)
+                    .filter((order: OrderProps) => [OrderStatus.sent, OrderStatus.receive].includes(order.status))
                     .map((order: OrderProps) => order.orderId)
             );
             paidOrdersRef.current = new Set(
                 data.orders
-                    .filter((order: OrderProps) => order.paymentStatus === "paid")
+                    .filter((order: OrderProps) => ["paid", "PAID"].includes(order.paymentStatus))
                     .map((order: OrderProps) => order.orderId)
             );
 
@@ -225,7 +249,8 @@ function Page() {
                     const existingOrder = ordersRef.current[order.orderId];
 
                     if (existingOrder) {
-                        const justPaid = order.paymentStatus === "paid" && existingOrder.paymentStatus !== "paid"
+                        const isPaidNow = (p: string) => p.toLowerCase() === "paid";
+                        const justPaid = isPaidNow(order.paymentStatus) && !isPaidNow(existingOrder.paymentStatus)
 
                         setOrders(prev => ({
                             ...prev,
@@ -281,7 +306,7 @@ function Page() {
     }, [announceNewOrder, announcePayment, restaurantId]);
 
     const syncPushToken = useCallback(async () => {
-        if (!user || user.role !== "cooker") return;
+        if (!user || !canUseCooker(user)) return;
         if (shouldShowIosOnboarding) {
             setPushSyncState("idle");
             return;
@@ -317,9 +342,7 @@ function Page() {
     }, [shouldShowIosOnboarding, user]);
 
     const handleTextMode = () => {
-        const newValue = !isLargeTextMode
-        setIsLargeTextMode(newValue);
-        localStorage.setItem("cook_large_text", JSON.stringify(newValue))
+        setLargeText(!isLargeTextMode);
     }
 
     const handleDelayOrder = async (orderId: string) => {
@@ -340,39 +363,43 @@ function Page() {
             setOrders(prev => ({ ...prev, [orderId]: updatedOrder }))
             toastSuccess(response.data.message)
         } catch (error: unknown) {
-            if (typeof error === "object" && error !== null && "response" in error) {
-                const err = error as { response: { data?: { message?: string } } };
-                const backendMessage = err.response.data?.message;
+            setOrders(prev => ({
+                ...prev,
+                [orderId]: previousOrder,
+            }));
 
-                setOrders(prev => ({
-                    ...prev,
-                    [orderId]: previousOrder,
-                }));
-
-                toastDanger(backendMessage ?? "แจ้งออเดอร์ล่าช้าล้มเหลว");
-            }
+            toastError("แจ้งออเดอร์ล่าช้าไม่สำเร็จ กรุณาลองใหม่อีกครั้ง", error);
         }
     }
 
     const handleUpdateStatus = async (orderId: string, status: OrderStatus) => {
         const previousOrder = orders[orderId];
 
+        // Accepting no longer changes the status (the order waits for payment); it only stamps `acceptAt`.
+        const accepting = status === OrderStatus.cooking || status === OrderStatus.accepted;
         setOrders(prev => ({
             ...prev,
-            [orderId]: {
-                ...prev[orderId],
-                status,
-            }
+            [orderId]: accepting
+                ? { ...prev[orderId], acceptAt: new Date() }
+                : { ...prev[orderId], status },
         }));
 
         try {
             let endpoint = "";
 
             switch (status) {
-                case "accepted": endpoint = `/order/accept/${orderId}`; break;
-                case "rejected": endpoint = `/order/reject/${orderId}`; break;
-                case "cancelled": endpoint = `/order/cancel/${orderId}`; break;
-                case "completed": endpoint = `/order/complete/${orderId}`; break;
+                case OrderStatus.cooking:
+                case OrderStatus.accepted:
+                    endpoint = `/order/accept/${orderId}`; break;
+                case OrderStatus.rejected:
+                    endpoint = `/order/reject/${orderId}`; break;
+                case OrderStatus.cancelled:
+                    endpoint = `/order/cancel/${orderId}`; break;
+                case OrderStatus.ready:
+                    endpoint = `/order/ready/${orderId}`; break;
+                case OrderStatus.done:
+                case OrderStatus.completed:
+                    endpoint = `/order/done/${orderId}`; break;
                 default: throw new Error("Invalid status update");
             }
 
@@ -395,17 +422,12 @@ function Page() {
             toastSuccess(response.data.message);
 
         } catch (error: unknown) {
-            if (typeof error === "object" && error !== null && "response" in error) {
-                const err = error as { response: { data?: { message?: string } } };
-                const backendMessage = err.response.data?.message;
+            setOrders(prev => ({
+                ...prev,
+                [orderId]: previousOrder,
+            }));
 
-                setOrders(prev => ({
-                    ...prev,
-                    [orderId]: previousOrder,
-                }));
-
-                toastDanger(backendMessage ?? `อัพเดทสถานะออเดอร์เป็น${status}ล้มเหลว`);
-            }
+            toastError(`เปลี่ยนสถานะออเดอร์เป็น${status}ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง`, error);
         }
     };
 
@@ -439,13 +461,6 @@ function Page() {
             setInstallPromptEvent(null);
         }
     }, [installPromptEvent]);
-
-    useEffect(() => {
-        const saved = localStorage.getItem("cook_large_text");
-
-        if (saved) setIsLargeTextMode(JSON.parse(saved));
-
-    }, []);
 
     useEffect(() => {
         ordersRef.current = orders;
@@ -533,7 +548,7 @@ function Page() {
 
         if (!seen) {
             setShowAutoCancelModal(true)
-            localStorage.setItem("cook_large_text", "true")
+            setLargeText(true)
             localStorage.setItem("cook_order_rules_seen", "true")
         }
     }, [])
@@ -591,7 +606,7 @@ function Page() {
     }, [showNewOrderBanner]);
 
     useEffect(() => {
-        if (!user || user.role !== "cooker") return;
+        if (!user || !canUseCooker(user)) return;
         if (pushPermission !== "granted") return;
 
         void syncPushToken();
@@ -629,7 +644,7 @@ function Page() {
 
         const activeOrder = orders[activeBanner.orderId];
         if (!activeOrder) return;
-        if (activeOrder.status === OrderStatus.sent) return;
+        if (activeOrder.status === OrderStatus.sent || activeOrder.status === OrderStatus.receive) return;
 
         stopAlertLoop();
         setActiveBanner(current => current?.orderId === activeBanner.orderId ? null : current);
@@ -652,18 +667,23 @@ function Page() {
     }, [ordersArray]);
 
     const dailyDone = useMemo(() => {
-        return filterDailyOrders.filter((order) => (order.status === OrderStatus.completed && order.paymentStatus === "paid" && order.completedAt)).length;
+        return filterDailyOrders.filter((order) => (
+            [OrderStatus.completed, OrderStatus.done].includes(order.status) &&
+            ["paid", "PAID"].includes(order.paymentStatus)
+        )).length;
     }, [filterDailyOrders]);
 
     const dailyRejectAndCancelled = useMemo(() => {
         return filterDailyOrders.filter((order) => (
-            [OrderStatus.rejected, OrderStatus.cancelled].includes(order.status) && 
-            order.paymentStatus === "unpaid")).length;
+            [OrderStatus.rejected, OrderStatus.cancelled].includes(order.status)
+        )).length;
     }, [filterDailyOrders]);
 
     const dailySales = useMemo(() => {
-        return filterDailyOrders.filter((order) => order.paymentStatus === "paid" && order.status === OrderStatus.completed && order.completedAt)
-            .reduce((total, order) => total + Number(order.totalAmount), 0);
+        return filterDailyOrders.filter((order) =>
+            ["paid", "PAID"].includes(order.paymentStatus) &&
+            [OrderStatus.completed, OrderStatus.done].includes(order.status)
+        ).reduce((total, order) => total + Number(order.totalAmount), 0);
     }, [filterDailyOrders]);
 
     const handleNavbarChange = (status: NavState) => {
@@ -684,187 +704,195 @@ function Page() {
         return elapsedMins > 5 || beforeDeliverMins < 5;
     };
 
+    // Legacy values stay mapped so rows written before the schema migration still show up.
     const navToStatusMap: Record<NavState, OrderStatus[]> = useMemo(() => ({
-        sent: [OrderStatus.sent],
-        accepted: [OrderStatus.accepted],
-        completed: [OrderStatus.completed],
-        cancelled_group: [OrderStatus.cancelled, OrderStatus.rejected],
+        receive: [OrderStatus.receive, OrderStatus.sent],
+        cooking: [OrderStatus.cooking, OrderStatus.delay, OrderStatus.accepted],
+        ready: [OrderStatus.ready],
+        history: [OrderStatus.done, OrderStatus.completed, OrderStatus.rejected, OrderStatus.cancelled],
     }), []);
+
+    const [sortKey, setSortKey] = useState<SortKey>("pickup");
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem(SORT_KEY_STORAGE);
+            if (SORT_OPTIONS.some((o) => o.value === saved)) setSortKey(saved as SortKey);
+        } catch { /* storage blocked: keeps the default */ }
+    }, []);
+    const chooseSort = (value: SortKey) => {
+        setSortKey(value);
+        try { localStorage.setItem(SORT_KEY_STORAGE, value); } catch { /* ignore */ }
+    };
 
     const filterTodayOrderStatus: OrderProps[] = useMemo(() => {
         const allowedStatuses = navToStatusMap[navbarStatus];
         const filtered = filterDailyOrders.filter(order => allowedStatuses.includes(order.status));
+        const t = (iso: string) => new Date(iso).getTime();
 
-        if (navbarStatus === "completed" || navbarStatus === "cancelled_group") {
-            return filtered.sort((a, b) => new Date(b.orderAt).getTime() - new Date(a.orderAt).getTime());
-        }
+        // Default: nearest pickup time on top. Finished orders have no "next pickup", so they default to newest first.
+        const byPickup = navbarStatus === "history"
+            ? (a: OrderProps, b: OrderProps) => t(b.orderAt) - t(a.orderAt)
+            : (a: OrderProps, b: OrderProps) => t(pickupOf(a)) - t(pickupOf(b));
+        const compare = {
+            pickup: byPickup,
+            newest: (a: OrderProps, b: OrderProps) => t(b.orderAt) - t(a.orderAt),
+            oldest: (a: OrderProps, b: OrderProps) => t(a.orderAt) - t(b.orderAt),
+            amount: (a: OrderProps, b: OrderProps) => Number(b.totalAmount) - Number(a.totalAmount) || byPickup(a, b),
+        }[sortKey];
+        return filtered.sort(compare);
+    }, [navbarStatus, filterDailyOrders, navToStatusMap, sortKey]);
 
-        return filtered.sort((a, b) => new Date(a.deliverAt).getTime() - new Date(b.deliverAt).getTime());
-    }, [navbarStatus, filterDailyOrders, navToStatusMap]);
-
-    if (isLoading) return <LoadingPage />
+    if (isLoading) return <CookerBoardSkeleton />;
     if (!cooker) return null;
 
+    const lg = isLargeTextMode;
+    const tabCounts: Partial<Record<NavState, number>> = {};
+    (Object.keys(navToStatusMap) as NavState[]).forEach((k) => {
+        tabCounts[k] = filterDailyOrders.filter((o) => navToStatusMap[k].includes(o.status)).length;
+    });
+    const noticeCls = "flex flex-col gap-3 rounded-2xl px-5 py-4";
+
     return (
-        <div
-            className={`flex flex-col py-10 px-6 transition-all duration-200
-            ${isLargeTextMode ? "gap-y-14 text-lg" : "gap-y-10 "}`}
-        >
+        <CookerShell restaurantId={cooker.restaurantId} active="orders">
             <CookerHeader
                 restaurantId={cooker.restaurantId}
                 name={cooker.name}
-                openTime={cooker?.openTime}
-                closeTime={cooker?.closeTime}
+                openTime={cooker.openTime ?? todayHours(cooker.operatingHours)?.open ?? ""}
+                closeTime={cooker.closeTime ?? todayHours(cooker.operatingHours)?.close ?? ""}
+                isLargeTextMode={lg}
+                right={
+                    <button
+                        type="button"
+                        onClick={handleTextMode}
+                        aria-pressed={lg}
+                        className="h-12 shrink-0 rounded-xl border-[1.5px] border-line-soft bg-white px-3.5 text-sm font-semibold"
+                    >
+                        {lg ? "ตัวอักษรปกติ" : "ตัวอักษรใหญ่"}
+                    </button>
+                }
             />
 
-            <div className="flex flex-col justify-between">
-                <Button
-                    variant="secondary"
-                    size={isLargeTextMode ? "lg" : "md"}
-                    type="button"
-                    onClick={handleTextMode}
-                    className="px-4 py-2 rounded-lg bg-primary-light text-sm font-semibold "
-                >
-                    {isLargeTextMode ? "โหมดตัวอักษรปกติ" : "โหมดตัวอักษรใหญ่"}
-                </Button>
-
+            <div className={`flex flex-col gap-3 px-5 pt-4 ${lg ? "text-lg" : ""}`}>
                 {showInstallButton && (
-                    <Button
-                        type="button"
-                        variant="tertiary"
-                        size={isLargeTextMode ? "lg" : "md"}
-                        onClick={handleInstallApp}
-                        className="px-4 py-2"
-                    >
+                    <Button type="button" variant="tertiary" size={lg ? "lg" : "md"} onClick={handleInstallApp}>
                         ติดตั้งแอพลิเคชัน
                     </Button>
                 )}
-            </div>
 
-            {shouldBlockPermission && (
-                <section className="rounded-2xl border border-danger-main bg-danger-light px-5 py-4 text-danger-main">
-                    <h2 className={`${isLargeTextMode ? "text-2xl" : "text-xl"} font-bold`}>
-                        จำเป็นต้องเปิดการแจ้งเตือนเพื่อให้มีการแจ้งเตือนออเดอร์ใหม่ แม้ขณะเปิดแอปอื่น ปิดเบราว์เซอร์ หรือหน้าจอโทรศัพท์ล็อกอยู่
-                    </h2>
-                    
-                    <InstallGuideModal isIOS={isIosDevice()} isLargeTextMode={isLargeTextMode} />
+                {shouldBlockPermission && (
+                    <section className={`${noticeCls} border-2 border-danger-main bg-danger-light text-brand-dark`}>
+                        <h2 className={`${lg ? "text-2xl" : "text-xl"} font-bold`}>
+                            จำเป็นต้องเปิดการแจ้งเตือนเพื่อให้มีการแจ้งเตือนออเดอร์ใหม่ แม้ขณะเปิดแอปอื่น ปิดเบราว์เซอร์ หรือหน้าจอโทรศัพท์ล็อกอยู่
+                        </h2>
 
-                    <div className="mt-4 flex flex-wrap gap-2">
-                        <Button type="button" variant="danger" size={isLargeTextMode ? "lg" : "md"} onClick={handleNotificationEnable}>
-                            เปิดการแจ้งเตือน
-                        </Button>
-                        {pushErrorMessage && (
-                            <p className={`${isLargeTextMode ? "text-base" : "text-sm"} text-danger-main`}>{pushErrorMessage}</p>
-                        )}
-                        {pushDebugMessage && (
-                            <p className={`${isLargeTextMode ? "text-base" : "text-sm"} text-danger-main/80`}>{pushDebugMessage}</p>
-                        )}
-                    </div>
-                </section>
-            )}
+                        <InstallGuideModal isIOS={isIosDevice()} isLargeTextMode={lg} />
 
-            {!shouldBlockPermission && pushPermission !== "granted" && (
-                <section className="rounded-2xl border border-primary-main bg-primary-light px-5 py-4">
-                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                        <div>
-                            <h2 className={`${isLargeTextMode ? "text-2xl" : "text-xl"} font-bold text-primary-main`}>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <Button type="button" variant="danger" size={lg ? "lg" : "md"} onClick={handleNotificationEnable}>
                                 เปิดการแจ้งเตือน
-                            </h2>
-                            <p className={`${isLargeTextMode ? "text-lg" : "text-sm"} text-secondary`}>
+                            </Button>
+                            {pushErrorMessage && (
+                                <p className={`${lg ? "text-base" : "text-sm"} font-medium text-danger-main`}>{pushErrorMessage}</p>
+                            )}
+                            {pushDebugMessage && (
+                                <p className={`${lg ? "text-base" : "text-sm"} text-brand-muted`}>{pushDebugMessage}</p>
+                            )}
+                        </div>
+                    </section>
+                )}
+
+                {!shouldBlockPermission && pushPermission !== null && pushPermission !== "granted" && (
+                    <section className={`${noticeCls} bg-primary-light`}>
+                        <div>
+                            <h2 className={`${lg ? "text-2xl" : "text-xl"} font-bold text-primary-dark`}>เปิดการแจ้งเตือน</h2>
+                            <p className={`${lg ? "text-lg" : "text-sm"} mt-1 text-brand-muted`}>
                                 จำเป็นต้องเปิดการแจ้งเตือนเพื่อให้มีการแจ้งเตือนออเดอร์ใหม่ แม้ขณะเปิดแอปอื่น ปิดเบราว์เซอร์ หรือหน้าจอโทรศัพท์ล็อกอยู่
                             </p>
                         </div>
-
-                        <Button type="button" variant="primary" size={isLargeTextMode ? "lg" : "md"} onClick={handleNotificationEnable}>
+                        <Button type="button" variant="primary" size={lg ? "lg" : "md"} onClick={handleNotificationEnable}>
                             {pushSyncState === "error" ? "ลองเปิดการแจ้งเตือนใหม่" : "เปิดการแจ้งเตือน"}
                         </Button>
-                    </div>
-                </section>
-            )}
+                    </section>
+                )}
 
-            {pushSyncState === "error" && pushErrorMessage && !shouldBlockPermission && (
-                <section className="rounded-2xl border border-danger-main bg-danger-light px-5 py-4">
-                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                        <div className="space-y-1">
-                            <p className={`${isLargeTextMode ? "text-lg" : "text-base"} font-semibold text-danger-main`}>
-                                พบข้อผิดพลาด: {pushErrorMessage}
-                            </p>
-                            {pushDebugMessage && (
-                                <p className={`${isLargeTextMode ? "text-base" : "text-sm"} text-danger-main/80`}>
-                                    {pushDebugMessage}
-                                </p>
-                            )}
-                        </div>
-
-                        <Button
-                            type="button"
-                            variant="danger"
-                            size={isLargeTextMode ? "lg" : "md"}
-                            onClick={syncPushToken}
-                        >
+                {pushSyncState === "error" && pushErrorMessage && !shouldBlockPermission && (
+                    <section className={`${noticeCls} border-2 border-danger-main bg-danger-light`}>
+                        <p className={`${lg ? "text-lg" : "text-base"} font-semibold`}>พบข้อผิดพลาด: {pushErrorMessage}</p>
+                        {pushDebugMessage && (
+                            <p className={`${lg ? "text-base" : "text-sm"} text-brand-muted`}>{pushDebugMessage}</p>
+                        )}
+                        <Button type="button" variant="danger" size={lg ? "lg" : "md"} onClick={syncPushToken}>
                             ลองอีกครั้ง
                         </Button>
-                    </div>
-                </section>
-            )}
+                    </section>
+                )}
+            </div>
 
             <OrderNavBar
                 status={navbarStatus}
-                isLargeTextMode={isLargeTextMode}
+                isLargeTextMode={lg}
+                counts={tabCounts}
                 onStatusUpdate={handleNavbarChange}
             />
 
-            {showRuleBanner && (
-                <WarningBanner
-                    isLargeTextMode={isLargeTextMode}
-                    onClose={handleCloseBanner}
-                />
-            )}
+            <div className="flex flex-col gap-4 px-5 pb-5 pt-3">
+                {showRuleBanner && navbarStatus === "receive" && (
+                    <WarningBanner isLargeTextMode={lg} onClose={handleCloseBanner} />
+                )}
 
-            {navbarStatus === OrderStatus.completed ? (
-                <section className="flex flex-col gap-y-6">
-                    <h1 className={`${isLargeTextMode ? "text-3xl" : "text-2xl"} font-bold text-primary`}>สรุปรายวัน</h1>
-                    <div className="flex justify-between items-center">
-                        <h2 className={`${isLargeTextMode ? "text-2xl" : "text-xl"} font-bold text-primary`}>ยอดขายรวม: {dailySales.toFixed(2)}</h2>
+                {navbarStatus === "ready" && (
+                    <p className={`${lg ? "text-xl" : "text-[17px]"} leading-normal text-slate`}>
+                        อาหารเสร็จแล้ว รอนักเรียนมารับ กด <b>“นักเรียนรับแล้ว”</b> เมื่อส่งอาหารให้
+                    </p>
+                )}
 
-                        <p className={`${isLargeTextMode ? "text-2xl" : "text-xl"} text-secondary`}>ออเดอร์ที่ทำเสร็จ: {dailyDone}</p>
-                    </div>
-                </section>
-            ) : ("")}
+                {navbarStatus === "history" && (
+                    <section className="flex flex-col gap-3 rounded-[20px] border border-line-soft bg-white p-5">
+                        <h2 className={`${lg ? "text-2xl" : "text-xl"} font-bold`}>สรุปรายวัน</h2>
+                        <div className="flex items-baseline justify-between gap-3">
+                            <span className={`${lg ? "text-xl" : "text-lg"} text-brand-muted`}>ออเดอร์ที่ทำเสร็จ {dailyDone}</span>
+                            <span className={`${lg ? "text-[32px]" : "text-[26px]"} font-bold`}>{dailySales.toLocaleString("th-TH")} บาท</span>
+                        </div>
+                        <p className={`${lg ? "text-xl" : "text-lg"} text-brand-muted`}>ออเดอร์ที่ถูกยกเลิก/ปฏิเสธ: {dailyRejectAndCancelled}</p>
+                    </section>
+                )}
 
-            {navbarStatus === "cancelled_group" ? (
-                <section className="flex flex-col gap-y-6">
-                    <h1 className={`${isLargeTextMode ? "text-3xl" : "text-2xl"} font-bold text-primary`}>สรุปรายวัน</h1>
-                    <div className="flex justify-between items-center">
-                        <p className={`${isLargeTextMode ? "text-2xl" : "text-xl"} text-secondary`}>ออเดอร์ที่ถูกยกเลิก/ปฏิเสธ: {dailyRejectAndCancelled}</p>
-                    </div>
-                </section>
-            ) : ("")}
+                <label className="flex flex-col gap-1.5">
+                    <span className={`${lg ? "text-xl" : "text-lg"} font-semibold`}>เรียงออเดอร์ตาม</span>
+                    <select value={sortKey} onChange={(e) => chooseSort(e.target.value as SortKey)}
+                        className={`${lg ? "h-16 text-xl" : "h-14 text-lg"} w-full rounded-2xl border-[1.5px] border-line bg-white px-4 font-semibold outline-none focus:border-primary-main`}>
+                        {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                </label>
 
-            <main>
-                {filterTodayOrderStatus.map((order) => (
-                    <Order
-                        key={order.orderId}
-                        orderId={order.orderId}
-                        totalAmount={order.totalAmount}
-                        isDelay={order.isDelay}
-                        status={order.status}
-                        orderAt={`${getTimeFormat(order.orderAt)} ${getDateFormat(new Date(order.orderAt))}`}
-                        orderCreatedAt={order.orderAt}
-                        deliverAt={order.deliverAt}
-                        paymentStatus={order.paymentStatus}
-                        orderMenus={order.orderMenus}
-                        details={order.details}
-                        userTel={order.userTel}
-                        isLargeTextMode={isLargeTextMode}
-                        isDelayDisabled={isDelayDisabled(new Date(order.acceptAt ?? order.orderAt), new Date(order.deliverAt))}
-                        isRejectedDisabled={isRejectedDisabled(new Date(order.orderAt), new Date(order.deliverAt))}
-                        className="mb-4"
-                        onDelayUpdate={handleDelayOrder}
-                        onStatusUpdate={handleUpdateStatus}
-                    />
-                ))}
-            </main>
+                <main className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,19rem),1fr))] items-start gap-4">
+                    {filterTodayOrderStatus.map((order) => (
+                        <Order
+                            key={order.orderId}
+                            orderId={order.orderId}
+                            totalAmount={order.totalAmount}
+                            isDelay={order.isDelay}
+                            status={order.status}
+                            orderAt={`${getTimeFormat(order.orderAt)} ${getDateFormat(new Date(order.orderAt))}`}
+                            orderCreatedAt={order.orderAt}
+                            pickupAt={pickupOf(order)}
+                            paymentStatus={order.paymentStatus}
+                            acceptAt={order.acceptAt}
+                            orderMenus={order.orderMenus}
+                            details={order.details}
+                            userTel={order.userTel}
+                            isLargeTextMode={lg}
+                            isDelayDisabled={isDelayDisabled(new Date(order.acceptAt ?? order.orderAt), new Date(pickupOf(order)))}
+                            isRejectedDisabled={isRejectedDisabled(new Date(order.orderAt), new Date(pickupOf(order)))}
+                            onDelayUpdate={handleDelayOrder}
+                            onStatusUpdate={handleUpdateStatus}
+                        />
+                    ))}
+                    {filterTodayOrderStatus.length === 0 && (
+                        <p className={`col-span-full py-10 text-center text-brand-muted ${lg ? "text-xl" : "text-lg"}`}>ยังไม่มีออเดอร์ในหมวดนี้</p>
+                    )}
+                </main>
+            </div>
 
             <Modal
                 isOpen={showAutoCancelModal}
@@ -877,7 +905,7 @@ function Page() {
                     กรุณาตรวจสอบออเดอร์และดำเนินการให้ทันเวลา`}
                 confirmText="รับทราบ"
             />
-        </div>
+        </CookerShell>
     );
 }
 

@@ -14,7 +14,7 @@ export function useToggle<T extends { value: string }>(
             const isSelected = prev[index] === 'primary';
 
             if (!isSelected && selectedCount >= maxSelected) {
-                toastDanger(`สามารถเลือกได้สูงสุด ${maxSelected}รายการเท่านั้น`)
+                toastDanger(`เลือกได้สูงสุด ${maxSelected} รายการเท่านั้น`, "หากต้องการเลือกอันใหม่ กรุณายกเลิกอันที่เลือกไว้ก่อน")
                 return prev;
             }
 

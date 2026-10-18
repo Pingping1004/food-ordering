@@ -15,6 +15,9 @@
 
 # next.js
 /.next/
+/.next-lh/
+.env.lh
+/lh-reports/
 /out/
 
 # production

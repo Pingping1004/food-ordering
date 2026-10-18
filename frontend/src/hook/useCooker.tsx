@@ -1,20 +1,38 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import * as svc from '@/lib/services/cooker';
+import { toastError, toastSuccess } from '@/components/ui/Toast';
 import type { Restaurant } from '@/app/data/type';
+import type { MembershipStatus, OperatingHour, Status as SchemaStatus } from '@/lib/schema';
 
 export interface Cooker extends Restaurant {
     email: string;
-    adminName: string;
-    adminSurname: string;
-    adminTel: string;
-    adminEmail: string;
     paymentQr: string;
-    openTime: string;
-    closeTime: string;
-    avgCookingTime: number;
     isTemporarilyClosed: boolean;
     isAutoAcceptedOrder: boolean;
-    isApproved: boolean;
+    /** schema.prisma `Restaurant.status` (replaces `isApproved`): INACTIVE = waiting for the school to approve. */
+    status?: SchemaStatus;
+    canteenId?: string;
+    location?: string | null;
+    avgCookingTimeMins?: number | null;
+    maxActiveOrders?: number | null;
+    operatingHours?: OperatingHour[];
+    contactName?: string;
+    contactSurname?: string | null;
+    contactTel?: string;
+    contactEmail?: string;
+    bankType?: string | null;
+    accountName?: string;
+    accountNumber?: string;
+    /** Pre-migration fields – still returned until the backend finishes the schema move. */
+    openTime?: string;
+    closeTime?: string;
+    avgCookingTime?: number;
+    isApproved?: boolean;
+    adminName?: string;
+    adminSurname?: string;
+    adminTel?: string;
+    adminEmail?: string;
 }
 
 function cookerQueryKey(restaurantId: string) {
@@ -106,5 +124,48 @@ export function useToggleRestaurantAutoAccept(restaurantId: string) {
       onSettled: () => {
         queryClient.invalidateQueries({ queryKey });
       },
+    });
+}
+
+/* ───────── shop members: owner approves cooks ───────── */
+
+const staffKey = (restaurantId: string) => ['staff', restaurantId] as const;
+
+export const useStaff = (restaurantId: string, status?: MembershipStatus) =>
+    useQuery({ queryKey: [...staffKey(restaurantId), status ?? 'all'], queryFn: () => svc.listStaff(restaurantId, status), enabled: !!restaurantId });
+
+function useStaffMutation(restaurantId: string, fn: (id: string) => Promise<void>, ok: string) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: fn,
+        onSuccess: () => { toastSuccess(ok); queryClient.invalidateQueries({ queryKey: staffKey(restaurantId) }); },
+        onError: (err) => toastError('ทำรายการไม่สำเร็จ', err),
+    });
+}
+
+export const useApproveStaff = (restaurantId: string) => useStaffMutation(restaurantId, (id) => svc.approveStaff(restaurantId, id), 'อนุมัติเข้าร้านแล้ว');
+export const useRejectStaff = (restaurantId: string) => useStaffMutation(restaurantId, (id) => svc.rejectStaff(restaurantId, id), 'ไม่อนุมัติแล้ว');
+export const useRemoveStaff = (restaurantId: string) => useStaffMutation(restaurantId, (id) => svc.removeStaff(restaurantId, id), 'นำออกจากร้านแล้ว');
+
+export type RestaurantSettingsPatch = Partial<{
+    /** `null` clears the limit ("ไม่จำกัด"). */
+    maxActiveOrders: number | null;
+    avgCookingTimeMins: number;
+    bankAccount: string;
+    accountName: string;
+    accountNumber: string;
+}>;
+
+/** Owner-only PATCH /restaurant/:id for the settings rows (kitchen limits and payout account). */
+export function useUpdateRestaurantSettings(restaurantId: string) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (patch: RestaurantSettingsPatch) => {
+            await api.patch(`restaurant/${restaurantId}`, patch);
+        },
+        onSuccess: () => toastSuccess('บันทึกแล้ว'),
+        onError: (err) => toastError('บันทึกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง', err),
+        onSettled: () => queryClient.invalidateQueries({ queryKey: cookerQueryKey(restaurantId) }),
     });
 }

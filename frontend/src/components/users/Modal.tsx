@@ -45,7 +45,7 @@ export default function Modal({
       />
 
       {/* Modal */}
-      <div className="relative bg-white w-[90%] max-w-md rounded-xl shadow-xl p-8 z-[10000]">
+      <div className="relative bg-white w-[90%] max-w-md max-h-[90dvh] overflow-y-auto rounded-xl shadow-xl p-5 sm:p-8 z-[10000]">
 
         <button
           onClick={onClose}

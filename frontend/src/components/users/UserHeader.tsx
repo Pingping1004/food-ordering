@@ -1,128 +1,58 @@
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "../Button";
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useAuth } from "@/auth/auth.hooks";
-import { api } from "@/lib/api";
-import axios from "axios";
-import { toastDanger, toastSuccess } from "@/components/ui/Toast";
+import { Icon } from "@/components/ui/kit";
+import { readSelection, type StudentSelection } from "@/lib/services/student";
 
-export default function UserHeader() {
-    const router = useRouter();
-    const { user, logout } = useAuth();
+const greeting = () => {
+    const h = new Date().getHours();
+    return h < 11 ? "สวัสดีตอนเช้า" : h < 13 ? "สวัสดีตอนเที่ยง" : h < 17 ? "สวัสดีตอนบ่าย" : "สวัสดีตอนเย็น";
+};
 
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [localPending, setLocalPending] = useState(false);
-
-    const pendingRequest = user?.roleRequest?.status === 'pending';
+/**
+ * Student home header (design: "เลือกร้าน"): canteen chip → school picker, avatar → account, search slot below.
+ * Role switching / "become a restaurant" moved to the account page so this stays a one-purpose screen.
+ */
+export default function UserHeader({ children }: Readonly<{ children?: React.ReactNode }>) {
+    const { user } = useAuth();
+    const [sel, setSel] = useState<StudentSelection | null>(null);
+    const [hello, setHello] = useState("สวัสดี");
 
     useEffect(() => {
-        setLocalPending(pendingRequest);
-    }, [pendingRequest]);
+        setSel(readSelection());
+        setHello(greeting());
+    }, []);
 
-    const primaryAction = useMemo(() => {
-        if (!user) {
-            return {
-                label: 'เข้าสู่ระบบ',
-                disabled: false,
-                onClick: () => router.push('/login'),
-            };
-        }
-
-        if (user.role === 'admin') {
-            return {
-                label: 'จัดการคำขอร้านอาหาร',
-                disabled: false,
-                onClick: () => router.push('/admin/role-requests'),
-            };
-        }
-
-        if (user.role === 'cooker') {
-            const restaurantId = user.restaurant?.restaurantId;
-            return {
-                label: restaurantId ? 'ร้านของฉัน' : 'ลงทะเบียนร้านอาหาร',
-                disabled: false,
-                onClick: () => {
-                    if (restaurantId) router.push(`/cooker/${restaurantId}`);
-                    else router.push(`/cooker/restaurant-register/${user.userId}`);
-                },
-            };
-        }
-
-        // Normal user
-        return {
-            label: localPending ? 'รอการอนุมัติจากแอดมิน' : 'ขอเป็นร้านอาหาร',
-            disabled: localPending,
-            onClick: async () => {
-                if (localPending || isSubmitting) return;
-                setIsSubmitting(true);
-                try {
-                    await api.post('/user/request-role', { role: 'cooker' });
-                    setLocalPending(true);
-                    toastSuccess('ส่งคำขอเป็นร้านอาหารแล้ว กรุณารอการอนุมัติจากแอดมิน');
-                } catch (err) {
-                    if (axios.isAxiosError(err)) {
-                        const backendMessage = err.response?.data?.message;
-                        if (typeof backendMessage === 'string') {
-                            // Backend already says the request is pending
-                            toastDanger(backendMessage);
-                            if (backendMessage.includes('already sent')) {
-                                setLocalPending(true);
-                            }
-                        } else {
-                            toastDanger('ส่งคำขอไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
-                        }
-                    } else {
-                        toastDanger('ส่งคำขอไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
-                    }
-                } finally {
-                    setIsSubmitting(false);
-                }
-            },
-        };
-    }, [user, router, localPending, isSubmitting]);
+    const initial = (user?.name ?? user?.email ?? "").trim().charAt(0).toUpperCase();
 
     return (
-        <header className="flex justify-between items-center">
-            <h1 className="font-noto-thai font-bold text-xl">วันนี้กินอะไรดี?</h1>
-
-            {user ? (
-                <div className="flex justify-between gap-x-2">
-                    <Button
-                        size="md"
-                        type="button"
-                        variant="tertiary"
-                        onClick={primaryAction.onClick}
-                        disabled={primaryAction.disabled || isSubmitting}
-                    >
-                        {primaryAction.label}
-                    </Button>
-                    <Button
-                        type="button"
-                        size="sm"
-                        variant="secondaryDanger"
-                        onClick={() => logout()}
-                    >
-                        ล็อกเอาท์
-                    </Button>
-                </div>
-            ) : (
-                <div className="flex gap-x-2">
-                    <Button
-                    type="button"
-                    onClick={primaryAction.onClick}
+        <header className="flex flex-col gap-4 rounded-b-[28px] bg-primary-main px-5 pb-6 pt-5 text-white">
+            <div className="flex items-center justify-between gap-3">
+                <Link
+                    href="/user/onboarding/school?from=account"
+                    className="inline-flex h-11 min-w-0 items-center gap-2 rounded-full bg-white/20 px-3.5 text-sm font-semibold hover:bg-white/30"
                 >
-                    {primaryAction.label}
-                </Button>
+                    <Icon name="pin" size={18} />
+                    <span className="truncate">{sel?.canteenName ?? "เลือกโรงอาหาร"}</span>
+                    <Icon name="chevronDown" size={16} />
+                </Link>
 
-                <Button
-                    type="button"
-                    variant="secondaryDanger"
-                    onClick={() => window.open("https://forms.gle/mmPg4uSpEsapLcPHA")}
-                >
-                    รายงานปัญหา
-                </Button>
-                </div>
-            )}
-        </header >
+                {user ? (
+                    <Link href="/user/account" aria-label="บัญชีของฉัน" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-base font-bold text-primary-dark">
+                        {initial || <Icon name="user" size={20} />}
+                    </Link>
+                ) : (
+                    <Link href="/login" className="flex h-11 shrink-0 items-center rounded-full bg-white px-4 text-sm font-bold text-primary-dark">เข้าสู่ระบบ</Link>
+                )}
+            </div>
+
+            <div className="flex flex-col gap-1">
+                <span className="text-[15px] opacity-90">{hello}</span>
+                <h1 className="font-app text-[28px] font-bold leading-tight">วันนี้กินอะไรดี?</h1>
+            </div>
+            {children}
+        </header>
     );
 }

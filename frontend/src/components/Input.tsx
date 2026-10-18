@@ -10,13 +10,13 @@ interface Option {
 }
 
 const inputVariants = cva(
-    "flex items-center w-full px-0 py-2 text-lg font-noto-thai outline-none border-b-2 placeholder:text-gray-400",
+    "flex items-center w-full h-[54px] px-4 text-[17px] font-app bg-white rounded-[14px] outline-none border-[1.5px] placeholder:text-brand-muted/70 focus:border-primary-main focus:ring-2 focus:ring-primary-main/20",
     {
         variants: {
             variant: {
-                primary: "border-color text-gray-900",
-                error: "border-danger-main text-danger-main",
-                success: "border-success-main text-green-900",
+                primary: "border-line text-brand-dark",
+                error: "border-danger-main border-2 text-brand-dark",
+                success: "border-success-main text-brand-dark",
             },
         },
         defaultVariants: {
@@ -83,14 +83,14 @@ export const Input = forwardRef<HTMLInputElement | HTMLSelectElement, InputProps
             inputVariant === "error"
                 ? "text-danger-main"
                 : inputVariant === "success"
-                    ? "text-success"
-                    : "text-secondary";
+                    ? "text-success-main"
+                    : "text-brand-dark";
 
         if (type === "select") {
             return (
                 <div className="flex flex-col w-full">
                     {label && <label htmlFor={name}
-                        className={clsx("mb-2 text-sm text-start font-noto-thai", labelColorClass)}>{label}</label>}
+                        className={clsx("mb-2 text-[15px] font-semibold text-start font-app", labelColorClass)}>{label}</label>}
                     <select
                         id={name}
                         name={name}
@@ -117,7 +117,7 @@ export const Input = forwardRef<HTMLInputElement | HTMLSelectElement, InputProps
                             );
                         })}
                     </select>
-                    {error && <span className="text-sm text-danger-main">{error}</span>}
+                    {error && <span className="mt-1.5 text-sm font-medium text-danger-main" role="alert">{error}</span>}
                 </div>
             );
         }
@@ -127,7 +127,7 @@ export const Input = forwardRef<HTMLInputElement | HTMLSelectElement, InputProps
             return (
                 <div className="flex flex-col w-full">
                     {label && <label htmlFor={name}
-                        className={clsx("mb-2 text-sm text-start font-noto-thai", labelColorClass)}>{label}</label>}
+                        className={clsx("mb-2 text-[15px] font-semibold text-start font-app", labelColorClass)}>{label}</label>}
                     <input
                         id={name}
                         type="file"
@@ -139,13 +139,13 @@ export const Input = forwardRef<HTMLInputElement | HTMLSelectElement, InputProps
                     />
                     <label
                         htmlFor={name}
-                        className="flex items-center justify-center gap-2 cursor-pointer rounded-lg border border-dashed border-gray-400 py-4 px-6 bg-gray-50 hover:bg-gray-100 transition"
+                        className="flex items-center justify-center gap-2 cursor-pointer rounded-[14px] border-[1.5px] border-dashed border-line min-h-14 py-4 px-6 bg-white hover:bg-ground transition"
                     >
                         <UploadIcon className="w-6 h-6 text-gray-500" />
                         <span className="text-gray-700">{placeholder}</span>
                     </label>
                     {/* You can add a custom styled label here */}
-                    {error && <span className="text-sm text-danger-main">{error}</span>}
+                    {error && <span className="mt-1.5 text-sm font-medium text-danger-main" role="alert">{error}</span>}
                 </div>
             );
         }
@@ -153,7 +153,7 @@ export const Input = forwardRef<HTMLInputElement | HTMLSelectElement, InputProps
         return (
             <div className="flex flex-col w-full">
                 {label && <label htmlFor={name}
-                    className={clsx("mb-2 text-sm text-start font-noto-thai", labelColorClass)}>{label}</label>}
+                    className={clsx("mb-2 text-[15px] font-semibold text-start font-app", labelColorClass)}>{label}</label>}
                 <input
                     id={name}
                     name={name}
@@ -163,7 +163,7 @@ export const Input = forwardRef<HTMLInputElement | HTMLSelectElement, InputProps
                     className={clsx(inputVariants({ variant: inputVariant }), className)}
                     {...props} // Spread all props from react-hook-form
                 />
-                {error && <span className="text-sm text-danger-main">{error}</span>}
+                {error && <span className="mt-1.5 text-sm font-medium text-danger-main" role="alert">{error}</span>}
             </div>
         );
     }

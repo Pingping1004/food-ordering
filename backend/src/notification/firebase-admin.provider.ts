@@ -8,10 +8,12 @@ export const FIREBASE_ADMIN_MESSAGING = 'FIREBASE_ADMIN_MESSAGING';
 function buildFirebaseApp(configService: ConfigService): App | null {
   const projectId = configService.get<string>('FIREBASE_PROJECT_ID');
   const clientEmail = configService.get<string>('FIREBASE_CLIENT_EMAIL');
-  const privateKey = configService.get<string>('FIREBASE_PRIVATE_KEY')
+  const privateKey = configService
+    .get<string>('FIREBASE_PRIVATE_KEY')
     ?.replace(/\\n/g, '\n');
 
-  if (!projectId || !clientEmail || !privateKey) throw new Error('Firebase Admin config missing');
+  if (!projectId || !clientEmail || !privateKey)
+    throw new Error('Firebase Admin config missing');
 
   const existing = getApps().find((app) => app.name === 'cms-noti-push');
   if (existing) {

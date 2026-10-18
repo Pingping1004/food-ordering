@@ -1,15 +1,5 @@
-import { AuthGuard } from "@/auth/auth.guard";
-import { UserRole } from "@/auth/auth.types";
+import { CookerGate } from "@/components/cookers/CookerGate";
 
-export default function CookerLayout({
-    children,
-}: {
-    children: React.ReactNode
-}) {
-
-    return (
-        <AuthGuard role={UserRole.cooker}>
-            {children}
-        </AuthGuard>
-    )
+export default function CookerLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+    return <CookerGate>{children}</CookerGate>;
 }

@@ -10,7 +10,6 @@ import { HttpExceptionFilter } from './libs/http-exception.filter';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import * as express from 'express';
 import { Request, Response } from 'express';
-import cookieParser from 'cookie-parser';
 import * as dotenv from 'dotenv';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -18,12 +17,12 @@ import * as fs from 'fs';
 import * as bodyParser from 'body-parser';
 import {
   globalRateLimit,
-  authRateLimit,
   paymentRateLimit,
   orderRateLimit,
-  orderFetchingLimit
+  orderFetchingLimit,
+  schoolCodeRateLimit,
+  joinSchoolRateLimit,
 } from './rateLimiting.middleware';
-import './auth/jobs/tokenClean.job';
 
 dotenv.config();
 declare global {
@@ -36,25 +35,25 @@ declare global {
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    httpsOptions: process.env.NODE_ENV === 'development' ? {
-      key: fs.readFileSync('./cert/localhost-key.pem'),
-      cert: fs.readFileSync('./cert/localhost.pem'),
-    } : undefined,
-    bodyParser: false
+    httpsOptions:
+      process.env.NODE_ENV === 'development'
+        ? {
+            key: fs.readFileSync('./cert/localhost-key.pem'),
+            cert: fs.readFileSync('./cert/localhost.pem'),
+          }
+        : undefined,
+    bodyParser: false,
   });
 
   app.setGlobalPrefix('api');
   const logger = new Logger('Bootstrap');
 
-  app.use(
-    '/api/payment/webhook',
-    bodyParser.raw({ type: 'application/json' })
-  );
+  app.use('/api/payment/webhook', bodyParser.raw({ type: 'application/json' }));
 
   app.use(
     express.json({
       limit: '10mb',
-    })
+    }),
   );
 
   const allowedOrigins = [
@@ -67,6 +66,8 @@ async function bootstrap() {
     process.env.FRONTEND_BASE_URL,
     process.env.NEXT_PUBLIC_BACKEND_API_URL,
     process.env.WEBHOOK_ENDPOINT,
+    // Extra origins, comma-separated (e.g. a second local frontend port for perf runs). Leave unset in production.
+    ...(process.env.CORS_EXTRA_ORIGINS?.split(',') ?? []).map((o) => o.trim()),
   ].map((origin) => origin?.replace(/\/$/, ''));
 
   app.enableCors({
@@ -81,63 +82,37 @@ async function bootstrap() {
         callback(new Error('Not allowed by CORS'));
       }
     },
-    credentials: true,
+    // Auth is a Bearer token (Supabase) – no cookies cross origins any more.
+    credentials: false,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: [
       'Content-Type',
       'Accept',
-      'X-CSRF-Token',
-      'x-csrf-token',
-      'XSRF-TOKEN',
-      'X-Csrf-Token',
       'x-order-secret',
-      'x-xsrf-token',
       'Authorization',
       'sentry-trace',
       'baggage',
-      'skipauth',
-      'skipAuth',
-      'stripe-signature'
+      'stripe-signature',
     ],
-    exposedHeaders: ['Set-Cookie'],
   });
 
   logger.log('Webhook endpoint: ', process.env.WEBHOOK_ENDPOINT);
 
-  app.use(cookieParser());
   app.set('trust proxy', 1);
   app.enableShutdownHooks();
   app.use(helmet());
   app.use(compression());
-  
+
   app.use(globalRateLimit);
-  app.use('/api/auth', authRateLimit);
   app.use('/api/payment', paymentRateLimit);
   app.use('/api/order/create', orderRateLimit);
-  app.use('/api/order/new', orderFetchingLimit)
+  app.use('/api/order/new', orderFetchingLimit);
+  app.use('/api/me/school', schoolCodeRateLimit);
+  app.use('/api/me/redeem-code', joinSchoolRateLimit);
 
   app.getHttpAdapter().get('/health', (req: Request, res: Response) => {
     res.send('OK');
   });
-
-  function assertEnvVar(name: string): string {
-    const value = process.env[name];
-    if (!value) {
-      throw new Error(`Environment variable ${name} is missing.`);
-    }
-    return value;
-  }
-
-  const APP_GLOBAL_SECRET = assertEnvVar('APP_GLOBAL_SECRET');
-  if (!APP_GLOBAL_SECRET) {
-    const errorMessage = '❌ CRITICAL: APP_GLOBAL_SECRET is missing. Cannot start the server.';
-    logger.error(errorMessage);
-
-    setTimeout(() => {
-      process.exit(1);
-    }, 1000);
-  }
-  app.set('secret', APP_GLOBAL_SECRET);
 
   app.useGlobalPipes(
     new ValidationPipe({

@@ -2,24 +2,24 @@ import { cva, VariantProps } from "class-variance-authority";
 import clsx from "clsx";
 import { IconNumber } from "./IconNumber";
 
-const button = cva("font-noto-thai justify-center text-sm", {
+const button = cva("font-app justify-center text-base font-semibold transition-colors active:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-main", {
     variants: {
         variant: {
-            primary: "bg-primary-main text-white border-1",
-            secondary: "bg-primary-light text-primary-main",
-            tertiary: "border-1 border-primary-main text-primary-main text-sm",
+            primary: "bg-primary-main text-white hover:bg-primary-dark",
+            secondary: "bg-primary-light text-primary-dark",
+            tertiary: "border-[1.5px] border-primary-main bg-white text-primary-dark",
             danger: "bg-danger-main text-white",
             success: "bg-success-main text-white",
             secondaryDanger: "bg-danger-light text-danger-main",
             secondarySuccess: "bg-success-light text-success-main",
         },
         size: {
-            sm: "px-3 py-2 rounded-2xl text-xs font-noto-thai",
-            md: "px-5 py-2.5 rounded-2xl",
-            lg: "px-6 py-3 rounded-2xl",
-            full: "w-full py-3 rounded-2xl font-noto-thai text-bold!",
-            half: "w-1/2 py-2.5 rounded-2xl",
-            select: "rounded-2xl p-3 border-1 border-[#006CFE]"
+            sm: "min-h-11 px-4 py-2 rounded-xl text-sm font-app",
+            md: "min-h-12 px-6 py-2.5 rounded-xl",
+            lg: "min-h-14 px-6 py-3 rounded-2xl text-lg font-bold",
+            full: "w-full min-h-14 py-3 rounded-2xl font-app text-[17px] font-bold",
+            half: "w-1/2 min-h-12 py-2.5 rounded-xl",
+            select: "min-h-12 rounded-xl p-3 border-[1.5px] border-primary-main"
         },
         disabled: {
             true: "opacity-50 cursor-not-allowed pointer-events-none",

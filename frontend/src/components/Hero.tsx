@@ -60,7 +60,7 @@ export default function Hero() {
                         </div>
                     </div>
 
-                    {/* Right: Phone mockup */}
+                    {/* Right: Phone preview */}
                     <div className="relative flex justify-center lg:justify-end">
                         <div className="relative animate-float">
                             {/* Phone */}

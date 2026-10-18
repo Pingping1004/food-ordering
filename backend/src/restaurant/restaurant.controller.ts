@@ -1,6 +1,7 @@
 import {
   Controller,
   Post,
+  Put,
   Delete,
   Get,
   Patch,
@@ -9,52 +10,69 @@ import {
   UseInterceptors,
   UploadedFile,
   Req,
-  UseGuards,
   Logger,
   InternalServerErrorException,
   UploadedFiles,
   BadRequestException,
+  HttpException,
   Query,
-  ParseIntPipe,
 } from '@nestjs/common';
-import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
-import { imageFileFilter } from '../utils/file-upload.utils'
+import {
+  FileFieldsInterceptor,
+  FileInterceptor,
+} from '@nestjs/platform-express';
+import { imageFileFilter } from '../utils/file-upload.utils';
 
 import { RestaurantService } from './restaurant.service';
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
 import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
-import { RolesGuard } from 'src/guards/roles.guard';
-import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
-import { Roles } from 'src/decorators/role.decorator';
-import { Role } from '@prisma/client';
-import { CsrfGuard } from 'src/guards/csrf.guard';
-import { Public } from 'src/decorators/public.decorator';
+import { MembershipStatus, RestaurantRole } from '@prisma/client';
+import { AccessService, RestaurantScope } from '../access';
+import { InviteCodeService } from '../invite/invite-code.service';
+import { CreateStaffCodeDto } from '../invite/dto/invite.dto';
+import { MembershipQueryDto } from '../school/dto/school.dto';
 
-@UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
-@Roles([Role.user, Role.admin, Role.cooker])
+const OWNER_ONLY = { param: 'restaurantId', roles: [RestaurantRole.OWNER] };
+/** Day-to-day switches (close the shop, auto-accept) are open to cooks as well. */
+const OWNER_OR_STAFF = {
+  param: 'restaurantId',
+  roles: [RestaurantRole.OWNER, RestaurantRole.STAFF],
+};
+const OWNER_OR_ADMIN = {
+  param: 'restaurantId',
+  roles: [RestaurantRole.OWNER, RestaurantRole.ADMIN],
+};
+
 @Controller('restaurant')
 export class RestaurantController {
-  constructor(private readonly restaurantService: RestaurantService) { }
+  constructor(
+    private readonly restaurantService: RestaurantService,
+    private readonly access: AccessService,
+    private readonly inviteCodes: InviteCodeService,
+  ) {}
 
   private readonly logger = new Logger('RestaurantController');
 
   @Post()
-  @UseInterceptors(FileFieldsInterceptor([
-    { name: 'restaurantImg', maxCount: 1 },
-    { name: 'paymentQr', maxCount: 1 },
-  ]))
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'restaurantImg', maxCount: 1 },
+      { name: 'paymentQr', maxCount: 1 },
+    ]),
+  )
   async createRestaurant(
     @Req() req: any,
     @Body() createRestaurantDto: CreateRestaurantDto,
-    @UploadedFiles() files?: {
-      paymentQr?: Express.Multer.File[],
-      restaurantImg?: Express.Multer.File[],
+    @UploadedFiles()
+    files?: {
+      paymentQr?: Express.Multer.File[];
+      restaurantImg?: Express.Multer.File[];
     },
   ) {
     const paymentQr = files?.paymentQr?.[0];
-  
+
     if (!paymentQr) throw new BadRequestException('กรุณาอัพโหลด QR');
-  
+
     const userId = req.user.userId;
     return this.restaurantService.createRestaurant(
       createRestaurantDto,
@@ -64,20 +82,144 @@ export class RestaurantController {
     );
   }
 
-  @Public()
+  /** Open restaurants of the caller's own school only. */
   @Get()
-  async findAllRestaurant(@Query("limit") limit?: string) {
+  async findAllRestaurant(@Req() req: any, @Query('limit') limit?: string) {
     const parsedLimit = Math.min(Math.max(Number(limit) || 6, 1), 50);
-    return this.restaurantService.getOpenRestaurants(parsedLimit);
+    const { schoolId } = await this.access.getContext(req.user, req);
+    return this.restaurantService.getOpenRestaurants(schoolId, parsedLimit);
   }
 
-  @Public()
-  // @Roles([Role.user, Role.admin, Role.cooker])
   @Get(':restaurantId')
-  async findRestaurant(@Param('restaurantId') restaurantId: string) {
-    return this.restaurantService.findRestaurant(restaurantId);
+  async findRestaurant(
+    @Req() req: any,
+    @Param('restaurantId') restaurantId: string,
+  ) {
+    await this.access.assertRestaurantVisible(req.user, restaurantId, req);
+    const restaurant = await this.restaurantService.findRestaurant(restaurantId);
+
+    // Payout account details are owner-only; everyone else (cooks, students) gets the number masked.
+    const ctx = await this.access.getContext(req.user, req);
+    const seesPayout =
+      ctx.isSystemAdmin ||
+      ctx.restaurantRoles.get(restaurantId) === RestaurantRole.OWNER;
+    if (seesPayout) return restaurant;
+    const digits = restaurant.accountNumber ?? '';
+    return {
+      ...restaurant,
+      accountNumber: digits ? `····${digits.slice(-4)}` : '',
+    };
   }
 
+  @Get(':restaurantId/hours')
+  async getRestaurantHours(
+    @Req() req: any,
+    @Param('restaurantId') restaurantId: string,
+  ) {
+    await this.access.assertRestaurantVisible(req.user, restaurantId, req);
+    return this.restaurantService.getRestaurantHours(restaurantId);
+  }
+
+  @Get(':restaurantId/hours-window')
+  async getHoursWindow(
+    @Req() req: any,
+    @Param('restaurantId') restaurantId: string,
+  ) {
+    await this.access.assertRestaurantVisible(req.user, restaurantId, req);
+    return this.restaurantService.getHoursWindow(restaurantId);
+  }
+
+  @RestaurantScope(OWNER_OR_ADMIN)
+  @Put(':restaurantId/hours')
+  async saveRestaurantHours(
+    @Param('restaurantId') restaurantId: string,
+    @Body() dto: { hours: any[] },
+  ) {
+    return this.restaurantService.saveRestaurantHours(
+      restaurantId,
+      dto?.hours ?? [],
+    );
+  }
+
+  @RestaurantScope(OWNER_ONLY)
+  @Get(':restaurantId/staff-codes')
+  async listStaffCodes(@Param('restaurantId') restaurantId: string) {
+    return this.inviteCodes.listStaffCodes(restaurantId);
+  }
+
+  @RestaurantScope(OWNER_ONLY)
+  @Post(':restaurantId/staff-codes')
+  async createStaffCode(
+    @Req() req: any,
+    @Param('restaurantId') restaurantId: string,
+    @Body() dto: CreateStaffCodeDto,
+  ) {
+    return this.inviteCodes.createStaffCode(restaurantId, req.user.userId, dto);
+  }
+
+  @RestaurantScope(OWNER_ONLY)
+  @Delete(':restaurantId/staff-codes/:codeId')
+  async revokeStaffCode(
+    @Param('restaurantId') restaurantId: string,
+    @Param('codeId') codeId: string,
+  ) {
+    return this.inviteCodes.revokeStaffCode(restaurantId, codeId);
+  }
+
+  @RestaurantScope(OWNER_ONLY)
+  @Delete(':restaurantId/staff-codes/:codeId/permanent')
+  async deleteStaffCode(
+    @Param('restaurantId') restaurantId: string,
+    @Param('codeId') codeId: string,
+  ) {
+    return this.inviteCodes.deleteStaffCode(restaurantId, codeId);
+  }
+
+  @RestaurantScope(OWNER_ONLY)
+  @Get(':restaurantId/members')
+  async listMembers(
+    @Param('restaurantId') restaurantId: string,
+    @Query() query: MembershipQueryDto,
+  ) {
+    return this.restaurantService.listMembers(restaurantId, query.status);
+  }
+
+  @RestaurantScope(OWNER_ONLY)
+  @Patch(':restaurantId/members/:memberId/approve')
+  async approveMember(
+    @Param('restaurantId') restaurantId: string,
+    @Param('memberId') memberId: string,
+  ) {
+    return this.restaurantService.decideMember(
+      restaurantId,
+      memberId,
+      'approve',
+    );
+  }
+
+  @RestaurantScope(OWNER_ONLY)
+  @Patch(':restaurantId/members/:memberId/reject')
+  async rejectMember(
+    @Param('restaurantId') restaurantId: string,
+    @Param('memberId') memberId: string,
+  ) {
+    return this.restaurantService.decideMember(
+      restaurantId,
+      memberId,
+      'reject',
+    );
+  }
+
+  @RestaurantScope(OWNER_ONLY)
+  @Delete(':restaurantId/members/:memberId')
+  async removeMember(
+    @Param('restaurantId') restaurantId: string,
+    @Param('memberId') memberId: string,
+  ) {
+    return this.restaurantService.removeMember(restaurantId, memberId);
+  }
+
+  @RestaurantScope(OWNER_ONLY)
   @Patch(':restaurantId')
   @UseInterceptors(
     FileInterceptor('restaurantImg', {
@@ -99,13 +241,17 @@ export class RestaurantController {
         file,
       );
     } catch (error) {
-      this.logger.error(`Failed to update restaurant ${restaurantId} in controller: `, error);
+      this.logger.error(
+        `Failed to update restaurant ${restaurantId} in controller: `,
+        error,
+      );
+      if (error instanceof HttpException) throw error;
 
       throw new InternalServerErrorException('อัพเดทร้านอาหรรล้มเหลว');
     }
   }
 
-  @Roles([Role.user, Role.admin, Role.cooker])
+  @RestaurantScope(OWNER_OR_STAFF)
   @Patch('temporarily-close/:restaurantId')
   async updateIsTemporarilyClose(
     @Param('restaurantId') restaurantId: string,
@@ -118,17 +264,20 @@ export class RestaurantController {
     return updateData;
   }
 
-  @Roles([Role.user, Role.admin, Role.cooker])
+  @RestaurantScope(OWNER_OR_STAFF)
   @Patch('auto-accepted/:restaurantId')
   async updateIsAutoAcceptedOrder(
     @Param('restaurantId') restaurantId: string,
     @Body() updateRestaurantDto: UpdateRestaurantDto,
   ) {
-    const updateData = await this.restaurantService.updateIsAutoAcceptedOrder(restaurantId, updateRestaurantDto);
+    const updateData = await this.restaurantService.updateIsAutoAcceptedOrder(
+      restaurantId,
+      updateRestaurantDto,
+    );
     return updateData;
   }
 
-  @Roles([Role.user, Role.admin, Role.cooker])
+  @RestaurantScope(OWNER_ONLY)
   @Delete(':restaurantId')
   async deleteRestaurant(@Param('restaurantId') restaurantId: string) {
     return await this.restaurantService.removeRestaurant(restaurantId);

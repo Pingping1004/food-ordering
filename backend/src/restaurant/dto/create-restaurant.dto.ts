@@ -6,9 +6,13 @@ import {
   IsOptional,
   IsEmail,
   IsNumber,
+  IsInt,
+  Min,
+  Max,
   IsDate,
 } from 'class-validator';
-import { AccountType, DateWeek, RestaurantCategory } from '@prisma/client';
+import { DayOfWeek, RestaurantCategory } from '@prisma/client';
+import { AccountType } from 'src/common/interface/accountType';
 import { Type, Transform } from 'class-transformer';
 
 export class CreateRestaurantDto {
@@ -18,11 +22,23 @@ export class CreateRestaurantDto {
 
   @IsOptional()
   @IsString()
+  profile?: string;
+
+  @IsOptional()
+  @IsString()
   restaurantImg?: string;
 
   @IsNotEmpty()
   @IsEmail()
   email: string;
+
+  @IsOptional()
+  @IsString()
+  canteenId?: string;
+
+  @IsOptional()
+  @IsString()
+  location?: string;
 
   @Transform(({ value }) => {
     if (value === null || value === undefined || Array.isArray(value)) {
@@ -42,38 +58,65 @@ export class CreateRestaurantDto {
     return [value];
   })
   @IsArray()
-  @IsEnum(DateWeek, { each: true })
-  @IsNotEmpty()
-  openDate: DateWeek[];
+  @IsOptional()
+  openDate?: string[];
 
-  @IsNotEmpty()
-  @IsDate()
-  openTime: Date;
+  @IsOptional()
+  openTime?: Date | string;
 
-  @IsNotEmpty()
-  @IsDate()
-  closeTime: Date;
+  @IsOptional()
+  closeTime?: Date | string;
 
   @IsNumber()
   @Type(() => Number)
-  @IsNotEmpty()
-  avgCookingTime: number;
+  @IsOptional()
+  avgCookingTime?: number;
 
-  @IsNotEmpty()
-  @IsString()
-  adminName: string;
+  @IsInt()
+  @Min(1)
+  @Max(120)
+  @Type(() => Number)
+  @IsOptional()
+  avgCookingTimeMins?: number;
 
-  @IsNotEmpty()
-  @IsString()
-  adminSurname: string;
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  @Type(() => Number)
+  @IsOptional()
+  maxActiveOrders?: number;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  adminTel: string;
+  contactName?: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  adminEmail: string;
+  contactSurname?: string;
+
+  @IsOptional()
+  @IsString()
+  contactTel?: string;
+
+  @IsOptional()
+  @IsEmail()
+  contactEmail?: string;
+
+  @IsOptional()
+  @IsString()
+  adminName?: string;
+
+  @IsOptional()
+  @IsString()
+  adminSurname?: string;
+
+  @IsOptional()
+  @IsString()
+  adminTel?: string;
+
+  @IsOptional()
+  @IsString()
+  adminEmail?: string;
 
   @IsOptional()
   @IsString()
@@ -87,7 +130,11 @@ export class CreateRestaurantDto {
   @IsString()
   paymentQr?: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  accountHolderFullName: string;
+  accountName?: string;
+
+  @IsOptional()
+  @IsString()
+  accountHolderFullName?: string;
 }

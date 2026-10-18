@@ -3,7 +3,8 @@
 import { Button } from '@/components/Button';
 import Input from '@/components/Input';
 import CountdownTimer from '@/components/Timer';
-import { toastDanger, toastSuccess } from '@/components/ui/Toast';
+import { Stepper, StepHeader } from '@/components/users/Stepper';
+import { toastError, toastDanger, toastSuccess } from '@/components/ui/Toast';
 import { useCart } from '@/context/CartContext';
 import { api } from '@/lib/api';
 import { OrderPaymentSchema, orderPaymentSchema } from '@/schemas/orderPaymentSchema';
@@ -13,10 +14,10 @@ import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import type { Order } from '../../done/[orderId]/page';
-import LoadingPage from '@/components/LoadingPage';
+import { paymentDeadline, routeForOrder, screenForOrder, type StudentOrder } from '@/lib/order-flow';
+import { formatBaht, orderCode } from '@/lib/schema/format';
+import { OrderTrackingSkeleton } from '@/components/ui/Skeleton';
 import { getIdempotencyKey } from '@/util/idempotency';
-import { OrderStatus } from '@/components/cookers/OrderNavbar';
 
 export interface OrderPaymentPayload {
     idempotencyKey: string;
@@ -47,7 +48,7 @@ function OrderPaymentPage() {
     const [isFailed, setIsFailed] = useState(false);
     const [expired, setExpired] = useState(false);
     const [loading, setLoading] = useState(true);
-    const [order, setOrder] = useState<Order>();
+    const [order, setOrder] = useState<StudentOrder>();
     const [paymentImgUrl, setPaymentImgUrl] = useState<string>('');
     const failedCountRef = useRef(0);
     const hasRedirectedRef = useRef(false);
@@ -65,26 +66,16 @@ function OrderPaymentPage() {
                 const data = orderResponse.data;
                 setOrder(data);
 
-                if (!hasRedirectedRef.current && data.status === OrderStatus.completed) {
-                    hasRedirectedRef.current = true
-                    router.replace(`/user/order/done/${orderId}`);
+                // This screen only exists while the order is still unpaid; anything else belongs elsewhere.
+                if (!hasRedirectedRef.current && screenForOrder(data) !== 'payment') {
+                    hasRedirectedRef.current = true;
+                    router.replace(routeForOrder(orderId!, data));
                     return;
                 }
 
-                if (!hasRedirectedRef.current && (data.status === OrderStatus.cancelled || data.status === OrderStatus.rejected)) {
-                    hasRedirectedRef.current = true
-                    router.replace(`/user/order/failed/${orderId}`);
-                    return;
-                }
-
-                if (!hasRedirectedRef.current && data.status === OrderStatus.sent) {
-                    hasRedirectedRef.current = true
-                    router.replace(`/user/order/wait/${orderId}`);
-                    return;
-                }
-
+                // Default: the shop's uploaded static QR. Set NEXT_PUBLIC_DYNAMIC_QR=true to generate an amount-locked QR instead.
                 let qrUrl = data.restaurant.paymentQr;
-                try {
+                if (process.env.NEXT_PUBLIC_DYNAMIC_QR === 'true') try {
                     const qrResponse = await api.get(`payment/qr-code/${orderId}`, {
                         headers: { "x-order-secret": orderSecret }
                     });
@@ -99,12 +90,12 @@ function OrderPaymentPage() {
                 }
                 setPaymentImgUrl(qrUrl);
 
-            } catch {
+            } catch (loadErr) {
                 failedCountRef.current += 1;
 
                 if (failedCountRef.current >= 3) {
                     setIsFailed(true);
-                    toastDanger("โหลดข้อมูลไม่สำเร็จ");
+                    toastError("โหลดข้อมูลการชำระเงินไม่สำเร็จ", loadErr);
                 }
             } finally {
                 setLoading(false);
@@ -143,7 +134,7 @@ function OrderPaymentPage() {
                 headers: { "x-order-secret": orderSecret }
             });
 
-            toastDanger("หมดเวลาชำระเงิน");
+            toastDanger("หมดเวลาชำระเงินแล้ว", "ออเดอร์นี้ถูกยกเลิก กรุณาสั่งอาหารใหม่อีกครั้ง");
             router.replace(`/user/order/failed/${orderId}`);
         } catch (error) {
             console.error("Error setting order to expired:", error);
@@ -178,34 +169,47 @@ function OrderPaymentPage() {
         "200000": "พบข้อมูลสลิปในระบบธนาคาร",
         "200001": "ขอข้อมูลสลิปสำเร็จ",
         "200200": "สลิปถูกต้อง",
-        "200401": "บัญชีผู้รับไม่ถูกต้อง",
-        "200402": "จำนวนเงินไม่ตรงกับยอดที่ต้องชำระ",
-        "200403": "วันที่โอนไม่ตรงเงื่อนไข",
-        "200404": "ไม่พบข้อมูลสลิปในระบบธนาคาร",
-        "200500": "สลิปไม่ถูกต้องหรืออาจเป็นสลิปปลอม",
-        "200501": "สลิปนี้ถูกใช้ไปแล้ว",
+        "200401": "สลิปนี้โอนไปบัญชีที่ไม่ใช่ของร้าน กรุณาตรวจสอบบัญชีผู้รับ",
+        "200402": "ยอดเงินในสลิปไม่ตรงกับยอดที่ต้องชำระ กรุณาโอนให้ตรงยอด",
+        "200403": "วันที่โอนในสลิปไม่ตรงเงื่อนไข กรุณาใช้สลิปที่โอนวันนี้",
+        "200404": "ธนาคารยังไม่พบรายการโอนนี้ กรุณารอสักครู่แล้วลองส่งอีกครั้ง",
+        "200500": "สลิปนี้อ่านไม่ผ่านหรืออาจไม่ใช่สลิปจริง กรุณาใช้สลิปจากแอปธนาคาร",
+        "200501": "สลิปนี้เคยถูกใช้ไปแล้ว กรุณาใช้สลิปใบใหม่",
+    };
+
+    /** Slip2Go result codes → reason shown on the dedicated "slip failed" screen. */
+    const reasonForCode = (code?: string) => {
+        switch (code) {
+            case "200401": return "account";
+            case "200402": return "amount";
+            case "200501": return "duplicate";
+            case "200404":
+            case "200500":
+            case "200403": return "unreadable";
+            default: return undefined;
+        }
     };
 
     const handlePayment = async (data: OrderPaymentSchema) => {
         try {
             if (!order || !orderId) {
-                toastDanger("ไม่พบออเดอร์ของคุณ")
+                toastDanger("ไม่พบออเดอร์ของคุณ", "กรุณากลับไปหน้าแรกแล้วสั่งอาหารใหม่อีกครั้ง")
                 return;
             }
 
             if (!data.paymentSlipImg) {
-                toastDanger("กรุณาอัพโหลดสลิปก่อนสั่งอาหาร");
+                toastDanger("ยังไม่ได้แนบสลิป", "กรุณาโอนเงินแล้วแนบรูปสลิปก่อนกดยืนยัน");
                 return;
             }
 
             if (expired) {
-                toastDanger("หมดเวลาแล้ว");
+                toastDanger("หมดเวลาชำระเงินแล้ว", "ออเดอร์นี้ถูกยกเลิก กรุณาสั่งอาหารใหม่อีกครั้ง");
                 router.replace(`/user/order/failed/${orderId}`);
                 return;
             }
 
             if (!order.restaurantId) {
-                toastDanger("ไม่พบข้อมูลร้านอาหาร");
+                toastDanger("ไม่พบข้อมูลร้านอาหาร", "ร้านอาจปิดหรือถูกลบไปแล้ว กรุณากลับไปเลือกร้านใหม่");
                 return;
             }
 
@@ -229,11 +233,11 @@ function OrderPaymentPage() {
 
             if (!verifyResult?.success) {
                 if (verifyResult?.retry) {
-                    toastDanger("บันทึกการชำระเงินไม่สำเร็จ กรุณาลองส่งสลิปอีกครั้ง");
+                    toastDanger("บันทึกการชำระเงินไม่สำเร็จ", "ระบบขัดข้องชั่วคราว กรุณาส่งสลิปอีกครั้ง");
                 } else if (verifyResult?.status === "initiated" || verifyResult?.status === "processing") {
                     toastDanger("ระบบกำลังตรวจสอบสลิป กรุณารอสักครู่");
                 } else {
-                    toastDanger("การชำระเงินไม่สำเร็จ");
+                    toastDanger("การชำระเงินไม่สำเร็จ", "ระบบตรวจสลิปไม่ผ่าน กรุณาตรวจสลิปแล้วลองส่งอีกครั้ง");
                 }
                 setIsFailed(true);
                 return;
@@ -245,37 +249,41 @@ function OrderPaymentPage() {
             clearCart();
             localStorage.removeItem(`idempotencyKey:${orderId}`);
 
-            router.push(`/user/order/done/${orderId}`);
+            router.push(`/user/order/wait/${orderId}`);
 
         } catch (error: unknown) {
             setIsFailed(true)
             failedCountRef.current += 1;
 
-            if (typeof error === 'object' && error !== null && 'response' in error) {
-                const err = error as { response: { status: number; data?: { message?: string, code?: string } } };
+            const err = error as { response?: { status?: number; data?: { message?: string, code?: string } } };
 
-                if (err.response.status === 409 && failedCountRef.current >= 1) {
-                    toastDanger("ระบบกำลังตรวจสอบสลิป กรุณารอสักครู่");
-                    return;
-                }
-
-                const backendMessage = err.response.data?.message;
-                const code = err.response?.data?.code;
-
-                toastDanger(code ? slipErrorMap[code] ?? backendMessage ?? "เกิดข้อผิดพลาด" : backendMessage ?? "เกิดข้อผิดพลาด");
+            if (err.response?.status === 409 && failedCountRef.current >= 1) {
+                toastDanger("ระบบกำลังตรวจสอบสลิป กรุณารอสักครู่");
+                return;
             }
+
+            const code = err.response?.data?.code;
+
+            const reason = reasonForCode(code);
+            if (reason) {
+                router.push(`/user/order/slip-failed/${orderId}?reason=${reason}`);
+                return;
+            }
+
+            if (code && slipErrorMap[code]) toastDanger(slipErrorMap[code]);
+            else toastError("ส่งสลิปไม่สำเร็จ กรุณาลองใหม่อีกครั้ง", error);
         }
     }
 
     const handleSlipUpload = (file: File) => {
         // 1. Validate size
         if (file.size > 2 * 1024 * 1024) {
-            toastDanger("ไฟล์สลิปต้องไม่เกิน 2MB");
+            toastDanger("ไฟล์สลิปใหญ่เกินไป", "กรุณาเลือกรูปที่มีขนาดไม่เกิน 2MB");
             return;
         }
 
         if (!file.type.startsWith("image/")) {
-            toastDanger("กรุณาอัปโหลดไฟล์รูปภาพเท่านั้น");
+            toastDanger("ไฟล์ที่เลือกไม่ใช่รูปภาพ", "กรุณาเลือกรูปสลิปที่เป็นไฟล์รูป เช่น JPG หรือ PNG");
             return;
         }
 
@@ -294,104 +302,133 @@ function OrderPaymentPage() {
         };
 
         reader.onerror = () => {
-            toastDanger("เกิดข้อผิดพลาดในการอ่านไฟล์");
+            toastDanger("เปิดไฟล์รูปนี้ไม่ได้", "กรุณาลองเลือกรูปสลิปใหม่อีกครั้ง");
         };
 
         reader.readAsDataURL(file);
     };
 
-    if (loading) return <LoadingPage />
+    const [copied, setCopied] = useState(false);
+
+    if (loading) return <OrderTrackingSkeleton />;
     if (!order) return <div>ไม่พบข้อมูลร้านค้า</div>;
 
     const paymentSlipImg = watch("paymentSlipImg");
     const isButtonDisabled = isSubmitting || expired || isLoading || !paymentSlipImg;
 
-    const PAYMENT_WINDOW_MINS = 3;
-    const baseTime = (order.acceptAt && new Date(order.acceptAt).getTime() > 0)
-        ? new Date(order.acceptAt).getTime()
-        : new Date(order.orderAt).getTime();
-    const paymentDeadline = new Date(baseTime + PAYMENT_WINDOW_MINS * 60 * 1000);
+    const deadline = paymentDeadline(order);
+
+    const copyAmount = async () => {
+        try {
+            await navigator.clipboard.writeText(Number(order?.totalAmount ?? 0).toFixed(2));
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch { /* clipboard unavailable */ }
+    };
+
+    const saveQr = async () => {
+        if (!paymentImgUrl) return;
+        try {
+            const blob = await (await fetch(paymentImgUrl)).blob();
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = `qr-${orderCode(order.orderId)}.png`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+        } catch {
+            window.open(paymentImgUrl, "_blank", "noopener,noreferrer"); // cross-origin image: let the browser save it
+        }
+    };
+
+    const card = "flex flex-col gap-3.5 rounded-[20px] border border-line-soft bg-white p-[18px]";
 
     return (
-        <form className="flex flex-col justify-center items-center py-10 px-6 gap-y-6" onSubmit={handleSubmit(handlePayment)}>
-            <div className="flex flex-col gap-y-6">
-                <h2 className="text-2xl font-semibold text-center">ชำระเงินออเดอร์ {orderId?.substring(0, 4)}</h2>
-                <h3 className="text-red-500 font-bold text-center">ไม่รองรับการโอนเงินจากธนาคารกรุงเทพ</h3>
-                <h3 className="text-red-500 font-bold text-center">Don&apos;t accept payment from bangkok bank</h3>
+        <form className="mx-auto flex min-h-app w-full max-w-[640px] md:max-w-[720px] flex-col bg-ground font-app text-brand-dark" onSubmit={handleSubmit(handlePayment)}>
+            <StepHeader
+                title="ชำระเงิน"
+                right={<CountdownTimer deadline={deadline} onExpire={handleExpire} />}
+            />
+            <Stepper current={2} />
 
-                <div className="flex flex-col gap-y-6">
-                    <div className="flex flex-col w-full justify-center items-center gap-y-6">
+            <main className="flex flex-1 flex-col gap-4 p-4">
+                <section className={`${card} items-center`}>
+                    <span className="text-[15px] text-brand-muted">ยอดที่ต้องโอน · ออเดอร์ {orderCode(order.orderId)}</span>
+                    <span className="text-[40px] font-bold leading-none">
+                        {formatBaht(order.totalAmount)} <span className="text-xl">บาท</span>
+                    </span>
+                    {paymentImgUrl && (
                         <Image
                             src={paymentImgUrl}
                             loading="lazy"
-                            alt="Payment QR picture"
-                            width={300}
-                            height={300}
-                            className="object-cover aspect-square rounded-lg"
+                            alt={`QR พร้อมเพย์สำหรับชำระเงิน`}
+                            width={220}
+                            height={220}
+                            className="aspect-square rounded-2xl border-2 border-brand-dark object-cover"
                         />
+                    )}
+                    <button type="button" onClick={copyAmount} className="flex h-12 items-center gap-2 rounded-xl bg-primary-main px-5 text-base font-semibold text-white hover:bg-primary-dark">
+                        {copied ? 'คัดลอกแล้ว ✓' : `คัดลอกยอด ${formatBaht(order.totalAmount)} บาท`}
+                    </button>
+                    <span className="flex flex-col items-center gap-0.5 text-center">
+                        {order.restaurant?.name && <span className="text-base font-bold">{order.restaurant.name}</span>}
+                        {order.restaurant?.accountName && <span className="text-sm text-brand-muted">ชื่อบัญชี: {order.restaurant.accountName}</span>}
+                    </span>
+                    {paymentImgUrl && (
+                        <button type="button" onClick={saveQr} className="flex h-12 items-center gap-2 rounded-xl border-[1.5px] border-primary-main bg-white px-5 text-base font-semibold text-primary-dark hover:bg-ground-blue">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
+                            บันทึกรูป QR
+                        </button>
+                    )}
+                    <span className="text-[15px] text-brand-muted">ยิ่งจ่ายเร็ว ร้านเริ่มทำอาหารได้ทันที</span>
+                </section>
 
-                        <CountdownTimer deadline={paymentDeadline} onExpire={handleExpire} />
-                    </div>
-
-                    <h2 className="flex flex-col w-full items-center font-noto-thai text-3xl font-semibold">{Number(order.totalAmount).toFixed(2)} บาท</h2>
-                    <p className="flex flex-col w-full items-center text-xl font-bold font-noto-thai text-center">ยิ่งจ่ายเร็ว ร้านเริ่มทำอาหารได้ทันที</p>
+                <div role="note" className="flex gap-3 rounded-2xl bg-danger-light px-4 py-3.5">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B42318" strokeWidth="2" strokeLinecap="round" aria-hidden="true" className="mt-px shrink-0"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01" /></svg>
+                    <span className="text-[15px] leading-normal"><b>ยังไม่รองรับการโอนจากธนาคารกรุงเทพ</b> กรุณาใช้บัญชีธนาคารอื่น</span>
                 </div>
 
-                {slipPreview && (
-                    <div className="flex flex-col items-center gap-y-6">
-                        <h2 className="w-full font-noto-thai text-bold text-start text-primary ">สลิปของคุณ</h2>
-
+                <section className={card}>
+                    <h2 className="text-[17px] font-bold">โอนแล้ว? ส่งสลิปให้ร้าน</h2>
+                    {slipPreview && (
                         <Image
                             src={slipPreview}
-                            alt="Payment slip preview"
+                            alt="สลิปของคุณ"
                             width={250}
                             height={250}
-                            className="object-cover aspect-square"
+                            className="aspect-square self-center rounded-xl object-cover"
                         />
-                    </div>
-                )}
-
-                <Input
-                    type="file"
-                    variant={paymentSlipImg ? "success" : "primary"}
-                    label={paymentSlipImg ? "อัพโหลดสลิปสำเร็จ" : "ยังไม่ได้อัพโหลดสลิป"}
-                    placeholder="อัพโหลดสลิปชำระเงิน"
-                    id="paymentSlipImg"
-                    name="paymentSlipImg"
-                    accept="image/*"
-                    error={errors.paymentSlipImg?.message as string | undefined}
-                    onChange={(e) => {
-                        const file = (e.target as HTMLInputElement).files?.[0];
-                        if (!file) return;
-
-                        handleSlipUpload(file);
-                    }}
-                />
-
-                <div className=" w-full *:z-50 flex">
-                    {isFailed ? (
-                        <Button
-                            className="w-full font-noto-thai text-bold py-4"
-                            type="submit"
-                            variant="secondaryDanger"
-                            size="full"
-                            disabled={isButtonDisabled}
-                        >
-                            {isSubmitting ? "กำลังส่งสลิป..." : "ลองใหม่อีกครั้ง"}
-                        </Button>
-                    ) : (
-                        <Button
-                            className="w-full font-noto-thai text-bold py-4"
-                            type="submit"
-                            variant="primary"
-                            size="full"
-                            disabled={isButtonDisabled}
-                        >
-                            {isSubmitting ? "กำลังส่งสลิป..." : "ส่งหลักฐานการชำระเงิน"}
-                        </Button>
                     )}
-                </div>
-            </div>
+                    <Input
+                        type="file"
+                        variant={paymentSlipImg ? "success" : "primary"}
+                        label={paymentSlipImg ? "อัพโหลดสลิปสำเร็จ" : "ยังไม่ได้อัพโหลดสลิป"}
+                        placeholder="แตะเพื่อเลือกรูปสลิป (JPG/PNG ไม่เกิน 2MB)"
+                        id="paymentSlipImg"
+                        name="paymentSlipImg"
+                        accept="image/*"
+                        error={errors.paymentSlipImg?.message as string | undefined}
+                        onChange={(e) => {
+                            const file = (e.target as HTMLInputElement).files?.[0];
+                            if (!file) return;
+
+                            handleSlipUpload(file);
+                        }}
+                    />
+                    <span className="text-[13px] leading-normal text-brand-muted">ระบบตรวจยอดเงินและบัญชีผู้รับให้อัตโนมัติ ใช้เวลาไม่กี่วินาที</span>
+                </section>
+            </main>
+
+            <footer className="sticky bottom-0 flex flex-col gap-2.5 border-t border-line-soft bg-white px-4 pb-5 pt-4">
+                <Button
+                    type="submit"
+                    variant={isFailed ? "danger" : "primary"}
+                    size="full"
+                    disabled={isButtonDisabled}
+                >
+                    {isSubmitting ? "กำลังส่งสลิป..." : isFailed ? "ลองใหม่อีกครั้ง" : "ส่งสลิป"}
+                </Button>
+                {!paymentSlipImg && <span className="text-center text-[13px] text-brand-muted">ปุ่มจะกดได้เมื่อเลือกรูปสลิปแล้ว</span>}
+            </footer>
         </form>
     )
 }

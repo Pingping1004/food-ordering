@@ -1,87 +1,73 @@
 "use client";
 
-import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation';
-import { api } from '@/lib/api';
-import LoadingPage from '@/components/LoadingPage';
-import { ErrorIcon } from '@/components/ui/icon/error';
-import { getParamId } from '@/util/param';
-import type { Order } from '../../done/[orderId]/page';
-import { Button } from '@/components/Button';
+import { useParams, useRouter } from "next/navigation";
+import { getParamId } from "@/util/param";
+import { ActionButton, Chip, ErrorState, Icon, Notice, OrderTrackingSkeleton } from "@/components/ui/kit";
+import { StepHeader } from "@/components/users/Stepper";
+import { useOrderPoll } from "@/hook/useOrderPoll";
+import { normalizePayment, normalizeStatus } from "@/lib/order-flow";
+import { formatBaht, orderCode } from "@/lib/schema/format";
+import { useEffect } from "react";
+import { RefundEntry, requestFor } from "@/components/refunds/RefundEntry";
+import { useMyRefunds } from "@/hook/useRefunds";
 
-export default function FailedOrderPage() {
+function reasonFor(paid: boolean, expiredUnpaid: boolean) {
+    if (expiredUnpaid) return "หมดเวลาชำระเงิน ระบบจึงยกเลิกออเดอร์ให้";
+    if (paid) return "ร้านไม่ได้กดรับภายใน 3 นาที หรือไม่สามารถทำออเดอร์นี้ได้ ระบบจึงยกเลิกให้";
+    return "ออเดอร์นี้ถูกยกเลิก";
+}
+
+export default function CancelledOrderPage() {
     const params = useParams();
     const router = useRouter();
-    const orderId = getParamId(params.orderId)
+    const orderId = getParamId(params.orderId);
+    const { order, loading, error, retry } = useOrderPoll(orderId, "failed", { intervalMs: 10_000 });
+    const myRefunds = useMyRefunds();
 
-    const [restaurantName, setRestaurantName] = useState<string | null>(null);
-    const [order, setOrder] = useState<Order>();
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    useEffect(() => { try { localStorage.removeItem("activeOrderId"); } catch { /* ignore */ } }, []);
 
-    useEffect(() => {
-        localStorage.removeItem('activeOrderId');
-    }, []);
+    if (loading) return <OrderTrackingSkeleton />;
+    if (error) return <div className="mx-auto flex min-h-app w-full max-w-[640px] flex-col justify-center bg-ground font-app"><ErrorState onRetry={retry} /></div>;
+    if (!order) return <div className="p-6 font-app">ไม่พบออเดอร์ของคุณ</div>;
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const orderSecret = localStorage.getItem(`orderSecret:${orderId}`)
-                const orderResponse = await api.get(`order/${orderId}`, {
-                    headers: { "x-order-secret": orderSecret }
-                });
-
-                const data = orderResponse.data;
-                setOrder(data);
-
-                const newRestaurantName = data.name;
-                setRestaurantName(newRestaurantName);
-            } catch {
-                setError('Error fetching order data');
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchData();
-    }, [orderId]);
-
-    if (loading) return <LoadingPage />
-    if (!order) return <div>ไม่พบออเดอร์ของคุณ</div>;
-    if (error) return <div>{error}</div>;
+    const pay = normalizePayment(order.paymentStatus);
+    const paid = pay === "PAID";
+    const refunded = pay === "REFUNDED";
+    const total = order.orderMenus.reduce((n, m) => n + m.unitPrice * m.quantity, 0);
+    const count = order.orderMenus.reduce((n, m) => n + m.quantity, 0);
+    const request = requestFor(myRefunds.data, order.orderId);
+    const expiredUnpaid = !paid && !refunded && normalizeStatus(order.status) === "rejected";
 
     return (
-        <div className="flex flex-col py-10 px-6 gap-y-23">
-            <h1 className="flex justify-center font-noto-thai text-bold text-primary text-2xl">{restaurantName}</h1>
+        <div className="mx-auto flex min-h-app w-full max-w-[640px] flex-col bg-ground font-app text-brand-dark md:max-w-[720px]">
+            <StepHeader title={`ออเดอร์ ${orderCode(order.orderId)}`} backHref="/user/restaurant" backLabel="กลับหน้าหลัก" />
 
-            <div className="flex flex-col justify-center items-center gap-y-10">
-                <ErrorIcon />
+            <main className="flex flex-1 flex-col gap-4 px-4 py-6">
+                <section className="flex flex-col items-center gap-3 px-3 pt-2 text-center">
+                    <span className="flex h-16 w-16 items-center justify-center rounded-full bg-danger-light text-danger-text"><Icon name="x" size={32} strokeWidth={2.5} /></span>
+                    <h2 className="text-[26px] font-bold">ออเดอร์ถูกยกเลิก</h2>
+                    <p className="text-base leading-relaxed text-brand-muted">{reasonFor(paid || refunded, expiredUnpaid)}</p>
+                </section>
 
-                <div className="flex flex-col items-center gap-y-1">
-                    <h4 className="text-lg text-danger font-bold font-noto-thai">ออเดอร์ถูกยกเลิก</h4>
-                    <h1 className="text-2xl font-noto-thai font-semibold text-primary">ออเดอร์ {orderId?.substring(0, 4)}</h1>
-                </div>
-            </div>
+                <section className="flex flex-col gap-2.5 rounded-[20px] border border-line-soft bg-white p-5">
+                    <div className="flex justify-between text-[15px]"><span className="text-brand-muted">ร้าน</span><span className="font-semibold">{order.restaurant?.name ?? "-"}</span></div>
+                    <div className="flex justify-between text-[15px]"><span className="text-brand-muted">รายการ</span><span className="font-semibold">{count} จาน</span></div>
+                    <div className="flex justify-between text-[15px]"><span className="text-brand-muted">ยอด</span><span className="font-semibold">{formatBaht(total)} บาท</span></div>
+                    <div className="flex items-center justify-between border-t border-row-line pt-2.5 text-[15px]">
+                        <span className="text-brand-muted">การชำระเงิน</span>
+                        {refunded ? <Chip tone="neutral" icon="check">คืนเงินแล้ว</Chip> : paid ? <Chip tone="success" icon="check">จ่ายแล้ว</Chip> : <Chip tone="neutral" icon="clock">ยังไม่ได้จ่าย</Chip>}
+                    </div>
+                </section>
 
-            <section className="flex flex-col justify-between gap-y-6">
-                <p className="font-bold text-lg text-primary">รายละเอียดออเดอร์</p>
-                <div>
-                    {order.orderMenus.map((item) => (
-                        <div key={item.menuName} className="flex justify-between gap-y-2">
-                            <p className="font-noto-thai text-lg text-primary">{item.quantity}x{' '}-{' '}{item.menuName}</p>
-                            <p className="font-noto-thai text-bold text-2xl text-primary">{item.unitPrice}</p>
-                        </div>
-                    ))}
-                </div>
-            </section>
+                {paid && !request && <Notice tone="primary" icon="info">คุณจ่ายเงินแล้ว ขอคืนเงินได้เลย โรงเรียนจะตรวจสอบและประสานกับร้านให้</Notice>}
+                <RefundEntry orderId={order.orderId} canRequest={false} />
+            </main>
 
-            <Button
-                type="button"
-                size="lg"
-                onClick={() => router.push('/user/restaurant')}
-            >
-                <p className="">กลับสู่หน้าหลัก</p>
-            </Button>
+            <footer className="flex flex-col gap-2.5 px-4 pb-6 pt-4">
+                {paid && (!request || request.status === "REJECTED") && <ActionButton full onClick={() => router.push(`/user/order/refund/${order.orderId}`)}>{`ขอคืนเงิน ${formatBaht(total)} บาท`}</ActionButton>}
+                {(refunded || (request && request.status !== "REJECTED")) && <ActionButton full onClick={() => router.push(`/user/order/refund/${order.orderId}`)}>ดูสถานะการคืนเงิน</ActionButton>}
+                <ActionButton full variant="outline" onClick={() => router.push("/user/restaurant")}>สั่งร้านอื่น</ActionButton>
+            </footer>
         </div>
-    )
+    );
 }

@@ -35,16 +35,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     if (origin && allowedOrigins.includes(origin.replace(/\/$/, ''))) {
       response.header('Access-Control-Allow-Origin', origin);
-      response.header('Access-Control-Allow-Credentials', 'true');
       response.header(
         'Access-Control-Allow-Headers',
-        'Content-Type, Accept, Authorization, X-CSRF-Token, x-csrf-token, XSRF-TOKEN, x-xsrf-token',
+        'Content-Type, Accept, Authorization, x-order-secret',
       );
       response.header(
         'Access-Control-Allow-Methods',
         'GET,POST,PUT,PATCH,DELETE,OPTIONS',
       );
-      response.header('Access-Control-Expose-Headers', 'Set-Cookie');
     }
 
     if (exception instanceof HttpException) {

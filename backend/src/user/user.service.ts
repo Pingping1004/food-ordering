@@ -1,79 +1,65 @@
 import {
-  BadRequestException,
   ConflictException,
   forwardRef,
   Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from '../prisma/prisma.service';
-import * as bcrypt from 'bcrypt';
-import { Prisma, Role, RoleRequestStatus } from '@prisma/client';
+import {
+  InviteCodeType,
+  MembershipStatus,
+  Role,
+  RestaurantRole,
+  SchoolRole,
+  Status,
+} from '@prisma/client';
 import { RestaurantService } from 'src/restaurant/restaurant.service';
+import { SupabaseService } from 'src/supabase/supabase.service';
 
-export type UserWithRestaurant = Prisma.UserGetPayload<{
-  select: {
-    userId: true;
-    email: true;
-    profileImg: true;
-    name: true;
-    role: true;
-    createdAt: true;
-    updatedAt: true;
-    restaurant: {
-      select: { restaurantId: true, isApproved: true };
-    };
-    RoleRequest: {
-      select: {
-        requestId: true;
-        userId: true;
-        requestRole: true;
-        status: true;
-        createdAt: true;
-        updatedAt: true;
-      };
-    };
-  };
-}>;
+export interface UserProfile {
+  userId: string;
+  email: string | null;
+  name: string;
+  role: Role;
+  /** True when the token is aal2 (TOTP verified). */
+  mfaVerified: boolean;
+  /** True while the user holds an unconsumed SHOP_OWNER invite redemption (may POST /restaurant). */
+  pendingOwnerGrant: boolean;
+  /** Own school (never contains the invite code). */
+  school: { schoolId: string; name: string } | null;
+  schoolMemberships: {
+    schoolId: string;
+    schoolName: string;
+    schoolStatus: Status;
+    role: SchoolRole;
+    status: MembershipStatus;
+  }[];
+  /** Sysadmin only: the caller's latest active break-glass grant. */
+  supportGrant: { schoolId: string; expiresAt: Date; reason: string } | null;
+  restaurantMemberships: {
+    restaurantId: string;
+    restaurantName: string;
+    role: RestaurantRole;
+    status: MembershipStatus;
+    restaurantStatus: Status;
+    canteenName: string;
+  }[];
+}
 
-export type UserWithRestaurantWithoutPassword = Omit<
-  UserWithRestaurant,
-  'password'
->;
-
-export type UserProfile = Omit<UserWithRestaurantWithoutPassword, 'RoleRequest'> & {
-  roleRequest: UserWithRestaurantWithoutPassword['RoleRequest'] | null;
-};
+export type DeleteAccountBlocker =
+  | { code: 'OWNS_RESTAURANT'; restaurantId: string; name: string }
+  | { code: 'LAST_SCHOOL_ADMIN'; schoolId: string; name: string };
 
 @Injectable()
 export class UserService {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(forwardRef(() => RestaurantService))
-    private readonly restaurantService: RestaurantService
-  ) { }
-
-  async createUser(createUserDto: CreateUserDto) {
-    const existingUser = await this.findOneByEmail(createUserDto.email);
-    if (existingUser)
-      throw new ConflictException('อีเมลนี้ถูกใช้งานแล้ว');
-
-    const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
-    const newUser = {
-      name: createUserDto.email.split("@")[0],
-      email: createUserDto.email,
-      password: hashedPassword,
-      role: Role.user,
-    };
-
-    const result = await this.prisma.user.create({
-      data: newUser,
-    });
-
-    return result;
-  }
+    private readonly restaurantService: RestaurantService,
+    private readonly supabase: SupabaseService,
+  ) {}
 
   async findAllUsers() {
     return await this.prisma.user.findMany({
@@ -87,52 +73,97 @@ export class UserService {
     const user = await this.prisma.safeRead(() =>
       this.prisma.user.findUnique({
         where: { email },
-      }));
+      }),
+    );
 
     return user;
   }
 
-  async findOneUser(
-    userId: string,
-  ): Promise<UserProfile> {
+  async findOneUser(userId: string, aal?: string | null): Promise<UserProfile> {
     const user = await this.prisma.safeRead(() =>
       this.prisma.user.findUnique({
         where: { userId },
         select: {
           userId: true,
           email: true,
-          profileImg: true,
           name: true,
           role: true,
-          createdAt: true,
-          updatedAt: true,
-          restaurant: {
+          school: { select: { schoolId: true, name: true } },
+          inviteRedemptions: {
+            where: {
+              consumedAt: null,
+              code: { type: InviteCodeType.SHOP_OWNER },
+            },
+            select: { id: true },
+            take: 1,
+          },
+          restaurantMemberships: {
             select: {
+              role: true,
+              status: true,
               restaurantId: true,
-              isApproved: true,
+              restaurant: {
+                select: {
+                  name: true,
+                  status: true,
+                  canteen: { select: { name: true } },
+                },
+              },
             },
           },
-          RoleRequest: {
+          schoolMemberships: {
             select: {
-              requestId: true,
-              userId: true,
-              requestRole: true,
+              role: true,
               status: true,
-              createdAt: true,
-              updatedAt: true,
+              schoolId: true,
+              school: { select: { name: true, status: true } },
             },
           },
         },
-      }));
+      }),
+    );
 
     if (!user) {
-      throw new NotFoundException('ไม่พบผู้ใช้งานไอดี: ', userId);
+      throw new NotFoundException(`ไม่พบผู้ใช้งานไอดี: ${userId}`);
     }
 
-    const { RoleRequest, ...rest } = user;
+    // Only the caller's own profile (aal passed) and only for sysadmins.
+    let supportGrant: UserProfile['supportGrant'] = null;
+    if (user.role === Role.ADMIN && aal === 'aal2') {
+      const grant = await this.prisma.supportGrant.findFirst({
+        where: { adminId: userId, revokedAt: null, expiresAt: { gt: new Date() } },
+        orderBy: { createdAt: 'desc' },
+        select: { schoolId: true, expiresAt: true, reason: true },
+      });
+      supportGrant = grant ?? null;
+    }
+
     return {
-      ...rest,
-      roleRequest: RoleRequest ?? null,
+      userId: user.userId,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      mfaVerified: aal === 'aal2',
+      supportGrant,
+      pendingOwnerGrant: user.inviteRedemptions.length > 0,
+      school: user.school
+        ? { schoolId: user.school.schoolId, name: user.school.name }
+        : null,
+      schoolMemberships: user.schoolMemberships.map((m) => ({
+        schoolId: m.schoolId,
+        schoolName: m.school.name,
+        schoolStatus: m.school.status,
+        role: m.role,
+        status: m.status,
+      })),
+      restaurantMemberships: user.restaurantMemberships.map((m) => ({
+        restaurantId: m.restaurantId,
+        restaurantName: m.restaurant.name,
+        role: m.role,
+        status: m.status,
+        restaurantStatus: m.restaurant.status,
+        canteenName: m.restaurant.canteen.name,
+      })),
     };
   }
 
@@ -145,66 +176,82 @@ export class UserService {
     return updatedUser;
   }
 
-  async createRoleRequest(userId: string, requestRole: Role) {
-    if (requestRole !== Role.cooker) throw new BadRequestException('อนุญาตให้ขอเป็นร้านอาหารเท่านั้น');
-
-    const { name } = await this.findOneUser(userId)
-    const existingPendingRequest = await this.prisma.roleRequest.findFirst({
-      where: {
-        userId,
-        status: RoleRequestStatus.pending,
-      },
-    });
-
-    if (existingPendingRequest) throw new BadRequestException('คุณได้ส่งคำขอไปแล้ว ระบบกำลังรอการอนุมัติจากผู้ดูแลอยู่');
-
-    try {
-      const result = await this.prisma.roleRequest.create({
-        data: {
+  /** What prevents the caller from deleting their own account. Empty = free to delete. */
+  async findDeleteBlockers(userId: string): Promise<DeleteAccountBlocker[]> {
+    const [owned, adminOf] = await Promise.all([
+      this.prisma.restaurantMembership.findMany({
+        where: {
           userId,
-          username: name,
-          requestRole,
-          status: RoleRequestStatus.pending,
+          role: RestaurantRole.OWNER,
+          restaurant: { status: { not: Status.REMOVED } },
+        },
+        select: { restaurantId: true, restaurant: { select: { name: true } } },
+      }),
+      this.prisma.schoolMembership.findMany({
+        where: {
+          userId,
+          role: SchoolRole.ADMIN,
+          status: MembershipStatus.APPROVED,
+          school: { status: Status.ACTIVE },
+        },
+        select: { schoolId: true, school: { select: { name: true } } },
+      }),
+    ]);
+
+    const blockers: DeleteAccountBlocker[] = owned.map((m) => ({
+      code: 'OWNS_RESTAURANT',
+      restaurantId: m.restaurantId,
+      name: m.restaurant.name,
+    }));
+
+    for (const m of adminOf) {
+      const admins = await this.prisma.schoolMembership.count({
+        where: {
+          schoolId: m.schoolId,
+          role: SchoolRole.ADMIN,
+          status: MembershipStatus.APPROVED,
         },
       });
-
-      return result;
-    } catch (error) {
-      // Handle unique constraint on userId to provide a friendly message
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        throw new BadRequestException('คุณได้ส่งคำขอไปแล้ว ระบบกำลังรอการอนุมัติจากผู้ดูแลอยู่');
-      }
-      
-      throw error;
+      if (admins <= 1)
+        blockers.push({
+          code: 'LAST_SCHOOL_ADMIN',
+          schoolId: m.schoolId,
+          name: m.school.name,
+        });
     }
+    return blockers;
   }
 
-  async updateRoleRequest(userId: string, requestRole: Role, status: RoleRequestStatus) {
-    const roleRequest = await this.prisma.roleRequest.update({
-      where: { userId },
-      data: {
-        requestRole,
-        status,
-      },
-    });
-
-    if (status === RoleRequestStatus.accepted) {
-      await this.prisma.user.update({
-        where: { userId },
-        data: { role: requestRole },
+  /**
+   * DELETE /user/me. Blocked (409) while the caller owns a live shop or is the last admin of an ACTIVE school.
+   * Memberships cascade, orders keep their rows with `userId = null`; the Supabase login is removed last
+   * and a missing service-role key aborts *before* anything is deleted.
+   */
+  async deleteMyAccount(userId: string) {
+    const blockers = await this.findDeleteBlockers(userId);
+    if (blockers.length > 0) {
+      throw new ConflictException({
+        message: 'ไม่สามารถลบบัญชีได้ กรุณาจัดการรายการต่อไปนี้ก่อน',
+        blockers,
       });
     }
 
-    return roleRequest;
-  }
+    this.supabase.assertCanDeleteAuthUsers();
 
-  // activated once the request is rejected so user can resend new reqeust
-  // async removeRoleRequest() {}
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.delete({ where: { userId } });
+    });
+
+    await this.supabase.deleteAuthUser(userId);
+    return { deleted: true };
+  }
 
   async removeUser(userId: string) {
     const user = await this.prisma.user.delete({
       where: { userId },
     });
+    // the login lives in Supabase Auth – remove it too so the e-mail can be reused
+    await this.supabase.deleteAuthUser(userId);
 
     return user;
   }

@@ -1,126 +1,100 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signupSchema, signupSchemaType } from "@/schemas/auth/signupSchema";
 import Link from "next/link";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
-import { api } from "@/lib/api";
+import { Icon } from "@/components/ui/kit";
 import { useAuth } from "@/auth/auth.hooks";
-import { toastSuccess, toastDanger } from "@/components/ui/Toast";
+import { toastSuccess } from "@/components/ui/Toast";
+import { formatInviteCode } from "@/lib/services/student";
 
 export default function SignupPage() {
     const {
         register,
+        control,
         handleSubmit,
         formState: { errors, isSubmitting },
     } = useForm<signupSchemaType>({
         resolver: zodResolver(signupSchema),
+        defaultValues: { inviteCode: "" },
     });
 
     const router = useRouter();
-    const { login } = useAuth();
-    const [, setIsLoading] = useState(false);
-    const [, setErrorMessage] = useState<string | null>(null);
+    const { signup } = useAuth();
 
-    const submitForm = async (signupData: signupSchemaType, event?: React.BaseSyntheticEvent) => {
-        event?.preventDefault();
-
-        setIsLoading(true);
-        setErrorMessage(null);
+    const submitForm = async (signupData: signupSchemaType) => {
+        const code = signupSchema.shape.inviteCode.parse(signupData.inviteCode);
         try {
-            await api.post(`/auth/signup`, signupData);
-            toastSuccess(`ลงทะเบียนใช้งานสำเร็จ!`);
-            await login(signupData.email, signupData.password);
-            router.push("/user/restaurant"); // Navigate to the home page
-        } catch (error: unknown) {
-            if (typeof error === 'object' && error !== null && 'response' in error) {
-                const err = error as { response: { status: number; data?: { message?: string } } };
-
-                if (err.response.status === 409) {
-                    toastDanger('อีเมลนี้มีผู้ใช้งานแล้ว กรุณาใช้อีเมลอื่น');
-                } else if (err.response.data?.message) {
-                    setErrorMessage(err.response.data.message);
-                    toastDanger(err.response.data.message); // use fresh message directly
-                } else {
-                    toastDanger('พบข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
-                }
-
-            } else if (typeof error === 'object' && error !== null && 'request' in error) {
-                toastDanger('เกิดเหตุขัดข้องจากเซิฟเวอร์ กรุณาลองใหม่อีกครั้ง');
-            } else {
-                toastDanger('ข้อมูลไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง');
+            // the code goes into Supabase user_metadata so /onboarding still has it after the e-mail-confirm redirect – it decides the role
+            const { needsConfirmation } = await signup(signupData.email, signupData.password, signupData.name, "/onboarding", { invite_code: code });
+            if (needsConfirmation) {
+                toastSuccess("ส่งลิงก์ยืนยันไปที่อีเมลแล้ว กรุณากดลิงก์เพื่อเริ่มใช้งาน");
+                return;
             }
-        } finally {
-            setIsLoading(false);
+            toastSuccess("ลงทะเบียนใช้งานสำเร็จ!");
+            router.push("/onboarding");
+        } catch {
+            /* the provider already showed the reason */
         }
     };
 
     return (
-        <div className="container flex items-center justify-center min-w-screen min-h-screen">
-            <div className="flex justify-center items-center w-full h-full xl:gap-14 lg:justify-normal md:gap-5 draggable">
-                <div className="flex items-center justify-center w-full h-full lg:p-12">
-                    <div className="flex items-center justify-center w-full h-full xl:p-10">
-                        <form
-                            onSubmit={handleSubmit(submitForm)} // Ensure this is correctly set
-                            className="flex flex-col w-full h-full p-20 text-center bg-white rounded-3xl"
-                        >
-                            <h3 className="mb-3 text-4xl font-extrabold text-gray-900">
-                                ยังไม่เคยลงทะเบียน?
-                            </h3>
-                            <p className="mb-16 text-gray-700">
-                                กรุณาใส่อีเมลและรหัสผ่านของคุณ
-                            </p>
+        <div className="min-h-screen bg-ground sm:flex sm:items-center sm:justify-center sm:p-6">
+            <div className="mx-auto flex min-h-screen w-full max-w-[420px] flex-col gap-[22px] bg-white px-6 pb-7 pt-5 font-app text-brand-dark sm:min-h-0 sm:rounded-3xl sm:border sm:border-line-soft sm:py-10">
+                <Link href="/login" aria-label="กลับไปเข้าสู่ระบบ" className="-ml-2.5 flex h-11 w-11 items-center justify-center rounded-xl text-brand-dark hover:bg-ground">
+                    <Icon name="back" size={24} />
+                </Link>
 
-                            <div className="flex flex-col gap-y-4">
-                                <Input
-                                    type="email"
-                                    placeholder="อีเมล"
-                                    label="อีเมล"
-                                    // name="email"
-                                    // register={register}
-                                    {...register('email')}
-                                    variant={errors.email ? "error" : "primary"}
-                                    error={errors.email?.message}
-                                />
-
-                                <Input
-                                    type="password"
-                                    placeholder="รหัสผ่าน"
-                                    label="รหัสผ่าน"
-                                    // name="password"
-                                    // register={register}
-                                    {...register('password')}
-                                    variant={errors.password ? "error" : "primary"}
-                                    error={errors.password?.message}
-                                />
-                            </div>
-
-                            <div className="flex flex-row justify-end mb-8"></div>
-                            <div className="flex flex-col justify-center gap-y-4">
-                                <Button variant="primary" size="full" type="submit" disabled={isSubmitting}>
-                                    {isSubmitting ? "กำลังโหลด..." : "สร้างบัญชีผู้ใช้"}
-                                </Button>
-                                <p className="text-light font-noto-thai text-sm">หรือ</p>
-                                <Button type="button" size="full" variant="secondary" onClick={() => router.push('/user/restaurant')}>
-                                    สั่งอาหารเลยโดยไม่ล็อกอิน!
-                                </Button>
-                            </div>
-                            <p className="mt-6  leading-relaxed text-gray-900">
-                                มีบัญชีอยู่แล้ว?{" "}
-                                <Link
-                                    href="/login"
-                                    className="font-[700]  text-blue-400 transition duration-500 hover:text-blue-600"
-                                >
-                                    เข้าสู่ระบบ
-                                </Link>
-                            </p>
-                        </form>
-                    </div>
+                <div className="flex flex-col gap-2">
+                    <h1 className="text-[30px] font-bold leading-tight">สร้างบัญชี</h1>
+                    <p className="text-base leading-relaxed text-brand-muted">ขอรหัสเชิญจากโรงเรียนหรือเจ้าของร้านของคุณ แล้วกรอกด้านล่าง รหัสจะกำหนดว่าคุณเข้าร่วมในฐานะอะไร</p>
                 </div>
+
+                <form onSubmit={handleSubmit(submitForm)} className="flex flex-1 flex-col gap-4" noValidate>
+                    <Input type="text" label="ชื่อ" placeholder="ชื่อที่ใช้แสดง" autoComplete="name" {...register("name")} variant={errors.name ? "error" : "primary"} error={errors.name?.message} />
+                    <Input type="email" label="อีเมล" placeholder="name@school.ac.th" autoComplete="email" {...register("email")} variant={errors.email ? "error" : "primary"} error={errors.email?.message} />
+                    <Input type="password" label="รหัสผ่าน" placeholder="รหัสผ่าน" autoComplete="new-password" {...register("password")} variant={errors.password ? "error" : "primary"} error={errors.password?.message} />
+
+                    <Controller
+                        control={control}
+                        name="inviteCode"
+                        render={({ field }) => (
+                            <Input
+                                type="text"
+                                label="รหัสเชิญ"
+                                placeholder="ABCD-2345"
+                                autoComplete="off"
+                                autoCapitalize="characters"
+                                spellCheck={false}
+                                maxLength={9}
+                                className="font-mono tracking-widest"
+                                name={field.name}
+                                value={field.value}
+                                onBlur={field.onBlur}
+                                onChange={(e) => field.onChange(formatInviteCode(e.target.value))}
+                                variant={errors.inviteCode ? "error" : "primary"}
+                                error={errors.inviteCode?.message}
+                            />
+                        )}
+                    />
+                    <p className="-mt-1 text-sm text-brand-muted">ผู้ดูแลโรงเรียน: ใช้รหัสที่ผู้ดูแลระบบส่งให้</p>
+
+                    <div className="mt-auto flex flex-col gap-3 pt-4">
+                        <Button variant="primary" size="full" type="submit" disabled={isSubmitting}>
+                            {isSubmitting ? "กำลังโหลด..." : "สร้างบัญชี"}
+                        </Button>
+                        <p className="text-center text-[15px] text-brand-muted">
+                            มีบัญชีแล้ว?{" "}
+                            <Link href="/login" className="font-bold text-primary-dark hover:text-primary-main">
+                                เข้าสู่ระบบ
+                            </Link>
+                        </p>
+                    </div>
+                </form>
             </div>
         </div>
     );

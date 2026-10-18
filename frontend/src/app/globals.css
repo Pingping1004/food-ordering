@@ -1,10 +1,12 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@source "..";
+
 @custom-variant dark (&:is(.dark *));
 
 body {
-  font-family: 'Poppins', 'Noto Sans Thai', sans-serif;
+  font-family: var(--font-kanit), system-ui, sans-serif;
 }
 
 @theme inline {
@@ -48,18 +50,61 @@ body {
 }
 
 @theme {
-    --color-danger-main: #FF3632;
+    --color-danger-main: #D92D20;
     --color-danger-light: #FFE1E0;
     --color-primary-main: #006CFE;
+    --color-primary-dark: #0052C2;
     --color-primary-light: #E0E8F6;
-    --color-success-main: #45B858;
+    --color-success-main: #15803D;
     --color-success-light: #E3F4E6;
-    --color-brand-dark: #1c1c1c;
+    --color-brand-dark: #1C1C1C;
     --color-brand-light: #FFFBF5;
     --color-brand-orange: #FF5C1A;
-    --color-brand-muted: #71717A;
-    --color-brand-green: #16A34A;
+    --color-brand-orange-text: #B23A0A;
+    --color-brand-orange-light: #FFF1EA;
+    --color-brand-muted: #5F5F68;
+    --color-brand-green: #15803D;
+    --color-ground: #F5F7FB;
+    --color-line: #D0D5DD;
+    --color-line-soft: #E3E7EF;
+    --color-danger-text: #B42318;
+    --color-slate: #344054;
+    --color-neutral-light: #F2F4F7;
+    --color-neutral-text: #475467;
+    --color-ground-blue: #F5F8FF;
+    --color-primary-border: #9DB8E8;
+    --color-row-line: #EEF1F6;
 }
+
+/* Visually hidden but available to assistive tech (used for table headers / labels) */
+.sr-only-x { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } /* left/top pinned so it cannot widen the page from inside a scrolling table */
+
+/* A4 report: hide app chrome when printing */
+@media print {
+  .no-print { display: none !important; }
+  body { background: #fff !important; }
+}
+
+
+/* ── responsive app shell (components/shell/ResponsiveShell.tsx) ──
+   < 768px: sticky top navbar · >= 768px: persistent left sidebar.
+   Pages use --sidebar-w to align fixed bottom bars with the content column. */
+.app-shell { --sidebar-w: 0px; --mobile-nav-h: calc(3.5rem + env(safe-area-inset-top, 0px)); }
+@media (min-width: 768px) {
+  .app-shell { --sidebar-w: 15rem; --mobile-nav-h: 0px; }
+}
+@media (min-width: 1280px) {
+  .app-shell { --sidebar-w: 16rem; }
+}
+/* full-height content that already accounts for the mobile navbar (falls back to 100dvh outside a shell) */
+@utility min-h-app {
+  min-height: calc(100dvh - var(--mobile-nav-h, 0px));
+}
+@keyframes drawer-in { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+.drawer-in { animation: drawer-in 0.2s ease-out; }
+@media (prefers-reduced-motion: reduce) { .drawer-in { animation: none; } }
+/* never let the page itself scroll sideways */
+html, body { overflow-x: clip; }
 
 @media (max-width: 389px) {
   .w-140-mobile {
@@ -163,7 +208,49 @@ body {
 .border-color { border-color: #E1E1E1; }
 .border-primary { border-color: var(--primary); }
 
-.font-poppins { font-family: var(--font-poppins) }
-.font-noto-thai { font-family: var(--font-noto-thai) }
+.font-app { font-family: var(--font-kanit), system-ui, sans-serif }
 
 .bg-primary { background-color: var(--primary); }
+
+/* Skeleton Shimmer Wave Effect */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.animate-shimmer::after {
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0,
+    rgba(255, 255, 255, 0.45) 25%,
+    rgba(255, 255, 255, 0.75) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: shimmer 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  content: '';
+  pointer-events: none;
+}
+
+.dark .animate-shimmer::after {
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0,
+    rgba(255, 255, 255, 0.05) 25%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+/* App-wide "large text" preference (TextSizeProvider): rem-based sizes scale with the root font size. */
+html[data-text-size="large"] { font-size: 118.75%; }

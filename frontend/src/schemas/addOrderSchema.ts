@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const createOrderSchema = (avgCookingTime: number) => z.object({
     restaurantId: z.string().uuid('ไอดีร้านอาหารไม่ถูกต้อง'),
-    deliverAt: z.string() // It receives a string from TimePickerInput
+    pickupAt: z.string() // HH:mm from the slot picker → Order.pickupAt
         .min(1, `กรุณาเลือกเวลารับอาหารขั้นต่ำ ${5 + avgCookingTime} นาทีหลังสั่ง`) // Basic validation for non-empty string
         .refine(
             (time) => {
@@ -22,29 +22,32 @@ export const createOrderSchema = (avgCookingTime: number) => z.object({
                 ctx.addIssue({
                     code: z.ZodIssueCode.custom,
                     message: 'ไม่สามารถแปลงเวลาเป็นวันที่ได้',
-                    path: ['deliverAt'],
+                    path: ['pickupAt'],
                 });
                 return z.NEVER; // Indicates a transformation failure for Zod
             }
         })
-        .superRefine((deliverAtDate, ctx) => {
+        .superRefine((pickupAtDate, ctx) => {
             const now = new Date();
             // const deliverHour = deliverAtDate.getHours();
             // const timeBuffer = (deliverHour === 12) ? 19 : 9;
             const timeBuffer = 6 + avgCookingTime;
             const minimumAllowedDeliverTime = new Date(now.getTime() + timeBuffer * 60 * 1000);
 
-            if (deliverAtDate < minimumAllowedDeliverTime) {
+            if (pickupAtDate < minimumAllowedDeliverTime) {
                 ctx.addIssue({
                     code: z.ZodIssueCode.custom,
                     message: `เวลารับอาหารต้องอยู่หลังจากเวลาปัจจุบันอย่างน้อย ${timeBuffer} นาที`,
-                    path: ['deliverAt'],
+                    path: ['pickupAt'],
                 });
             }
         }),
+    /** Not stored by the new schema (Order has no userTel) – optional so students are not forced to give a number nobody saves. */
     userTel: z.string()
         .trim()
-        .regex(/^\d{10}$/, { message: 'กรุณาระบุเบอร์โทรที่ถูกต้อง 10 หลัก' }),
+        .regex(/^(\d{10})?$/, { message: 'กรุณาระบุเบอร์โทรที่ถูกต้อง 10 หลัก' })
+        .optional(),
+    details: z.string().trim().max(200, 'หมายเหตุยาวเกิน 200 ตัวอักษร').optional(),
 });
 
 export type CreateOrderSchemaType = z.infer<ReturnType<typeof createOrderSchema>>

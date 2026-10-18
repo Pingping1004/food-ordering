@@ -37,7 +37,7 @@ const TimePickerInput: React.FC<TimePickerInputProps> = ({
                 value={internalTime24hr}
                 onChange={handleChange}
                 onBlur={onBlur}
-                className="border p-2 rounded w-full"
+                className="h-[52px] w-full rounded-xl border-[1.5px] border-line bg-white px-3.5 text-lg font-bold outline-none focus:border-primary-main focus:ring-2 focus:ring-primary-main/20"
             />
             {/* You can still have your display logic */}
             <p className="text-sm text-gray-500 mt-2">

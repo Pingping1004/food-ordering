@@ -41,14 +41,20 @@ export class UpdateMenuDto {
   cookingTime?: number;
 
   @IsOptional()
+  @IsNumber()
+  @IsPositive()
+  @Type(() => Number)
+  cookingTimeMins?: number;
+
+  @IsOptional()
   @IsString()
   @Matches(/^\d+(\.\d{1,2})?$/, {
-    message: 'price must be a valid number with up to 2 decimal places'
+    message: 'price must be a valid number with up to 2 decimal places',
   })
   price?: string;
 
   @IsOptional()
-  @Transform(({ value }) => value === 'true' || value === true )
+  @Transform(({ value }) => value === 'true' || value === true)
   @IsBoolean()
   isAvailable?: boolean;
 }

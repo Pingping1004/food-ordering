@@ -8,9 +8,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { singleCreateMenuSchema, SingleCreateMenuSchemaType } from '@/schemas/addMenuSchema'; // Adjust path
-import { toastDanger } from '@/components/ui/Toast';
+import { toastError, toastDanger } from '@/components/ui/Toast';
 import { getParamId } from '@/util/param';
 import { useCreateMenu } from '@/hook/useMenu';
+import { CookerShell } from "@/components/cookers/CookerShell";
 
 export default function AddMenuPage() {
     const params = useParams();
@@ -56,7 +57,7 @@ export default function AddMenuPage() {
 
     const onError = (formErrors: typeof errors) => {
         const messages = Object.entries(formErrors)
-            .map(([field, error]) => `${field}: ${error?.message}`)
+            .map(([, error]) => `• ${error?.message || "ข้อมูลช่องนี้ไม่ถูกต้อง"}`)
             .join('\n');
 
         toastDanger(`กรุณากรอกข้อมูลให้ถูกต้อง:\n\n${messages}`);
@@ -64,7 +65,7 @@ export default function AddMenuPage() {
 
     const onSubmit: SubmitHandler<SingleCreateMenuSchemaType> = (data) => {
         if (!data.menuImg?.length) {
-            toastDanger("กรุณาเลือกรูปภาพ");
+            toastDanger("ยังไม่ได้เลือกรูปภาพ", "กรุณาเลือกรูปอาหารก่อนกดบันทึก");
             return;
         }
 
@@ -73,7 +74,7 @@ export default function AddMenuPage() {
         formData.append('name', data.name);
         formData.append('price', data.price.toString());
         if (data.maxDaily !== undefined) formData.append('maxDaily', data.maxDaily.toString());
-        if (data.cookingTime !== undefined) formData.append('cookingTime', data.cookingTime.toString());
+        if (data.cookingTime !== undefined) formData.append('cookingTimeMins', data.cookingTime.toString());
         formData.append('menuImg', data.menuImg[0]);
 
         createMenu(
@@ -83,29 +84,32 @@ export default function AddMenuPage() {
                     name: data.name,
                     price: data.price,
                     maxDaily: data.maxDaily ?? 0,
-                    cookingTime: data.cookingTime ?? 0,
+                    cookingTimeMins: data.cookingTime ?? 0,
                     menuImg: imagePreviewUrl ?? '',
                     isAvailable: true,
-                    isOrderable: true,
-                    sellPriceDisplay: data.price,
                     restaurantId: restaurantId!,
                 },
             },
             {
-                onError: () => toastDanger("สร้างเมนูใหม่ล้มเหลว กรุณาลองใหม่อีกครั้ง"),
-                onSuccess: () => reset(),
+                onError: (err) => toastError("สร้างเมนูใหม่ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง", err),
+                onSuccess: () => {
+                    reset();
+                    router.push(`/cooker/restaurant/managed-menu/${restaurantId}`);
+                },
             }
         );
-
-        router.push(`/cooker/restaurant/managed-menu/${restaurantId}`);
     };
 
     const { mutate: createMenu } = useCreateMenu(restaurantId || "")
 
     return (
-        <div className="flex flex-col gap-y-10 py-10 px-6">
-            <div className="flex justify-between items-center">
-                <h2 className="font-noto-thai text-bold text-2xl">เพิ่มเมนู</h2>
+        <CookerShell restaurantId={restaurantId ?? ""} active="menu">
+        <div className="mx-auto flex min-h-app w-full max-w-[640px] md:max-w-[720px] flex-col gap-y-5 bg-ground px-5 py-6 font-app text-brand-dark">
+            <div className="flex items-center justify-between gap-3">
+                <button type="button" onClick={() => router.push(`/cooker/restaurant/managed-menu/${restaurantId}`)} aria-label="กลับไปจัดการเมนู" className="-ml-2 flex h-11 w-11 items-center justify-center rounded-xl hover:bg-white">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+                </button>
+                <h1 className="flex-1 text-[28px] font-bold">เพิ่มเมนู</h1>
                 <Button
                     type="button"
                     variant="secondary"
@@ -115,8 +119,8 @@ export default function AddMenuPage() {
                 </Button>
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit, onError)} className="flex flex-col gap-y-10">
-                <div className="grid grid-cols-1 md:grid-cols-2 md:gap-x-10 gap-y-6">
+            <form onSubmit={handleSubmit(onSubmit, onError)} className="flex flex-col gap-y-5 rounded-[20px] border border-line-soft bg-white p-5">
+                <div className="grid grid-cols-1 gap-y-6">
                     {/* Left Column: Image Preview & Upload */}
                     <div className="flex flex-col items-center justify-center">
                         {/* Image Preview */}
@@ -125,12 +129,12 @@ export default function AddMenuPage() {
                                 <Image
                                     src={imagePreviewUrl}
                                     alt="Preview menu image"
-                                    className="w-48 h-48 object-cover aspect-square rounded-lg border border-gray-300 shadow-sm"
+                                    className="w-48 h-48 object-cover aspect-square rounded-2xl border border-line-soft"
                                     width={192}
                                     height={192}
                                 />
                             ) : (
-                                <div className="w-48 h-48 bg-gray-100 flex items-center justify-center rounded-lg border border-gray-300 text-gray-400">
+                                <div className="w-48 h-48 bg-ground flex items-center justify-center rounded-2xl border border-line-soft text-brand-muted">
                                     No Image Selected
                                 </div>
                             )}
@@ -138,7 +142,7 @@ export default function AddMenuPage() {
 
                         {/* File Input */}
                         <div className="w-full max-w-xs">
-                            <label htmlFor="menuImg" className="block text-sm font-medium text-gray-700 mb-1">รูปภาพเมนู</label>
+                            <label htmlFor="menuImg" className="mb-2 block text-[15px] font-semibold">รูปภาพเมนู</label>
                             <Input
                                 type="file"
                                 id="menuImg"
@@ -193,5 +197,6 @@ export default function AddMenuPage() {
                 </Button>
             </form>
         </div>
+        </CookerShell>
     );
 }

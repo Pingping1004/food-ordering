@@ -1,34 +1,22 @@
 import {
   Controller,
   Get,
-  Post,
   Body,
   Patch,
   Param,
   Delete,
   Req,
-  UseGuards,
   Header,
 } from '@nestjs/common';
 import { UserService } from './user.service';
-import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { Role, User } from '@prisma/client';
-import { JwtAuthGuard } from '../guards/jwt-auth.guard';
-import { RolesGuard } from 'src/guards/roles.guard';
-import { Roles } from 'src/decorators/role.decorator';
+import { SystemAdmin } from 'src/access';
 
 @Controller('user')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles([Role.user, Role.admin, Role.cooker])
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
-  @Post()
-  createUser(@Body() createUserDto: CreateUserDto) {
-    return this.userService.createUser(createUserDto);
-  }
-
+  @SystemAdmin()
   @Get()
   findAll() {
     return this.userService.findAllUsers();
@@ -36,34 +24,32 @@ export class UserController {
 
   @Get('profile')
   @Header('Content-Type', 'application/json')
-  async getProfile(@Req() req): Promise<Omit<User, 'password'>> {
-    const userId = req.user.userId;
-    const user = await this.userService.findOneUser(userId);
-    return user;
+  async getProfile(@Req() req): Promise<unknown> {
+    return this.userService.findOneUser(req.user.userId, req.user.aal);
   }
 
-  @Post('request-role')
-  @Roles([Role.user])
-  async createRoleRequest(@Req() req, @Body('role') requestRole: Role) {
-    const userId = req.user.userId;
-
-    await this.userService.createRoleRequest(userId, requestRole);
-    return {
-      message:
-        'Your role upgrade request has been submitted for admin approval.',
-    };
+  // Declared before `:userId` so "me" is never read as a user id.
+  @Delete('me')
+  deleteMyAccount(@Req() req) {
+    return this.userService.deleteMyAccount(req.user.userId);
   }
 
+  @SystemAdmin()
   @Get(':userId')
   findOne(@Param('userId') userId: string) {
     return this.userService.findOneUser(userId);
   }
 
+  @SystemAdmin()
   @Patch(':userId')
-  updateUser(@Param('userId') userId: string, updateUserDto: UpdateUserDto) {
+  updateUser(
+    @Param('userId') userId: string,
+    @Body() updateUserDto: UpdateUserDto,
+  ) {
     return this.userService.updateUser(userId, updateUserDto);
   }
 
+  @SystemAdmin()
   @Delete(':userId')
   remove(@Param('userId') userId: string) {
     return this.userService.removeUser(userId);

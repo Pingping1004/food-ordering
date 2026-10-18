@@ -4,7 +4,10 @@ import {
   MiddlewareConsumer,
   RequestMethod,
 } from '@nestjs/common';
-import { APP_FILTER } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { SupabaseAuthGuard } from './guards/supabase-auth.guard';
+import { RolesGuard } from './guards/roles.guard';
+import { AccessModule } from './access/access.module';
 import { HttpExceptionFilter } from './libs/http-exception.filter';
 import { CatchEverythingFilter } from './libs/catch-everything.filter';
 import { RequestLoggerMiddleware } from 'src/logger.middleware';
@@ -28,15 +31,14 @@ import { PaymentController } from './payment/payment.controller';
 import { PayoutModule } from './payout/payout.module';
 import { PayoutController } from './payout/payout.controller';
 import { PayoutService } from './payout/payout.service';
-import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
-import { AdminModule } from './admin/admin.module';
+import { SchoolModule } from './school/school.module';
+import { InviteModule } from './invite/invite.module';
+import { SupportGrantModule } from './support-grant/support-grant.module';
+import { RefundModule } from './refund/refund.module';
+import { ComplaintModule } from './complaint/complaint.module';
 import { UploadModule } from './upload/upload.module';
 import { UploadController } from './upload/upload.controller';
-import { RefreshTokenModule } from './refreshToken/refresh-token.module';
-import { CsrfTokenService } from './csrf/csrf.service';
-import { CsrfModule } from './csrf/csrf.module';
-import { RefreshTokenService } from './refreshToken/refresh-token.service';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { S3Module } from './s3/s3.module';
 import { S3Service } from './s3/s3.service';
@@ -44,12 +46,12 @@ import { ConfigModule } from '@nestjs/config';
 import configuration from './config/configuration';
 import { InventoryModule } from './inventory/inventory.module';
 import { InventoryService } from './inventory/inventory.service';
-import { TokenCleanService } from './auth/jobs/tokenClean.job';
 import { ScheduleModule } from '@nestjs/schedule';
 import { NotificationModule } from './notification/notification.module';
 import { AnalyticsModule } from './analytics/dto/analytics.module';
 import { AnalyticsService } from './analytics/analytics.service';
 import { QrReaderService } from './utils/qr-reader.service';
+import { SupabaseModule } from './supabase/supabase.module';
 
 @Module({
   imports: [
@@ -62,8 +64,6 @@ import { QrReaderService } from './utils/qr-reader.service';
     PaymentModule,
     UploadModule,
     NotificationModule,
-    CsrfModule,
-    RefreshTokenModule,
     S3Module,
     ThrottlerModule.forRoot({
       throttlers: [
@@ -76,14 +76,20 @@ import { QrReaderService } from './utils/qr-reader.service';
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
-      envFilePath: process.env.NODE_ENV === 'production' ? '.env.production' : '.env'
+      envFilePath:
+        process.env.NODE_ENV === 'production' ? '.env.production' : '.env',
     }),
     ScheduleModule.forRoot(),
     PayoutModule,
-    AuthModule,
+    SupabaseModule,
+    AccessModule,
     AnalyticsModule,
     UserModule,
-    AdminModule,
+    SchoolModule,
+    InviteModule,
+    SupportGrantModule,
+    RefundModule,
+    ComplaintModule,
   ],
   controllers: [
     AppController,
@@ -95,6 +101,9 @@ import { QrReaderService } from './utils/qr-reader.service';
     UploadController,
   ],
   providers: [
+    // Authenticated by default; opt out with @Public(). Order matters: auth first, then roles.
+    { provide: APP_GUARD, useClass: SupabaseAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
     {
       provide: APP_FILTER,
       useClass: HttpExceptionFilter,
@@ -104,8 +113,6 @@ import { QrReaderService } from './utils/qr-reader.service';
       useClass: CatchEverythingFilter,
     },
     InventoryService,
-    TokenCleanService,
-    CsrfTokenService,
     AppService,
     AnalyticsService,
     RestaurantService,
@@ -114,7 +121,6 @@ import { QrReaderService } from './utils/qr-reader.service';
     OrderService,
     PaymentService,
     PayoutService,
-    RefreshTokenService,
     S3Service,
     QrReaderService,
   ],

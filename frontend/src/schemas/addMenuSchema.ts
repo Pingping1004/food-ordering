@@ -2,7 +2,8 @@ import { z } from "zod";
 
 export const baseCreateMenuSchema = z.object({
     name: z.string().min(0.1, "กรุณากรอกชื่อเมนู"),
-    price: z.coerce.number().min(0.1, "ราคาต้องมากกว่าหรือเท่ากับ 0.1 บาท"),
+    // Menu.price is Int (whole baht) in schema.prisma
+    price: z.coerce.number().int("ราคาต้องเป็นจำนวนเต็ม (บาท)").min(1, "ราคาต้องไม่ต่ำกว่า 1 บาท"),
     maxDaily: z.coerce.number().min(1, "จำนวนสูงสุดต่อวันต้องมากกว่า 0"),
     cookingTime: z.coerce.number().min(1, "เวลาทำอาหารต้องอย่างน้อย 1 นาที"),
     menuImg: z
@@ -31,6 +32,7 @@ export const baseEditMenuSchema = z.object({
         .optional(),
     price: z.coerce
         .number()
+        .int({ message: "ราคาต้องเป็นจำนวนเต็ม (บาท)" })
         .positive({ message: "ราคาต้องมากกว่า 0" })
         .optional(),
     createdAt: z.coerce.date().optional(),
@@ -95,7 +97,8 @@ export const csvMenuItemSchema = z.object({
     name: z.string().min(1, "กรุณากรอกชื่อเมนู"),
     price: z.coerce
         .number()
-        .min(0.01, "ราคาต้องมากกว่า 0 บาท"),
+        .int("ราคาต้องเป็นจำนวนเต็ม (บาท)")
+        .min(1, "ราคาต้องไม่ต่ำกว่า 1 บาท"),
     maxDaily: z.coerce
         .number()
         .int()
@@ -114,9 +117,15 @@ export const csvMenuItemSchema = z.object({
 
 export type CsvMenuItemSchemaType = z.infer<typeof csvMenuItemSchema>;
 
+/** Body of PATCH/POST /menu/bulk – `cookingTimeMins` follows schema.prisma (`Menu.cookingTimeMins`). */
 export const finalBulkMenuPayloadSchema = z.array(
-    baseCreateMenuSchema.extend({
-        imageFileName: z.string().optional(),
+    z.object({
+        name: z.string(),
+        price: z.number().int(),
+        maxDaily: z.number(),
+        cookingTimeMins: z.number(),
+        isAvailable: z.boolean().optional(),
+        menuImgTempId: z.string().optional(),
         originalFileName: z.string().optional(),
     })
 );

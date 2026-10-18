@@ -1,3 +1,5 @@
+import { Logo } from "@/components/Logo";
+
 export default function Tutorial() {
     const steps = [
       {
@@ -7,8 +9,10 @@ export default function Tutorial() {
         screen: {
           bg: 'bg-primary-main',
           content: (
-            <div className="text-center py-6 px-4">
-              <div className="text-4xl mb-3">🍽️</div>
+            <div className="flex flex-col items-center text-center py-6 px-4">
+              <div className="mb-3">
+                <Logo size={48} className="shadow-md" />
+              </div>
               <div className="text-white font-display font-bold text-xl">PromptServe</div>
               <div className="text-white/70 text-sm mt-1">ระบบสั่งอาหารมหาลัย</div>
               <div className="mt-4 bg-white rounded-xl px-4 py-2.5 text-primary-main font-semibold text-sm text-center">
@@ -139,7 +143,7 @@ export default function Tutorial() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {steps.map((s) => (
               <div key={s.step} className="border border-gray-100 rounded-3xl overflow-hidden card-hover bg-white shadow-sm">
-                {/* Phone screen mockup */}
+                {/* Phone screen preview */}
                 <div className={`${s.screen.bg} relative h-48 overflow-hidden`}>
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="w-40 bg-white rounded-2xl shadow-xl overflow-hidden">

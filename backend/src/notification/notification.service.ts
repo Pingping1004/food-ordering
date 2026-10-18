@@ -14,7 +14,7 @@ type NotificationOrder = {
   paymentStatus: string;
   restaurant: {
     name: string;
-    userId: string;
+    memberships?: Array<{ userId: string }>;
   };
   orderMenus: Array<{
     quantity: number;
@@ -64,11 +64,83 @@ export class NotificationService {
     });
   }
 
+  /**
+   * Best-effort generic push (no order, no retry job, no delivery log) - used for refund notices.
+   * Never throws: callers must not depend on it.
+   */
+  async sendToUsers(
+    userIds: string[],
+    payload: { title: string; body: string; path?: string },
+  ): Promise<void> {
+    try {
+      if (!this.messaging || userIds.length === 0) return;
+      const tokens = await this.prisma.deviceToken.findMany({
+        where: { userId: { in: userIds }, isActive: true },
+        select: { token: true },
+      });
+      if (!tokens.length) return;
+      const link = `${this.getFrontendBaseUrl()}${payload.path ?? '/'}`;
+      await this.messaging.sendEachForMulticast({
+        tokens: tokens.map((t) => t.token),
+        data: { title: payload.title, body: payload.body, link },
+        webpush: {
+          notification: {
+            title: payload.title,
+            body: payload.body,
+            icon: `${this.getFrontendBaseUrl()}/favicon.svg`,
+          },
+          fcmOptions: { link },
+        },
+      });
+    } catch (error) {
+      this.logger.warn(
+        `sendToUsers failed: ${error instanceof Error ? error.message : error}`,
+      );
+    }
+  }
+
+  /**
+   * Tells the student who placed the order that it is ready, or that the shop is running late.
+   * Only students who enabled notifications (an active device token) receive it; never throws.
+   */
+  async notifyStudentOrderUpdate(
+    orderId: string,
+    event: 'ready' | 'delay',
+  ): Promise<void> {
+    try {
+      const order = await this.prisma.order.findUnique({
+        where: { orderId },
+        select: { userId: true, restaurant: { select: { name: true } } },
+      });
+      if (!order?.userId) return;
+      const shop = order.restaurant?.name ?? 'ร้านอาหาร';
+      const payload =
+        event === 'ready'
+          ? {
+              title: 'อาหารพร้อมแล้ว',
+              body: `ออเดอร์จาก ${shop} พร้อมรับแล้ว มารับได้เลย`,
+            }
+          : {
+              title: 'ร้านแจ้งว่าอาหารจะช้ากว่าเดิม',
+              body: `${shop} ขอเวลาเพิ่มอีกเล็กน้อย ดูเวลารับใหม่ได้ที่หน้าออเดอร์`,
+            };
+      await this.sendToUsers([order.userId], {
+        ...payload,
+        path: `/user/order/wait/${orderId}`,
+      });
+    } catch (error) {
+      this.logger.warn(
+        `notifyStudentOrderUpdate failed: ${error instanceof Error ? error.message : error}`,
+      );
+    }
+  }
+
   async queueOrderCreated(orderId: string) {
     const order = await this.getOrderForNotification(orderId);
     if (!order) return;
 
-    const targetUserId = order.restaurant.userId;
+    const targetUserId = order.restaurant.memberships?.[0]?.userId;
+    if (!targetUserId) return;
 
     await this.prisma.pushNotificationJob.upsert({
       where: {
@@ -100,7 +172,9 @@ export class NotificationService {
     const order = await this.getOrderForNotification(orderId);
     if (!order) return;
 
-    const targetUserId = order.restaurant.userId;
+    const targetUserId = order.restaurant.memberships?.[0]?.userId;
+    if (!targetUserId) return;
+
     await this.dispatchEvent({
       order,
       eventType: PushEventType.payment_verified,
@@ -126,22 +200,30 @@ export class NotificationService {
 
   @Cron('*/20 * * * * *')
   async processPendingNotificationJobs() {
-    const dueJobs = await this.prisma.pushNotificationJob.findMany({
-      where: {
-        eventType: PushEventType.new_order,
-        completedAt: null,
-        cancelledAt: null,
-        attemptCount: { lt: 3 },
-        nextAttemptAt: { lte: new Date() },
-      },
-      take: 20,
-      orderBy: {
-        nextAttemptAt: 'asc',
-      },
-    });
+    try {
+      const dueJobs = await this.prisma.withRetry(() =>
+        this.prisma.pushNotificationJob.findMany({
+          where: {
+            eventType: PushEventType.new_order,
+            completedAt: null,
+            cancelledAt: null,
+            attemptCount: { lt: 3 },
+            nextAttemptAt: { lte: new Date() },
+          },
+          take: 20,
+          orderBy: {
+            nextAttemptAt: 'asc',
+          },
+        }),
+      );
 
-    for (const job of dueJobs) {
-      await this.dispatchJob(job.orderId, job.userId, job.eventType);
+      for (const job of dueJobs) {
+        await this.dispatchJob(job.orderId, job.userId, job.eventType);
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to process pending notification jobs: ${(error as Error).message}`,
+      );
     }
   }
 
@@ -170,8 +252,14 @@ export class NotificationService {
       return;
     }
 
-    if (eventType === PushEventType.new_order && order.status !== OrderStatus.sent) {
-      await this.completeJob(job.pushNotificationJobId, 'order_already_acknowledged');
+    if (
+      eventType === PushEventType.new_order &&
+      order.status !== OrderStatus.receive
+    ) {
+      await this.completeJob(
+        job.pushNotificationJobId,
+        'order_already_acknowledged',
+      );
       return;
     }
 
@@ -245,7 +333,9 @@ export class NotificationService {
         ),
       );
 
-      this.logger.warn('Skipping push send because Firebase Admin config is missing');
+      this.logger.warn(
+        'Skipping push send because Firebase Admin config is missing',
+      );
       return { errorMessage: 'Firebase Admin SDK is not configured' };
     }
 
@@ -260,8 +350,8 @@ export class NotificationService {
         notification: {
           title: messagePayload.title,
           body: messagePayload.body,
-          icon: `${this.getFrontendBaseUrl()}/icons/icon-192.svg`,
-          badge: `${this.getFrontendBaseUrl()}/icons/badge.svg`,
+          icon: `${this.getFrontendBaseUrl()}/favicon.svg`,
+          badge: `${this.getFrontendBaseUrl()}/favicon.svg`,
           tag: `${eventType}-${order.orderId}`,
           vibrate: [200, 100, 200],
           silent: false,
@@ -272,19 +362,19 @@ export class NotificationService {
         },
       },
       android: {
-          priority: 'high',
-          notification: {
+        priority: 'high',
+        notification: {
+          sound: 'default',
+          channelId: 'high_priority',
+        },
+      },
+      apns: {
+        payload: {
+          aps: {
             sound: 'default',
-            channelId: 'high_priority',
-          }
+          },
         },
-        apns: {
-          payload: {
-            aps: {
-              sound: 'default',
-            }
-          }
-        },
+      },
     });
 
     const invalidTokenIds: string[] = [];
@@ -338,11 +428,13 @@ export class NotificationService {
       .join(', ');
     const body =
       eventType === PushEventType.payment_verified
-        ? `ออเดอร์${order.orderId.slice(0,4)} ชำระเงินแล้ว`
+        ? `ออเดอร์${order.orderId.slice(0, 4)} ชำระเงินแล้ว`
         : summary || `ออเดอร์ ${order.orderId.slice(0, 6)}`;
 
-    const title = eventType === PushEventType.payment_verified
-        ? `ยืนยันการชำระเงิน ออเดอร์${order.orderId.slice(0, 4)}` : `ออเดอร์ใหม่ ${order.orderId.slice(0, 4)}`
+    const title =
+      eventType === PushEventType.payment_verified
+        ? `ยืนยันการชำระเงิน ออเดอร์${order.orderId.slice(0, 4)}`
+        : `ออเดอร์ใหม่ ${order.orderId.slice(0, 4)}`;
 
     return {
       title,
@@ -375,7 +467,9 @@ export class NotificationService {
     });
   }
 
-  private async getOrderForNotification(orderId: string): Promise<NotificationOrder | null> {
+  private async getOrderForNotification(
+    orderId: string,
+  ): Promise<NotificationOrder | null> {
     return this.prisma.order.findUnique({
       where: { orderId },
       select: {
@@ -386,7 +480,11 @@ export class NotificationService {
         restaurant: {
           select: {
             name: true,
-            userId: true,
+            memberships: {
+              select: {
+                userId: true,
+              },
+            },
           },
         },
         orderMenus: {
@@ -396,7 +494,7 @@ export class NotificationService {
           },
         },
       },
-    }) as Promise<NotificationOrder | null>;
+    });
   }
 
   private isInvalidTokenError(errorCode?: string) {

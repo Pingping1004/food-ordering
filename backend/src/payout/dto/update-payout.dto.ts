@@ -9,12 +9,17 @@ import {
   IsEnum,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { PayoutStatus } from '@prisma/client';
+export enum PayoutStatus {
+  initiated = 'initiated',
+  processing = 'processing',
+  success = 'success',
+  failed = 'failed',
+}
 
 export class UpdatePayoutDto extends PartialType(CreatePayoutDto) {
   @IsEnum(PayoutStatus)
   @IsNotEmpty()
-  payoutStatus: PayoutStatus
+  payoutStatus: PayoutStatus;
 
   @IsOptional()
   @IsPositive()

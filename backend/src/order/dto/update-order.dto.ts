@@ -14,7 +14,7 @@ import {
   ArrayMinSize,
   ArrayMaxSize,
 } from 'class-validator';
-import { PaymentMethod, OrderStatus, PaymentStatus } from '@prisma/client';
+import { OrderStatus, PaymentStatus } from '@prisma/client';
 import { CreateOrderDto, CreateOrderMenusDto } from './create-order.dto';
 import { PartialType } from '@nestjs/swagger';
 
@@ -116,10 +116,11 @@ export class UpdateOrderDto extends PartialType(CreateOrderDto) {
   orderMenus?: UpdateOrderMenusDto[];
 
   @IsOptional()
-  @IsEnum(PaymentMethod)
-  paymentMethod?: PaymentMethod;
+  @IsDate()
+  @Type(() => Date)
+  pickupAt?: Date;
 
   @IsOptional()
   @IsString()
-  paymentGatewayStatus?: string;
+  details?: string;
 }

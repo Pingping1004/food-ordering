@@ -1,44 +1,41 @@
+import { createServerClient } from "@supabase/ssr"
 import { NextRequest, NextResponse } from "next/server"
-import type { UserRole } from "./auth/auth.types"
 
-function getRoleFromToken(token?: string): UserRole | null {
-  if (!token) return null
+/**
+ * Edge gate = "is there a Supabase session?" plus cookie refresh. Roles / memberships can't be read from the
+ * Supabase token (they live in our DB), so the client guards and – authoritatively – the API enforce those.
+ */
+const NEEDS_SESSION = ["/cooker", "/school", "/workspace", "/admin", "/user", "/onboarding"]
+const OPEN_TO_ANY_SESSION_PATHS = ["/cooker/restaurant-register", "/cooker/pending"]
 
-  try {
-    const payload = JSON.parse(
-      Buffer.from(token.split(".")[1], "base64").toString()
-    )
-
-    return payload.role
-  } catch {
-    return null
-  }
-}
-
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
+  let res = NextResponse.next({ request: req })
 
-  const refreshToken = req.cookies.get("refresh_token")?.value;
-  const accessToken = req.cookies.get("access_token")?.value;
+  const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+    cookies: {
+      getAll: () => req.cookies.getAll(),
+      setAll: (list) => {
+        list.forEach(({ name, value }) => req.cookies.set(name, value))
+        res = NextResponse.next({ request: req })
+        list.forEach(({ name, value, options }) => res.cookies.set(name, value, options))
+      },
+    },
+  })
 
-  const token = accessToken || refreshToken
-  const role = getRoleFromToken(token)
+  // getUser() re-validates with Supabase (getSession() alone would trust an unverified cookie)
+  const { data: { user } } = await supabase.auth.getUser()
 
-  // cooker
-  if (pathname.startsWith("/cooker")) {
-    if (!token) return NextResponse.redirect(new URL("/login", req.url))
-    if (role !== "cooker") return NextResponse.redirect(new URL("/user", req.url))
+  const gated = NEEDS_SESSION.some((p) => pathname.startsWith(p)) || OPEN_TO_ANY_SESSION_PATHS.some((p) => pathname.startsWith(p))
+  if (gated && !user) {
+    const url = new URL("/login", req.url)
+    url.searchParams.set("next", pathname + req.nextUrl.search)
+    return NextResponse.redirect(url)
   }
 
-  // admin
-  if (pathname.startsWith("/admin")) {
-    if (!token) return NextResponse.redirect(new URL("/login", req.url))
-    if (role !== "admin") return NextResponse.redirect(new URL("/user", req.url))
-  }
-
-  return NextResponse.next()
+  return res
 }
 
 export const config = {
-  matcher: ["/cooker/:path*", "/admin/:path*"],
+  matcher: ["/cooker/:path*", "/admin/:path*", "/school/:path*", "/user/:path*", "/onboarding/:path*", "/workspace"],
 }

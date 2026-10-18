@@ -1,5 +1,16 @@
 import { useEffect, useRef, useCallback } from "react";
 
+export const PAYMENT_SOUND_KEY = "cook_payment_sound";
+
+/** The cook can mute the "payment confirmed" chime in settings; the new-order alert is unaffected. */
+export function isPaymentSoundEnabled(): boolean {
+    try {
+        return localStorage.getItem(PAYMENT_SOUND_KEY) !== "off";
+    } catch {
+        return true;
+    }
+}
+
 export function useOrderSounds() {
     const newOrderSoundRef = useRef<HTMLAudioElement | null>(null);
     const paymentSoundRef = useRef<HTMLAudioElement | null>(null);
@@ -53,8 +64,10 @@ export function useOrderSounds() {
         newOrderSoundRef.current.play().catch(() => {});
     }, []);
 
-    const playPaymentSound = useCallback(() => {
+    /** `force` lets the settings screen preview the chime while it is switched off. */
+    const playPaymentSound = useCallback((force = false) => {
         if (!paymentSoundRef.current) return;
+        if (!force && !isPaymentSoundEnabled()) return;
         paymentSoundRef.current.currentTime = 0;
         paymentSoundRef.current.play().catch(() => {});
     }, []);

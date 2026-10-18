@@ -1,78 +1,37 @@
-import { usePathname, useRouter } from "next/navigation";
-import { Button } from "../Button";
-import dynamic from "next/dynamic";
-
-const Profile = dynamic(() => import("@/components/Profile"))
-
 export interface Restaurant {
     restaurantId: string;
     name: string;
     location?: string;
     openTime: string;
     closeTime: string;
+    isLargeTextMode?: boolean;
+    right?: React.ReactNode;
 }
 
 export default function CookerHeader({
     name,
-    restaurantId,
+    openTime,
+    closeTime,
+    isLargeTextMode = false,
+    right,
 }: Readonly<Restaurant>) {
-    const pathname = usePathname();
-    const router = useRouter();
-    const isCookerHome = pathname === `/cooker/${restaurantId}`;
-    const isCookerRoute = pathname.startsWith('/cooker/');
-
     return (
-        <header className="w-full flex items-center">
-            <div className="flex items-center w-full">
-                <h1 className="w-2/5 font-noto-thai font-bold md:text-3xl text-2xl inline-block">{name}</h1>
-
-                <div className="w-full flex justify-end items-center gap-x-6">
-                    {isCookerHome && (
-                        <Button
-                            type="button"
-                            variant="primary"
-                            size="md"
-                            onClick={() =>
-                                router.push(`/cooker/restaurant/managed-menu/${restaurantId}`)
-                            }
-                        >
-                            จัดการเมนู
-                        </Button>
-                    )}
-
-                    {isCookerRoute && !isCookerHome && (
-                        <Button
-                            type="button"
-                            variant="secondary"
-                            size="md"
-                            onClick={() => router.push(`/cooker/${restaurantId}`)}
-                        >
-                            <p className="text-sm">กลับหน้าหลัก</p>
-                        </Button>
-
-                    )}
-
-                    <div>
-                        <div className="flex items-center profile-icon">
-                            {restaurantId ? (
-                                <button
-                                    onClick={() => router.push(`/cooker/profile/${restaurantId}`)}
-                                >
-                                    <Profile />
-                                </button>
-                            ) : (
-                                <Button
-                                    type="button"
-                                    variant="secondaryDanger"
-                                    onClick={() => router.push(`/cooker/profile/${restaurantId}`)}
-                                >
-                                    ล็อกเอาท์
-                                </Button>
-                            )}
-                        </div>
-                    </div>
+        <header className="flex flex-col gap-3.5 border-b border-line-soft bg-white px-5 py-4">
+            <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col gap-0.5">
+                    <span className="text-sm text-brand-muted">โรงอาหาร</span>
+                    <h1 className={`font-bold leading-tight ${isLargeTextMode ? "text-[26px]" : "text-[22px]"}`}>{name}</h1>
                 </div>
+                {right}
             </div>
+            {openTime && closeTime && (
+                <div className="flex items-center justify-between rounded-[14px] bg-success-light px-4 py-3">
+                    <span className={`flex items-center gap-2.5 font-semibold text-success-main ${isLargeTextMode ? "text-[21px]" : "text-lg"}`}>
+                        <span className="h-3 w-3 rounded-full bg-success-main" />เวลาเปิด
+                    </span>
+                    <span className="text-[15px] font-medium text-success-main">{openTime}–{closeTime}</span>
+                </div>
+            )}
         </header>
     );
 }

@@ -1,14 +1,9 @@
-import { UserRole } from "@/auth/auth.types"
-import { AuthGuard } from "@/auth/auth.guard"
+import { AdminGate } from "@/components/admin/AdminGate"
 
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  return (
-    <AuthGuard role={UserRole.admin}>
-      {children}
-    </AuthGuard>
-  )
+  return <AdminGate>{children}</AdminGate>
 }

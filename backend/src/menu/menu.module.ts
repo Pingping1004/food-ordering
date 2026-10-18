@@ -4,7 +4,6 @@ import { MenuController } from './menu.controller';
 import { PrismaService } from '../prisma/prisma.service';
 import { RestaurantModule } from '../restaurant/restaurant.module';
 import { UploadModule } from 'src/upload/upload.module';
-import { CsrfModule } from 'src/csrf/csrf.module';
 import { OrderModule } from 'src/order/order.module';
 import { InventoryModule } from 'src/inventory/inventory.module';
 
@@ -13,7 +12,6 @@ import { InventoryModule } from 'src/inventory/inventory.module';
     forwardRef(() => OrderModule),
     forwardRef(() => RestaurantModule),
     UploadModule,
-    CsrfModule,
     InventoryModule,
   ],
   controllers: [MenuController],
