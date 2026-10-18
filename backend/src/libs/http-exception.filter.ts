@@ -8,6 +8,16 @@ import {
 } from '@nestjs/common';
 import { Response, Request } from 'express';
 
+/** Prisma P2028 (transaction could not start in time) / P2024 (pool timeout) or pg's connect timeout. */
+const isOverloadError = (e: unknown): boolean => {
+  const err = e as { code?: string; message?: string } | null;
+  return (
+    err?.code === 'P2028' ||
+    err?.code === 'P2024' ||
+    /timeout exceeded when trying to connect/i.test(err?.message ?? '')
+  );
+};
+
 @Catch() // Catch ALL exceptions
 export class HttpExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger('ExceptionFilter');
@@ -74,6 +84,13 @@ export class HttpExceptionFilter implements ExceptionFilter {
         message = exceptionResponse;
         errors = [exceptionResponse];
       }
+    } else if (isOverloadError(exception)) {
+      // The DB pool / transaction slots are exhausted: say so (503 + Retry-After) so clients back off and retry,
+      // instead of reporting an opaque 500 for what is a temporary capacity limit.
+      status = HttpStatus.SERVICE_UNAVAILABLE;
+      message = 'ระบบกำลังใช้งานหนาแน่น กรุณาลองใหม่อีกครั้งในอีกสักครู่';
+      response.setHeader('Retry-After', '2');
+      this.logger.warn(`${request.method} ${request.url} -> 503 (database busy)`);
     } else if (exception instanceof Error) {
       // Express middleware errors (body-parser 413 / malformed JSON 400) carry their own 4xx status.
       const e = exception as Error & { status?: number; statusCode?: number };

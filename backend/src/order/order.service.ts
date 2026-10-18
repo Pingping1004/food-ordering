@@ -158,6 +158,53 @@ export class OrderService {
     }
   }
 
+  private async afterOrderCreated(
+    order: Order,
+    isAutoAcceptedOrder: boolean,
+    totalAmount: number,
+    menuCount: number,
+  ): Promise<void> {
+    try {
+      await this.analyticService.trackOrderEvent(
+        EventName.order_submitted,
+        order,
+        {
+          actor: EventActor.user,
+          order: {
+            nextStatus: order.status,
+            autoAccepted: isAutoAcceptedOrder,
+          },
+          extra: { totalAmount, menuCount },
+        },
+      );
+      await this.notificationService
+        .queueOrderCreated(order.orderId)
+        .catch((error: unknown) => {
+          this.logger.warn(
+            `Order created but push queue failed: ${(error as Error).message}`,
+          );
+        });
+      if (isAutoAcceptedOrder) {
+        await this.analyticService.trackOrderEvent(
+          EventName.order_auto_accepted,
+          order,
+          {
+            actor: EventActor.system,
+            order: {
+              previousStatus: OrderStatus.receive,
+              nextStatus: OrderStatus.receive,
+            },
+            extra: { totalAmount, menuCount },
+          },
+        );
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Post-create side effects failed for ${order.orderId}: ${(error as Error).message}`,
+      );
+    }
+  }
+
   /**
    * Returns the order a previous submit with this key created, or null. A key reused for a different cart is a
    * client bug (or tampering): 409 rather than silently returning someone else's order.
@@ -266,48 +313,9 @@ export class OrderService {
         return newOrder;
       });
 
-      await this.analyticService.trackOrderEvent(
-        EventName.order_submitted,
-        order,
-        {
-          actor: EventActor.user,
-          order: {
-            nextStatus: order.status,
-            autoAccepted: isAutoAcceptedOrder,
-          },
-          extra: {
-            totalAmount,
-            menuCount: validatedMenus.length,
-          },
-        },
-      );
-
-      await this.notificationService
-        .queueOrderCreated(order.orderId)
-        .catch((error: unknown) => {
-          const pushError = error as Error;
-          this.logger.warn(
-            `Order created but push queue failed: ${pushError.message}`,
-          );
-        });
-
-      if (isAutoAcceptedOrder) {
-        await this.analyticService.trackOrderEvent(
-          EventName.order_auto_accepted,
-          order,
-          {
-            actor: EventActor.system,
-            order: {
-              previousStatus: OrderStatus.receive,
-              nextStatus: OrderStatus.receive,
-            },
-            extra: {
-              totalAmount,
-              menuCount: validatedMenus.length,
-            },
-          },
-        );
-      }
+      // Analytics and the shop push are best-effort and must not hold the student's response (or a DB connection
+      // slot) while they run: the order is already committed. Failures are logged, never surfaced.
+      void this.afterOrderCreated(order, isAutoAcceptedOrder, totalAmount, validatedMenus.length);
 
       return order;
     } catch (error) {
