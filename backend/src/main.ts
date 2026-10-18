@@ -30,14 +30,19 @@ async function bootstrap() {
   configureApp(app);
   const logger = new Logger('Bootstrap');
 
-  process.on('uncaughtException', (err) => {
-    logger.error('GLOBAL UNCAUGHT EXCEPTION:', err);
-    process.exit(1);
+  // A stray rejected promise (e.g. a failed push notification) must not take the API down mid-lunch-rush: log it.
+  process.on('unhandledRejection', (reason) => {
+    logger.error('UNHANDLED REJECTION (process kept alive):', reason);
   });
 
-  process.on('unhandledRejection', (reason, promise) => {
-    logger.error('GLOBAL UNHANDLED REJECTION at:', promise, 'reason:', reason);
-    process.exit(1);
+  // After an uncaught exception state is undefined, so restart, but drain in-flight requests first (the host restarts us).
+  let shuttingDown = false;
+  process.on('uncaughtException', (err) => {
+    logger.error('UNCAUGHT EXCEPTION, shutting down gracefully:', err);
+    if (shuttingDown) return;
+    shuttingDown = true;
+    setTimeout(() => process.exit(1), 10_000).unref();
+    app.close().finally(() => process.exit(1));
   });
 
   const port = process.env.PORT || 4000;

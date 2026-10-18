@@ -27,11 +27,10 @@ export function configureApp(app: NestExpressApplication) {
 
   app.use('/api/payment/webhook', bodyParser.raw({ type: 'application/json' }));
 
-  app.use(
-    express.json({
-      limit: '10mb',
-    }),
-  );
+  // The payment slip is posted as a base64 image, so only that route gets a large JSON body. Everything else is
+  // small; a tight default stops a few oversized requests from tying up memory during a rush.
+  app.use('/api/payment/verify', express.json({ limit: '10mb' }));
+  app.use(express.json({ limit: process.env.JSON_BODY_LIMIT ?? '256kb' }));
 
   const allowedOrigins = [
     'https://promptserve.online',
