@@ -69,9 +69,21 @@ function StarBreakdown({ distribution, responses }: Readonly<{ distribution: { s
     );
 }
 
+/** Until a school has 5 orders the API returns illustrative figures; say so, so nobody reads them as results. */
+function SampleNotice({ s }: Readonly<{ s: SchoolSummary }>) {
+    if (!s.isSample) return null;
+    return (
+        <div role="status" className="rounded-xl border-2 border-brand-orange bg-ground px-4 py-3 text-[15px] font-semibold text-brand-dark">
+            ตัวเลขด้านล่างเป็นข้อมูลตัวอย่างเท่านั้น (ยังมีออเดอร์ไม่ถึง 5 รายการ) จะแสดงข้อมูลจริงเมื่อเริ่มมีการสั่งอาหาร
+        </div>
+    );
+}
+
 function Kpis({ s }: Readonly<{ s: SchoolSummary }>) {
     const k = s.kpis;
     return (
+        <>
+        <SampleNotice s={s} />
         <section aria-label="ตัวชี้วัดหลัก" className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]">
             <KpiCard label="ออเดอร์ทั้งหมด" value={fmt(k.totalOrders.value)} delta={k.totalOrders} />
             <KpiCard
@@ -86,6 +98,7 @@ function Kpis({ s }: Readonly<{ s: SchoolSummary }>) {
             <KpiCard label="ความพึงพอใจ" value={fmt(k.rating.value, 1)} unit=" / 5" delta={k.rating} />
             <KpiCard label="คำขอคืนเงิน" value={fmt(k.refunds.value)} unit=" รายการ" delta={k.refunds} />
         </section>
+        </>
     );
 }
 
