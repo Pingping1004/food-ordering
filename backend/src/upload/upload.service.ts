@@ -125,6 +125,15 @@ export class UploadService {
     return this.saveImage(file);
   }
 
+  /** 400 unless the payload is a real, reasonably sized image (checked by magic bytes, not by the claimed type). */
+  assertValidSlipImage(base64: string): void {
+    const { buffer } = this.parseBase64Image(base64);
+    if (buffer.length > 8 * 1024 * 1024)
+      throw new BadRequestException('Slip image is too large');
+    if (!this.detectImageType(buffer))
+      throw new BadRequestException('Invalid image format');
+  }
+
   parseBase64Image(base64: string): {
     buffer: Buffer;
     mime: string;

@@ -1,24 +1,23 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { calculatePayout, calculateWeeklyInterval } from './payout-calculator';
-import { Prisma } from '@prisma/client';
+import { Prisma, Payout as PayoutRow } from '@prisma/client';
 import { PayoutStatus } from './dto/update-payout.dto';
-import Decimal from 'decimal.js';
 import moment from 'moment';
-import { OrderService } from 'src/order/order.service';
 
+/** API shape of a payout (unchanged from the in-memory version): money fields are plain numbers. */
 export interface Payout {
   payoutId: string;
   orderId: string;
   restaurantId: string;
-  grossAmount: any;
-  restaurantRevenue: any;
-  platformFee: any;
+  grossAmount: number;
+  restaurantRevenue: number;
+  platformFee: number;
   idempotencyKey?: string | null;
   transactionId?: string | null;
   payoutStatus: PayoutStatus;
-  transactionFee: any;
-  vat: any;
+  transactionFee: number;
+  vat: number;
   restaurantName: string;
   startDate: Date;
   endDate: Date;
@@ -27,28 +26,55 @@ export interface Payout {
   createdAt: Date;
 }
 
+type CreatePayoutInput = {
+  idempotencyKey?: string | null;
+  requestHash?: string | null;
+  orderId: string;
+  payoutStatus: PayoutStatus | string;
+  restaurantId: string;
+  restaurantName: string;
+  grossAmount: Prisma.Decimal.Value;
+  restaurantRevenue: Prisma.Decimal.Value;
+  platformFee: Prisma.Decimal.Value;
+  transactionFee: Prisma.Decimal.Value;
+  vat: Prisma.Decimal.Value;
+  startDate: Date;
+  endDate: Date;
+};
+
+const toPayout = (r: PayoutRow): Payout => ({
+  payoutId: r.payoutId,
+  orderId: r.orderId,
+  restaurantId: r.restaurantId,
+  restaurantName: r.restaurantName,
+  idempotencyKey: r.idempotencyKey,
+  requestHash: r.requestHash,
+  transactionId: r.transactionId,
+  payoutStatus: r.payoutStatus as PayoutStatus,
+  grossAmount: r.grossAmount.toNumber(),
+  restaurantRevenue: r.restaurantRevenue.toNumber(),
+  platformFee: r.platformFee.toNumber(),
+  transactionFee: r.transactionFee.toNumber(),
+  vat: r.vat.toNumber(),
+  startDate: r.startDate,
+  endDate: r.endDate,
+  paidAt: r.paidAt,
+  createdAt: r.createdAt,
+});
+
 @Injectable()
 export class PayoutService {
-  private readonly payouts = new Map<string, Payout>();
+  constructor(private readonly prisma: PrismaService) {}
 
-  constructor(
-    private readonly orderService: OrderService,
-    private readonly prisma: PrismaService,
-  ) {}
-
-  async createPayout(
-    data: Omit<Payout, 'payoutId' | 'createdAt'> & { payoutId?: string },
-  ) {
-    const payoutId =
-      data.payoutId ||
-      `payout-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-    const record: Payout = {
-      ...data,
-      payoutId,
-      createdAt: new Date(),
-    };
-    this.payouts.set(payoutId, record);
-    return record;
+  /**
+   * Creates the attempt row. A second attempt with the same (idempotencyKey, orderId) throws P2002: the payment
+   * flow relies on that to detect a retry and return the first attempt's outcome.
+   */
+  async createPayout(data: CreatePayoutInput): Promise<Payout> {
+    const row = await this.prisma.payout.create({
+      data: { ...data, payoutStatus: data.payoutStatus },
+    });
+    return toPayout(row);
   }
 
   async updatePayoutTx(
@@ -61,33 +87,28 @@ export class PayoutService {
     paidAt: Date,
   ) {
     const order = await this.validateOrderExistence(orderId);
-    const totalAmount = order.totalAmount;
-    const totalAmountDecimal = new Prisma.Decimal(totalAmount);
+    const calculated = calculatePayout(new Prisma.Decimal(order.totalAmount));
 
-    const calculated = calculatePayout(totalAmountDecimal);
-    const existing = this.payouts.get(payoutId);
-
-    const updated: Payout = {
-      payoutId,
-      orderId,
-      restaurantId: order.restaurantId,
-      grossAmount: order.totalAmount,
-      restaurantRevenue: calculated.restaurantEarning,
-      platformFee: calculated.platformNetEarning,
-      idempotencyKey,
-      transactionId,
-      payoutStatus: status as PayoutStatus,
-      transactionFee: calculated.transactionFee,
-      vat: new Decimal(0),
-      restaurantName: order.restaurant.name,
-      startDate: paidAt,
-      endDate: new Date(),
-      paidAt,
-      createdAt: existing?.createdAt ?? new Date(),
-    };
-
-    this.payouts.set(payoutId, updated);
-    return updated;
+    const row = await tx.payout.update({
+      where: { payoutId },
+      data: {
+        orderId,
+        restaurantId: order.restaurantId,
+        restaurantName: order.restaurant.name,
+        idempotencyKey,
+        transactionId,
+        payoutStatus: status,
+        grossAmount: order.totalAmount,
+        restaurantRevenue: calculated.restaurantEarning.toString(),
+        platformFee: calculated.platformNetEarning.toString(),
+        transactionFee: calculated.transactionFee.toString(),
+        vat: 0,
+        startDate: paidAt,
+        endDate: new Date(),
+        paidAt,
+      },
+    });
+    return toPayout(row);
   }
 
   async validateOrderExistence(orderId: string) {
@@ -95,18 +116,11 @@ export class PayoutService {
       where: { orderId },
       include: {
         orderMenus: true,
-        restaurant: {
-          select: {
-            restaurantId: true,
-            name: true,
-          },
-        },
+        restaurant: { select: { restaurantId: true, name: true } },
       },
     });
-
     if (!order)
       throw new NotFoundException('ไม่พบออเดอร์สำหรับไอดี: ', orderId);
-
     return order;
   }
 
@@ -114,26 +128,17 @@ export class PayoutService {
     idempotencyKey: string,
     orderId: string,
   ): Promise<Payout | null> {
-    for (const payout of this.payouts.values()) {
-      if (
-        payout.idempotencyKey === idempotencyKey &&
-        payout.orderId === orderId
-      ) {
-        return payout;
-      }
-    }
-    return null;
+    const row = await this.prisma.payout.findUnique({
+      where: { idempotencyKey_orderId: { idempotencyKey, orderId } },
+    });
+    return row ? toPayout(row) : null;
   }
 
   async findPayoutByTransactionId(
     transactionId: string,
   ): Promise<Payout | null> {
-    for (const payout of this.payouts.values()) {
-      if (payout.transactionId === transactionId) {
-        return payout;
-      }
-    }
-    return null;
+    const row = await this.prisma.payout.findUnique({ where: { transactionId } });
+    return row ? toPayout(row) : null;
   }
 
   async findWeeklyPayout(
@@ -141,61 +146,73 @@ export class PayoutService {
     restaurantId?: string,
   ): Promise<Payout[]> {
     const { startDate, endDate } = calculateWeeklyInterval(date);
-
-    return Array.from(this.payouts.values()).filter((p) => {
-      if (restaurantId && p.restaurantId !== restaurantId) return false;
-      return p.startDate >= startDate && p.endDate <= endDate;
+    const rows = await this.prisma.payout.findMany({
+      where: {
+        ...(restaurantId ? { restaurantId } : {}),
+        startDate: { gte: startDate },
+        endDate: { lte: endDate },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 5000,
     });
+    return rows.map(toPayout);
   }
 
   async getTodayPayout() {
     const startOfDay = moment().tz('Asia/Bangkok').startOf('day').toDate();
     const endOfDay = moment().tz('Asia/Bangkok').endOf('day').toDate();
-
-    return Array.from(this.payouts.values()).filter((p) => {
-      return p.createdAt >= startOfDay && p.createdAt <= endOfDay;
+    const rows = await this.prisma.payout.findMany({
+      where: { createdAt: { gte: startOfDay, lte: endOfDay } },
+      orderBy: { createdAt: 'desc' },
+      take: 5000,
     });
+    return rows.map(toPayout);
   }
 
   async findPayout(payoutId: string) {
-    return this.payouts.get(payoutId) ?? null;
+    const row = await this.prisma.payout.findUnique({ where: { payoutId } });
+    return row ? toPayout(row) : null;
   }
 
   async findExistingPayout(orderId: string): Promise<boolean> {
-    for (const payout of this.payouts.values()) {
-      if (payout.orderId === orderId) return true;
-    }
-    return false;
+    return (await this.prisma.payout.count({ where: { orderId } })) > 0;
   }
 
+  /** Newest first, capped: the admin screen should not pull the whole table. */
   async findAllPayout() {
-    return Array.from(this.payouts.values());
+    const rows = await this.prisma.payout.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 5000,
+    });
+    return rows.map(toPayout);
   }
 
   async findAllPayoutFromRestaurant(restaurantId: string): Promise<Payout[]> {
-    return Array.from(this.payouts.values()).filter(
-      (p) => p.restaurantId === restaurantId,
-    );
+    const rows = await this.prisma.payout.findMany({
+      where: { restaurantId },
+      orderBy: { createdAt: 'desc' },
+      take: 5000,
+    });
+    return rows.map(toPayout);
   }
 
   async updatePayoutStatus(
     payoutId: string,
     payoutStatus: PayoutStatus | string,
   ) {
-    const existing = this.payouts.get(payoutId);
-    if (existing) {
-      existing.payoutStatus = payoutStatus as PayoutStatus;
-      this.payouts.set(payoutId, existing);
-      return existing;
+    try {
+      const row = await this.prisma.payout.update({
+        where: { payoutId },
+        data: { payoutStatus },
+      });
+      return toPayout(row);
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      )
+        return null;
+      throw error;
     }
-    return null;
-  }
-
-  private async getAllRevenue() {
-    const payouts = Array.from(this.payouts.values());
-    const allRevenue = payouts.reduce((acc: Decimal, item) => {
-      return acc.add(item.platformFee);
-    }, new Decimal(0));
-    return allRevenue;
   }
 }
