@@ -54,7 +54,7 @@ export class OrderController {
   /** Login required; the shop must be in the caller's school. The order is bound to the caller. */
   @Post('create')
   async createOrder(@Body() createOrderDto: CreateOrderDto, @Req() req: any) {
-    const idempotencyKey = parseIdempotencyKey(req.headers['idempotency-key']);
+    const idempotencyKey = parseIdempotencyKey(req.headers?.['idempotency-key']);
     const { status, schoolStatus } = await this.access.assertRestaurantVisible(
       req.user,
       createOrderDto.restaurantId,
