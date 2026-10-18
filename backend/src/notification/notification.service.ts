@@ -198,8 +198,18 @@ export class NotificationService {
     });
   }
 
-  @Cron('*/20 * * * * *')
+  private processingJobs = false;
+
+  /**
+   * Sends the "new order" push to shops. It used to take 20 jobs per 20 s tick and send them one by one, i.e. at
+   * most ~1 push per second: with a lunch rush of a few orders per second the queue fell minutes behind. Now a
+   * tick takes up to 200 due jobs and works through them 5 at a time (a small, fixed share of the DB pool), and a
+   * tick is skipped while the previous one is still running so slow pushes cannot pile up.
+   */
+  @Cron('*/5 * * * * *')
   async processPendingNotificationJobs() {
+    if (this.processingJobs) return;
+    this.processingJobs = true;
     try {
       const dueJobs = await this.prisma.withRetry(() =>
         this.prisma.pushNotificationJob.findMany({
@@ -210,20 +220,30 @@ export class NotificationService {
             attemptCount: { lt: 3 },
             nextAttemptAt: { lte: new Date() },
           },
-          take: 20,
+          take: 200,
           orderBy: {
             nextAttemptAt: 'asc',
           },
         }),
       );
 
-      for (const job of dueJobs) {
-        await this.dispatchJob(job.orderId, job.userId, job.eventType);
+      const CONCURRENCY = 5;
+      for (let i = 0; i < dueJobs.length; i += CONCURRENCY) {
+        const results = await Promise.allSettled(
+          dueJobs
+            .slice(i, i + CONCURRENCY)
+            .map((job) => this.dispatchJob(job.orderId, job.userId, job.eventType)),
+        );
+        for (const r of results)
+          if (r.status === 'rejected')
+            this.logger.warn(`Push job failed: ${(r.reason as Error)?.message}`);
       }
     } catch (error) {
       this.logger.error(
         `Failed to process pending notification jobs: ${(error as Error).message}`,
       );
+    } finally {
+      this.processingJobs = false;
     }
   }
 
