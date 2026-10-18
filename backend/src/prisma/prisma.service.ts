@@ -29,9 +29,14 @@ export class PrismaService
 
     const pool = new Pool({
       connectionString,
-      max: 10,
+      // One pool for the whole API. Size it so (instances x DB_POOL_MAX) stays under the database's connection limit.
+      max: Number(process.env.DB_POOL_MAX ?? 20),
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 10000,
+      // Fail fast when the pool is exhausted instead of letting requests pile up for 10 s.
+      connectionTimeoutMillis: 5000,
+      // A runaway query or a transaction left open must not hold a connection (and its locks) indefinitely.
+      statement_timeout: Number(process.env.DB_STATEMENT_TIMEOUT_MS ?? 15000),
+      idle_in_transaction_session_timeout: 15000,
       keepAlive: true,
       keepAliveInitialDelayMillis: 10000,
       // Local/dev/test Postgres has no TLS; hosted databases (Supabase) do.
