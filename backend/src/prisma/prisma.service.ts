@@ -34,7 +34,10 @@ export class PrismaService
       connectionTimeoutMillis: 10000,
       keepAlive: true,
       keepAliveInitialDelayMillis: 10000,
-      ssl: { rejectUnauthorized: false },
+      // Local/dev/test Postgres has no TLS; hosted databases (Supabase) do.
+      ssl: /@(localhost|127\.0\.0\.1)[:/]/.test(connectionString)
+        ? false
+        : { rejectUnauthorized: false },
     });
 
     pool.on('error', (err) => {

@@ -33,6 +33,15 @@ const KITCHEN_BY_ORDER = {
   roles: KITCHEN_BY_RESTAURANT.roles,
 };
 
+const IDEMPOTENCY_KEY = /^[A-Za-z0-9_.:-]{8,128}$/;
+/** Optional `Idempotency-Key` header; a malformed one is rejected instead of silently ignored. */
+export function parseIdempotencyKey(raw: unknown): string | undefined {
+  if (raw === undefined) return undefined;
+  if (typeof raw !== 'string' || !IDEMPOTENCY_KEY.test(raw))
+    throw new BadRequestException('Idempotency-Key ไม่ถูกต้อง');
+  return raw;
+}
+
 @Controller('order')
 export class OrderController {
   constructor(
@@ -45,6 +54,7 @@ export class OrderController {
   /** Login required; the shop must be in the caller's school. The order is bound to the caller. */
   @Post('create')
   async createOrder(@Body() createOrderDto: CreateOrderDto, @Req() req: any) {
+    const idempotencyKey = parseIdempotencyKey(req.headers['idempotency-key']);
     const { status, schoolStatus } = await this.access.assertRestaurantVisible(
       req.user,
       createOrderDto.restaurantId,
@@ -60,6 +70,7 @@ export class OrderController {
       return await this.orderService.createOrder(
         createOrderDto,
         req.user.userId,
+        idempotencyKey,
       );
     } catch (error) {
       this.logger.error(

@@ -18,8 +18,8 @@ type Rule = { method: string; test: RegExp; limiter: FixedWindowLimiter };
 @Injectable()
 export class UserRateLimitGuard implements CanActivate {
   private readonly rules: Rule[] = [
-    // A student places a handful of orders at lunch, never dozens a minute.
-    { method: 'POST', test: /^\/api\/order\/create\/?$/, limiter: new FixedWindowLimiter(8, 60_000) },
+    // Generous enough for idempotent retry storms (backoff retries of one submit), still stops scripted abuse.
+    { method: 'POST', test: /^\/api\/order\/create\/?$/, limiter: new FixedWindowLimiter(30, 60_000) },
     { method: 'POST', test: /^\/api\/payment\/verify\/?$/, limiter: new FixedWindowLimiter(10, 5 * 60_000) },
     { method: 'POST', test: /^\/api\/order\/[^/]+\/refund-request\/?$/, limiter: new FixedWindowLimiter(5, 5 * 60_000) },
     { method: 'POST', test: /^\/api\/upload\//, limiter: new FixedWindowLimiter(30, 60_000) },

@@ -258,6 +258,8 @@ model Order {
   acceptAt      DateTime?     @db.Timestamptz(3)
   paidAt        DateTime?     @db.Timestamptz(3)
   isDelay       Boolean       @default(false)
+  /// Client-supplied `Idempotency-Key`: a retry or double-tap of the same submit returns the original order instead of creating a second one.
+  idempotencyKey String?
 
   restaurantId         String
   restaurant           Restaurant            @relation(fields: [restaurantId], references: [restaurantId], onDelete: Cascade)
@@ -278,6 +280,8 @@ model Order {
   @@index([orderAt])
   @@index([restaurantId, orderAt])
   @@index([userId, orderAt])
+  @@index([restaurantId, status, orderAt])
+  @@unique([userId, idempotencyKey])
 }
 
 model OrderMenu {

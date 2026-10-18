@@ -75,3 +75,4 @@ prisma/migrations/
 
 # cert
 ./cert/
+!.env.test

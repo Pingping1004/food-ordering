@@ -158,10 +158,49 @@ export class OrderService {
     }
   }
 
+  /**
+   * Returns the order a previous submit with this key created, or null. A key reused for a different cart is a
+   * client bug (or tampering): 409 rather than silently returning someone else's order.
+   */
+  private async findIdempotentOrder(
+    userId: string,
+    idempotencyKey: string,
+    dto: CreateOrderDto,
+  ) {
+    const existing = await this.prisma.order.findUnique({
+      where: { userId_idempotencyKey: { userId, idempotencyKey } },
+      include: { orderMenus: true },
+    });
+    if (!existing) return null;
+    const lines = (items: { menuId: string; quantity: number }[]) =>
+      items
+        .map((i) => `${i.menuId}:${i.quantity}`)
+        .sort()
+        .join(',');
+    if (
+      existing.restaurantId !== dto.restaurantId ||
+      lines(existing.orderMenus) !== lines(dto.orderMenus)
+    ) {
+      throw new ConflictException(
+        'Idempotency-Key ถูกใช้กับคำสั่งซื้ออื่นแล้ว',
+      );
+    }
+    return existing;
+  }
+
   async createOrder(
     createOrderDto: CreateOrderDto,
     userId: string,
+    idempotencyKey?: string,
   ): Promise<Order> {
+    if (idempotencyKey) {
+      const replay = await this.findIdempotentOrder(
+        userId,
+        idempotencyKey,
+        createOrderDto,
+      );
+      if (replay) return replay;
+    }
     const pickupAt =
       createOrderDto.pickupAt ??
       createOrderDto.deliverAt ??
@@ -199,6 +238,7 @@ export class OrderService {
           data: {
             restaurantId: createOrderDto.restaurantId,
             userId,
+            idempotencyKey: idempotencyKey ?? null,
             pickupAt,
             status: initialStatus,
             acceptAt: isAutoAcceptedOrder ? new Date() : null,
@@ -271,8 +311,18 @@ export class OrderService {
 
       return order;
     } catch (error) {
-      if (error.code === 'P2002')
+      if (error.code === 'P2002') {
+        // Lost the race against a concurrent submit with the same key: hand back the winner's order.
+        if (idempotencyKey) {
+          const winner = await this.findIdempotentOrder(
+            userId,
+            idempotencyKey,
+            createOrderDto,
+          );
+          if (winner) return winner;
+        }
         throw new BadRequestException('ชำระเงินซ้ำ/ใช้สลิปเก่า');
+      }
       throw error;
     }
   }

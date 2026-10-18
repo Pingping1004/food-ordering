@@ -21,7 +21,7 @@ describe('UserRateLimitGuard', () => {
 
   it('should cap order creation per user and set Retry-After, without affecting other users', () => {
     const g = new UserRateLimitGuard();
-    for (let i = 0; i < 8; i++) expect(g.canActivate(ctx('POST', '/api/order/create', 'stu-1').ctx)).toBe(true);
+    for (let i = 0; i < 30; i++) expect(g.canActivate(ctx('POST', '/api/order/create', 'stu-1').ctx)).toBe(true);
     const over = ctx('POST', '/api/order/create', 'stu-1');
     expect(() => g.canActivate(over.ctx)).toThrow(HttpException);
     expect(Number(over.headers['Retry-After'])).toBeGreaterThan(0);
