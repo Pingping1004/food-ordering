@@ -67,7 +67,7 @@ export default function UserHomePage() {
     useEffect(() => {
         const sel = readSelection();
         if (!sel) return;
-        getDayStatus(sel.schoolId).then((s) => { if (!s.isOpen && process.env.NEXT_PUBLIC_DEBUG_ALWAYS_OPEN !== "true") router.replace("/user/closed"); }).catch(() => undefined);
+        getDayStatus(sel.schoolId).then((s) => { if (!s.isOpen && !(process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_DEBUG_ALWAYS_OPEN === "true")) router.replace("/user/closed"); }).catch(() => undefined);
     }, [router]);
 
     const filtered = useMemo(() => {
