@@ -69,14 +69,15 @@ SQL statements per request (counted from the Postgres log): `me/school` 4 · sho
 |---|---|---|
 | `DB_POOL_MAX` | 20 | per API process; (instances × this) must stay below the database's connection limit (use the pooler URL). On this laptop 10 and 20 behaved the same; 50 was worse (more concurrent backends than cores) |
 | `DB_STATEMENT_TIMEOUT_MS` | 15000 | kills runaway queries; `idle_in_transaction_session_timeout` is 15 s |
-| `IP_LIMIT_MULTIPLIER` | 1 | scales every IP limiter (global 60,000/min, order create 6,000/min, payments 1,500/5 min) |
+| `IP_LIMIT_MULTIPLIER` | 1 | scales every IP limiter (global 60,000/min, order create 6,000/min, payments 10,000/5 min — was 1,500, which rejected ≈ 800 of 2,500 lunch payments behind the school's one NAT IP; the per-user 10/5 min is the real guard) |
+| `POLL_INTERVAL_SCALE` | 1 | multiplies the `X-Poll-After` interval the server sends to student screens (clamped 3–60 s). Set 1.5–2 and restart to slow every phone at once during an overload — no app release needed |
 | `JSON_BODY_LIMIT` | 256kb | `/payment/verify` keeps 10 MB for the slip image |
 | Per-user limits | order create 30/min, payment 10/5 min, refund 5/5 min, other 240/min | `src/guards/user-rate-limit.guard.ts` |
 | Shop `maxActiveOrders` | 50 (was 20; existing shops keep their stored value) | a **business** throttle: when a shop already has that many `receive`+`cooking` orders, new orders get 409. At lunch this will reject students if a cook falls behind — lower it per shop only if a shop cannot keep up |
 
 ## Before launch (checklist)
 
-1. Apply the schema changes to production (`prisma db push`): `Order.idempotencyKey` + unique, `Menu.deletedAt`, `Payout` table, `Order(restaurantId,status,orderAt)` index. All additive. Then run `npx ts-node scripts/backfill-payouts.ts` (dry run first, then `--apply`).
+1. Apply the schema changes to production (`prisma db push`): `Order.idempotencyKey` + unique, `Order.updatedAt` (defaults to now for existing rows), `Menu.deletedAt`, `Payout` table, `Order(restaurantId,status,orderAt)` index. All additive. Deploy the API before (or with) the web app: the new web app polls `GET /order/:id/status` and falls back to the full order on an older API, so either order works, but the savings start only once both are live. Then run `npx ts-node scripts/backfill-payouts.ts` (dry run first, then `--apply`).
 2. On the **real staging host and plan** (same instance size and region as production): `npm run load:seed`, `npm run load:server`, then `SCENARIO=bell` and `SCENARIO=spike`. Expect the order-create p95 to be dominated by database latency; if it is above ≈ 500 ms at the bell load, raise the instance size or fix the region before launch.
 3. Set `DB_POOL_MAX` to fit the database plan; confirm the connection string is the pooler.
 4. Run a 30-minute soak (`SCENARIO=soak DURATION=30m`).

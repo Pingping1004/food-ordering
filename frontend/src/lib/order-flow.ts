@@ -88,3 +88,32 @@ export function timelineIndex(o: FlowOrder): number {
 
 export const fmtTime = (iso: string | Date | undefined | null) =>
     iso ? new Date(iso).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Bangkok" }) : "";
+
+/**
+ * Fallback for how often a student screen re-checks its order (ms; `false` = stop). The server normally decides:
+ * `GET /order/:id/status` sends `X-Poll-After` (backend/src/order/poll-policy.ts), and that wins when present.
+ * Only the step that has a deadline polls fast:
+ *  - waiting for the shop to accept → 5 s, or 10 s with push on (the "accepted" push arrives at once)
+ *  - paying → 20 s, shop-list card only: the payment page itself does not poll (the outcome arrives in the
+ *    student's own slip request, and its countdown handles expiry)
+ *  - cooking / delayed → 15 s (the "ready"/"delay" push, when enabled, refreshes at once)
+ *  - ready for pickup → 10 s (waiting for the shop to tap "picked up")
+ *  - done, failed, refunded → stop (nothing can change)
+ * Keep in sync with poll-policy.ts and POLL=status in backend/load/lunch.js.
+ */
+export function pollIntervalFor(o: FlowOrder | undefined, { push = false }: { push?: boolean } = {}): number | false {
+    if (!o) return 5_000;
+    const status = normalizeStatus(o.status);
+    switch (screenForOrder(o)) {
+        case "wait": return status === "receive" ? (push ? 10_000 : 5_000) : 15_000;
+        case "payment": return 20_000;
+        case "done": return status === "ready" ? 10_000 : false;
+        case "failed": return false;
+    }
+}
+
+/**
+ * ±20 % random spread, so students who ordered in the same second (the bell) do not keep polling in the same
+ * second forever, which shows up as request waves every 5 s instead of a flat line.
+ */
+export const withJitter = (ms: number, spread = 0.2, rand = Math.random) => Math.round(ms * (1 - spread + 2 * spread * rand()));

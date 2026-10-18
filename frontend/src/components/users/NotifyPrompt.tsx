@@ -26,7 +26,7 @@ export function NotifyPrompt({ orderId }: Readonly<{ orderId: string }>) {
             <div className="flex items-start gap-3">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-light text-primary-dark"><Icon name="bell" size={20} /></span>
                 <span className="flex flex-col gap-0.5">
-                    <h2 className="text-[17px] font-bold">รับแจ้งเตือนเมื่ออาหารพร้อมหรือร้านทำช้า</h2>
+                    <h2 className="text-[17px] font-bold">รับแจ้งเตือนเมื่อร้านรับออเดอร์ อาหารพร้อม หรือร้านทำช้า</h2>
                     <span className="text-[15px] text-brand-muted">ไม่เปิดก็ได้ ดูสถานะได้ที่หน้านี้เสมอ</span>
                 </span>
             </div>

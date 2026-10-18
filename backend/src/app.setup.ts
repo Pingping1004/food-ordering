@@ -71,6 +71,9 @@ export function configureApp(app: NestExpressApplication) {
       'baggage',
       'stripe-signature',
     ],
+    // The frontend is on another origin: without this, browser JS cannot read these headers (api.ts backs off on
+    // Retry-After; student screens poll at the pace in X-Poll-After).
+    exposedHeaders: ['Retry-After', 'X-Poll-After'],
   });
 
   logger.log('Webhook endpoint: ', process.env.WEBHOOK_ENDPOINT);

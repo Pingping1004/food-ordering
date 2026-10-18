@@ -19,7 +19,7 @@ import { formatBaht, orderCode } from '@/lib/schema/format';
 import { OrderTrackingSkeleton } from '@/components/ui/Skeleton';
 import { getIdempotencyKey } from '@/util/idempotency';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { studentOrderKey, useStudentOrder } from '@/hook/useStudentOrder';
+import { studentOrderKey, studentOrderStateKey, useStudentOrder } from '@/hook/useStudentOrder';
 
 export interface OrderPaymentPayload {
     idempotencyKey: string;
@@ -211,8 +211,10 @@ function OrderPaymentPage() {
                 `/payment/verify`,
                 orderPaymentPayload,
                 {
+                    // Same key in the header lets api.ts retry a 429/503 safely (the server dedupes by this key).
                     headers: {
-                        'x-order-secret': orderSecret
+                        'x-order-secret': orderSecret,
+                        'Idempotency-Key': idempotencyKey,
                     }
                 }
             );
@@ -237,6 +239,7 @@ function OrderPaymentPage() {
             // The cached copy still says UNPAID; drop it so the next screens never paint a stale "please pay".
             hasRedirectedRef.current = true;
             queryClient.removeQueries({ queryKey: studentOrderKey(orderId) });
+            queryClient.removeQueries({ queryKey: studentOrderStateKey(orderId) });
 
             router.push(`/user/order/wait/${orderId}`);
 

@@ -87,6 +87,7 @@ export const MATRIX: Record<string, Rule> = {
 
   // ---- order owner (student) only
   'GET /api/order/:orderId': r(['student']),
+  'GET /api/order/:orderId/status': r(['student']),
   'PATCH /api/order/cancel/:orderId': r(['student'], { orderState: 'received' }),
   'PATCH /api/order/expire/:orderId': r(['student'], { orderState: 'received' }),
   'GET /api/payment/qr-code/:orderId': r(['student']),

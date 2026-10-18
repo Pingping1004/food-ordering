@@ -24,6 +24,12 @@ describe('HttpExceptionFilter', () => {
     expect(run(new Error('timeout exceeded when trying to connect')).statusCode).toBe(503);
   });
 
+  it('should answer 503 when a read gives up waiting for a saturated database (safeRead DB_TIMEOUT)', () => {
+    const res = run(new Error('DB_TIMEOUT'));
+    expect(res.statusCode).toBe(503);
+    expect(res.headers['Retry-After']).toBe('2');
+  });
+
   it('should answer 503 (not 500) when the database is down or restarting', () => {
     expect(run(Object.assign(new Error('x'), { code: 'ECONNREFUSED' })).statusCode).toBe(503);
     expect(run(Object.assign(new Error('x'), { code: 'P2039', meta: { driverAdapterError: { cause: { originalCode: '57P03' } } } })).statusCode).toBe(503);

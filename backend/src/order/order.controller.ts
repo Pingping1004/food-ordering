@@ -11,8 +11,11 @@ import {
   Query,
   NotFoundException,
   BadRequestException,
+  Res,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { isDebugAlwaysOpen } from '../utils/debug';
+import { pollAfterSeconds } from './poll-policy';
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { RestaurantRole, Status, OrderStatus } from '@prisma/client';
@@ -137,9 +140,46 @@ export class OrderController {
     return this.orderService.listOrdersForUser(req.user.userId);
   }
 
+  /**
+   * What student screens poll: status fields only, plus `X-Poll-After` (seconds until the next check, 0 = stop) so the
+   * server sets the pace. `?push=1` = this device receives push, so the accept-wait can poll slower.
+   */
+  @Get(':orderId/status')
+  async findOrderStatus(
+    @Req() req: any,
+    @Res({ passthrough: true }) res: Response,
+    @Param('orderId') orderId: string,
+    @Query('push') push?: string,
+  ) {
+    const state = await this.orderService.findOrderStatusForUser(
+      orderId,
+      req.user.userId,
+    );
+    res.setHeader(
+      'X-Poll-After',
+      String(pollAfterSeconds(state, push === '1')),
+    );
+    res.setHeader('Cache-Control', 'no-store');
+    return state;
+  }
+
   @Get(':orderId')
-  async findOneOrder(@Req() req: any, @Param('orderId') orderId: string) {
-    return this.orderService.findOneOrderForUser(orderId, req.user.userId);
+  async findOneOrder(
+    @Req() req: any,
+    @Res({ passthrough: true }) res: Response,
+    @Param('orderId') orderId: string,
+    @Query('push') push?: string,
+  ) {
+    const order = await this.orderService.findOneOrderForUser(
+      orderId,
+      req.user.userId,
+    );
+    // Same pacing hint as /status: the screen's first poll is already server-paced.
+    res.setHeader(
+      'X-Poll-After',
+      String(pollAfterSeconds(order, push === '1')),
+    );
+    return order;
   }
 
   @RestaurantScope(KITCHEN_BY_RESTAURANT)

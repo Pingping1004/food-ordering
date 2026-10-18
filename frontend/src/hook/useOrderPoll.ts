@@ -6,12 +6,12 @@ import { routeForOrder, screenForOrder, type StudentScreen } from "@/lib/order-f
 import { useStudentOrder } from "./useStudentOrder";
 
 /**
- * Polls the order (shared React Query cache, see `useStudentOrder`). If the order belongs on a different screen it
- * redirects there, so every student page can call this with `screen` = "the screen I am" and never needs its own status switch.
+ * Polls the order on the status-based schedule in `pollIntervalFor` (shared React Query cache, see `useStudentOrder`).
+ * If the order belongs on a different screen it redirects there, so every student page can call this with `screen` = "the screen I am" and never needs its own status switch.
  */
-export function useOrderPoll(orderId: string | undefined, screen: StudentScreen, { intervalMs = 3000 }: { intervalMs?: number } = {}) {
+export function useOrderPoll(orderId: string | undefined, screen: StudentScreen) {
     const router = useRouter();
-    const query = useStudentOrder(orderId, { pollMs: intervalMs });
+    const query = useStudentOrder(orderId, { poll: true });
     const redirected = useRef(false);
     const { data, isFetchedAfterMount, refetch } = query;
 

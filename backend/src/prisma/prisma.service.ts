@@ -103,12 +103,17 @@ export class PrismaService
   }
 
   async withTimeout(promise, ms = 30000) {
-    return Promise.race([
-      promise,
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('DB_TIMEOUT')), ms),
-      ),
-    ]);
+    let timer: NodeJS.Timeout | undefined;
+    try {
+      return await Promise.race([
+        promise,
+        new Promise((_, reject) => {
+          timer = setTimeout(() => reject(new Error('DB_TIMEOUT')), ms);
+        }),
+      ]);
+    } finally {
+      clearTimeout(timer); // one pending timer per read used to linger for the full timeout
+    }
   }
 
   async read(fn) {

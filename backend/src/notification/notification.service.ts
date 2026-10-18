@@ -84,6 +84,7 @@ export class NotificationService {
         tokens: tokens.map((t) => t.token),
         data: { title: payload.title, body: payload.body, link },
         webpush: {
+          headers: { Urgency: 'high' }, // deliver now even on battery saver (order updates are time-sensitive)
           notification: {
             title: payload.title,
             body: payload.body,
@@ -100,33 +101,40 @@ export class NotificationService {
   }
 
   /**
-   * Tells the student who placed the order that it is ready, or that the shop is running late.
-   * Only students who enabled notifications (an active device token) receive it; never throws.
+   * Tells the student who placed the order that the shop accepted it (pay now), that it is ready, or that the shop
+   * is running late. Only students who enabled notifications (an active device token) receive it; never throws.
+   * An open order screen refreshes itself when a push for its order arrives (frontend `useStudentOrder`).
    */
   async notifyStudentOrderUpdate(
     orderId: string,
-    event: 'ready' | 'delay',
+    event: 'accepted' | 'ready' | 'delay',
   ): Promise<void> {
     try {
+      if (!this.messaging) return;
       const order = await this.prisma.order.findUnique({
         where: { orderId },
         select: { userId: true, restaurant: { select: { name: true } } },
       });
       if (!order?.userId) return;
       const shop = order.restaurant?.name ?? 'ร้านอาหาร';
-      const payload =
-        event === 'ready'
-          ? {
-              title: 'อาหารพร้อมแล้ว',
-              body: `ออเดอร์จาก ${shop} พร้อมรับแล้ว มารับได้เลย`,
-            }
-          : {
-              title: 'ร้านแจ้งว่าอาหารจะช้ากว่าเดิม',
-              body: `${shop} ขอเวลาเพิ่มอีกเล็กน้อย ดูเวลารับใหม่ได้ที่หน้าออเดอร์`,
-            };
+      const payload = {
+        accepted: {
+          title: 'ร้านรับออเดอร์แล้ว',
+          body: `${shop} รับออเดอร์แล้ว กรุณาชำระเงินภายใน 3 นาที`,
+        },
+        ready: {
+          title: 'อาหารพร้อมแล้ว',
+          body: `ออเดอร์จาก ${shop} พร้อมรับแล้ว มารับได้เลย`,
+        },
+        delay: {
+          title: 'ร้านแจ้งว่าอาหารจะช้ากว่าเดิม',
+          body: `${shop} ขอเวลาเพิ่มอีกเล็กน้อย ดูเวลารับใหม่ได้ที่หน้าออเดอร์`,
+        },
+      }[event];
+      const screen = event === 'accepted' ? 'payment' : 'wait';
       await this.sendToUsers([order.userId], {
         ...payload,
-        path: `/user/order/wait/${orderId}`,
+        path: `/user/order/${screen}/${orderId}`,
       });
     } catch (error) {
       this.logger.warn(

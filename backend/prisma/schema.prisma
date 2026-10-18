@@ -260,6 +260,8 @@ model Order {
   acceptAt      DateTime?     @db.Timestamptz(3)
   paidAt        DateTime?     @db.Timestamptz(3)
   isDelay       Boolean       @default(false)
+  /// Bumped by every Prisma update. Student screens poll `GET /order/:id/status` and reload the full order only when this (or the status) changes.
+  updatedAt     DateTime      @default(now()) @updatedAt @db.Timestamptz(3)
   /// Client-supplied `Idempotency-Key`: a retry or double-tap of the same submit returns the original order instead of creating a second one.
   idempotencyKey String?
 

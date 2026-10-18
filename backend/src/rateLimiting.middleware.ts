@@ -26,9 +26,11 @@ export const globalRateLimit = rateLimit({
   },
 });
 
+// One school = one NAT IP, and ~all 2,500 students pay within a few minutes of the bell (plus slip re-sends), so this
+// is only a flood backstop: the per-user limit (10 per 5 min) is the real guard. 1,500 rejected ~1/3 of a lunch.
 export const paymentRateLimit = rateLimit({
   windowMs: 5 * 60 * 1000,
-  max: ipMax(1500),
+  max: ipMax(10000),
   message: {
     error: 'รีเควสในการชำระเงินเกินขีดจำกัด กรุณาลองใหม่อีกครั้ง',
     retryAfter: '1 minutes',

@@ -21,7 +21,7 @@ export default function CancelledOrderPage() {
     const params = useParams();
     const router = useRouter();
     const orderId = getParamId(params.orderId);
-    const { order, loading, error, retry } = useOrderPoll(orderId, "failed", { intervalMs: 10_000 });
+    const { order, loading, error, retry } = useOrderPoll(orderId, "failed");
     const myRefunds = useMyRefunds();
 
     useEffect(() => { try { localStorage.removeItem("activeOrderId"); } catch { /* ignore */ } }, []);

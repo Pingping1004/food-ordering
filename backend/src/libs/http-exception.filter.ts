@@ -26,6 +26,7 @@ const isOverloadError = (e: unknown): boolean => {
     meta?: { driverAdapterError?: { cause?: { originalCode?: string } } };
   } | null;
   if (!err) return false;
+  if (err.message === 'DB_TIMEOUT') return true; // PrismaService.safeRead gave up waiting (DB saturated)
   if (err.code && DB_BUSY_OR_DOWN_CODES.has(err.code)) return true;
   const original = err.meta?.driverAdapterError?.cause?.originalCode;
   if (original && DB_BUSY_OR_DOWN_CODES.has(original)) return true;
@@ -69,6 +70,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
         'Access-Control-Allow-Methods',
         'GET,POST,PUT,PATCH,DELETE,OPTIONS',
       );
+      response.header('Access-Control-Expose-Headers', 'Retry-After, X-Poll-After');
     }
 
     if (exception instanceof HttpException) {

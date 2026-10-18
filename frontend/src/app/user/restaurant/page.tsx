@@ -31,7 +31,7 @@ function ActiveOrderCard() {
     const [id, setId] = useState<string | null>(null);
     useEffect(() => { try { setId(localStorage.getItem("activeOrderId")); } catch { setId(null); } }, []);
 
-    const { data } = useStudentOrder(id, { pollMs: 20_000 });
+    const { data } = useStudentOrder(id, { poll: true, minPollMs: 20_000 });
 
     if (!id || !data) return null;
     const screen = screenForOrder(data);

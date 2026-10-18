@@ -42,6 +42,42 @@ describe('Order lifecycle: cook actions, state machine, stock (real HTTP + real 
     });
   });
 
+  describe('GET /order/:id/status (what student screens poll)', () => {
+    const status = (who: string, orderId: string, query = '') => api().get(`/api/order/${orderId}/status${query}`).set(authHeader(who));
+
+    it('should return only the status fields and an X-Poll-After that follows the order through its steps', async () => {
+      const w = await makeWorld(t.prisma, { autoAccept: false, maxDaily: 20 });
+      const cook = await makeMember(t.prisma, w.restaurant.restaurantId, RestaurantRole.STAFF, w.school.schoolId);
+      const orderId = await place(w);
+
+      let res = await status(w.student.userId, orderId).expect(200);
+      expect(Object.keys(res.body).sort()).toEqual(['acceptAt', 'paymentStatus', 'status', 'updatedAt']);
+      expect(res.headers['x-poll-after']).toBe('5'); // waiting for the shop, no push
+      expect((await status(w.student.userId, orderId, '?push=1')).headers['x-poll-after']).toBe('10'); // the accept push is the fast path
+      const before = res.body.updatedAt;
+
+      await act(cook.userId, 'accept', orderId).expect(200);
+      res = await status(w.student.userId, orderId).expect(200);
+      expect(res.body.acceptAt).not.toBeNull();
+      expect(res.body.updatedAt).not.toBe(before); // the client reloads the full order only when this moves
+      expect(res.headers['x-poll-after']).toBe('20');
+
+      await t.prisma.order.update({ where: { orderId }, data: { paymentStatus: 'PAID', status: 'cooking' } });
+      expect((await status(w.student.userId, orderId)).headers['x-poll-after']).toBe('15');
+      await act(cook.userId, 'ready', orderId).expect(200);
+      expect((await status(w.student.userId, orderId)).headers['x-poll-after']).toBe('10');
+      await act(cook.userId, 'done', orderId).expect(200);
+      expect((await status(w.student.userId, orderId)).headers['x-poll-after']).toBe('0'); // finished: stop polling
+    });
+
+    it("should not reveal another student's order (404, same as the full order route)", async () => {
+      const w = await makeWorld(t.prisma);
+      const other = await makeUser(t.prisma, { schoolId: w.school.schoolId });
+      const orderId = await place(w);
+      await status(other.userId, orderId).expect(404);
+    });
+  });
+
   describe('state machine', () => {
     const cases: Array<[from: string, action: string, ok: boolean]> = [
       ['receive', 'ready', false],

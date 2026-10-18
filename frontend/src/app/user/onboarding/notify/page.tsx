@@ -16,6 +16,7 @@ const SHOP_EVENTS: { text: string; icon: IconName; tile: string }[] = [
 ];
 
 const EVENTS: { text: string; icon: IconName; tile: string }[] = [
+    { text: "ร้านรับออเดอร์แล้ว ชำระเงินได้", icon: "bell", tile: "bg-primary-light text-primary-dark" },
     { text: "ร้านแจ้งว่าช้า", icon: "clock", tile: "bg-brand-orange-light text-brand-orange-text" },
     { text: "อาหารพร้อมรับ", icon: "check", tile: "bg-success-light text-success-main" },
 ];
@@ -63,7 +64,7 @@ export default function NotifyPage() {
             </div>
 
             <div className="flex flex-col gap-2.5 text-center">
-                <h1 className="text-[28px] font-bold leading-tight">{forShop ? "รู้ทันทีเมื่อมีออเดอร์" : "รับแจ้งเตือนเมื่ออาหารพร้อมหรือร้านทำช้า"}</h1>
+                <h1 className="text-[28px] font-bold leading-tight">{forShop ? "รู้ทันทีเมื่อมีออเดอร์" : "รับแจ้งเตือนเมื่อร้านรับออเดอร์ อาหารพร้อม หรือร้านทำช้า"}</h1>
                 <p className="text-base leading-relaxed text-slate">{forShop ? "เปิดแจ้งเตือนเพื่อไม่พลาดออเดอร์ แม้ไม่ได้เปิดหน้านี้ไว้ เราแจ้งเฉพาะเรื่องออเดอร์ของร้าน" : "ไม่เปิดก็ได้ ดูสถานะออเดอร์ได้ที่หน้าออเดอร์เสมอ เราแจ้งเฉพาะ 2 เรื่องนี้เท่านั้น"}</p>
             </div>
 

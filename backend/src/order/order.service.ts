@@ -686,6 +686,26 @@ export class OrderService {
     return order;
   }
 
+  /** One indexed single-row read (no items, no shop): what student screens poll. The full order is loaded only on change. */
+  async findOrderStatusForUser(orderId: string, userId: string) {
+    const order = await this.prisma.safeRead(() =>
+      this.prisma.order.findUnique({
+        where: { orderId },
+        select: {
+          userId: true,
+          status: true,
+          paymentStatus: true,
+          acceptAt: true,
+          updatedAt: true,
+        },
+      }),
+    );
+    if (!order || !userId || order.userId !== userId)
+      throw new NotFoundException('ไม่พบออเดอร์ที่ค้นหา');
+    const { userId: _owner, ...state } = order;
+    return state;
+  }
+
   async findOneOrder(orderId: string) {
     try {
       const order = await this.prisma.safeRead(() =>
@@ -898,6 +918,9 @@ export class OrderService {
             `Failed to stop push retries for ${orderId}: ${(error as Error).message}`,
           );
         });
+      // The payment window starts now: tell the student at once instead of waiting for their next poll.
+      if (result.result.paymentStatus !== PaymentStatus.PAID)
+        void this.notificationService.notifyStudentOrderUpdate(orderId, 'accepted');
     }
 
     const { changed: _changed, ...rest } = result;
