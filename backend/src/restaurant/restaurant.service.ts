@@ -166,7 +166,7 @@ export class RestaurantService {
             location: createRestaurantDto.location ?? null,
             categories: createRestaurantDto.categories,
             avgCookingTimeMins: avgCookingTime,
-            maxActiveOrders: createRestaurantDto.maxActiveOrders ?? 20,
+            maxActiveOrders: createRestaurantDto.maxActiveOrders ?? 50,
             status: Status.PENDING,
             contactName,
             contactSurname: createRestaurantDto.contactSurname ?? '',

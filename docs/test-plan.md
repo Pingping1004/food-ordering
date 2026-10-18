@@ -51,7 +51,7 @@ The harness refuses to start unless `DATABASE_URL` points at `localhost`/`127.0.
 ## Assumptions made where the spec was ambiguous
 
 - "Cook" = `RestaurantRole.STAFF`; "shop owner" = `OWNER`; `ADMIN` (shop) is treated as a manager.
-- The code lets cooks (STAFF) edit menus (`MENU_WRITER`); `docs/rbac-api-contract.md` says Owner/Admin only. The matrix follows the **code** and the discrepancy is listed in `pilot-readiness.md`.
+- Cooks (STAFF) may edit menus — confirmed intended; `docs/rbac-api-contract.md` is outdated on this.
 - `POST /admin/schools/:id/invite-code/rotate` is documented as a sysadmin operation but the handler lacks `@SysadminWrite()`, so a sysadmin gets `SYSADMIN_READ_ONLY`. Not asserted either way.
 - "PromptServe moves no money": the platform never holds funds; students pay the shop's PromptPay directly and the app verifies the slip. `PaymentStatus.REFUNDED` is set only when a school admin explicitly confirms a manual transfer.
 

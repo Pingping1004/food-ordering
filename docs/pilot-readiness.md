@@ -22,7 +22,7 @@ Evidence in one table:
 1. **Apply the schema changes to production and back up first.** Additive only: `Order.idempotencyKey` (+ unique with `userId`), `Menu.deletedAt`, new `Payout` table, new index `Order(restaurantId,status,orderAt)`. The project uses `prisma db push`: `cd backend && NODE_ENV=production npm run prisma:push:prod`. Prisma will flag the new unique constraint as a "data loss" warning (it cannot fail: every existing key is NULL); confirm it yourself. Then `npx ts-node scripts/backfill-payouts.ts` (dry run) and `--apply`, so already-paid orders appear in the weekly statements.
 2. **Rehearse on the real stack once.** Same hosting plan and region as production, real Supabase, one real test payment with a real slip, one push to a real phone, and `SCENARIO=bell` + `SCENARIO=spike` from `capacity-report.md`. The local numbers are not a promise for your plan, and database latency (not CPU) will decide your response times.
 3. **Put the API and the database in the same region** (Singapore) and use the pooler URL. Set `DB_POOL_MAX` to fit the database's connection limit.
-4. **Decide the open product questions** in the next section (especially cook access to menus and the per-shop active-order cap).
+4. **Update existing shops' cap** to 50 (SQL in decision 3) and make sure cooks know the cap exists.
 5. **Remove `DEBUG_ALWAYS_OPEN` from `.env`/hosting config** (it is now ignored in production, but a leftover flag is a trap) and give the database a verified TLS connection (see `security.md`, residual risk 1).
 
 ## What was found and fixed (most important first)
@@ -37,6 +37,7 @@ Evidence in one table:
 | 6 | Shop push worker handled ~1 notification/s | New-order pushes minutes late in a rush | Batched, concurrent worker (≈ 40/s) | unit test + code path |
 | 7 | Uploads buffered in memory before the permission check; unlimited sizes; files accepted by name only | Any account could exhaust memory; HTML could be served from the storage domain | Guards before parsing, limits, content check | `security.int-spec.ts` |
 | 8 | Shop bank account/QR/e-mail sent to every student | Privacy/fraud | Redacted unless member/owner | `security.int-spec.ts` |
+| 9a | Paid orders could be cancelled by the student | Shop cooks on money the student could then walk away from | 409 after payment | `order-lifecycle.int-spec.ts` |
 | 9 | Deleting a menu item that was ever ordered → 500 | Owner cannot remove a dish | Archive (history intact, name reusable) | `journeys.int-spec.ts` |
 | 10 | DB saturation / outage → opaque 500, log floods, internals in error bodies | Hard to diagnose, retries not possible | 503 + `Retry-After`, quiet 4xx logs, generic 500s | `http-exception.filter.spec.ts`, chaos run |
 | 11 | Payment page white-screened on a malformed QR URL | Student cannot pay | Fail-safe image | browser E2E |
@@ -45,14 +46,17 @@ Evidence in one table:
 
 > Note: while building the browser tests I briefly ran a second `next dev` that shared `frontend/.next` with the dev server you already had open on port 3000. It was stopped and your server was left running, but if it behaves oddly (stale pages, odd errors) restart it once. The E2E config now uses `.next-e2e`.
 
-## Open questions for you (I did not change these)
+## Product decisions (answered by the owner, now implemented)
 
-1. **Cooks can edit menus.** Code: owner, shop admin **and staff** may create/edit/toggle dishes (`MENU_WRITER`); only owner/admin may delete. `rbac-api-contract.md` says owner/admin only. A cook changing prices during lunch is a real risk — which is intended?
-2. **Student can cancel after paying** (`PATCH /order/cancel/:id` works while the order is `receive` or `cooking`, paid or not). The shop keeps the money, the student gets no automatic refund path. Intended?
-3. **Per-shop active-order cap** (`maxActiveOrders`, default 20, registration allows ≤ 50) returns 409 when a shop already has that many unaccepted/cooking orders. Reasonable protection, but at lunch it decides how many students get "shop is busy". Set it from each shop's real throughput.
-4. **Sysadmin cannot rotate a school's student code** from `/admin/schools/:id/invite-code/rotate` without a support grant, although the contract lists it as a sysadmin action.
-5. **School dashboard shows illustrative numbers until a school has 5 orders.** `getSchoolSummary` returns hard-coded sample figures (`isSample: true`: "+14 % vs last week", 96.2 % success, rating 4.4 from "312 responses", sample shops with revenue) when fewer than 5 orders exist, and the UI never read that flag — on day 1 the school admins would have read fiction as results. The overview page now says so in a banner; decide whether to show zeros instead. Also: the per-shop "median accept time" in the school's restaurant detail is a constant 45 s (`school-admin.service.ts`), not a measurement.
-6. **Student wait screen polls every 20 s**, so after a shop accepts, the student can wait up to 20 s to be moved to the payment screen (visible in the browser test). Consider 5–10 s while the order is `receive` (≈ 4× the polling load for a few seconds per order, well within measured capacity).
+1. **Cooks may edit menus** — intended; only owner/admin delete. The matrix and tests already encode this. `rbac-api-contract.md` is out of date on this point.
+2. **No cancelling after payment.** `PATCH /order/cancel/:id` now returns 409 `ORDER_ALREADY_PAID` for a paid order; the student's route is a refund request. Unpaid orders can still be cancelled.
+3. **`maxActiveOrders` cap stays, default raised from 20 to 50** (fallback in order creation and default at shop registration). Shops that already exist have their own stored value (usually 20): run `UPDATE "Restaurant" SET "maxActiveOrders" = 50 WHERE "maxActiveOrders" = 20;` or change it per shop in settings.
+4. **School dashboard shows real numbers from any number of orders** (e.g. 75 % from 4 orders, labelled "จาก N ออเดอร์"). The invented sample branch is gone; median accept time and rating are computed from data, and show "no data" when there is none. A school with no orders shows "no data", not 100 %.
+
+Still open (not decided):
+
+- `POST /admin/schools/:id/invite-code/rotate` is documented as a sysadmin action but returns `SYSADMIN_READ_ONLY` without a support grant.
+- The student wait screen polls every 20 s, so after a shop accepts the student can wait up to 20 s to be moved to payment. 5–10 s would be fine for capacity.
 
 ## Known gaps
 

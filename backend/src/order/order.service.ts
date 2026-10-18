@@ -121,7 +121,7 @@ export class OrderService {
     const avgCookingTime =
       restaurant.avgCookingTimeMins ?? restaurant.avgCookingTime ?? 10;
     const maxActiveOrder =
-      restaurant.maxActiveOrders ?? restaurant.maxActiveOrder ?? 20;
+      restaurant.maxActiveOrders ?? restaurant.maxActiveOrder ?? 50;
 
     const ACCEPT_WINDOW_MINS = 3;
     const PAYMENT_WINDOW_MINS = 3;
@@ -1093,6 +1093,12 @@ export class OrderService {
     if (!existing) throw new NotFoundException('ไม่พบออเดอร์');
     if (existing.status === OrderStatus.done)
       throw new BadRequestException('ไม่สามารถยกเลิกออเดอร์ที่เสร็จแล้ว');
+    // Once paid the shop is cooking on the student's money: cancelling is a refund request, not a cancel.
+    if (existing.paymentStatus === PaymentStatus.PAID)
+      throw new ConflictException({
+        message: 'ออเดอร์ที่ชำระเงินแล้วยกเลิกเองไม่ได้ หากมีปัญหากรุณาขอคืนเงิน',
+        code: 'ORDER_ALREADY_PAID',
+      });
     if (existing.status === OrderStatus.rejected) {
       return {
         skipped: true as const,

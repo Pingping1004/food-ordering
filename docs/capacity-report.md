@@ -72,7 +72,7 @@ SQL statements per request (counted from the Postgres log): `me/school` 4 · sho
 | `IP_LIMIT_MULTIPLIER` | 1 | scales every IP limiter (global 60,000/min, order create 6,000/min, payments 1,500/5 min) |
 | `JSON_BODY_LIMIT` | 256kb | `/payment/verify` keeps 10 MB for the slip image |
 | Per-user limits | order create 30/min, payment 10/5 min, refund 5/5 min, other 240/min | `src/guards/user-rate-limit.guard.ts` |
-| Shop `maxActiveOrders` | 20 (registration allows ≤ 50) | a **business** throttle: when a shop already has that many `receive`+`cooking` orders, new orders get 409. At lunch this will reject students if a cook falls behind — set it from the shop's real throughput |
+| Shop `maxActiveOrders` | 50 (was 20; existing shops keep their stored value) | a **business** throttle: when a shop already has that many `receive`+`cooking` orders, new orders get 409. At lunch this will reject students if a cook falls behind — lower it per shop only if a shop cannot keep up |
 
 ## Before launch (checklist)
 

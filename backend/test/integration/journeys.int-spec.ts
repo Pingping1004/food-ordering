@@ -271,3 +271,34 @@ describe('Role journeys: onboarding, approvals, menu and shop settings (real HTT
     });
   });
 });
+
+describe('School dashboard shows real numbers even for a handful of orders', () => {
+  let t: TestApp;
+  beforeAll(async () => { t = await bootTestApp(); });
+  afterAll(async () => { await t.close(); });
+
+  it('should report 3 of 4 orders completed as 75 %, with a real accept time and no sample flag', async () => {
+    const w = await makeWorld(t.prisma);
+    const now = Date.now();
+    const mk = (status: 'done' | 'rejected', acceptSecs: number | null) => ({
+      restaurantId: w.restaurant.restaurantId, userId: w.student.userId, status, totalAmount: 40, pickupAt: new Date(now + 3_600_000),
+      orderAt: new Date(now - 60_000), acceptAt: acceptSecs === null ? null : new Date(now - 60_000 + acceptSecs * 1000), paymentStatus: status === 'done' ? ('PAID' as const) : ('UNPAID' as const),
+    });
+    await t.prisma.order.createMany({ data: [mk('done', 20), mk('done', 30), mk('done', 100), mk('rejected', null)] });
+    const res = await request(t.url).get(`/api/schools/${w.school.schoolId}/metrics/summary?range=this_week`).set(authHeader(w.admin.userId)).expect(200);
+    expect(res.body.isSample).toBeUndefined();
+    expect(res.body.kpis.totalOrders.value).toBe(4);
+    expect(res.body.kpis.successRate.value).toBe(75);
+    expect(res.body.kpis.medianAcceptSeconds.value).toBe(30);
+    expect(res.body.kpis.rating.value).toBeNull(); // no feedback yet: "no data", not an invented 4.4
+    expect(JSON.stringify(res.body)).not.toContain('312');
+  });
+
+  it('should show "no data" (not 100 % or invented figures) for a school with no orders', async () => {
+    const w = await makeWorld(t.prisma);
+    const res = await request(t.url).get(`/api/schools/${w.school.schoolId}/metrics/summary?range=this_week`).set(authHeader(w.admin.userId)).expect(200);
+    expect(res.body.kpis.totalOrders.value).toBe(0);
+    expect(res.body.kpis.successRate.value).toBeNull();
+    expect(res.body.kpis.medianAcceptSeconds.value).toBeNull();
+  });
+});

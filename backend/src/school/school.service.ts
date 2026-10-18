@@ -45,10 +45,6 @@ export class SchoolService {
 
   // ---------------------------------------------------------------- today's opening status
 
-  /**
-   * Is the school's canteen open right now? Uses the weekly hours plus date overrides (holidays / special hours), in
-   * Bangkok time. A school with no hours configured counts as open. Debug mode (DEBUG_ALWAYS_OPEN) forces open.
-   */
   async getUserSchoolId(userId: string): Promise<string | null> {
     const u = await this.prisma.user.findUnique({ where: { userId }, select: { schoolId: true } });
     return u?.schoolId ?? null;

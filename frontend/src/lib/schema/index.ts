@@ -222,8 +222,6 @@ export type SummaryRange = "this_week" | "last_week" | "this_month" | "last_mont
 export interface SchoolSummary {
     weekLabel: string;
     weekNumber: number;
-    /** The API returns illustrative numbers (not real data) until the school has at least 5 orders. */
-    isSample?: boolean;
     kpis: {
         totalOrders: KpiValue;
         activeStudents: KpiValue & { percentOfEnrolled: number | null; enrolled: number | null };

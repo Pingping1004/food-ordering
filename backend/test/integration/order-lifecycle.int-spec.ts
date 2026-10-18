@@ -135,3 +135,47 @@ describe('Order lifecycle: cook actions, state machine, stock (real HTTP + real 
     });
   });
 });
+
+describe('Cancel rules (real HTTP + real Postgres)', () => {
+  let t: TestApp;
+  beforeAll(async () => { t = await bootTestApp(); });
+  afterAll(async () => { await t.close(); });
+
+  it('should refuse to cancel a paid order (409 ORDER_ALREADY_PAID) and leave it untouched', async () => {
+    const w = await makeWorld(t.prisma);
+    const created = await request(t.url).post('/api/order/create').set(authHeader(w.student.userId)).send(orderBody(w.restaurant.restaurantId, w.menu.menuId)).expect(201);
+    const id = created.body.orderId as string;
+    await t.prisma.order.update({ where: { orderId: id }, data: { paymentStatus: 'PAID', paidAt: new Date(), status: 'cooking' } });
+    const res = await request(t.url).patch(`/api/order/cancel/${id}`).set(authHeader(w.student.userId)).send({});
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe('ORDER_ALREADY_PAID');
+    const o = await t.prisma.order.findUniqueOrThrow({ where: { orderId: id } });
+    expect([o.status, o.paymentStatus]).toEqual(['cooking', 'PAID']);
+  });
+
+  it('should still let a student cancel an unpaid order', async () => {
+    const w = await makeWorld(t.prisma);
+    const created = await request(t.url).post('/api/order/create').set(authHeader(w.student.userId)).send(orderBody(w.restaurant.restaurantId, w.menu.menuId)).expect(201);
+    await request(t.url).patch(`/api/order/cancel/${created.body.orderId}`).set(authHeader(w.student.userId)).send({}).expect(200);
+  });
+});
+
+describe('Shop active-order cap (default 50)', () => {
+  let t: TestApp;
+  beforeAll(async () => { t = await bootTestApp(); });
+  afterAll(async () => { await t.close(); });
+
+  it('should accept the 50th concurrent active order and turn away the 51st when the shop has no custom cap', async () => {
+    const w = await makeWorld(t.prisma, { autoAccept: false });
+    await t.prisma.restaurant.update({ where: { restaurantId: w.restaurant.restaurantId }, data: { maxActiveOrders: null } });
+    // seed 49 active orders directly, then use the API for #50 (accepted) and #51 (turned away)
+    const students = await Promise.all(Array.from({ length: 51 }, () => makeUser(t.prisma, { schoolId: w.school.schoolId })));
+    await t.prisma.order.createMany({
+      data: students.slice(0, 49).map((s) => ({ restaurantId: w.restaurant.restaurantId, userId: s.userId, pickupAt: new Date(Date.now() + 3_600_000), totalAmount: 40 })),
+    });
+    const body = orderBody(w.restaurant.restaurantId, w.menu.menuId);
+    await request(t.url).post('/api/order/create').set(authHeader(students[49].userId)).send(body).expect(201);
+    const over = await request(t.url).post('/api/order/create').set(authHeader(students[50].userId)).send(body);
+    expect(over.status).toBe(409);
+  });
+});
