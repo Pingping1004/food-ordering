@@ -142,6 +142,8 @@ const scenarios = {
 };
 // Constant arrival rate (iterations/s; each = ~9 requests incl. 1 order write): finds the throughput knee.
 scenarios.knee = { executor: 'constant-arrival-rate', rate: RATE, timeUnit: '1s', duration: __ENV.DURATION || '90s', preAllocatedVUs: Math.round(RATE * 12), maxVUs: Math.round(RATE * 20), exec: 'student' };
+// The pilot's realistic worst case: ~all 2,500 students place their one lunch order within a single minute.
+scenarios.bell = { executor: 'constant-arrival-rate', rate: 42, timeUnit: '1s', duration: '60s', preAllocatedVUs: 600, maxVUs: 1500, exec: 'student' };
 scenarios.mixed = {
   ...scenarios.ramp,
 };
