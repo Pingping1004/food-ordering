@@ -793,6 +793,16 @@ export class OrderService {
     return { result, message: `แจ้งส่งออเดอร์ล่าช้า10นาทีสำเร็จ` };
   }
 
+  /**
+   * Serializes state changes on one order. Every transition reads the order and then acts on what it read (deduct or
+   * release stock, move the status), so without a row lock two cooks pressing accept/reject at the same moment both
+   * act on the same stale read: stock is deducted twice, or reserved for an order that ended up rejected.
+   * The lock is held until the surrounding transaction ends.
+   */
+  private async lockOrder(tx: Prisma.TransactionClient, orderId: string) {
+    await tx.$queryRaw`SELECT "orderId" FROM "Order" WHERE "orderId" = ${orderId} FOR UPDATE`;
+  }
+
   /** Stock is reserved when the order is accepted; give it back if the order dies before being paid. */
   private async releaseReservedStock(
     tx: Prisma.TransactionClient,
@@ -811,6 +821,7 @@ export class OrderService {
    */
   async acceptOrder(orderId: string) {
     const result = await this.prisma.$transaction(async (tx) => {
+      await this.lockOrder(tx, orderId);
       const order = await tx.order.findUnique({
         where: { orderId },
         include: { orderMenus: true },
@@ -899,6 +910,7 @@ export class OrderService {
     };
 
     const result = await this.prisma.$transaction(async (tx) => {
+      await this.lockOrder(tx, orderId);
       const order = await tx.order.findUnique({
         where: { orderId },
         include: { orderMenus: true },
@@ -1069,25 +1081,28 @@ export class OrderService {
   }
 
   async cancelOrder(orderId: string) {
-    const order = await this.prisma.order.findUnique({ where: { orderId } });
-    if (!order) throw new NotFoundException('ไม่พบออเดอร์');
-    if (order.status === OrderStatus.done)
+    const existing = await this.prisma.order.findUnique({ where: { orderId } });
+    if (!existing) throw new NotFoundException('ไม่พบออเดอร์');
+    if (existing.status === OrderStatus.done)
       throw new BadRequestException('ไม่สามารถยกเลิกออเดอร์ที่เสร็จแล้ว');
-    if (order.status === OrderStatus.rejected) {
+    if (existing.status === OrderStatus.rejected) {
       return {
         skipped: true as const,
-        previousStatus: order.status,
-        result: order,
+        previousStatus: existing.status,
+        result: existing,
         message: 'ออเดอร์ถูกยกเลิกไปแล้ว',
       };
     }
 
-    const wasReservedUnpaid =
-      order.status === OrderStatus.receive &&
-      !!order.acceptAt &&
-      order.paymentStatus === PaymentStatus.UNPAID;
-
     const { count } = await this.prisma.$transaction(async (tx) => {
+      await this.lockOrder(tx, orderId);
+      // Re-read under the lock: whether stock is reserved depends on whether a cook accepted in the meantime.
+      const order = await tx.order.findUnique({ where: { orderId } });
+      if (!order) return { count: 0 };
+      const wasReservedUnpaid =
+        order.status === OrderStatus.receive &&
+        !!order.acceptAt &&
+        order.paymentStatus === PaymentStatus.UNPAID;
       const res = await tx.order.updateMany({
         where: {
           orderId,
@@ -1142,7 +1157,7 @@ export class OrderService {
         actor: EventActor.user,
         reason: 'user_cancelled',
         order: {
-          previousStatus: order.status,
+          previousStatus: existing.status,
           nextStatus: updatedOrder.status,
         },
       },
@@ -1150,7 +1165,7 @@ export class OrderService {
 
     return {
       skipped: false as const,
-      previousStatus: order.status,
+      previousStatus: existing.status,
       result: updatedOrder,
       message: 'ยกเลิกออเดอร์สำเร็จ',
     };
