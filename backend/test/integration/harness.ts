@@ -47,6 +47,9 @@ export async function bootTestApp(): Promise<TestApp> {
           const aal = id.startsWith('aal2-') ? 'aal2' : 'aal1';
           return { id, email: null, name: null, aal };
         },
+        assertCanDeleteAuthUsers: () => undefined,
+        deleteAuthUser: async () => undefined,
+        forgetUser: () => undefined,
         resolveUser: async (identity: { id: string }) => {
           const u = await prisma.user.findUnique({
             where: { userId: identity.id },

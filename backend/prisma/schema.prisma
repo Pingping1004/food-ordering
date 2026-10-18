@@ -221,6 +221,8 @@ model Menu {
   maxDaily        Int?     @default(30)
   cookingTimeMins Int      @default(5)
   isAvailable     Boolean  @default(true)
+  /// Set instead of deleting a menu item that past orders reference (OrderMenu.menuId is RESTRICT); hidden from lists.
+  deletedAt       DateTime? @db.Timestamptz(3)
   createdAt       DateTime @default(now()) @db.Timestamptz(3)
   updatedAt       DateTime @updatedAt @db.Timestamptz(3)
 

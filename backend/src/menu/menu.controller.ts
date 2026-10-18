@@ -104,6 +104,7 @@ export class MenuController {
     @UploadedFiles() files: Express.Multer.File[],
   ) {
     await this.access.assertCanManageMenus(req.user, req);
+    if (!files?.length) throw new BadRequestException('กรุณาเลือกรูปภาพอย่างน้อย 1 รูป');
     return this.menuService.uploadTempImages(files);
   }
 
