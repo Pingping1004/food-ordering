@@ -1,5 +1,6 @@
 "use client";
 
+import { clearOrderSubmitKey, getOrderSubmitKey } from "@/util/idempotency";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useMemo, useRef } from "react";
@@ -139,7 +140,9 @@ function OrderConfirmContext() {
         };
 
         try {
-            const { data: result } = await api.post("/order/create", payload);
+            const signature = JSON.stringify([payload.restaurantId, new Date(data.pickupAt).toISOString(), payload.details ?? "", cart.map((i) => `${i.menuId}:${i.quantity}`).sort()]);
+            const { data: result } = await api.post("/order/create", payload, { headers: { "Idempotency-Key": getOrderSubmitKey(signature) } });
+            clearOrderSubmitKey();
             localStorage.setItem(`orderSecret:${result.orderId}`, result.orderSecret);
             localStorage.setItem("activeOrderId", result.orderId);
 
