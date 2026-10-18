@@ -5,6 +5,7 @@ import {
   RequestMethod,
 } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { UserRateLimitGuard } from './guards/user-rate-limit.guard';
 import { SupabaseAuthGuard } from './guards/supabase-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { AccessModule } from './access/access.module';
@@ -104,6 +105,7 @@ import { SupabaseModule } from './supabase/supabase.module';
     // Authenticated by default; opt out with @Public(). Order matters: auth first, then roles.
     { provide: APP_GUARD, useClass: SupabaseAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_GUARD, useClass: UserRateLimitGuard },
     {
       provide: APP_FILTER,
       useClass: HttpExceptionFilter,
