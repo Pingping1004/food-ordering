@@ -25,9 +25,14 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json",
-    "test:int": "jest --config ./test/integration/jest-int.json --runInBand",
-    "test:unit": "jest"
+    "test:int": "jest --config ./test/integration/jest-int.json --runInBand --forceExit",
+    "test:unit": "jest",
+    "test:security": "jest --config ./test/integration/jest-int.json --runInBand --forceExit test/integration/security test/integration/rbac",
+    "load:seed": "ts-node -r tsconfig-paths/register --transpile-only test/load/seed.ts",
+    "load:server": "TS_NODE_TRANSPILE_ONLY=1 node -r ts-node/register -r tsconfig-paths/register test/load/server.ts",
+    "test:load": "k6 run -e SCENARIO=${SCENARIO:-bell} load/lunch.js",
+    "audit:prod": "npm audit --omit=dev --audit-level=high",
+    "test:int:cov": "jest --config ./test/integration/jest-int.json --runInBand --forceExit --coverage --coverageDirectory=coverage-int --collectCoverageFrom='src/**/*.ts' --collectCoverageFrom='!src/**/*.spec.ts' --collectCoverageFrom='!src/main.ts'"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.850.0",
@@ -70,7 +75,7 @@
     "plaiceholder": "^3.0.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "sharp": "^0.34.5",
+    "sharp": "^0.35.5",
     "stripe": "^18.4.0",
     "swagger-ui-express": "^5.0.1",
     "tesseract.js": "^6.0.1",
@@ -126,9 +131,28 @@
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "collectCoverageFrom": [
-      "**/*.(t|j)s"
+      "src/**/*.ts",
+      "!src/**/*.spec.ts",
+      "!src/main.ts"
     ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "coveragePathIgnorePatterns": [
+      "/node_modules/",
+      "/test/"
+    ],
+    "coverageThreshold": {
+      "./src/access/": {
+        "lines": 85,
+        "branches": 60
+      },
+      "./src/refund/": {
+        "lines": 80,
+        "branches": 55
+      },
+      "./src/common/": {
+        "lines": 80
+      }
+    }
   }
 }
