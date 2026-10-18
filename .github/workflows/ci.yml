@@ -130,6 +130,9 @@ jobs:
         with: { node-version: 22 }
       - run: npm ci
         working-directory: backend
+      # Prisma 7's `db push` no longer generates the client, and the API server started by Playwright needs it.
+      - run: npx prisma generate
+        working-directory: backend
       - run: npm ci
         working-directory: frontend
       - run: npx playwright install --with-deps chromium
