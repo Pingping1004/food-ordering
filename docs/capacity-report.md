@@ -96,3 +96,30 @@ SQL statements per request (counted from the Postgres log): `me/school` 4 · sho
 | Hard per-user ceilings | 30 orders/min, 10 payments/5 min, 5 refunds/5 min, 240 req/min | 429 | code |
 
 **Practical ceiling for one API instance of this size: roughly 5,000–6,000 students whose lunch rush is spread over ≥ 10 minutes, or ≈ 3,000 if all of them order inside a single minute.** The pilot (2,500) is about half of the first figure. Remember these numbers assume a database a millisecond away; at 30 ms per query the order rate and the concurrent-user figures fall by roughly an order of magnitude until the API is moved next to the database. Going past one instance needs Redis for the limiters and caches.
+
+## Before vs after (same harness, same data, same machine)
+
+"Before" = original `main`, run in the same harness. "Before, limiter lifted" = the same code with its per-IP limits raised so the other defects show.
+
+| Measure | Before (as shipped) | Before (limiter lifted) | After |
+|---|---|---|---|
+| Bell: 2,520 students order within 60 s | **30 orders (1.2 %)**; 9,334 rejected with 429 | 2,521 created, p95 11 ms | 2,520 created, p95 11–21 ms |
+| Sustained orders/s, clean DB (knee 60) | ≈ 0.5/s (limiter) | 53/s, p95 9.6 ms | 53/s, p95 11.9 ms |
+| Sustained orders/s (knee 90, 4 repeated runs) | — | 79/s, p95 9 ms then 87 / 29 / 37 / **408 ms** | 79/s, p95 5–11 ms in 5 of 9 runs, 69 ms – 2.9 s in 4 |
+| Retry storm: 1,200 students × 5 identical submits | — | **6,005 orders (5× duplicates)** | **1,200 orders, 0 duplicates** |
+| Overload: 2,500 concurrent VUs | — | everything served, order p95 **11.4 s**, reads 1.9 s, no protection | order p95 4.2 s, 45 % shed with 429, reads 1 s |
+| DB down 8 s mid-rush | 2,231 × HTTP **500** | same | 2,107 × HTTP **503** (clients retry), 0 duplicates |
+| Stock races (accept/accept, accept/reject) | double deduction 40/40, stranded stock 39/40 | same | 0/40 |
+| Slip reused after restart / on second instance | accepted (state in memory) | same | rejected (database unique index) |
+| DB connections the app can open | 9 pools × 10 = up to 90 | same | 1 pool, 20 |
+| Shop "new order" pushes | ≈ 1/s | same | ≈ 40/s |
+
+Plain reading: **raw speed on a quiet database did not change** (the old code was already fast locally). The gains are what happens when real people misbehave: the school-IP limiter (98.8 % of the rush rejected), duplicate orders, double-deducted stock, slip reuse, opaque 500s, and uncontrolled overload. Repeated-run latency drift appears in both versions; it comes from a growing orders table and a push backlog and was not eliminated.
+
+| Scale limit | Before | After |
+|---|---|---|
+| Students who can order in the bell minute | ≈ 30 (limiter); ≈ 3,000 with the limiter removed | ≈ 3,000 (2,520 tested) |
+| Orders/s sustained | ≈ 55 | ≈ 55 |
+| Duplicate-safe under retries/double-taps | no | yes |
+| Behaviour past capacity | all requests slow (p95 > 11 s), no shedding | sheds with 429 and recovers; 503 + `Retry-After` on DB trouble |
+| Practical students per instance | unusable for a school behind one IP | ≈ 5,000–6,000 spread rush |
