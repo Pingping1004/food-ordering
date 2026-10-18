@@ -21,7 +21,7 @@ import {
   FileFieldsInterceptor,
   FileInterceptor,
 } from '@nestjs/platform-express';
-import { imageFileFilter } from '../utils/file-upload.utils';
+import { imageFileFilter, imageUploadLimits } from '../utils/file-upload.utils';
 
 import { RestaurantService } from './restaurant.service';
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
@@ -43,6 +43,14 @@ const OWNER_OR_ADMIN = {
   roles: [RestaurantRole.OWNER, RestaurantRole.ADMIN],
 };
 
+/** Bank / payout fields that only the shop itself (and the platform) should see. contactTel stays: students call the shop. */
+const PAYOUT_FIELDS = ['accountNumber', 'accountName', 'paymentQr', 'bankType', 'contactEmail'] as const;
+const withoutPayoutDetails = <T extends object>(r: T): Omit<T, (typeof PAYOUT_FIELDS)[number]> => {
+  const copy = { ...r } as Record<string, unknown>;
+  for (const k of PAYOUT_FIELDS) delete copy[k];
+  return copy as Omit<T, (typeof PAYOUT_FIELDS)[number]>;
+};
+
 @Controller('restaurant')
 export class RestaurantController {
   constructor(
@@ -55,10 +63,13 @@ export class RestaurantController {
 
   @Post()
   @UseInterceptors(
-    FileFieldsInterceptor([
-      { name: 'restaurantImg', maxCount: 1 },
-      { name: 'paymentQr', maxCount: 1 },
-    ]),
+    FileFieldsInterceptor(
+      [
+        { name: 'restaurantImg', maxCount: 1 },
+        { name: 'paymentQr', maxCount: 1 },
+      ],
+      { limits: imageUploadLimits(2), fileFilter: imageFileFilter },
+    ),
   )
   async createRestaurant(
     @Req() req: any,
@@ -87,7 +98,9 @@ export class RestaurantController {
   async findAllRestaurant(@Req() req: any, @Query('limit') limit?: string) {
     const parsedLimit = Math.min(Math.max(Number(limit) || 6, 1), 50);
     const { schoolId } = await this.access.getContext(req.user, req);
-    return this.restaurantService.getOpenRestaurants(schoolId, parsedLimit);
+    const open = await this.restaurantService.getOpenRestaurants(schoolId, parsedLimit);
+    // Students browse this list: it must not carry any shop's payout details.
+    return open.map(withoutPayoutDetails);
   }
 
   @Get(':restaurantId')
@@ -104,11 +117,17 @@ export class RestaurantController {
       ctx.isSystemAdmin ||
       ctx.restaurantRoles.get(restaurantId) === RestaurantRole.OWNER;
     if (seesPayout) return restaurant;
-    const digits = restaurant.accountNumber ?? '';
-    return {
-      ...restaurant,
-      accountNumber: digits ? `····${digits.slice(-4)}` : '',
-    };
+    // Shop staff keep the masked view they always had; everyone else (students, other schools' admins) gets no
+    // payout details at all. The PromptPay QR encodes the full account id, so masking the digits alone is not enough.
+    const isMember = ctx.restaurantRoles.has(restaurantId);
+    if (isMember) {
+      const digits = restaurant.accountNumber ?? '';
+      return {
+        ...restaurant,
+        accountNumber: digits ? `····${digits.slice(-4)}` : '',
+      };
+    }
+    return withoutPayoutDetails(restaurant);
   }
 
   @Get(':restaurantId/hours')
@@ -223,6 +242,7 @@ export class RestaurantController {
   @Patch(':restaurantId')
   @UseInterceptors(
     FileInterceptor('restaurantImg', {
+      limits: imageUploadLimits(1),
       storage: null,
       fileFilter: imageFileFilter,
     }),

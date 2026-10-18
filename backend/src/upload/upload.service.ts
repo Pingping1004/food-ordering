@@ -22,8 +22,12 @@ export class UploadService {
   private async fixOrientation(
     file: Express.Multer.File,
   ): Promise<Express.Multer.File> {
-    const correctedBuffer = await sharp(file.buffer).rotate().toBuffer();
-    return { ...file, buffer: correctedBuffer };
+    try {
+      const correctedBuffer = await sharp(file.buffer).rotate().toBuffer();
+      return { ...file, buffer: correctedBuffer };
+    } catch {
+      throw new BadRequestException('ไฟล์ไม่ใช่รูปภาพที่ถูกต้อง');
+    }
   }
 
   async saveImage(file: Express.Multer.File): Promise<UploadImageInfo> {
@@ -38,6 +42,7 @@ export class UploadService {
 
       return uploadedInfo;
     } catch (error) {
+      if (error instanceof BadRequestException) throw error;
       this.logger.error(
         `Error uploading image ${file.originalname}: ${error.message}`,
         error.stack,

@@ -14,7 +14,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { imageFileFilter } from '../utils/file-upload.utils';
+import { imageFileFilter, imageUploadLimits } from '../utils/file-upload.utils';
 import { AuditService, SchoolScope } from '../access';
 import { InviteCodeService } from '../invite/invite-code.service';
 import {
@@ -171,6 +171,7 @@ export class SchoolsController {
   @UseInterceptors(
     FileInterceptor('profile', {
       storage: null,
+      limits: imageUploadLimits(1),
       fileFilter: imageFileFilter,
     }),
   )
@@ -187,6 +188,7 @@ export class SchoolsController {
   @UseInterceptors(
     FileInterceptor('profile', {
       storage: null,
+      limits: imageUploadLimits(1),
       fileFilter: imageFileFilter,
     }),
   )

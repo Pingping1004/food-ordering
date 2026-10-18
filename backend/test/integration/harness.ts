@@ -20,6 +20,7 @@ import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/app.setup';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { SupabaseService } from '../../src/supabase/supabase.service';
+import { S3Service } from '../../src/s3/s3.service';
 import { FIREBASE_ADMIN_MESSAGING } from '../../src/notification/firebase-admin.provider';
 
 const b64 = (o: object) => Buffer.from(JSON.stringify(o)).toString('base64url');
@@ -46,6 +47,7 @@ export async function bootTestApp(opts: { port?: number; logger?: ('log' | 'erro
   const app = moduleRef.createNestApplication<NestExpressApplication>({ bodyParser: false, logger: opts.logger ?? ['error'] });
   configureApp(app);
   await app.init();
+  (app.get(S3Service) as unknown as { s3Client: unknown }).s3Client = { send: async () => ({}) };
   (app.get(SupabaseService) as unknown as { client: unknown }).client = {
     auth: {
       admin: { deleteUser: async () => ({ error: null }) },
