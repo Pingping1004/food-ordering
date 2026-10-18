@@ -10,7 +10,7 @@ const ipMax = (n: number) => Math.round(n * SCHOOL_NAT_MULTIPLIER);
 
 export const globalRateLimit = rateLimit({
   windowMs: 1 * 60 * 1000,
-  max: ipMax(6000),
+  max: ipMax(60000), // ~1,000 req/s from one IP: a whole school opening the app at the bell
   message: {
     error: 'รีเควสจากIP เกินขีดจำกัด กรุณาลองใหม่อีกครั้ง',
     retryAfter: '1 minutes',
@@ -37,7 +37,7 @@ export const paymentRateLimit = rateLimit({
 
 export const orderRateLimit = rateLimit({
   windowMs: 1 * 60 * 1000,
-  max: ipMax(1200),
+  max: ipMax(6000),
   message: {
     error: 'จำนวนรีเควสในการสั่งออเดอร์เกินขีดจำกัด กรุณาลองใหม่อีกครั้ง',
     retryAfter: '1 minute',
@@ -46,7 +46,7 @@ export const orderRateLimit = rateLimit({
 
 export const orderFetchingLimit = rateLimit({
   windowMs: 1 * 60 * 1000,
-  max: ipMax(3000),
+  max: ipMax(30000),
   message: {
     error: 'จำนวนรีเควสในการดึงข้อมูลออเดอร์เกินขีดจำกัด กรุณาลองใหม่อีกครั้ง',
     retryAfter: '1 minute',
