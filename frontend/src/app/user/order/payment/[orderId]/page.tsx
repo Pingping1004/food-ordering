@@ -14,10 +14,12 @@ import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { paymentDeadline, routeForOrder, screenForOrder, type StudentOrder } from '@/lib/order-flow';
+import { paymentDeadline, routeForOrder, screenForOrder } from '@/lib/order-flow';
 import { formatBaht, orderCode } from '@/lib/schema/format';
 import { OrderTrackingSkeleton } from '@/components/ui/Skeleton';
 import { getIdempotencyKey } from '@/util/idempotency';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { studentOrderKey, useStudentOrder } from '@/hook/useStudentOrder';
 
 export interface OrderPaymentPayload {
     idempotencyKey: string;
@@ -47,64 +49,47 @@ function OrderPaymentPage() {
     const [slipPreview, setSlipPreview] = useState<string | null>(null);
     const [isFailed, setIsFailed] = useState(false);
     const [expired, setExpired] = useState(false);
-    const [loading, setLoading] = useState(true);
-    const [order, setOrder] = useState<StudentOrder>();
-    const [paymentImgUrl, setPaymentImgUrl] = useState<string>('');
     const [qrFailed, setQrFailed] = useState(false);
     const failedCountRef = useRef(0);
     const hasRedirectedRef = useRef(false);
     const hasExpiredRef = useRef(false);
 
+    // Shared cache with the wait/shop-list screens; retried on network/5xx errors (a single blip used to dead-end the page).
+    const queryClient = useQueryClient();
+    const orderQuery = useStudentOrder(orderId);
+    const order = orderQuery.data;
+    const loading = orderQuery.isPending;
+
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const orderSecret = localStorage.getItem(`orderSecret:${orderId}`)
-                const orderResponse = await api.get(`order/${orderId}`, {
-                    headers: { "x-order-secret": orderSecret }
-                });
+        if (orderQuery.isError && !order) toastError("โหลดข้อมูลการชำระเงินไม่สำเร็จ", orderQuery.error);
+    }, [orderQuery.isError, orderQuery.error, order]);
 
-                failedCountRef.current = 0;
-                const data = orderResponse.data;
-                setOrder(data);
+    useEffect(() => {
+        // This screen only exists while the order is still unpaid; anything else belongs elsewhere. Fresh data only.
+        if (!order || !orderQuery.isFetchedAfterMount || hasRedirectedRef.current) return;
+        if (screenForOrder(order) !== 'payment') {
+            hasRedirectedRef.current = true;
+            router.replace(routeForOrder(orderId!, order));
+        }
+    }, [order, orderQuery.isFetchedAfterMount, orderId, router]);
 
-                // This screen only exists while the order is still unpaid; anything else belongs elsewhere.
-                if (!hasRedirectedRef.current && screenForOrder(data) !== 'payment') {
-                    hasRedirectedRef.current = true;
-                    router.replace(routeForOrder(orderId!, data));
-                    return;
-                }
-
-                // Default: the shop's uploaded static QR. Set NEXT_PUBLIC_DYNAMIC_QR=true to generate an amount-locked QR instead.
-                let qrUrl = data.restaurant.paymentQr;
-                if (process.env.NEXT_PUBLIC_DYNAMIC_QR === 'true') try {
-                    const qrResponse = await api.get(`payment/qr-code/${orderId}`, {
-                        headers: { "x-order-secret": orderSecret }
-                    });
-                    const qrData = qrResponse.data;
-                    if (typeof qrData === 'string' && qrData.length > 0) {
-                        qrUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qrData)}&size=400x400`;
-                    } else if (qrData?.data?.qrImage || qrData?.qrImage) {
-                        qrUrl = qrData?.data?.qrImage || qrData?.qrImage;
-                    }
-                } catch (qrErr) {
-                    console.error("Failed to fetch dynamic QR code, using fallback", qrErr);
-                }
-                setPaymentImgUrl(qrUrl);
-
-            } catch (loadErr) {
-                failedCountRef.current += 1;
-
-                if (failedCountRef.current >= 3) {
-                    setIsFailed(true);
-                    toastError("โหลดข้อมูลการชำระเงินไม่สำเร็จ", loadErr);
-                }
-            } finally {
-                setLoading(false);
+    // Default: the shop's uploaded static QR. Set NEXT_PUBLIC_DYNAMIC_QR=true to generate an amount-locked QR instead.
+    const dynamicQr = useQuery({
+        queryKey: ["payment-qr", orderId],
+        enabled: process.env.NEXT_PUBLIC_DYNAMIC_QR === 'true' && !!order,
+        staleTime: Infinity,
+        retry: false,
+        queryFn: async () => {
+            const qrData = (await api.get(`payment/qr-code/${orderId}`, {
+                headers: { "x-order-secret": localStorage.getItem(`orderSecret:${orderId}`) }
+            })).data;
+            if (typeof qrData === 'string' && qrData.length > 0) {
+                return `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qrData)}&size=400x400`;
             }
-        };
-
-        fetchData();
-    }, [orderId, router]);
+            return (qrData?.data?.qrImage || qrData?.qrImage || null) as string | null;
+        },
+    });
+    const paymentImgUrl: string = dynamicQr.data || order?.restaurant?.paymentQr || '';
 
     useEffect(() => {
         if (orderId) setValue("orderId", orderId);
@@ -249,6 +234,9 @@ function OrderPaymentPage() {
             setIsFailed(false)
             clearCart();
             localStorage.removeItem(`idempotencyKey:${orderId}`);
+            // The cached copy still says UNPAID; drop it so the next screens never paint a stale "please pay".
+            hasRedirectedRef.current = true;
+            queryClient.removeQueries({ queryKey: studentOrderKey(orderId) });
 
             router.push(`/user/order/wait/${orderId}`);
 

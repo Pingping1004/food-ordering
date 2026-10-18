@@ -484,8 +484,15 @@ function Page() {
             if (isMounted && !authFailedRef.current) timeoutId = setTimeout(loop, pollingIntervalRef.current);
         };
 
-        const init = async () => {
-            await fetchInitialOrders();
+        // A failed first load used to leave the board on its skeleton forever with no polling (an unhandled rejection).
+        // Retry with backoff instead: at the lunch rush a 503 is transient.
+        const init = async (attempt = 0) => {
+            try {
+                await fetchInitialOrders();
+            } catch {
+                if (isMounted) timeoutId = setTimeout(() => void init(attempt + 1), Math.min(2000 * 2 ** attempt, 15_000));
+                return;
+            }
             if (isMounted) loop();
         };
 

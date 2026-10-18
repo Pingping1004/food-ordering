@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { API, acceptOrderInUi, apiGet, loginAndLand, newSession, placeOrder, seed } from './support/helpers';
+import { API, acceptOrderInUi, apiGet, loginAndLand, newSession, placeOrder, seed, tokenFor } from './support/helpers';
 
 const shop = seed.restaurants[0];
 
@@ -55,6 +55,28 @@ test.describe('Student orders, shop accepts, student is taken to payment', () =>
     const after = (await apiGet(studentId, '/order/mine')).body;
     expect(after.length).toBe(before + 1);
     expect(after.some((o: { orderId: string }) => o.orderId === orderId)).toBe(true);
+  });
+
+  test('the payment page survives a dropped request (it used to dead-end on "ไม่พบข้อมูลร้านค้า")', async ({ page }) => {
+    const studentId = seed.students[5];
+    const owner = seed.restaurants[1].ownerId;
+    await loginAndLand(page, studentId, '**/user/restaurant');
+    const orderId = await placeOrder(page, 'Shop 1', ['Dish 3']);
+    const accepted = await fetch(`${API}/order/accept/${orderId}`, { method: 'PATCH', headers: { Authorization: `Bearer ${tokenFor(owner)}` } });
+    expect(accepted.status).toBe(200);
+
+    await page.goto('about:blank'); // fresh page load: empty query cache, so the first fetch is the payment page's own
+    let attempts = 0;
+    await page.route(`**/api/order/${orderId}`, async (route) => {
+      attempts += 1;
+      // two drops: more than the old page's one-shot fetch could absorb, even with dev-mode StrictMode running it twice
+      return attempts <= 2 ? route.abort('connectionreset') : route.continue();
+    });
+    await page.goto(`/user/order/payment/${orderId}`);
+
+    await expect(page.locator('body')).toContainText('ยอดที่ต้องโอน');
+    await expect(page.getByText('ไม่พบข้อมูลร้านค้า')).toHaveCount(0);
+    expect(attempts).toBeGreaterThanOrEqual(3);
   });
 
   test('double-clicking "confirm" never creates two orders', async ({ page }) => {
