@@ -56,7 +56,7 @@ export const OrderNavBar = ({
     isLargeTextMode = false,
 }: CookerNavbarProps) => {
     return (
-        <nav aria-label="สถานะออเดอร์" className={clsx("grid grid-cols-2 gap-2.5 px-5 pb-2 pt-4", className)}>
+        <nav aria-label="สถานะออเดอร์" className={clsx("grid grid-cols-2 gap-2.5 px-5 pb-2 pt-4 xl:grid-cols-4", className)}>
             {TABS.map((t) => {
                 const active = status === t.key;
                 const count = counts[t.key] ?? 0;

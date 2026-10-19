@@ -867,7 +867,7 @@ function Page() {
                 <label className="flex flex-col gap-1.5">
                     <span className={`${lg ? "text-xl" : "text-lg"} font-semibold`}>เรียงออเดอร์ตาม</span>
                     <select value={sortKey} onChange={(e) => chooseSort(e.target.value as SortKey)}
-                        className={`${lg ? "h-16 text-xl" : "h-14 text-lg"} w-full rounded-2xl border-[1.5px] border-line bg-white px-4 font-semibold outline-none focus:border-primary-main`}>
+                        className={`${lg ? "h-16 text-xl" : "h-14 text-lg"} w-full rounded-2xl border-[1.5px] border-line bg-white px-4 font-semibold md:max-w-md outline-none focus:border-primary-main`}>
                         {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                 </label>

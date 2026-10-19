@@ -98,12 +98,12 @@ export default function UserHomePage() {
                     <SearchInput label="ค้นหาร้านหรือเมนู" placeholder="ค้นหาร้าน หรือเมนู" value={search} onChange={(e) => setSearch(e.target.value)} className="!border-0 !text-brand-dark" />
                 </UserHeader>
 
-                <main className="flex flex-1 flex-col gap-[18px] p-[clamp(16px,3vw,28px)]">
+                <main className="flex flex-1 flex-col gap-[18px] p-(--gutter) [--gutter:clamp(16px,3vw,28px)]">
                     <ActiveOrderCard />
 
                     <Notice tone="orange" icon="clock"><span className="leading-normal"><b>สั่งก่อน {CUTOFF_LABEL}</b> เพื่อให้ร้านทำทันช่วงพักเที่ยง</span></Notice>
 
-                    <div role="tablist" aria-label="ประเภทร้าน" className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1">
+                    <div role="tablist" aria-label="ประเภทร้าน" className="mx-[calc(var(--gutter)*-1)] flex gap-2 overflow-x-auto px-(--gutter) pb-1">
                         {[{ label: "ทั้งหมด", value: "all" }, ...buttonLabels].map((c) => (
                             <button key={c.value} type="button" role="tab" aria-selected={category === c.value} onClick={() => setCategory(c.value)}
                                 className={clsx("h-11 shrink-0 rounded-full px-4 text-[15px] font-semibold", category === c.value ? "bg-brand-dark text-white" : "border border-line-soft bg-white text-brand-dark")}>

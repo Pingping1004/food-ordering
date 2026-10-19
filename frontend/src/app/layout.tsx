@@ -7,6 +7,7 @@ import { TextSizeProvider, TEXT_SIZE_BOOT_SCRIPT } from "@/components/TextSizePr
 import StorageGuard from "@/components/StorageGuard";
 import { ReactQueryProvider } from "@/lib/provider/ReactQueryProvider";
 import { INSTALL_PROMPT_BOOT_SCRIPT } from "@/lib/install-app";
+import { LANDING_BOOT_SCRIPT } from "@/components/landing/boot";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
@@ -50,6 +51,7 @@ export default function RootLayout({
                 <meta name="theme-color" content="#006CFE" />
                 <script dangerouslySetInnerHTML={{ __html: TEXT_SIZE_BOOT_SCRIPT }} />
                 <script dangerouslySetInnerHTML={{ __html: INSTALL_PROMPT_BOOT_SCRIPT }} />
+                <script dangerouslySetInnerHTML={{ __html: LANDING_BOOT_SCRIPT }} />
             </head>
 
             <body className={kanit.variable}>
