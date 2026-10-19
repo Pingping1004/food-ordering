@@ -6,7 +6,7 @@ import http from 'node:http';
 const PORT = Number(process.env.FAKE_SUPABASE_PORT || 54321);
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
 
-const idFromEmail = (email) => (String(email).match(/^([0-9a-f-]{36})@load\.local$/i) || [])[1];
+const idFromEmail = (email) => (String(email).match(/^((?:aal2-)?[0-9a-f-]{36})@load\.local$/i) || [])[1]; // "aal2-" = an MFA-verified session
 const userFor = (id) => ({
   id, aud: 'authenticated', role: 'authenticated', email: `${id}@load.local`, email_confirmed_at: new Date().toISOString(),
   app_metadata: { provider: 'email' }, user_metadata: { name: `user ${id.slice(0, 4)}` },
