@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { CenteredScreen } from "@/components/users/StudentShell";
 import { ActionButton, Field, TextInput } from "@/components/ui/kit";
-import { toastError, toastDanger, toastSuccess } from "@/components/ui/Toast";
+import { toastError, toastSuccess } from "@/components/ui/Toast";
 import { authErrorMessage, updatePasswordApi } from "@/auth/auth.service";
 import { useAuth } from "@/auth/auth.hooks";
 import { postLoginPath } from "@/auth/access";
 import LoadingPage from "@/components/LoadingPage";
 import { getSupabase } from "@/lib/supabase/client";
+import { MFA_CODE_ERROR_FORMAT, MFA_CODE_ERROR_WRONG, MfaCodeField, MfaLostPhone } from "@/components/auth/MfaGuide";
 
 const schema = z.object({
     password: z.string().min(6, "รหัสผ่านอย่างน้อย 6 ตัวอักษร"),
@@ -26,13 +27,24 @@ export default function ResetPasswordPage() {
     const { user, refreshUser } = useAuth();
     const [email, setEmail] = useState<string | null | undefined>(undefined); // undefined = still checking
     const [v, setV] = useState({ password: "", confirm: "" });
-    const [errors, setErrors] = useState<{ password?: string; confirm?: string }>({});
+    const [errors, setErrors] = useState<{ password?: string; confirm?: string; code?: string }>({});
     const [busy, setBusy] = useState(false);
+    // Accounts with an authenticator app: Supabase only changes the password on an aal2 session, so ask for the code too.
+    const [mfaFactorId, setMfaFactorId] = useState<string>();
+    const [code, setCode] = useState("");
 
     useEffect(() => {
-        getSupabase().auth.getUser()
-            .then(({ data }) => setEmail(data.user?.email ?? null))
-            .catch(() => setEmail(null));
+        const auth = getSupabase().auth;
+        (async () => {
+            const { data } = await auth.getUser();
+            if (!data.user) return setEmail(null);
+            const { data: aal } = await auth.mfa.getAuthenticatorAssuranceLevel();
+            if (aal?.nextLevel === "aal2" && aal.currentLevel !== "aal2") {
+                const { data: factors } = await auth.mfa.listFactors();
+                setMfaFactorId(factors?.totp[0]?.id);
+            }
+            setEmail(data.user.email ?? "");
+        })().catch(() => setEmail(null));
     }, []);
 
     if (email === undefined) return <LoadingPage />;
@@ -50,14 +62,18 @@ export default function ResetPasswordPage() {
     const submit = async (e: React.FormEvent) => {
         e.preventDefault();
         const parsed = schema.safeParse(v);
-        if (!parsed.success) {
-            const next: typeof errors = {};
-            parsed.error.issues.forEach((i) => { const k = i.path[0] as keyof typeof errors; if (!next[k]) next[k] = i.message; });
-            return setErrors(next);
-        }
+        const next: typeof errors = {};
+        if (!parsed.success) parsed.error.issues.forEach((i) => { const k = i.path[0] as keyof typeof errors; if (!next[k]) next[k] = i.message; });
+        if (mfaFactorId && !/^\d{6}$/.test(code)) next.code = MFA_CODE_ERROR_FORMAT;
+        if (!parsed.success || next.code) return setErrors(next);
         setErrors({});
         setBusy(true);
         try {
+            if (mfaFactorId) {
+                const { error: mfaErr } = await getSupabase().auth.mfa.challengeAndVerify({ factorId: mfaFactorId, code });
+                if (mfaErr) return setErrors({ code: MFA_CODE_ERROR_WRONG });
+                setMfaFactorId(undefined);
+            }
             await updatePasswordApi(parsed.data.password);
             toastSuccess("เปลี่ยนรหัสผ่านแล้ว");
             if (user) return router.push(postLoginPath(user));
@@ -83,8 +99,10 @@ export default function ResetPasswordPage() {
                 <Field label="ยืนยันรหัสผ่านใหม่" size="lg" error={errors.confirm}>
                     <TextInput size="lg" type="password" autoComplete="new-password" value={v.confirm} invalid={!!errors.confirm} onChange={(e) => setV({ ...v, confirm: e.target.value })} />
                 </Field>
+                {mfaFactorId && <MfaCodeField value={code} onChange={setCode} error={errors.code} label="รหัส 6 หลักจากแอปยืนยันตัวตน" />}
                 <ActionButton type="submit" full disabled={busy}>{busy ? "กำลังบันทึก..." : "บันทึกรหัสผ่าน"}</ActionButton>
             </form>
+            {mfaFactorId && <MfaLostPhone />}
         </CenteredScreen>
     );
 }
