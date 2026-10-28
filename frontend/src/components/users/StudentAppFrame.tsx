@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/auth/auth.hooks";
+import { accountRoleLabel } from "@/auth/access";
 import { AccountBadge } from "@/components/shell/AccountBadge";
 import { RoleHomeLink } from "@/components/RoleLinks";
 import { ResponsiveShell, ShellFooterButton, type ShellNavItem } from "@/components/shell/ResponsiveShell";
@@ -19,7 +20,7 @@ function activeTab(pathname: string): StudentTab {
 /** Student area chrome: top navbar below 768px, left sidebar from 768px up. */
 export function StudentAppFrame({ children }: Readonly<{ children: React.ReactNode }>) {
     const pathname = usePathname();
-    const { logout } = useAuth();
+    const { user, logout } = useAuth();
     if (BARE_PREFIXES.some((p) => pathname.startsWith(p))) return <>{children}</>;
 
     const current = activeTab(pathname);
@@ -30,7 +31,7 @@ export function StudentAppFrame({ children }: Readonly<{ children: React.ReactNo
             brand={{ href: "/user/restaurant", ariaLabel: "หน้าหลัก PromptServe", title: "PromptServe", subtitle: "สั่งอาหารล่วงหน้า" }}
             navLabel="เมนูหลัก"
             items={items}
-            footerTop={<AccountBadge role="นักเรียน" />}
+            footerTop={<AccountBadge role={accountRoleLabel(user)} />}
             footer={
                 <>
                     {/* someone who also holds another role: one tap back to that role's own page */}

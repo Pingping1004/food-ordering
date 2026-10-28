@@ -93,6 +93,24 @@ export const canUseCooker = (user: User | null | undefined) =>
 export const canUseSchool = (user: User | null | undefined, schoolId: string) =>
     !!user && (approvedSchoolIds(user).includes(schoolId) || isSystemAdmin(user));
 
+/* ───────── labels ───────── */
+
+/**
+ * The account's highest role, for screens that are not tied to one school or shop (student screens, account page).
+ * `User.role` alone says nothing about school / shop roles – those live in the memberships.
+ */
+export function accountRoleLabel(user: User | null | undefined): string {
+    if (isSystemAdmin(user)) return "ผู้ดูแลระบบ";
+    const schools = schoolMemberships(user).filter(approved);
+    const shops = restaurantMemberships(user).filter(approved);
+    if (schools.some((m) => m.role === "ADMIN")) return "ผู้ดูแลโรงเรียน";
+    if (shops.some((m) => m.role === "OWNER")) return "เจ้าของร้าน";
+    if (shops.some((m) => m.role === "ADMIN")) return "ผู้จัดการร้าน";
+    if (schools.length) return "เจ้าหน้าที่โรงเรียน";
+    if (shops.length) return "พนักงานร้าน";
+    return "นักเรียน";
+}
+
 /* ───────── demo data (School.isDemo, `npm run demo:seed`) ───────── */
 
 export type DataHome = { kind: "school" | "restaurant"; id: string; href: string; demo: boolean };
