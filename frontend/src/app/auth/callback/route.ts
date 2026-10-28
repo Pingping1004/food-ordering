@@ -25,5 +25,7 @@ export async function GET(req: NextRequest) {
         if (!error) return NextResponse.redirect(`${origin}${safeNext}`);
     }
 
+    // Used/expired reset links land on the reset page, which explains it and offers a new link.
+    if (safeNext === "/reset-password") return NextResponse.redirect(`${origin}/reset-password`);
     return NextResponse.redirect(`${origin}/login?error=link_expired`);
 }
