@@ -28,6 +28,8 @@
     "test:int": "jest --config ./test/integration/jest-int.json --runInBand --forceExit",
     "test:unit": "jest",
     "test:security": "jest --config ./test/integration/jest-int.json --runInBand --forceExit test/integration/security test/integration/rbac",
+    "demo:seed": "ts-node --transpile-only scripts/demo/seed.ts",
+    "demo:live": "ts-node --transpile-only scripts/demo/live.ts",
     "load:seed": "ts-node -r tsconfig-paths/register --transpile-only test/load/seed.ts",
     "load:server": "TS_NODE_TRANSPILE_ONLY=1 node -r ts-node/register -r tsconfig-paths/register test/load/server.ts",
     "test:load": "k6 run -e SCENARIO=${SCENARIO:-bell} load/lunch.js",

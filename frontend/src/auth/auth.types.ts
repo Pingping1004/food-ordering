@@ -28,6 +28,8 @@ export interface SchoolMembershipLite {
     /** Flat fields from `GET /user/profile`. */
     schoolName?: string;
     schoolStatus?: string;
+    /** True for the demo-day school (`npm run demo:seed`). */
+    schoolIsDemo?: boolean;
     school?: { name: string };
 }
 

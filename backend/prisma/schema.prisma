@@ -139,6 +139,8 @@ model School {
   status        Status
   inviteCode    String? @unique
   createdById   String?
+  /// Demo-day school filled by scripts/demo/seed.ts. Kept out of real totals; the UI shows a "โหมดสาธิต" banner.
+  isDemo        Boolean @default(false)
 
   users             User[]
   canteens          Canteen[]
@@ -156,6 +158,7 @@ model School {
 
   @@index([name])
   @@index([email])
+  @@index([isDemo])
 }
 
 model Canteen {

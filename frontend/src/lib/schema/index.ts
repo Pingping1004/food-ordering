@@ -40,6 +40,8 @@ export interface School {
     status: Status;
     /** Only ever present for system admins and approved admins of that school (never students / shop staff). */
     inviteCode?: string | null;
+    /** Demo-day school (`npm run demo:seed`): its numbers are generated, and the UI says so. */
+    isDemo?: boolean;
     createdAt: ISODate;
     updatedAt: ISODate;
 }

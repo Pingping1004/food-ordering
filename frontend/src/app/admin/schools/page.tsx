@@ -154,7 +154,7 @@ export default function AdminSchoolsPage() {
                                             const st = SCHOOL_STATUS[s.status];
                                             return (
                                                 <tr key={s.schoolId} className="hover:bg-ground-blue">
-                                                    <td className={TD}><span className="flex flex-col"><span className="font-semibold">{s.name}</span><span className="text-[13px] text-brand-muted">{s.email}</span></span></td>
+                                                    <td className={TD}><span className="flex flex-col"><span className="flex flex-wrap items-center gap-2 font-semibold">{s.name}{s.isDemo && <span className="rounded-full bg-brand-orange-light px-2 py-0.5 text-xs font-bold text-brand-orange-text">ข้อมูลสาธิต</span>}</span><span className="text-[13px] text-brand-muted">{s.email}</span></span></td>
                                                     <td className={TD}>{s.canteenCount}</td>
                                                     <td className={TD}>{s.restaurantCount}</td>
                                                     <td className={TD}>{s.adminName ?? <span className="text-brand-muted">-</span>}</td>

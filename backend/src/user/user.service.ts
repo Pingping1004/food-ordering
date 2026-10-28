@@ -33,6 +33,8 @@ export interface UserProfile {
     schoolId: string;
     schoolName: string;
     schoolStatus: Status;
+    /** True for the demo-day school (scripts/demo/seed.ts). */
+    schoolIsDemo: boolean;
     role: SchoolRole;
     status: MembershipStatus;
   }[];
@@ -116,7 +118,7 @@ export class UserService {
               role: true,
               status: true,
               schoolId: true,
-              school: { select: { name: true, status: true } },
+              school: { select: { name: true, status: true, isDemo: true } },
             },
           },
         },
@@ -153,6 +155,7 @@ export class UserService {
         schoolId: m.schoolId,
         schoolName: m.school.name,
         schoolStatus: m.school.status,
+        schoolIsDemo: m.school.isDemo,
         role: m.role,
         status: m.status,
       })),

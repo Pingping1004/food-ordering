@@ -394,6 +394,7 @@ export class SchoolService {
     status: Status;
     inviteCode: string | null;
     createdById: string | null;
+    isDemo: boolean;
     createdAt: Date;
   }) {
     const applicant = school.createdById
@@ -414,6 +415,7 @@ export class SchoolService {
       studentAmount: number;
       status: Status;
       inviteCode: string | null;
+      isDemo: boolean;
       createdAt: Date;
     },
     applicant: { userId: string; name: string; email: string | null } | null,
@@ -428,6 +430,7 @@ export class SchoolService {
       inviteCode: school.inviteCode
         ? formatInviteCode(school.inviteCode)
         : null,
+      isDemo: school.isDemo,
       createdAt: school.createdAt,
       applicant,
     };
@@ -508,6 +511,7 @@ export class SchoolService {
         studentAmount: true,
         status: true,
         inviteCode: true,
+        isDemo: true,
         _count: { select: { canteens: true } },
       },
     });
