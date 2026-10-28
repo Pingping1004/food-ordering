@@ -47,6 +47,8 @@ export interface UserProfile {
     status: MembershipStatus;
     restaurantStatus: Status;
     canteenName: string;
+    /** True for shops of the demo-day school. */
+    restaurantIsDemo: boolean;
   }[];
 }
 
@@ -108,7 +110,7 @@ export class UserService {
                 select: {
                   name: true,
                   status: true,
-                  canteen: { select: { name: true } },
+                  canteen: { select: { name: true, school: { select: { isDemo: true } } } },
                 },
               },
             },
@@ -166,6 +168,7 @@ export class UserService {
         status: m.status,
         restaurantStatus: m.restaurant.status,
         canteenName: m.restaurant.canteen.name,
+        restaurantIsDemo: m.restaurant.canteen.school.isDemo,
       })),
     };
   }

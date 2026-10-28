@@ -6,6 +6,8 @@
  *   npm run demo:seed -- --yes                     rebuild with 3 weeks of history up to now
  *   npm run demo:seed -- --yes --weeks 4           more history
  *   npm run demo:seed -- --yes --admin you@x.com   also make your own account an admin of the demo school
+ *   npm run demo:seed -- --yes --owner you@x.com   …the owner of the demo ร้านตามสั่งป้าแดง (shop pages get the switch)
+ *   npm run demo:seed -- --yes --cook you@x.com    …a cook (staff) of that shop
  *   npm run demo:seed -- --yes --with-logins       create/refresh Supabase demo logins (needs DEMO_PASSWORD,
  *                                                  SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
  *   npm run demo:seed -- --yes --remove            delete the demo school and its generated users
@@ -21,7 +23,11 @@ import { DAY_ENUM, DAY_MS, atBkk, bkkDay, bkkWeekday, connect, flag, inBatches, 
 
 const WEEKS = Math.max(1, Number(option('weeks', '3')));
 const GEN_DOMAIN = 'demo.promptserve.local';
-const ADMIN_EMAILS = (option('admin') ?? '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+const emails = (name: string) => (option(name) ?? '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+const ADMIN_EMAILS = emails('admin');
+/** Real accounts added to the manual demo shop, so the real ↔ demo switch appears on their shop pages too. */
+const SHOP_MEMBERS = [...emails('owner').map((email) => ({ email, role: 'OWNER' as const })), ...emails('cook').map((email) => ({ email, role: 'STAFF' as const }))];
+const MEMBER_SHOP_KEY = 'tamsang';
 
 type Student = { userId: string; signupDay: number; appetite: number };
 type ShopRow = ShopSeed & { restaurantId: string; canteenId: string; menuRows: { menuId: string; name: string; price: number; cook: number; weight: number }[] };
@@ -207,6 +213,17 @@ async function main() {
       shops.push({ ...s, restaurantId: r.restaurantId, canteenId: canteenIds[s.canteen], menuRows });
     }
     const openShops = shops.filter((s) => (s.status ?? 'ACTIVE') === 'ACTIVE');
+    const memberShop = shops.find((s) => s.key === MEMBER_SHOP_KEY);
+    for (const { email, role } of memberShop ? SHOP_MEMBERS : []) {
+      const u = await prisma.user.findFirst({ where: { email: { equals: email, mode: 'insensitive' } }, select: { userId: true } });
+      if (!u) { console.warn(`--${role === 'OWNER' ? 'owner' : 'cook'} ${email}: no user with that email (log in once first)`); continue; }
+      await prisma.restaurantMembership.upsert({
+        where: { userId_restaurantId: { userId: u.userId, restaurantId: memberShop!.restaurantId } },
+        create: { userId: u.userId, restaurantId: memberShop!.restaurantId, role, status: 'APPROVED' },
+        update: { role, status: 'APPROVED' },
+      });
+      console.log(`${email} is now ${role === 'OWNER' ? 'an owner' : 'a cook'} of demo shop ${memberShop!.name}`);
+    }
 
     // ───────────────────────── orders
     const orders: Prisma.OrderCreateManyInput[] = [];
