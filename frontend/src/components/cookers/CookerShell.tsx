@@ -7,6 +7,7 @@ import { useCooker } from "@/hook/useCooker";
 import { OrderShortcut } from "@/components/RoleLinks";
 import { ResponsiveShell, ShellFooterButton, ShellFooterLink, type ShellNavItem } from "@/components/shell/ResponsiveShell";
 import { Icon, type IconName } from "@/components/ui/kit";
+import { DataModeBar } from "@/components/shell/DataModeBar";
 
 type Tab = "orders" | "menu" | "summary" | "refunds" | "staff" | "settings";
 
@@ -55,6 +56,9 @@ export function CookerShell({ restaurantId, active, children }: Readonly<{ resta
                     </p>
                 </div>
             )}
+            <div className="px-[clamp(12px,2vw,24px)] pt-3 empty:hidden">
+                <DataModeBar kind="restaurant" id={restaurantId} />
+            </div>
             {children}
         </ResponsiveShell>
     );

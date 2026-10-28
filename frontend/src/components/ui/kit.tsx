@@ -234,9 +234,10 @@ export function SwitchRow({ checked, onChange, label, sub, disabled }: Readonly<
                 aria-label={label}
                 disabled={disabled}
                 onClick={() => onChange(!checked)}
-                className={clsx("flex h-8 w-14 shrink-0 rounded-full p-[3px] transition-colors disabled:opacity-50", checked ? "justify-end bg-success-main" : "justify-start bg-[#98A2B3]")}
+                className={clsx("flex h-8 w-14 shrink-0 items-center rounded-full px-[3px] py-0 transition-colors disabled:opacity-50", checked ? "bg-success-main" : "bg-[#98A2B3]")}
             >
-                <span className="h-[26px] w-[26px] rounded-full bg-white shadow-sm" />
+                {/* items-center keeps the knob vertically centred whatever padding/line-height the button inherits */}
+                <span className={clsx("block h-[26px] w-[26px] shrink-0 rounded-full bg-white shadow-sm transition-transform", checked && "translate-x-6")} />
             </button>
         </div>
     );

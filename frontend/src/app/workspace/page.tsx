@@ -11,6 +11,7 @@ import { CenteredScreen } from "@/components/users/StudentShell";
 import { Icon, type IconName } from "@/components/ui/kit";
 import { deriveWorkspaces, readSelection } from "@/lib/services/student";
 import type { Workspace } from "@/lib/schema";
+import { DataModeToggle } from "@/components/shell/DataModeBar";
 
 const LAST_KEY = "last-workspace";
 
@@ -26,8 +27,12 @@ function WorkspacePicker() {
     const router = useRouter();
     const [remember, setRemember] = useState(true);
     const [redirecting, setRedirecting] = useState(false);
+    const [showDemo, setShowDemo] = useState(false);
 
     const spaces = useMemo(() => deriveWorkspaces(user, readSelection()), [user]);
+    // Only people who belong to the demo school (or its shops) get the switch; the list then shows one side at a time.
+    const hasDemo = spaces.some((s) => s.demo);
+    const shown = hasDemo ? spaces.filter((s) => !!s.demo === showDemo) : spaces;
 
     // One workspace → no choice to make. Remembered choice → go straight in.
     useEffect(() => {
@@ -59,8 +64,14 @@ function WorkspacePicker() {
                 <p className="text-[15px] leading-relaxed text-brand-muted">บัญชีของคุณมีสิทธิ์มากกว่า 1 แบบ สลับได้ตลอดจากหน้าบัญชี</p>
             </div>
 
+            {hasDemo && (
+                <div className="flex justify-start">
+                    <DataModeToggle demo={showDemo} onSelect={setShowDemo} />
+                </div>
+            )}
+
             <ul className="flex flex-col gap-3">
-                {spaces.map((w) => (
+                {shown.map((w) => (
                     <li key={w.key}>
                         <Link
                             href={w.href}
@@ -73,6 +84,7 @@ function WorkspacePicker() {
                             <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                                 <span className="truncate text-[17px] font-bold">{w.name}</span>
                                 <span className="text-sm text-brand-muted">{w.roleLabel}</span>
+                                {w.demo && <span className="w-fit rounded-full bg-brand-orange-light px-2 py-0.5 text-xs font-bold text-brand-orange-text">ข้อมูลสาธิต</span>}
                             </span>
                             <Icon name="chevron" size={22} className="text-brand-muted" />
                         </Link>

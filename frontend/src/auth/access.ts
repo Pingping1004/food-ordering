@@ -93,6 +93,19 @@ export const canUseCooker = (user: User | null | undefined) =>
 export const canUseSchool = (user: User | null | undefined, schoolId: string) =>
     !!user && (approvedSchoolIds(user).includes(schoolId) || isSystemAdmin(user));
 
+/* ───────── demo data (School.isDemo, `npm run demo:seed`) ───────── */
+
+export type DataHome = { kind: "school" | "restaurant"; id: string; href: string; demo: boolean };
+
+/** Every approved school / shop home of the user, tagged real or demo – the data switch moves between the two sets. */
+export function dataHomes(user: User | null | undefined): DataHome[] {
+    const schools = schoolMemberships(user).filter(approved).map((m): DataHome => ({ kind: "school", id: m.schoolId, href: `/school/${m.schoolId}`, demo: !!m.schoolIsDemo }));
+    const shops = restaurantMemberships(user)
+        .filter((m) => approved(m) && (m.restaurantStatus ?? m.restaurant?.status) !== "PENDING")
+        .map((m): DataHome => ({ kind: "restaurant", id: m.restaurantId, href: `/cooker/${m.restaurantId}`, demo: !!m.restaurantIsDemo }));
+    return [...schools, ...shops];
+}
+
 /* ───────── routing ───────── */
 
 /** Home of every non-student role the user holds (approved only). Students have no entry – "/user/restaurant" is their home. */

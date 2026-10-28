@@ -45,6 +45,8 @@ export interface RestaurantMembershipLite {
     /** Flat fields from `GET /user/profile`. */
     restaurantName?: string;
     canteenName?: string;
+    /** True for shops of the demo-day school. */
+    restaurantIsDemo?: boolean;
     restaurant?: { name: string; status?: "PENDING" | "ACTIVE" | "INACTIVE" | "SUSPENDED" | "REMOVED"; canteen?: { name: string } };
 }
 

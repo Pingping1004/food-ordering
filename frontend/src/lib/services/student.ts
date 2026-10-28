@@ -141,8 +141,8 @@ interface UserLike {
     role: string;
     school?: { schoolId: string; name: string } | null;
     restaurant?: { restaurantId: string; name?: string } | null;
-    restaurantMemberships?: { role: string; status?: string; restaurantId: string; restaurantStatus?: string; restaurantName?: string; canteenName?: string; restaurant?: { name: string; canteen?: { name: string } } }[];
-    schoolMemberships?: { role: string; status?: string; schoolId: string; schoolName?: string; school?: { name: string } }[];
+    restaurantMemberships?: { role: string; status?: string; restaurantId: string; restaurantStatus?: string; restaurantName?: string; canteenName?: string; restaurantIsDemo?: boolean; restaurant?: { name: string; canteen?: { name: string } } }[];
+    schoolMemberships?: { role: string; status?: string; schoolId: string; schoolName?: string; schoolIsDemo?: boolean; school?: { name: string } }[];
     userId?: string;
     pendingOwnerGrant?: boolean;
 }
@@ -163,6 +163,7 @@ export function deriveWorkspaces(user: UserLike | null, selection: StudentSelect
             key: `r-${m.restaurantId}`, kind: "restaurant", name: m.restaurantName ?? m.restaurant?.name ?? "ร้านของฉัน",
             roleLabel: `${m.role === "OWNER" ? "เจ้าของร้าน" : m.role === "ADMIN" ? "ผู้ช่วยจัดการ" : "พนักงาน"}${m.canteenName ?? m.restaurant?.canteen?.name ? ` · ${m.canteenName ?? m.restaurant?.canteen?.name}` : ""}`,
             href: (m as { restaurantStatus?: string }).restaurantStatus === "PENDING" ? `/cooker/pending/${m.restaurantId}` : `/cooker/${m.restaurantId}`,
+            demo: !!m.restaurantIsDemo,
         }),
     );
 
@@ -171,7 +172,7 @@ export function deriveWorkspaces(user: UserLike | null, selection: StudentSelect
     }
 
     (user.schoolMemberships ?? []).filter(isApproved).forEach((m) =>
-        list.push({ key: `s-${m.schoolId}`, kind: "school", name: m.schoolName ?? m.school?.name ?? (m.schoolId === user.school?.schoolId ? user.school.name : "โรงเรียน"), roleLabel: m.role === "ADMIN" ? "ผู้ดูแลโรงเรียน" : "เจ้าหน้าที่โรงเรียน", href: `/school/${m.schoolId}` }),
+        list.push({ key: `s-${m.schoolId}`, kind: "school", name: m.schoolName ?? m.school?.name ?? (m.schoolId === user.school?.schoolId ? user.school.name : "โรงเรียน"), roleLabel: m.role === "ADMIN" ? "ผู้ดูแลโรงเรียน" : "เจ้าหน้าที่โรงเรียน", href: `/school/${m.schoolId}`, demo: !!m.schoolIsDemo }),
     );
 
     if ((user.role as Role) === "ADMIN" || user.role === "admin") {

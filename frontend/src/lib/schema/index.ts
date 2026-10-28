@@ -256,6 +256,8 @@ export interface Workspace {
     name: string;
     roleLabel: string;
     href: string;
+    /** A home in the demo-day school (its shops included). */
+    demo?: boolean;
 }
 
 /* ───────── role-typed invite codes (docs/rbac-codes-contract.md) ───────── */

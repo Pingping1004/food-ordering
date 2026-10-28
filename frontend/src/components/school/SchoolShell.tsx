@@ -9,7 +9,7 @@ import { AccountBadge } from "@/components/shell/AccountBadge";
 import { isSchoolAdmin, isSystemAdmin, userHomePath } from "@/auth/access";
 import { useSchoolInfo } from "@/hook/useSchool";
 import { SchoolAccessBanner } from "@/components/school/SchoolAccessBanner";
-import { DemoModeBar } from "@/components/school/DemoModeBar";
+import { DataModeBar } from "@/components/shell/DataModeBar";
 import { useRefundSummary } from "@/hook/useRefunds";
 
 export type SchoolTab = "overview" | "reliability" | "restaurants" | "approvals" | "refunds" | "feedback" | "staff" | "report" | "settings" | "audit";
@@ -62,7 +62,7 @@ export function SchoolShell({ schoolId, active, children }: Readonly<{ schoolId:
             contentAs="main"
             mainClassName="px-[clamp(16px,3vw,40px)] pb-12 pt-5 md:pt-7"
         >
-            <DemoModeBar schoolId={schoolId} />
+            <DataModeBar kind="school" id={schoolId} isDemo={school?.isDemo} />
             <SchoolAccessBanner schoolId={schoolId} />
             {children}
         </ResponsiveShell>
