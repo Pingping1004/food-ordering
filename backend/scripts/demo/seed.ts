@@ -97,7 +97,6 @@ async function main() {
     for (let d = firstMonday; d <= today; d = new Date(d.getTime() + DAY_MS)) if (bkkWeekday(d) < 5) schoolDays.push(d);
     // A half day last week (sports day) shows up as a dip; a closed day next week shows on the "closed" banner.
     const sportsDay = WEEKS >= 2 ? new Date(thisMonday.getTime() - 4 * DAY_MS) : null; // last week's Thursday
-    const nextFriday = new Date(thisMonday.getTime() + 11 * DAY_MS);
 
     // ───────────────────────── school, hours, canteens
     const school = await prisma.school.create({
@@ -112,21 +111,17 @@ async function main() {
       },
     });
     const schoolId = school.schoolId;
-    const weekdays = DAY_ENUM.slice(0, 5);
-    await prisma.schoolOperatingHour.createMany({ data: weekdays.map((dayOfWeek) => ({ schoolId, dayOfWeek, openMinute: 420, closeMinute: 930 })) });
-    await prisma.schoolDateOverride.createMany({
-      data: [
-        ...(sportsDay ? [{ schoolId, date: sportsDay, isClosed: false, openMinute: 420, closeMinute: 690, reason: 'กีฬาสี (ครึ่งวัน)' }] : []),
-        { schoolId, date: nextFriday, isClosed: true, reason: 'วันหยุดพิเศษ' },
-      ],
-    });
+    // Demo school, canteens and shops are open 24/7 so ordering works whenever the demo runs. The order history
+    // below still follows a real school day (weekdays, lunch rush); the sports day only shapes that history.
+    const ALWAYS_OPEN = DAY_ENUM.map((dayOfWeek) => ({ dayOfWeek, openMinute: 0, closeMinute: 1440 }));
+    await prisma.schoolOperatingHour.createMany({ data: ALWAYS_OPEN.map((h) => ({ schoolId, ...h })) });
 
     const canteenIds: Record<'main' | 'junior', string> = { main: '', junior: '' };
     for (const key of ['main', 'junior'] as const) {
       const c = await prisma.canteen.create({ data: { name: CANTEENS[key].name, status: 'ACTIVE', schoolId } });
       canteenIds[key] = c.canteenId;
       await prisma.canteenOperatingHour.createMany({
-        data: weekdays.map((dayOfWeek) => ({ canteenId: c.canteenId, dayOfWeek, openMinute: CANTEENS[key].open, closeMinute: CANTEENS[key].close })),
+        data: ALWAYS_OPEN.map((h) => ({ canteenId: c.canteenId, ...h })),
       });
     }
 
@@ -199,7 +194,7 @@ async function main() {
           accountName: `ร้าน${s.owner}`, paymentQr: 'demo-qr', canteenId: canteenIds[s.canteen],
         },
       });
-      await prisma.restaurantOperatingHour.createMany({ data: weekdays.map((dayOfWeek) => ({ restaurantId: r.restaurantId, dayOfWeek, openMinute: s.open, closeMinute: s.close })) });
+      await prisma.restaurantOperatingHour.createMany({ data: ALWAYS_OPEN.map((h) => ({ restaurantId: r.restaurantId, ...h })) });
       await prisma.restaurantMembership.createMany({
         data: [
           { userId: people.owner.userId!, restaurantId: r.restaurantId, role: 'OWNER', status: 'APPROVED' },
