@@ -22,7 +22,7 @@ import { normalizeStatus, fmtTime, pickupAtOf } from "@/lib/order-flow";
 
 const Modal = dynamic(() => import("../../../components/users/Modal"), { ssr: false });
 
-const CUTOFF_LABEL = "11:45"; // TODO(school-settings): read from the canteen's order cut-off once the schema has one
+const CUTOFF_LABEL = "10:30"; // TODO(school-settings): read from the canteen's order cut-off once the schema has one
 
 const fetchRestaurants = async (limit: number): Promise<Restaurant[]> => (await api.get("/restaurant", { params: { limit } })).data;
 
@@ -86,8 +86,8 @@ export default function UserHomePage() {
                 <Modal
                     isOpen={showModal}
                     onClose={() => setShowModal(false)}
-                    title={`สั่งอาหารก่อน ${CUTOFF_LABEL}`}
-                    body={`กรุณาสั่งอาหารก่อนเวลา ${CUTOFF_LABEL} น. เพื่อให้ร้านอาหารสามารถเตรียมอาหารของคุณได้ทันเวลา`}
+                    title={`สั่งอาหารก่อน ${CUTOFF_LABEL} น.`}
+                    body={`แนะนำให้สั่งอาหารก่อนพักแรก (ก่อน ${CUTOFF_LABEL} น.) เพื่อให้ร้านมีเวลาเตรียมอาหารและรับออเดอร์ได้ทัน\n\nเวลาพักของนักเรียน\nม.1–3  10:40–11:30 น.\nม.4–6  11:30–12:20 น.`}
                     confirmText="เข้าใจแล้ว"
                     onConfirm={() => { try { localStorage.setItem("order-before-lunch-modal", "true"); } catch { /* ignore */ } setShowModal(false); }}
                 />
@@ -101,7 +101,7 @@ export default function UserHomePage() {
                 <main className="flex flex-1 flex-col gap-[18px] p-(--gutter) [--gutter:clamp(16px,3vw,28px)]">
                     <ActiveOrderCard />
 
-                    <Notice tone="orange" icon="clock"><span className="leading-normal"><b>สั่งก่อน {CUTOFF_LABEL}</b> เพื่อให้ร้านทำทันช่วงพักเที่ยง</span></Notice>
+                    <Notice tone="orange" icon="clock"><span className="leading-normal"><b>สั่งก่อน {CUTOFF_LABEL} น.</b> เพื่อให้ร้านเตรียมทันก่อนพัก (ม.1–3 พัก 10:40 · ม.4–6 พัก 11:30)</span></Notice>
 
                     <div role="tablist" aria-label="ประเภทร้าน" className="mx-[calc(var(--gutter)*-1)] flex gap-2 overflow-x-auto px-(--gutter) pb-1">
                         {[{ label: "ทั้งหมด", value: "all" }, ...buttonLabels].map((c) => (
