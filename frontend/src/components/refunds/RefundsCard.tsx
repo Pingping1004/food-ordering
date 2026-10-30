@@ -6,7 +6,7 @@ import { Card, Chip, Icon, Skeleton } from "@/components/ui/kit";
 import { useRefundSummary } from "@/hook/useRefunds";
 import { waitLabel } from "@/lib/schema/format";
 
-/** Overview-dashboard tile: how many refund requests wait for the school, and a way in. */
+/** Overview-dashboard tile: how many refund requests wait on the shops (the school only watches), and a way in. */
 export function RefundsCard({ schoolId }: Readonly<{ schoolId: string }>) {
     const { data, isLoading, isError, refetch } = useRefundSummary(schoolId);
     const pending = data?.counts.PENDING ?? 0;
@@ -21,12 +21,12 @@ export function RefundsCard({ schoolId }: Readonly<{ schoolId: string }>) {
                 {isError && <span className="text-sm text-danger-text">โหลดไม่สำเร็จ <button type="button" onClick={() => refetch()} className="font-semibold underline">ลองใหม่</button></span>}
                 {data && (
                     <span className="text-[15px] text-slate">
-                        {pending > 0 ? <><b className="text-brand-dark">{pending}</b> เรื่องรอตัดสินใจ{data.oldestPendingAt && <> · รอนานสุด {waitLabel(data.oldestPendingAt)}</>}</> : "ไม่มีเรื่องรอตัดสินใจ"}
+                        {pending > 0 ? <><b className="text-brand-dark">{pending}</b> เรื่องรอร้านดำเนินการ{data.oldestPendingAt && <> · รอนานสุด {waitLabel(data.oldestPendingAt)}</>}</> : "ไม่มีเรื่องรอร้านดำเนินการ"}
                         {approved > 0 && <> · รอโอนคืน {approved}</>}
                     </span>
                 )}
             </div>
-            {data && pending > 0 && <Chip tone="orange" icon="clock">{pending} รอตัดสินใจ</Chip>}
+            {data && pending > 0 && <Chip tone="orange" icon="clock">{pending} รอร้าน</Chip>}
             <Link href={`/school/${schoolId}/refunds`} className="flex h-11 items-center gap-2 rounded-xl border-[1.5px] border-line bg-white px-4 text-[15px] font-semibold text-brand-dark hover:bg-ground">
                 ดูคำขอคืนเงิน<Icon name="chevron" size={18} />
             </Link>

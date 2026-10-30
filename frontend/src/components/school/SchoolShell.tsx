@@ -35,7 +35,7 @@ export function SchoolShell({ schoolId, active, children }: Readonly<{ schoolId:
     const pendingRefunds = refunds?.counts.PENDING ?? 0;
     const items: ShellNavItem[] = NAV.map((n) => ({
         key: n.key, label: n.label, icon: n.icon, href: `${base}${n.path}`, active: n.key === active,
-        badge: n.key === "refunds" && pendingRefunds > 0 ? <span aria-label={`${pendingRefunds} คำขอรอตัดสินใจ`}>{pendingRefunds}</span> : undefined,
+        badge: n.key === "refunds" && pendingRefunds > 0 ? <span aria-label={`${pendingRefunds} คำขอรอร้านดำเนินการ`}>{pendingRefunds}</span> : undefined,
     }));
 
     return (

@@ -10,6 +10,7 @@ import {
   PaymentStatus,
   Prisma,
   RefundStatus,
+  RestaurantRole,
   SchoolRole,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -175,6 +176,11 @@ export class RefundService {
       throw error;
     }
 
+    void this.notifyShopManagers(
+      order.restaurantId,
+      order.restaurant.name,
+      orderId,
+    );
     void this.notifySchoolAdmins(schoolId, order.restaurant.name, orderId);
     return this.base(created);
   }
@@ -217,7 +223,7 @@ export class RefundService {
     return { ...this.base(r), order: { ...order, items: orderMenus } };
   }
 
-  // ------------------------------------------------------------------ school admin
+  // ------------------------------------------------------------------ school admin (read-only)
 
   async listForSchool(schoolId: string, q: ListRefundsQueryDto) {
     const limit = this.limitOf(q.limit);
@@ -299,18 +305,27 @@ export class RefundService {
     };
   }
 
-  /** PENDING -> APPROVED | REJECTED, APPROVED -> REFUNDED. Compare-and-set so two admins cannot both win. */
-  async decide(req: any, schoolId: string, id: string, dto: DecideRefundDto) {
+  /**
+   * The shop (OWNER / ADMIN) decides: PENDING -> APPROVED | REJECTED, APPROVED -> REFUNDED.
+   * The school only watches. Compare-and-set so two managers cannot both win.
+   */
+  async decide(
+    req: any,
+    restaurantId: string,
+    id: string,
+    dto: DecideRefundDto,
+  ) {
     const note = dto.note?.trim() || undefined;
     if (dto.action === 'reject' && (!note || note.length < 3))
       throw new BadRequestException('กรุณาระบุเหตุผลในการปฏิเสธ');
 
     const existing = await this.prisma.refundRequest.findFirst({
-      where: { id, schoolId },
+      where: { id, restaurantId },
       select: {
         id: true,
         orderId: true,
         userId: true,
+        schoolId: true,
         status: true,
         restaurant: { select: { name: true } },
       },
@@ -327,7 +342,7 @@ export class RefundService {
     const actorId: string = req.user.userId;
     await this.prisma.$transaction(async (tx) => {
       const { count } = await tx.refundRequest.updateMany({
-        where: { id, schoolId, status: plan.from },
+        where: { id, restaurantId, status: plan.from },
         data: {
           status: plan.to,
           decidedById: actorId,
@@ -353,13 +368,18 @@ export class RefundService {
 
     await this.audit.record({
       req,
-      actorRole: req.sysadminAudit ? 'SYSADMIN' : 'SCHOOL_ADMIN',
-      schoolId,
+      actorRole: req.sysadminAudit ? 'SYSADMIN' : 'RESTAURANT',
+      schoolId: existing.schoolId,
       action: `REFUND_${dto.action.toUpperCase()}`,
       entityType: 'REFUND_REQUEST',
       entityId: id,
       reason: note ?? null,
-      meta: { orderId: existing.orderId, from: plan.from, to: plan.to },
+      meta: {
+        orderId: existing.orderId,
+        restaurantId,
+        from: plan.from,
+        to: plan.to,
+      },
     });
 
     if (existing.userId)
@@ -413,13 +433,40 @@ export class RefundService {
       await this.notifications.sendToUsers(
         admins.map((a) => a.userId),
         {
-          title: 'มีคำขอคืนเงินใหม่',
+          title: 'มีคำขอคืนเงินใหม่ (ร้านเป็นผู้ดำเนินการ)',
           body: `ออเดอร์ ${orderCode(orderId)} จาก ${restaurantName}`,
           path: `/school/${schoolId}/refunds`,
         },
       );
     } catch (error) {
       this.logger.warn(`notifySchoolAdmins failed: ${error}`);
+    }
+  }
+
+  private async notifyShopManagers(
+    restaurantId: string,
+    restaurantName: string,
+    orderId: string,
+  ) {
+    try {
+      const managers = await this.prisma.restaurantMembership.findMany({
+        where: {
+          restaurantId,
+          role: { in: [RestaurantRole.OWNER, RestaurantRole.ADMIN] },
+          status: MembershipStatus.APPROVED,
+        },
+        select: { userId: true },
+      });
+      await this.notifications.sendToUsers(
+        managers.map((m) => m.userId),
+        {
+          title: 'มีคำขอคืนเงินใหม่',
+          body: `ออเดอร์ ${orderCode(orderId)} ที่ ${restaurantName} รอร้านพิจารณา`,
+          path: `/cooker/refunds/${restaurantId}`,
+        },
+      );
+    } catch (error) {
+      this.logger.warn(`notifyShopManagers failed: ${error}`);
     }
   }
 }

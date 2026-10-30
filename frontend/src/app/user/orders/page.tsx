@@ -96,7 +96,7 @@ export default function MyOrdersPage() {
                                     {refund && (
                                         <span className="flex flex-col gap-1.5 rounded-xl bg-ground p-2.5 text-sm">
                                             <span className="flex flex-wrap items-center gap-2"><span className="font-semibold">คำขอคืนเงิน</span><RefundStatusChip status={refund.status} short /></span>
-                                            {refund.decisionNote && <span className="leading-relaxed">โรงเรียน: {refund.decisionNote}</span>}
+                                            {refund.decisionNote && <span className="leading-relaxed">ร้าน: {refund.decisionNote}</span>}
                                         </span>
                                     )}
                                     <span className="flex items-center justify-between">

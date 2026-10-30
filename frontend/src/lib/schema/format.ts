@@ -152,7 +152,7 @@ export function todayHours(hours: OperatingHour[] | undefined, now: Date = new D
 /* ───────── refund requests ───────── */
 
 export const REFUND_STATUS: Record<RefundRequestStatus, { label: string; short: string; tone: Tone; icon: "clock" | "check" | "x" | "refund" }> = {
-    PENDING: { label: "รอโรงเรียนตัดสินใจ", short: "รอตัดสินใจ", tone: "orange", icon: "clock" },
+    PENDING: { label: "รอร้านตัดสินใจ", short: "รอร้านตัดสินใจ", tone: "orange", icon: "clock" },
     APPROVED: { label: "อนุมัติแล้ว · รอโอนคืน", short: "รอโอนคืน", tone: "primary", icon: "check" },
     REJECTED: { label: "ไม่อนุมัติ", short: "ไม่อนุมัติ", tone: "danger", icon: "x" },
     REFUNDED: { label: "โอนคืนแล้ว", short: "โอนคืนแล้ว", tone: "success", icon: "refund" },

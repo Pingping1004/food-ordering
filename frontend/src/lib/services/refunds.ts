@@ -18,12 +18,16 @@ export const getMyRefundRequest = async (id: string) => (await api.get<RefundReq
 /** The order behind a refund form (the same route the tracking screens use). */
 export const getOrderForRefund = async (orderId: string) => (await api.get<Order & { restaurant?: { name?: string } }>(`/order/${orderId}`)).data;
 
-/* ───────── shop (read-only) ───────── */
+/* ───────── shop (decides) ───────── */
 
 export const listRestaurantRefundRequests = async (restaurantId: string, params: { status?: RefundRequestStatus; cursor?: string } = {}) =>
     (await api.get<CursorPage<RefundRequest>>(`/restaurant/${restaurantId}/refund-requests`, { params: { ...params, limit: PAGE } })).data;
 
-/* ───────── school admin ───────── */
+/** OWNER / ADMIN only. PENDING → approve | reject (note required), APPROVED → mark_refunded. */
+export const decideRefund = async (restaurantId: string, id: string, action: RefundDecisionAction, note?: string) =>
+    (await api.patch<RefundRequest>(`/restaurant/${restaurantId}/refund-requests/${id}`, { action, note: note?.trim() || undefined })).data;
+
+/* ───────── school admin (read-only) ───────── */
 
 export const listSchoolRefunds = async (schoolId: string, params: { status?: RefundRequestStatus; cursor?: string; limit?: number } = {}) =>
     (await api.get<CursorPage<RefundRequest>>(`/schools/${schoolId}/refund-requests`, { params: { limit: PAGE, ...params } })).data;
@@ -33,6 +37,3 @@ export const getSchoolRefundSummary = async (schoolId: string) =>
 
 export const getSchoolRefund = async (schoolId: string, id: string) =>
     (await api.get<RefundRequest>(`/schools/${schoolId}/refund-requests/${id}`)).data;
-
-export const decideRefund = async (schoolId: string, id: string, action: RefundDecisionAction, note?: string) =>
-    (await api.patch<RefundRequest>(`/schools/${schoolId}/refund-requests/${id}`, { action, note: note?.trim() || undefined })).data;

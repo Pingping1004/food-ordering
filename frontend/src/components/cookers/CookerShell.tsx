@@ -8,6 +8,7 @@ import { OrderShortcut } from "@/components/RoleLinks";
 import { ResponsiveShell, ShellFooterButton, ShellFooterLink, type ShellNavItem } from "@/components/shell/ResponsiveShell";
 import { Icon, type IconName } from "@/components/ui/kit";
 import { DataModeBar } from "@/components/shell/DataModeBar";
+import { useShopPendingRefunds } from "@/hook/useRefunds";
 
 type Tab = "orders" | "menu" | "summary" | "refunds" | "staff" | "settings";
 
@@ -30,7 +31,12 @@ export function CookerShell({ restaurantId, active, children }: Readonly<{ resta
     ];
     // Managing people (codes, approvals, removals) is the owner's job; cooks never see the tab.
     const isOwner = restaurantRole(user, restaurantId) === "OWNER" || isSystemAdmin(user);
-    const items: ShellNavItem[] = tabs.filter((n) => n.key !== "staff" || isOwner).map((n) => ({ ...n, icon: ICONS[n.key], active: n.key === active }));
+    const { data: pendingRefunds } = useShopPendingRefunds(restaurantId);
+    const refundBadge = pendingRefunds && pendingRefunds.count > 0 ? `${pendingRefunds.count}${pendingRefunds.more ? "+" : ""}` : null;
+    const items: ShellNavItem[] = tabs.filter((n) => n.key !== "staff" || isOwner).map((n) => ({
+        ...n, icon: ICONS[n.key], active: n.key === active,
+        badge: n.key === "refunds" && refundBadge ? <span aria-label={`${refundBadge} คำขอรอร้านตัดสินใจ`}>{refundBadge}</span> : undefined,
+    }));
 
     return (
         <ResponsiveShell

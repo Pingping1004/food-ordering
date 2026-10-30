@@ -28,7 +28,7 @@ export function RefundEntry({ orderId, canRequest }: Readonly<{ orderId: string;
                     <RefundStatusChip status={req.status} />
                 </div>
                 <span className="text-sm text-brand-muted">เหตุผล: {refundReasonLabel(req.reason)}</span>
-                {req.decisionNote && <p className="m-0 rounded-xl bg-ground p-3 text-[15px] leading-relaxed">ข้อความจากโรงเรียน: {req.decisionNote}</p>}
+                {req.decisionNote && <p className="m-0 rounded-xl bg-ground p-3 text-[15px] leading-relaxed">ข้อความจากร้าน: {req.decisionNote}</p>}
                 <Link href={href} className="inline-flex min-h-11 items-center gap-1 text-[15px] font-semibold text-primary-dark">
                     {req.status === "REJECTED" ? "ดูรายละเอียด / ส่งคำขอใหม่" : "ดูสถานะการคืนเงิน"}<Icon name="chevron" size={16} />
                 </Link>
