@@ -4,7 +4,7 @@ import { use, useCallback, useState } from "react";
 import clsx from "clsx";
 import { CookerShell } from "@/components/cookers/CookerShell";
 import { ActionButton, Card, CardListSkeleton, EmptyState, ErrorState, Icon, Notice } from "@/components/ui/kit";
-import { RefundStatusChip } from "@/components/refunds/RefundParts";
+import { RefundItems, RefundStatusChip } from "@/components/refunds/RefundParts";
 import { RefundDecisionDialog } from "@/components/refunds/RefundDecisionDialog";
 import { useAuth } from "@/auth/auth.hooks";
 import { isSystemAdmin, restaurantRole } from "@/auth/access";
@@ -76,6 +76,14 @@ export default function CookerRefundsPage({ params }: Readonly<{ params: Promise
                             <span className="text-[17px] font-semibold tabular-nums">{formatBaht(r.amount)} บาท</span>
                             <span className="text-[15px] text-slate">{refundReasonLabel(r.reason)}{r.student?.name && <> · {r.student.name}</>}</span>
                             {r.details && <p className="m-0 rounded-xl bg-ground p-3 text-[15px] leading-relaxed">“{r.details}”</p>}
+                            {r.order?.items && r.order.items.length > 0 && (
+                                <section aria-label={`รายการอาหารของออเดอร์ ${r.orderCode ?? orderCode(r.orderId)}`} className="flex flex-col gap-1.5">
+                                    <span className="text-[13px] text-brand-muted">
+                                        สั่งเมื่อ {formatDateTime(r.order.orderAt)}{r.order.pickupAt && <> · นัดรับ {formatDateTime(r.order.pickupAt)}</>}
+                                    </span>
+                                    <RefundItems items={r.order.items} total={r.order.totalAmount} />
+                                </section>
+                            )}
                             {r.decisionNote && <p className="m-0 text-sm text-brand-muted">ร้าน: {r.decisionNote}</p>}
                             <span className="text-[13px] text-brand-muted">
                                 ส่งเมื่อ {formatDateTime(r.createdAt)}

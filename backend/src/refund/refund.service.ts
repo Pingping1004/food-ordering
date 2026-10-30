@@ -409,9 +409,27 @@ export class RefundService {
       orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
       take: limit + 1,
       ...(q.cursor ? { cursor: { id: q.cursor }, skip: 1 } : {}),
-      include: this.include,
+      // The shop decides from the list, so each card carries what was ordered.
+      include: {
+        ...this.include,
+        order: {
+          select: {
+            orderId: true,
+            status: true,
+            paymentStatus: true,
+            totalAmount: true,
+            orderAt: true,
+            pickupAt: true,
+            paidAt: true,
+            orderMenus: { select: itemSelect },
+          },
+        },
+      },
     });
-    return this.page(rows, limit, (r) => this.listItem(r));
+    return this.page(rows, limit, (r) => {
+      const { orderMenus, ...order } = r.order;
+      return { ...this.listItem(r), order: { ...order, items: orderMenus } };
+    });
   }
 
   // ------------------------------------------------------------------ notifications (best effort)

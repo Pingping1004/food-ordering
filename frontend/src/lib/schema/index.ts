@@ -322,7 +322,7 @@ export interface RefundRequest {
     orderCode?: string;
     /** School endpoints: display name only, never an e-mail. */
     student?: { userId: string; name: string | null } | null;
-    /** Detail endpoints. */
+    /** Detail endpoints and the shop list. */
     order?: { orderId: string; status: OrderStatus; paymentStatus: PaymentStatus; totalAmount: number; orderAt: ISODate; pickupAt?: ISODate; paidAt?: ISODate | null; items?: RefundItem[] };
     decidedBy?: { userId: string; name: string | null } | null;
 }
