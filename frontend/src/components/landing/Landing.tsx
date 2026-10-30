@@ -7,7 +7,7 @@ import { useAuth } from '@/auth/auth.hooks'
 import { postLoginPath } from '@/auth/access'
 import { THEME_KEY } from './boot'
 import { ADMIN_STEPS, AUDIENCES, CONTACT_EMAIL, FAQ, HERO_LINES, ROLLOUT, SCHOOL_FEATURES, SLOGAN_LINES, SUPPORT, contactHref } from './content'
-import { setupHeadline, setupIntro, setupOrbit, setupPage, setupRail, setupScenes, setupSpiral, setupStack } from './motion'
+import { setupHeadline, setupIntro, setupPage, setupRail, setupScenes, setupSpiral, setupStack } from './motion'
 import './landing.css'
 
 /** Thai has no spaces, so automatic balancing splits words (ร้าน|ค้า). Headings break by hand: one phrase per span. */
@@ -135,25 +135,60 @@ function Laptop({ step }: Readonly<{ step: number }>) {
   )
 }
 
-/** Glass folder on the feature ring: a back panel, example sheets that fan out, and a frosted front pocket. */
-function Folder({ f }: Readonly<{ f: (typeof SCHOOL_FEATURES)[number] }>) {
-  return (
-    <article className="fold">
-      <div className="f-tilt">
-        <span className="f-shadow" />
-        <div className="f-back" />
-        <div className="f-sheets">
-          {f.sheets.map(([t, m], j) => (
-            <div key={t} className="f-sheet" style={{ '--slot': j - 1, '--depth': 2 - j } as CSSProperties}><b>{t}</b><small>{m}</small><i /><i /></div>
-          ))}
-        </div>
-        <div className="f-front">
-          <span className="f-tint" /><span className="f-spec" />
-          <div className="f-label"><h3>{f.title}</h3><p>{f.body}</p></div>
-          <span className="f-key"><Icon d={f.icon} /></span>
-          <button className="f-hit" type="button" aria-label={`เปิดแฟ้ม ${f.title}`} />
-        </div>
+type Feature = (typeof SCHOOL_FEATURES)[number]
+const TONE_PILL: Record<string, string> = { ok: 'ok', warn: 'warn', bad: 'bad' }
+const WEEK = ['จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส', 'อา']
+const BARS = [48, 70, 56, 88, 100]
+
+/** The example content inside each bento tile, picked by the feature's `kind`. */
+function TilePreview({ f }: Readonly<{ f: Feature }>) {
+  const rows = f.sheets as readonly (readonly string[])[]
+  switch (f.kind) {
+    case 'time': return (
+      <div className="bn-demo">
+        <p className="bn-hours">{rows[0][0]} <b>{rows[0][1]}</b></p>
+        <div className="bn-cal">{WEEK.map((d, i) => <span key={d} className={i > 2 && i !== 4 ? 'off' : undefined}>{d}</span>)}</div>
+        <small>{rows[1][0]} {rows[1][1]}</small>
       </div>
+    )
+    case 'report': return (
+      <div className="bn-demo">
+        <div className="bn-kpi"><b>96%</b>ตรงเวลา</div>
+        <div className="bn-bars" aria-hidden="true">{BARS.map((h) => <i key={h} style={{ '--h': `${h}%` } as CSSProperties} />)}</div>
+      </div>
+    )
+    case 'voice': return (
+      <div className="bn-demo">
+        {rows.slice(0, 2).map(([t, m]) => <div key={t} className="bn-quote">{t}<small>{m}</small></div>)}
+      </div>
+    )
+    case 'admin': return (
+      <div className="bn-demo">
+        {rows.slice(0, 2).map(([t, m], i) => (
+          <div key={t} className="bn-row"><span className="bn-who"><span className={i ? 'bn-av b' : 'bn-av'}>{t.replace('ครู', '')[0]}</span><b>{t}</b></span><small>{m}</small></div>
+        ))}
+        <div className="bn-log">{rows[2][0]} {rows[2][1]}</div>
+      </div>
+    )
+    default: return (
+      <div className="bn-demo">
+        {rows.map(([t, m, tone]) => (
+          <div key={t} className="bn-row"><b>{t}</b><span className={`bn-pill ${TONE_PILL[tone] ?? ''}`}>{m}</span></div>
+        ))}
+      </div>
+    )
+  }
+}
+
+/** One glass tile in the school-features bento grid. */
+function Tile({ f }: Readonly<{ f: Feature }>) {
+  return (
+    <article className={`bn-tile bn-${f.kind}`}>
+      <div className="bn-head">
+        <div><h3>{f.title}</h3>{f.kind !== 'time' && f.kind !== 'report' && <p>{f.body}</p>}</div>
+        <span className="bn-key"><Icon d={f.icon} /></span>
+      </div>
+      <TilePreview f={f} />
     </article>
   )
 }
@@ -214,7 +249,7 @@ export default function Landing() {
   useEffect(() => {
     const root = ref.current
     if (!root) return
-    const cleanups = [setupIntro, setupHeadline, setupSpiral, setupOrbit, setupRail, setupStack, setupScenes, setupPage].map((setup) => setup(root))
+    const cleanups = [setupIntro, setupHeadline, setupSpiral, setupRail, setupStack, setupScenes, setupPage].map((setup) => setup(root))
     return () => cleanups.forEach((c) => c())
   }, [])
 
@@ -276,10 +311,8 @@ export default function Landing() {
             <h2><P>โรงเรียนควบคุม</P><P>โรงอาหารได้เอง</P> <P>ทุกเรื่องอยู่ในหน้าเดียว</P></h2>
             <p className="sub">ไม่ต้องรวบรวมข้อมูลจากหลายร้าน ไม่ต้องตามเรื่องจากแชต ผู้ดูแลเห็นและตัดสินใจได้จากแดชบอร์ดของโรงเรียน</p>
             <ul className="sr">{SCHOOL_FEATURES.map((f) => <li key={f.title}>{f.title}: {f.body}</li>)}</ul>
-            <div className="orbit" tabIndex={0} aria-label="ฟีเจอร์สำหรับโรงเรียน เป็นแฟ้มกระจกหมุนเป็นวง (หยุดเมื่อชี้ ลากเพื่อหมุน แตะแฟ้มเพื่อเปิด)">
-              <div className="orbit-ring" aria-hidden="true">
-                {SCHOOL_FEATURES.map((f) => <Folder key={f.title} f={f} />)}
-              </div>
+            <div className="bento">
+              {SCHOOL_FEATURES.map((f) => <Tile key={f.title} f={f} />)}
             </div>
           </div>
         </section>

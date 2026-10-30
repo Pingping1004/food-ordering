@@ -210,66 +210,6 @@ export function setupSpiral(root: HTMLElement): Cleanup {
   return () => { stopFrames(); ac.abort(); ro.disconnect(); clearTimeout(snapTimer) }
 }
 
-/* ---------- glass folders on a ring spinning horizontally; hover pauses, drag spins, a click opens one ---------- */
-export function setupOrbit(root: HTMLElement): Cleanup {
-  const orbit = $(root, '.orbit'), cards = $$(orbit, '.fold'), reduce = reduced()
-  const ac = new AbortController(), on = { signal: ac.signal }
-  const closeAll = () => cards.forEach((c) => c.removeAttribute('data-open'))
-
-  cards.forEach((el) => {
-    el.addEventListener('pointermove', (e) => {                       // lean toward the pointer
-      const r = el.getBoundingClientRect()
-      el.style.setProperty('--px', (((e.clientX - r.left) / r.width - 0.5) * 2).toFixed(3))
-      el.style.setProperty('--py', (((e.clientY - r.top) / r.height - 0.5) * 2).toFixed(3))
-    }, on)
-    el.addEventListener('pointerleave', () => { el.style.setProperty('--px', '0'); el.style.setProperty('--py', '0') }, on)
-    $(el, '.f-hit').addEventListener('click', () => {                 // the pocket tips forward and the sheets fan out
-      const open = !el.hasAttribute('data-open')
-      closeAll()
-      if (open) el.setAttribute('data-open', '')
-    }, on)
-  })
-  document.addEventListener('pointerdown', (e) => { if (!(e.target as Element).closest?.('.fold')) closeAll() }, on)
-
-  let spin = 0, vel = 0, last = performance.now(), paused = false
-  let drag: { id: number; x: number } | null = null
-  orbit.addEventListener('mouseenter', () => { paused = true }, on)
-  orbit.addEventListener('mouseleave', () => { paused = false }, on)
-  orbit.addEventListener('focus', () => { paused = true }, on)
-  orbit.addEventListener('blur', () => { paused = false }, on)
-  orbit.addEventListener('pointerdown', (e) => {
-    if ((e.target as Element).closest('.fold') && e.pointerType === 'mouse') return
-    drag = { id: e.pointerId, x: e.clientX }
-    orbit.setPointerCapture(e.pointerId)
-    orbit.classList.add('dragging')
-  }, on)
-  orbit.addEventListener('pointermove', (e) => {
-    if (!drag || e.pointerId !== drag.id) return
-    const dx = e.clientX - drag.x
-    drag.x = e.clientX
-    spin += dx * 0.006; vel = dx * 0.006
-  }, on)
-  const endDrag = () => { drag = null; orbit.classList.remove('dragging') }
-  orbit.addEventListener('pointerup', endDrag, on)
-  orbit.addEventListener('pointercancel', endDrag, on)
-
-  const smooth = (a: number, b: number, x: number) => { const t = clamp01((x - a) / (b - a)); return t * t * (3 - 2 * t) }
-  const stop = frames((now) => {
-    const dt = Math.min(64, now - last); last = now
-    const W = orbit.clientWidth, R = Math.min(480, W * 0.4), n = cards.length, sc = Math.min(1, W / 440)
-    if (!drag) { vel *= 0.94; spin += vel; if (!paused && !reduce && !cards.some((c) => c.hasAttribute('data-open'))) spin -= dt * 0.00032 }
-    cards.forEach((el, i) => {
-      const th = spin + (i / n) * Math.PI * 2
-      const front = Math.cos(th)                                    // 1 = facing us, −1 = at the back of the ring
-      el.style.transform = `translate3d(${Math.sin(th) * R}px, 0, ${front * R}px) rotateY(${th}rad) scale(${sc})`
-      el.style.opacity = (0.14 + 0.86 * smooth(-0.35, 0.9, front)).toFixed(3)
-      el.style.filter = front < 0.2 ? `blur(${((0.2 - front) * 3).toFixed(1)}px)` : 'none'
-      el.style.zIndex = String(Math.round(front * 100) + 100)
-    })
-  })
-  return () => { stop(); ac.abort() }
-}
-
 /* ---------- 4-step rail: a neumorphic groove through the step numbers, filled in primary blue from 1 to 4, looping ---------- */
 export function setupRail(root: HTMLElement): Cleanup {
   const wrap = $(root, '.steps-wrap'), steps = $$(wrap, '.step')
