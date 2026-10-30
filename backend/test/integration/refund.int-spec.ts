@@ -1,9 +1,9 @@
 import request from 'supertest';
 import { authHeader, bootTestApp, TestApp } from './harness';
-import { makeMember, makeUser, makeWorld, makeSchool, makeCanteen, makeSchoolAdmin } from './factories';
+import { makeMember, makeUser, makeWorld } from './factories';
 import { RestaurantRole } from '@prisma/client';
 
-describe('Refund flow: manual, school-handled; PromptServe never moves money (real HTTP + real Postgres)', () => {
+describe('Refund flow: manual, shop-handled, school watches; PromptServe never moves money (real HTTP + real Postgres)', () => {
   let t: TestApp;
   beforeAll(async () => { t = await bootTestApp(); });
   afterAll(async () => { await t.close(); });
@@ -20,8 +20,8 @@ describe('Refund flow: manual, school-handled; PromptServe never moves money (re
     });
   const file = (userId: string, orderId: string, reason = 'LATE_OR_NOT_READY') =>
     api().post(`/api/order/${orderId}/refund-request`).set(authHeader(userId)).send({ reason, details: 'cold food' });
-  const decide = (adminId: string, schoolId: string, id: string, body: object) =>
-    api().patch(`/api/schools/${schoolId}/refund-requests/${id}`).set(authHeader(adminId)).send(body);
+  const decide = (actorId: string, restaurantId: string, id: string, body: object) =>
+    api().patch(`/api/restaurant/${restaurantId}/refund-requests/${id}`).set(authHeader(actorId)).send(body);
   const payment = async (orderId: string) => (await t.prisma.order.findUniqueOrThrow({ where: { orderId } })).paymentStatus;
 
   describe('student files a request', () => {
@@ -61,20 +61,20 @@ describe('Refund flow: manual, school-handled; PromptServe never moves money (re
       const w = await makeWorld(t.prisma);
       const o = await paidOrder(w);
       const first = await file(w.student.userId, o.orderId).expect(201);
-      await decide(w.admin.userId, w.school.schoolId, first.body.id, { action: 'reject', note: 'not valid' }).expect(200);
+      await decide(w.owner.userId, w.restaurant.restaurantId, first.body.id, { action: 'reject', note: 'not valid' }).expect(200);
       await file(w.student.userId, o.orderId).expect(201);
     });
   });
 
-  describe('school admin decides (no money moves)', () => {
+  describe('shop decides (no money moves)', () => {
     it('should leave paymentStatus untouched on approve and on reject', async () => {
       const w = await makeWorld(t.prisma);
       const a = await paidOrder(w);
       const b = await paidOrder(w);
       const ra = await file(w.student.userId, a.orderId).expect(201);
       const rb = await file(w.student.userId, b.orderId).expect(201);
-      await decide(w.admin.userId, w.school.schoolId, ra.body.id, { action: 'approve' }).expect(200);
-      await decide(w.admin.userId, w.school.schoolId, rb.body.id, { action: 'reject', note: 'looks fine to us' }).expect(200);
+      await decide(w.owner.userId, w.restaurant.restaurantId, ra.body.id, { action: 'approve' }).expect(200);
+      await decide(w.owner.userId, w.restaurant.restaurantId, rb.body.id, { action: 'reject', note: 'looks fine to us' }).expect(200);
       expect(await payment(a.orderId)).toBe('PAID');
       expect(await payment(b.orderId)).toBe('PAID');
     });
@@ -83,11 +83,11 @@ describe('Refund flow: manual, school-handled; PromptServe never moves money (re
       const w = await makeWorld(t.prisma);
       const o = await paidOrder(w);
       const r = await file(w.student.userId, o.orderId).expect(201);
-      await decide(w.admin.userId, w.school.schoolId, r.body.id, { action: 'mark_refunded' }).expect(409);
+      await decide(w.owner.userId, w.restaurant.restaurantId, r.body.id, { action: 'mark_refunded' }).expect(409);
       expect(await payment(o.orderId)).toBe('PAID');
-      await decide(w.admin.userId, w.school.schoolId, r.body.id, { action: 'approve' }).expect(200);
+      await decide(w.owner.userId, w.restaurant.restaurantId, r.body.id, { action: 'approve' }).expect(200);
       expect(await payment(o.orderId)).toBe('PAID');
-      await decide(w.admin.userId, w.school.schoolId, r.body.id, { action: 'mark_refunded' }).expect(200);
+      await decide(w.owner.userId, w.restaurant.restaurantId, r.body.id, { action: 'mark_refunded' }).expect(200);
       expect(await payment(o.orderId)).toBe('REFUNDED');
     });
 
@@ -95,21 +95,21 @@ describe('Refund flow: manual, school-handled; PromptServe never moves money (re
       const w = await makeWorld(t.prisma);
       const o = await paidOrder(w);
       const r = await file(w.student.userId, o.orderId).expect(201);
-      await decide(w.admin.userId, w.school.schoolId, r.body.id, { action: 'approve' }).expect(200);
-      await decide(w.admin.userId, w.school.schoolId, r.body.id, { action: 'approve' }).expect(409);
-      await decide(w.admin.userId, w.school.schoolId, r.body.id, { action: 'mark_refunded' }).expect(200);
-      await decide(w.admin.userId, w.school.schoolId, r.body.id, { action: 'mark_refunded' }).expect(409);
-      await decide(w.admin.userId, w.school.schoolId, r.body.id, { action: 'reject', note: 'too late now' }).expect(409);
+      await decide(w.owner.userId, w.restaurant.restaurantId, r.body.id, { action: 'approve' }).expect(200);
+      await decide(w.owner.userId, w.restaurant.restaurantId, r.body.id, { action: 'approve' }).expect(409);
+      await decide(w.owner.userId, w.restaurant.restaurantId, r.body.id, { action: 'mark_refunded' }).expect(200);
+      await decide(w.owner.userId, w.restaurant.restaurantId, r.body.id, { action: 'mark_refunded' }).expect(409);
+      await decide(w.owner.userId, w.restaurant.restaurantId, r.body.id, { action: 'reject', note: 'too late now' }).expect(409);
     });
 
-    it('should let only one of two admins win a simultaneous approve', async () => {
+    it('should let only one of two shop managers win a simultaneous approve', async () => {
       const w = await makeWorld(t.prisma);
-      const second = await makeSchoolAdmin(t.prisma, w.school.schoolId);
+      const second = await makeMember(t.prisma, w.restaurant.restaurantId, RestaurantRole.ADMIN, w.school.schoolId);
       const o = await paidOrder(w);
       const r = await file(w.student.userId, o.orderId).expect(201);
       const results = await Promise.all([
-        decide(w.admin.userId, w.school.schoolId, r.body.id, { action: 'approve' }),
-        decide(second.userId, w.school.schoolId, r.body.id, { action: 'approve' }),
+        decide(w.owner.userId, w.restaurant.restaurantId, r.body.id, { action: 'approve' }),
+        decide(second.userId, w.restaurant.restaurantId, r.body.id, { action: 'approve' }),
       ]);
       expect(results.map((x) => x.status).sort()).toEqual([200, 409]);
     });
@@ -118,7 +118,7 @@ describe('Refund flow: manual, school-handled; PromptServe never moves money (re
       const w = await makeWorld(t.prisma);
       const o = await paidOrder(w);
       const r = await file(w.student.userId, o.orderId).expect(201);
-      await decide(w.admin.userId, w.school.schoolId, r.body.id, { action: 'reject' }).expect(400);
+      await decide(w.owner.userId, w.restaurant.restaurantId, r.body.id, { action: 'reject' }).expect(400);
       expect((await t.prisma.refundRequest.findUniqueOrThrow({ where: { id: r.body.id } })).status).toBe('PENDING');
     });
 
@@ -126,29 +126,42 @@ describe('Refund flow: manual, school-handled; PromptServe never moves money (re
       const w = await makeWorld(t.prisma);
       const o = await paidOrder(w);
       const r = await file(w.student.userId, o.orderId).expect(201);
-      await decide(w.admin.userId, w.school.schoolId, r.body.id, { action: 'approve' }).expect(200);
+      await decide(w.owner.userId, w.restaurant.restaurantId, r.body.id, { action: 'approve' }).expect(200);
       const logs = await t.prisma.auditLog.findMany({ where: { entityId: r.body.id } });
       expect(logs.map((l) => l.action)).toContain('REFUND_APPROVE');
-      expect(logs[0].actorId).toBe(w.admin.userId);
+      expect(logs[0].actorId).toBe(w.owner.userId);
+      expect(logs[0].actorRole).toBe('RESTAURANT');
+      expect(logs[0].schoolId).toBe(w.school.schoolId);
+      expect(logs[0].meta).toMatchObject({ restaurantId: w.restaurant.restaurantId, from: 'PENDING', to: 'APPROVED' });
+    });
+
+    it('should show the shop decision to the school read-only', async () => {
+      const w = await makeWorld(t.prisma);
+      const o = await paidOrder(w);
+      const r = await file(w.student.userId, o.orderId).expect(201);
+      await decide(w.owner.userId, w.restaurant.restaurantId, r.body.id, { action: 'reject', note: 'food was collected' }).expect(200);
+      const seen = await api().get(`/api/schools/${w.school.schoolId}/refund-requests/${r.body.id}`).set(authHeader(w.admin.userId)).expect(200);
+      expect(seen.body.status).toBe('REJECTED');
+      expect(seen.body.decisionNote).toBe('food was collected');
+      expect(seen.body.decidedBy.userId).toBe(w.owner.userId);
+      await api().patch(`/api/schools/${w.school.schoolId}/refund-requests/${r.body.id}`).set(authHeader(w.admin.userId)).send({ action: 'approve' }).expect(404);
     });
   });
 
   describe('who may decide', () => {
-    it('should refuse shop staff, shop owner, the requesting student and an admin of another school', async () => {
+    it('should refuse shop staff, the school admin, the requesting student and a manager of another shop', async () => {
       const w = await makeWorld(t.prisma);
       const cook = await makeMember(t.prisma, w.restaurant.restaurantId, RestaurantRole.STAFF, w.school.schoolId);
-      const otherSchool = await makeSchool(t.prisma);
-      await makeCanteen(t.prisma, otherSchool.schoolId);
-      const otherAdmin = await makeSchoolAdmin(t.prisma, otherSchool.schoolId);
+      const otherShop = await makeWorld(t.prisma);
       const o = await paidOrder(w);
       const r = await file(w.student.userId, o.orderId).expect(201);
-      for (const who of [cook.userId, w.owner.userId, w.student.userId, otherAdmin.userId]) {
-        const res = await decide(who, w.school.schoolId, r.body.id, { action: 'approve' });
+      for (const who of [cook.userId, w.admin.userId, w.student.userId, otherShop.owner.userId]) {
+        const res = await decide(who, w.restaurant.restaurantId, r.body.id, { action: 'approve' });
         expect([403, 404]).toContain(res.status);
       }
-      // the same admin cannot reach the request through another school's URL either
-      const crossed = await decide(otherAdmin.userId, otherSchool.schoolId, r.body.id, { action: 'approve' });
-      expect([403, 404]).toContain(crossed.status);
+      // another shop's owner cannot reach the request through their own shop's URL either
+      const crossed = await decide(otherShop.owner.userId, otherShop.restaurant.restaurantId, r.body.id, { action: 'approve' });
+      expect(crossed.status).toBe(404);
       expect((await t.prisma.refundRequest.findUniqueOrThrow({ where: { id: r.body.id } })).status).toBe('PENDING');
     });
 

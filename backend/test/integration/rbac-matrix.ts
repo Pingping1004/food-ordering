@@ -107,6 +107,8 @@ export const MATRIX: Record<string, Rule> = {
   'PATCH /api/order/reject/:orderId': r(KITCHEN, { either: SYS_EITHER, orderState: 'received' }),
   'DELETE /api/order/:orderId': r(KITCHEN, { either: SYS_EITHER, orderState: 'cooking' }),
   'GET /api/restaurant/:restaurantId/refund-requests': r([...KITCHEN, 'schoolAdmin'], { either: SYS_EITHER }),
+  // The shop decides refunds (OWNER / ADMIN); staff and the school admin only read.
+  'PATCH /api/restaurant/:restaurantId/refund-requests/:id': r(['owner', 'restaurantAdmin'], { either: SYS_EITHER, body: { action: 'approve' } }),
 
   // ---- menu
   'POST /api/menu/single': r(KITCHEN, { either: SYS_EITHER, body: { restaurantId: ':restaurantId', name: 'Matrix dish', price: 50 } }),
@@ -152,7 +154,6 @@ export const MATRIX: Record<string, Rule> = {
   'PATCH /api/schools/:schoolId/complaints/:id/resolve': r(SCHOOL_ADMIN, { either: SYS_EITHER }),
   'PATCH /api/schools/:schoolId/members/:memberId/approve': r(SCHOOL_ADMIN, { either: SYS_EITHER }),
   'PATCH /api/schools/:schoolId/members/:memberId/reject': r(SCHOOL_ADMIN, { either: SYS_EITHER }),
-  'PATCH /api/schools/:schoolId/refund-requests/:id': r(SCHOOL_ADMIN, { either: SYS_EITHER, body: { action: 'approve' } }),
   'PATCH /api/schools/:schoolId/restaurants/:restaurantId/canteen': r(SCHOOL_ADMIN, { either: SYS_EITHER }),
   'PATCH /api/schools/:schoolId/restaurants/:restaurantId/status': r(SCHOOL_ADMIN, { either: SYS_EITHER, body: { status: 'SUSPENDED' } }),
   'POST /api/schools/:schoolId/canteens': r(SCHOOL_ADMIN, { either: SYS_EITHER, body: { name: 'Matrix canteen' } }),
