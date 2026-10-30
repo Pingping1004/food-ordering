@@ -59,7 +59,7 @@ export default function CancelledOrderPage() {
                     </div>
                 </section>
 
-                {paid && !request && <Notice tone="primary" icon="info">คุณจ่ายเงินแล้ว ขอคืนเงินได้เลย โรงเรียนจะตรวจสอบและประสานกับร้านให้</Notice>}
+                {paid && !request && <Notice tone="primary" icon="info">คุณจ่ายเงินแล้ว ขอคืนเงินได้เลย ร้านจะตรวจสอบและโอนคืนให้ โรงเรียนเห็นทุกรายการ</Notice>}
                 <RefundEntry orderId={order.orderId} canRequest={false} />
             </main>
 

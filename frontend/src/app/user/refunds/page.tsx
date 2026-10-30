@@ -32,7 +32,7 @@ export default function MyRefundsPage() {
                                     <RefundStatusChip status={r.status} short />
                                 </span>
                                 <span className="text-sm text-slate">{refundReasonLabel(r.reason)} · {formatBaht(r.amount)} บาท</span>
-                                {r.decisionNote && <span className="rounded-xl bg-ground p-2.5 text-sm leading-relaxed">โรงเรียน: {r.decisionNote}</span>}
+                                {r.decisionNote && <span className="rounded-xl bg-ground p-2.5 text-sm leading-relaxed">ร้าน: {r.decisionNote}</span>}
                                 <span className="flex items-center gap-1 text-sm font-semibold text-primary-dark">ดูรายละเอียด<Icon name="chevron" size={16} /></span>
                             </Link>
                         </Card>

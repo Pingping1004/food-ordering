@@ -14,7 +14,7 @@ type Step = { label: string; sub?: string; state: "done" | "now" | "todo" | "sto
 export function refundSteps(r: Pick<RefundRequest, "status" | "createdAt" | "decidedAt" | "refundedAt" | "decisionNote" | "decidedBy">, forStudent = false): Step[] {
     const steps: Step[] = [{ label: forStudent ? "ส่งคำขอแล้ว" : "นักเรียนส่งคำขอ", sub: formatDateTime(r.createdAt), state: "done" }];
     if (r.status === "PENDING") {
-        steps.push({ label: forStudent ? "รอโรงเรียนตรวจสอบ" : "รอโรงเรียนตัดสินใจ", sub: forStudent ? "ปกติไม่เกิน 1 วันทำการ" : undefined, state: "now" });
+        steps.push({ label: forStudent ? "รอร้านตรวจสอบ" : "รอร้านตัดสินใจ", sub: forStudent ? "ปกติไม่เกิน 1 วันทำการ" : undefined, state: "now" });
         steps.push({ label: "โอนคืนเงิน", state: "todo" });
         return steps;
     }
@@ -22,7 +22,7 @@ export function refundSteps(r: Pick<RefundRequest, "status" | "createdAt" | "dec
         steps.push({ label: "ไม่อนุมัติ", sub: [formatDateTime(r.decidedAt), r.decidedBy?.name && !forStudent ? `โดย ${r.decidedBy.name}` : null].filter((x) => x && x !== "-").join(" · ") || undefined, state: "stop" });
         return steps;
     }
-    steps.push({ label: "โรงเรียนอนุมัติ", sub: [formatDateTime(r.decidedAt), r.decidedBy?.name && !forStudent ? `โดย ${r.decidedBy.name}` : null].filter((x) => x && x !== "-").join(" · ") || undefined, state: "done" });
+    steps.push({ label: "ร้านอนุมัติ", sub: [formatDateTime(r.decidedAt), r.decidedBy?.name && !forStudent ? `โดย ${r.decidedBy.name}` : null].filter((x) => x && x !== "-").join(" · ") || undefined, state: "done" });
     steps.push(r.status === "REFUNDED"
         ? { label: "โอนคืนเงินแล้ว", sub: formatDateTime(r.refundedAt), state: "done" }
         : { label: "โอนคืนเงิน", sub: forStudent ? "จะแจ้งเมื่อโอนแล้ว" : "รอบันทึกเมื่อโอนคืนแล้ว", state: "now" });
@@ -69,6 +69,6 @@ export function RefundItems({ items, total }: Readonly<{ items: RefundItem[]; to
 /** API `code` -> sentence for the student's refund form. */
 export const REFUND_ERROR_TEXT: Record<string, string> = {
     ORDER_NOT_PAID: "ออเดอร์นี้ยังไม่ได้ชำระเงิน จึงขอคืนเงินไม่ได้",
-    REFUND_WINDOW_EXPIRED: "เลยกำหนด 24 ชั่วโมงหลังรับอาหารแล้ว ขอคืนเงินในแอปไม่ได้ กรุณาติดต่อโรงเรียนโดยตรง",
+    REFUND_WINDOW_EXPIRED: "เลยกำหนด 24 ชั่วโมงหลังรับอาหารแล้ว ขอคืนเงินในแอปไม่ได้ กรุณาติดต่อร้านโดยตรง",
     REFUND_ALREADY_REQUESTED: "ออเดอร์นี้มีคำขอคืนเงินอยู่แล้ว",
 };

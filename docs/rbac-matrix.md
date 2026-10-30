@@ -98,7 +98,7 @@ The integration suite sends every route as every actor below against a real data
 | `PATCH /schools/:schoolId/complaints/:id/resolve` | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ✅ | ⛔ | ◻︎ | ◻︎ |
 | `PATCH /schools/:schoolId/members/:memberId/approve` | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ✅ | ⛔ | ◻︎ | ◻︎ |
 | `PATCH /schools/:schoolId/members/:memberId/reject` | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ✅ | ⛔ | ◻︎ | ◻︎ |
-| `PATCH /schools/:schoolId/refund-requests/:id` | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ✅ | ⛔ | ◻︎ | ◻︎ |
+| `PATCH /restaurant/:restaurantId/refund-requests/:id` | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ✅ | ✅ | ⛔ | ⛔ | ⛔ | ◻︎ | ◻︎ |
 | `PATCH /schools/:schoolId/restaurants/:restaurantId/canteen` | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ✅ | ⛔ | ◻︎ | ◻︎ |
 | `PATCH /schools/:schoolId/restaurants/:restaurantId/status` | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ✅ | ⛔ | ◻︎ | ◻︎ |
 | `PATCH /user/:userId` | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ✅ | ⛔ |

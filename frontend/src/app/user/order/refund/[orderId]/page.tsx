@@ -35,12 +35,12 @@ const Frame = ({ title, children, footer }: Readonly<{ title: string; children: 
 /** The request exists: where it stands, what the school said, and (if rejected) a way to ask again. */
 function RequestStatus({ req, onRefile }: Readonly<{ req: RefundRequest; onRefile: () => void }>) {
     const router = useRouter();
-    const label = { PENDING: "ส่งคำขอคืนเงินแล้ว", APPROVED: "โรงเรียนอนุมัติแล้ว", REFUNDED: "โอนคืนเงินแล้ว", REJECTED: "คำขอไม่ได้รับอนุมัติ" }[req.status];
+    const label = { PENDING: "ส่งคำขอคืนเงินแล้ว", APPROVED: "ร้านอนุมัติแล้ว", REFUNDED: "โอนคืนเงินแล้ว", REJECTED: "คำขอไม่ได้รับอนุมัติ" }[req.status];
     const sub = {
-        PENDING: "โรงเรียนจะตรวจสอบและประสานกับร้าน แล้วแจ้งผลให้คุณทราบ",
-        APPROVED: "โรงเรียนกำลังประสานกับร้านเพื่อโอนคืนเงินให้คุณ",
+        PENDING: "ร้านจะตรวจสอบ แล้วแจ้งผลให้คุณทราบ",
+        APPROVED: "ร้านกำลังโอนคืนเงินให้คุณ",
         REFUNDED: "ตรวจสอบยอดในบัญชีที่คุณใช้จ่าย",
-        REJECTED: "ดูเหตุผลจากโรงเรียนด้านล่าง หากข้อมูลเปลี่ยนไป ส่งคำขอใหม่ได้",
+        REJECTED: "ดูเหตุผลจากร้านด้านล่าง หากข้อมูลเปลี่ยนไป ส่งคำขอใหม่ได้",
     }[req.status];
 
     return (
@@ -63,8 +63,8 @@ function RequestStatus({ req, onRefile }: Readonly<{ req: RefundRequest; onRefil
             </section>
 
             {req.decisionNote && (
-                <section className="flex flex-col gap-1.5 rounded-[20px] border border-line-soft bg-white p-5" aria-label="ข้อความจากโรงเรียน">
-                    <h3 className="text-base font-bold">ข้อความจากโรงเรียน</h3>
+                <section className="flex flex-col gap-1.5 rounded-[20px] border border-line-soft bg-white p-5" aria-label="ข้อความจากร้าน">
+                    <h3 className="text-base font-bold">ข้อความจากร้าน</h3>
                     <p className="m-0 whitespace-pre-line text-[15px] leading-relaxed">{req.decisionNote}</p>
                 </section>
             )}
@@ -165,12 +165,12 @@ export default function RefundRequestPage() {
                                 maxLength={MAX_DETAILS}
                                 value={details}
                                 onChange={(e) => setDetails(e.target.value)}
-                                placeholder="เล่าให้โรงเรียนเข้าใจว่าเกิดอะไรขึ้น"
+                                placeholder="เล่าให้ร้านเข้าใจว่าเกิดอะไรขึ้น"
                                 className="w-full rounded-[14px] border-[1.5px] border-line px-4 py-3 font-app text-[16px] font-normal outline-none focus:border-primary-main focus:ring-2 focus:ring-primary-main/20"
                             />
                             <span className="text-right text-[13px] font-normal text-brand-muted">{details.length}/{MAX_DETAILS}</span>
                         </label>
-                        <p className="m-0 text-[13px] leading-relaxed text-brand-muted">โรงเรียนเป็นผู้ตัดสินใจและประสานกับร้าน ขอคืนเงินได้ภายใน 24 ชั่วโมงหลังรับอาหาร</p>
+                        <p className="m-0 text-[13px] leading-relaxed text-brand-muted">ร้านเป็นผู้พิจารณาและโอนคืนเอง โรงเรียนเห็นทุกรายการ ขอคืนเงินได้ภายใน 24 ชั่วโมงหลังรับอาหาร</p>
                     </section>
                     {error && <Notice tone="danger" icon="alert" role="alert">{error}</Notice>}
                 </>

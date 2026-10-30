@@ -10,6 +10,7 @@ export const key = {
     week: (id: string) => ["school", id, "refunds", "week"] as const,
     summary: (id: string) => ["school", id, "refunds", "summary"] as const,
     mine: ["my-refunds"] as const,
+    shopAll: (rid: string) => ["restaurant", rid, "refunds"] as const,
     shop: (rid: string, status?: string) => ["restaurant", rid, "refunds", status ?? "all"] as const,
 };
 
@@ -31,7 +32,6 @@ export function useSchoolRefunds(schoolId: string, status?: RefundRequestStatus)
     });
     return { ...q, items: flatten(q.data?.pages) };
 }
-
 export const useRefundSummary = (schoolId: string) =>
     useQuery({ queryKey: key.summary(schoolId), queryFn: () => svc.getSchoolRefundSummary(schoolId), staleTime: STALE, refetchInterval: REFRESH });
 
@@ -54,21 +54,6 @@ export const useRefundedThisWeek = (schoolId: string) =>
 export const useRefundDetail = (schoolId: string, id: string | undefined) =>
     useQuery({ queryKey: [...key.school(schoolId), "detail", id], queryFn: () => svc.getSchoolRefund(schoolId, id as string), enabled: !!id, staleTime: STALE });
 
-const DONE: Record<RefundDecisionAction, string> = {
-    approve: "อนุมัติคำขอคืนเงินแล้ว",
-    reject: "ไม่อนุมัติคำขอแล้ว นักเรียนจะเห็นเหตุผล",
-    mark_refunded: "บันทึกว่าโอนคืนแล้ว",
-};
-
-export function useDecideRefund(schoolId: string) {
-    const qc = useQueryClient();
-    return useMutation({
-        mutationFn: (v: { id: string; action: RefundDecisionAction; note?: string }) => svc.decideRefund(schoolId, v.id, v.action, v.note),
-        onSuccess: (_d, v) => { toastSuccess(DONE[v.action]); qc.invalidateQueries({ queryKey: key.school(schoolId) }); },
-        onError: (err) => (isSysadminReadOnlyError(err) ? notifySysadminReadOnly() : toastError("ทำรายการไม่สำเร็จ กรุณาลองใหม่", err)),
-    });
-}
-
 /* ───────── student ───────── */
 
 export const useMyRefunds = (enabled = true) =>
@@ -83,7 +68,7 @@ export function useCreateRefund(orderId: string) {
     });
 }
 
-/* ───────── shop (read-only) ───────── */
+/* ───────── shop (decides) ───────── */
 
 export function useShopRefunds(restaurantId: string, status?: RefundRequestStatus) {
     const q = useInfiniteQuery({
@@ -96,4 +81,32 @@ export function useShopRefunds(restaurantId: string, status?: RefundRequestStatu
         enabled: !!restaurantId,
     });
     return { ...q, items: flatten(q.data?.pages) };
+}
+
+/** Nav badge: PENDING requests waiting for the shop (first page; `more` when there are further pages). */
+export const useShopPendingRefunds = (restaurantId: string) =>
+    useQuery({
+        queryKey: [...key.shopAll(restaurantId), "pending-count"],
+        queryFn: async () => {
+            const page = await svc.listRestaurantRefundRequests(restaurantId, { status: "PENDING" });
+            return { count: page.items.length, more: !!page.nextCursor };
+        },
+        staleTime: STALE,
+        refetchInterval: REFRESH,
+        enabled: !!restaurantId,
+    });
+
+const DONE: Record<RefundDecisionAction, string> = {
+    approve: "อนุมัติคำขอคืนเงินแล้ว",
+    reject: "ไม่อนุมัติคำขอแล้ว นักเรียนจะเห็นเหตุผล",
+    mark_refunded: "บันทึกว่าโอนคืนแล้ว",
+};
+
+export function useDecideRefund(restaurantId: string) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (v: { id: string; action: RefundDecisionAction; note?: string }) => svc.decideRefund(restaurantId, v.id, v.action, v.note),
+        onSuccess: (_d, v) => { toastSuccess(DONE[v.action]); qc.invalidateQueries({ queryKey: key.shopAll(restaurantId) }); },
+        onError: (err) => (isSysadminReadOnlyError(err) ? notifySysadminReadOnly() : toastError("ทำรายการไม่สำเร็จ กรุณาลองใหม่", err)),
+    });
 }

@@ -42,7 +42,7 @@ export class StudentRefundController {
   }
 }
 
-/** School admin decides; the system admin reads (writes need a support grant, see AccessService). */
+/** School admin (and system admin): read-only. The shop decides, see RestaurantRefundController. */
 @Controller('schools/:schoolId/refund-requests')
 export class SchoolRefundController {
   constructor(private readonly refunds: RefundService) {}
@@ -68,20 +68,9 @@ export class SchoolRefundController {
   get(@Param('schoolId') schoolId: string, @Param('id') id: string) {
     return this.refunds.getForSchool(schoolId, id);
   }
-
-  @SchoolScope('schoolId')
-  @Patch(':id')
-  decide(
-    @Req() req,
-    @Param('schoolId') schoolId: string,
-    @Param('id') id: string,
-    @Body() dto: DecideRefundDto,
-  ) {
-    return this.refunds.decide(req, schoolId, id, dto);
-  }
 }
 
-/** Shop owner / staff: read-only view of their shop's requests. */
+/** Shop: everyone reads; OWNER / ADMIN decide (staff and school admins cannot). */
 @Controller('restaurant/:restaurantId/refund-requests')
 export class RestaurantRefundController {
   constructor(private readonly refunds: RefundService) {}
@@ -97,5 +86,20 @@ export class RestaurantRefundController {
     @Query() query: ListRefundsQueryDto,
   ) {
     return this.refunds.listForRestaurant(restaurantId, query);
+  }
+
+  @RestaurantScope({
+    param: 'restaurantId',
+    roles: [RestaurantRole.OWNER, RestaurantRole.ADMIN],
+    allowSchoolAdmin: false,
+  })
+  @Patch(':id')
+  decide(
+    @Req() req,
+    @Param('restaurantId') restaurantId: string,
+    @Param('id') id: string,
+    @Body() dto: DecideRefundDto,
+  ) {
+    return this.refunds.decide(req, restaurantId, id, dto);
   }
 }

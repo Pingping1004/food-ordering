@@ -57,6 +57,9 @@ const make = () => {
     schoolMembership: {
       findMany: jest.fn().mockResolvedValue([{ userId: 'adm1' }]),
     },
+    restaurantMembership: {
+      findMany: jest.fn().mockResolvedValue([{ userId: 'own1' }]),
+    },
   };
   prisma.$transaction = jest.fn(async (cb: any) => cb(prisma));
   const audit: any = { record: jest.fn().mockResolvedValue(undefined) };
@@ -72,7 +75,7 @@ const make = () => {
 };
 
 describe('RefundService.create (student)', () => {
-  it('files a PENDING request for the order amount and notifies school admins', async () => {
+  it('files a PENDING request for the order amount and notifies shop managers and school admins', async () => {
     const { svc, prisma, notifications } = make();
     const res = await svc.create('u1', 'o1', {
       reason: 'WRONG_ORDER' as any,
@@ -91,8 +94,21 @@ describe('RefundService.create (student)', () => {
     expect(res.status).toBe('PENDING');
     await new Promise((r) => setImmediate(r));
     expect(notifications.sendToUsers).toHaveBeenCalledWith(
+      ['own1'],
+      expect.objectContaining({ path: '/cooker/refunds/r1' }),
+    );
+    expect(prisma.restaurantMembership.findMany.mock.calls[0][0].where).toEqual(
+      {
+        restaurantId: 'r1',
+        role: { in: ['OWNER', 'ADMIN'] },
+        status: 'APPROVED',
+      },
+    );
+    expect(notifications.sendToUsers).toHaveBeenCalledWith(
       ['adm1'],
-      expect.any(Object),
+      expect.objectContaining({
+        title: 'มีคำขอคืนเงินใหม่ (ร้านเป็นผู้ดำเนินการ)',
+      }),
     );
   });
 
@@ -176,6 +192,7 @@ describe('RefundService.create (student)', () => {
     const { svc, notifications, prisma } = make();
     notifications.sendToUsers.mockRejectedValue(new Error('fcm down'));
     prisma.schoolMembership.findMany.mockRejectedValue(new Error('db'));
+    prisma.restaurantMembership.findMany.mockRejectedValue(new Error('db'));
     await expect(
       svc.create('u1', 'o1', { reason: 'OTHER' as any }),
     ).resolves.toBeDefined();
@@ -200,21 +217,7 @@ describe('RefundService student reads', () => {
   });
 });
 
-describe('RefundService school admin', () => {
-  const adminReq: any = { user: { userId: 'adm1' } };
-  const existing = (status = 'PENDING') => ({
-    id: 'f1',
-    orderId: 'o1',
-    userId: 'u1',
-    status,
-    restaurant: { name: 'Noodles' },
-  });
-  const withExisting = (status?: string) => {
-    const m = make();
-    m.prisma.refundRequest.findFirst.mockResolvedValue(existing(status));
-    return m;
-  };
-
+describe('RefundService school admin (read-only)', () => {
   it('lists strictly within the school, oldest pending first, cursor paginated', async () => {
     const { svc, prisma } = make();
     const rows = [1, 2, 3].map((i) => ({
@@ -273,15 +276,36 @@ describe('RefundService school admin', () => {
       schoolId: 's1',
     });
   });
+});
 
-  it('approve: PENDING -> APPROVED, audited as SCHOOL_ADMIN, student notified', async () => {
+describe('RefundService shop decides', () => {
+  const ownerReq: any = { user: { userId: 'own1' } };
+  const existing = (status = 'PENDING') => ({
+    id: 'f1',
+    orderId: 'o1',
+    userId: 'u1',
+    schoolId: 's1',
+    status,
+    restaurant: { name: 'Noodles' },
+  });
+  const withExisting = (status?: string) => {
+    const m = make();
+    m.prisma.refundRequest.findFirst.mockResolvedValue(existing(status));
+    return m;
+  };
+
+  it('approve: PENDING -> APPROVED, audited as RESTAURANT, student notified', async () => {
     const { svc, prisma, audit, notifications } = withExisting();
-    await svc.decide(adminReq, 's1', 'f1', { action: 'approve', note: 'ok' });
+    await svc.decide(ownerReq, 'r1', 'f1', { action: 'approve', note: 'ok' });
     const call = prisma.refundRequest.updateMany.mock.calls[0][0];
-    expect(call.where).toEqual({ id: 'f1', schoolId: 's1', status: 'PENDING' });
+    expect(call.where).toEqual({
+      id: 'f1',
+      restaurantId: 'r1',
+      status: 'PENDING',
+    });
     expect(call.data).toMatchObject({
       status: 'APPROVED',
-      decidedById: 'adm1',
+      decidedById: 'own1',
       decisionNote: 'ok',
     });
     expect(call.data.decidedAt).toBeInstanceOf(Date);
@@ -289,11 +313,16 @@ describe('RefundService school admin', () => {
     expect(audit.record).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'REFUND_APPROVE',
-        actorRole: 'SCHOOL_ADMIN',
+        actorRole: 'RESTAURANT',
         schoolId: 's1',
         entityType: 'REFUND_REQUEST',
         entityId: 'f1',
-        meta: { orderId: 'o1', from: 'PENDING', to: 'APPROVED' },
+        meta: {
+          orderId: 'o1',
+          restaurantId: 'r1',
+          from: 'PENDING',
+          to: 'APPROVED',
+        },
       }),
     );
     expect(notifications.sendToUsers).toHaveBeenCalledWith(
@@ -305,15 +334,15 @@ describe('RefundService school admin', () => {
   it('reject requires a note and frees the one-open-request slot', async () => {
     const a = withExisting();
     await expect(
-      a.svc.decide(adminReq, 's1', 'f1', { action: 'reject' }),
+      a.svc.decide(ownerReq, 'r1', 'f1', { action: 'reject' }),
     ).rejects.toBeInstanceOf(BadRequestException);
     await expect(
-      a.svc.decide(adminReq, 's1', 'f1', { action: 'reject', note: ' ' }),
+      a.svc.decide(ownerReq, 'r1', 'f1', { action: 'reject', note: ' ' }),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(a.prisma.refundRequest.updateMany).not.toHaveBeenCalled();
 
     const b = withExisting();
-    await b.svc.decide(adminReq, 's1', 'f1', {
+    await b.svc.decide(ownerReq, 'r1', 'f1', {
       action: 'reject',
       note: 'photo shows full order',
     });
@@ -328,7 +357,7 @@ describe('RefundService school admin', () => {
 
   it('mark_refunded: APPROVED -> REFUNDED and Order.paymentStatus REFUNDED, in one transaction', async () => {
     const { svc, prisma, audit } = withExisting('APPROVED');
-    await svc.decide(adminReq, 's1', 'f1', { action: 'mark_refunded' });
+    await svc.decide(ownerReq, 'r1', 'f1', { action: 'mark_refunded' });
     const call = prisma.refundRequest.updateMany.mock.calls[0][0];
     expect(call.where.status).toBe('APPROVED');
     expect(call.data.status).toBe('REFUNDED');
@@ -345,7 +374,7 @@ describe('RefundService school admin', () => {
     const { svc, prisma, audit } = withExisting('REFUNDED');
     prisma.refundRequest.updateMany.mockResolvedValue({ count: 0 });
     const err: any = await svc
-      .decide(adminReq, 's1', 'f1', { action: 'mark_refunded' })
+      .decide(ownerReq, 'r1', 'f1', { action: 'mark_refunded' })
       .catch((e) => e);
     expect(err).toBeInstanceOf(ConflictException);
     expect(err.getResponse().code).toBe('INVALID_TRANSITION');
@@ -353,14 +382,14 @@ describe('RefundService school admin', () => {
     expect(audit.record).not.toHaveBeenCalled();
   });
 
-  it('decide on a refund of another school -> 404 before touching anything', async () => {
+  it('decide on a refund of another restaurant -> 404 before touching anything', async () => {
     const { svc, prisma } = make();
     await expect(
-      svc.decide(adminReq, 's1', 'f-other', { action: 'approve' }),
+      svc.decide(ownerReq, 'r1', 'f-other', { action: 'approve' }),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(prisma.refundRequest.findFirst.mock.calls[0][0].where).toEqual({
       id: 'f-other',
-      schoolId: 's1',
+      restaurantId: 'r1',
     });
     expect(prisma.refundRequest.updateMany).not.toHaveBeenCalled();
   });
@@ -371,7 +400,7 @@ describe('RefundService school admin', () => {
       user: { userId: 'sys' },
       sysadminAudit: { schoolId: 's1', grantId: 'g1' },
     };
-    await svc.decide(req, 's1', 'f1', { action: 'approve' });
+    await svc.decide(req, 'r1', 'f1', { action: 'approve' });
     expect(audit.record).toHaveBeenCalledWith(
       expect.objectContaining({ actorRole: 'SYSADMIN', req }),
     );
@@ -409,18 +438,23 @@ describe('Refund DTOs and route guards', () => {
     ).toBeGreaterThan(0);
   });
 
-  it('school routes sit behind @SchoolScope, shop route behind @RestaurantScope (read-only, no write route)', () => {
+  it('school routes are read-only behind @SchoolScope; only shop OWNER/ADMIN may decide', () => {
     const p = SchoolRefundController.prototype as any;
-    for (const n of ['list', 'summary', 'get', 'decide'])
+    for (const n of ['list', 'summary', 'get'])
       expect(Reflect.getMetadata(SCHOOL_SCOPE_KEY, p[n])).toBe('schoolId');
-    const scope = Reflect.getMetadata(
-      RESTAURANT_SCOPE_KEY,
-      (RestaurantRefundController.prototype as any).list,
-    );
-    expect(scope.roles.sort()).toEqual(['ADMIN', 'OWNER', 'STAFF']);
+    expect(
+      Object.getOwnPropertyNames(SchoolRefundController.prototype),
+    ).toEqual(['constructor', 'list', 'summary', 'get']);
+
+    const shop = RestaurantRefundController.prototype as any;
+    const read = Reflect.getMetadata(RESTAURANT_SCOPE_KEY, shop.list);
+    expect([...read.roles].sort()).toEqual(['ADMIN', 'OWNER', 'STAFF']);
+    const write = Reflect.getMetadata(RESTAURANT_SCOPE_KEY, shop.decide);
+    expect([...write.roles].sort()).toEqual(['ADMIN', 'OWNER']);
+    expect(write.allowSchoolAdmin).toBe(false);
     expect(
       Object.getOwnPropertyNames(RestaurantRefundController.prototype),
-    ).toEqual(['constructor', 'list']);
+    ).toEqual(['constructor', 'list', 'decide']);
     expect(
       Object.getOwnPropertyNames(StudentRefundController.prototype),
     ).toEqual(expect.arrayContaining(['create', 'listMine', 'getMine']));

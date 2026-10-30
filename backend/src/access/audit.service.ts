@@ -2,7 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
-export type AuditActorRole = 'SYSADMIN' | 'SCHOOL_ADMIN' | 'USER';
+export type AuditActorRole =
+  'SYSADMIN' | 'SCHOOL_ADMIN' | 'RESTAURANT' | 'USER';
 
 export interface AuditEntry {
   /** Express request: supplies actor, method and path, and marks the request as already audited. */
