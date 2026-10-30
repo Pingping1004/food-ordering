@@ -408,6 +408,46 @@ describe('RefundService shop decides', () => {
 });
 
 describe('RefundService shop view', () => {
+  it('each listed request carries the order and its items', async () => {
+    const { svc, prisma } = make();
+    prisma.refundRequest.findMany.mockResolvedValue([
+      {
+        id: 'f1',
+        orderId: 'abcd-1',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        user: { userId: 'u', name: 'N' },
+        restaurant: { restaurantId: 'r1', name: 'R' },
+        order: {
+          orderId: 'abcd-1',
+          status: 'done',
+          totalAmount: 80,
+          orderMenus: [
+            {
+              menuName: 'Pad kra pao',
+              quantity: 2,
+              unitPrice: 40,
+              totalPrice: 80,
+            },
+          ],
+        },
+      },
+    ]);
+    const res: any = await svc.listForRestaurant('r1', {});
+    expect(
+      prisma.refundRequest.findMany.mock.calls[0][0].include.order.select
+        .orderMenus,
+    ).toBeDefined();
+    expect(res.items[0].order).toEqual({
+      orderId: 'abcd-1',
+      status: 'done',
+      totalAmount: 80,
+      items: [
+        { menuName: 'Pad kra pao', quantity: 2, unitPrice: 40, totalPrice: 80 },
+      ],
+    });
+  });
+
   it("lists only that restaurant's requests", async () => {
     const { svc, prisma } = make();
     await svc.listForRestaurant('r1', { status: 'APPROVED' as any });
