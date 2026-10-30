@@ -31,7 +31,7 @@ export function EditMaxOrdersDialog({ cooker, saving, onSave, onClose }: EditorP
     const valid = unlimited || (isWholeNumber(value) && Number(value) >= 1 && Number(value) <= 200);
 
     return (
-        <Dialog open onClose={onClose} title="รับได้พร้อมกันสูงสุด">
+        <Dialog open onClose={onClose} title="รับได้พร้อมกันสูงสุดต่อรอบ">
             <form
                 className="flex flex-col gap-4"
                 onSubmit={(e) => {

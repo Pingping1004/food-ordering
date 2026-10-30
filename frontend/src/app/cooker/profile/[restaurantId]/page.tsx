@@ -122,7 +122,7 @@ function Page() {
                 <section className="rounded-[20px] border border-line-soft bg-white px-[18px] py-1">
                     {[
                         { label: "เวลาเปิด-ปิด", value: cooker.operatingHours?.length ? summarizeHours(cooker.operatingHours) : "ตั้งเวลาเปิดร้าน", href: undefined, onEdit: canEditShop ? () => setEditing("hours") : undefined },
-                        { label: "รับได้พร้อมกันสูงสุด", value: cooker.maxActiveOrders ? `${cooker.maxActiveOrders} ออเดอร์` : "ไม่จำกัด", href: undefined, onEdit: canEditShop ? () => setEditing("maxOrders") : undefined },
+                        { label: "รับได้พร้อมกันสูงสุดต่อรอบ", value: cooker.maxActiveOrders ? `${cooker.maxActiveOrders} ออเดอร์` : "ไม่จำกัด", href: undefined, onEdit: canEditShop ? () => setEditing("maxOrders") : undefined },
                         { label: "เวลาทำอาหารเฉลี่ย", value: cooker.avgCookingTimeMins ? `${cooker.avgCookingTimeMins} นาที / เมนู` : "ยังไม่ระบุ", href: undefined, onEdit: canEditShop ? () => setEditing("cookingTime") : undefined },
                         { label: "บัญชีรับเงิน", value: cooker.accountName ? `${cooker.bankType && BANKS[cooker.bankType as AccountType] ? `${BANKS[cooker.bankType as AccountType].label} · ` : ""}${cooker.accountName}${cooker.accountNumber ? ` ···· ${cooker.accountNumber.slice(-4)}` : ""}` : "ดูในใบสมัคร", href: undefined, onEdit: canEditShop ? () => setEditing("bank") : undefined },
                         { label: "ข้อมูลร้าน", value: [cooker.categories?.map((c) => CATEGORY_LABEL[c as keyof typeof CATEGORY_LABEL] ?? c).join(", "), cooker.avgCookingTimeMins ? `${cooker.avgCookingTimeMins} นาที/จาน` : ""].filter(Boolean).join(" · ") || "ชื่อ รูป เบอร์ติดต่อ", href: undefined },
