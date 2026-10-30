@@ -18,7 +18,7 @@ import { randomUUID } from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import { Prisma, PrismaClient, RefundReason, RefundStatus } from '@prisma/client';
 import { generateGloballyUniqueCode } from '../../src/invite/unique-code';
-import { CANTEENS, COMMENTS, COMPLAINTS, DEMO_LOGINS, DEMO_SCHOOL, NICKNAMES, SCHOOL_STAFF, SHOPS, ShopSeed } from './catalog';
+import { CANTEENS, COMMENTS, COMPLAINTS, DEMO_LOGINS, DEMO_SCHOOL, NICKNAMES, SCHOOL_ADMINS, SHOPS, ShopSeed } from './catalog';
 import { DAY_ENUM, DAY_MS, atBkk, bkkDay, bkkWeekday, connect, flag, inBatches, makeRng, option, requireYes, round5, sec, Rng } from './common';
 
 const WEEKS = Math.max(1, Number(option('weeks', '3')));
@@ -28,6 +28,10 @@ const ADMIN_EMAILS = emails('admin');
 /** Real accounts added to the manual demo shop, so the real ↔ demo switch appears on their shop pages too. */
 const SHOP_MEMBERS = [...emails('owner').map((email) => ({ email, role: 'OWNER' as const })), ...emails('cook').map((email) => ({ email, role: 'STAFF' as const }))];
 const MEMBER_SHOP_KEY = 'tamsang';
+/** Top of the range the shop settings accept (1–50). */
+const DEMO_MAX_ACTIVE_ORDERS = 50;
+/** So no demo menu can sell out during the pitch (same value the order code assumes when a menu has no limit). */
+const DEMO_DAILY_QUOTA = 999;
 
 type Student = { userId: string; signupDay: number; appetite: number };
 type ShopRow = ShopSeed & { restaurantId: string; canteenId: string; menuRows: { menuId: string; name: string; price: number; cook: number; weight: number }[] };
@@ -133,7 +137,7 @@ async function main() {
 
     const adminLogin = await loginUser(prisma, DEMO_LOGINS.schoolAdmin.email, DEMO_LOGINS.schoolAdmin.name, schoolId);
     const schoolAdmin = adminLogin ? { userId: adminLogin } : genUser('ครูสมใจ', 'staff', setupDay);
-    const staffRows = SCHOOL_STAFF.map((s) => ({ ...s, user: genUser(s.name, 'staff', setupDay) }));
+    const otherAdmins = SCHOOL_ADMINS.map((s) => ({ ...s, user: genUser(s.name, 'staff', setupDay) }));
     const cookLogin = await loginUser(prisma, DEMO_LOGINS.cook.email, DEMO_LOGINS.cook.name, schoolId);
     const studentLogin = await loginUser(prisma, DEMO_LOGINS.student.email, DEMO_LOGINS.student.name, schoolId);
 
@@ -158,7 +162,7 @@ async function main() {
 
     const generated = [
       ...(adminLogin ? [] : [schoolAdmin as Prisma.UserCreateManyInput]),
-      ...staffRows.map((s) => s.user),
+      ...otherAdmins.map((s) => s.user),
       ...shopPeople.flatMap((p) => [...('email' in p.owner ? [p.owner] : []), ...p.staff]),
       ...studentRows,
     ];
@@ -167,7 +171,7 @@ async function main() {
     await prisma.schoolMembership.createMany({
       data: [
         { userId: schoolAdmin.userId!, schoolId, role: 'ADMIN', status: 'APPROVED' },
-        ...staffRows.map((s) => ({ userId: s.user.userId!, schoolId, role: s.role, status: s.status })),
+        ...otherAdmins.map((s) => ({ userId: s.user.userId!, schoolId, role: 'ADMIN' as const, status: s.status })),
       ],
     });
     for (const email of ADMIN_EMAILS) {
@@ -188,8 +192,10 @@ async function main() {
       const r = await prisma.restaurant.create({
         data: {
           name: s.name, email: `${s.key}@${GEN_DOMAIN}`, location: s.location, categories: s.categories,
-          maxActiveOrders: s.maxActiveOrders, avgCookingTimeMins: s.avgCookingTimeMins, status: s.status ?? 'ACTIVE',
-          isAutoAcceptedOrder: s.autoAccept, contactName: s.owner, contactSurname: '-', contactTel: `08${rng.int(10000000, 99999999)}`,
+          // A student order on stage must never bounce: no queue limit in practice, and only the shop on the cook's
+          // phone waits for a person (every other shop would expire the order after 3 minutes).
+          maxActiveOrders: DEMO_MAX_ACTIVE_ORDERS, avgCookingTimeMins: s.avgCookingTimeMins, status: s.status ?? 'ACTIVE',
+          isAutoAcceptedOrder: s.key !== MEMBER_SHOP_KEY, contactName: s.owner, contactSurname: '-', contactTel: `08${rng.int(10000000, 99999999)}`,
           contactEmail: `${s.key}@${GEN_DOMAIN}`, bankType: 'KASIKORN_BANK', accountNumber: `${rng.int(100, 999)}-${rng.int(1, 9)}-${rng.int(10000, 99999)}-${rng.int(0, 9)}`,
           accountName: `ร้าน${s.owner}`, paymentQr: 'demo-qr', canteenId: canteenIds[s.canteen],
         },
@@ -203,7 +209,7 @@ async function main() {
       });
       const menuRows = s.menus.map((m) => ({ menuId: randomUUID(), name: m.name, price: m.price, cook: m.cook, weight: m.weight, maxDaily: m.maxDaily }));
       await prisma.menu.createMany({
-        data: menuRows.map((m) => ({ menuId: m.menuId, name: m.name, price: m.price, cookingTimeMins: m.cook, maxDaily: m.maxDaily, restaurantId: r.restaurantId, createdAt: setupDay })),
+        data: menuRows.map((m) => ({ menuId: m.menuId, name: m.name, price: m.price, cookingTimeMins: m.cook, maxDaily: DEMO_DAILY_QUOTA, restaurantId: r.restaurantId, createdAt: setupDay })),
       });
       shops.push({ ...s, restaurantId: r.restaurantId, canteenId: canteenIds[s.canteen], menuRows });
     }

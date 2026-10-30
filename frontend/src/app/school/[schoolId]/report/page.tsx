@@ -53,7 +53,7 @@ export default function SchoolReportPage({ params }: Readonly<{ params: Promise<
                 <div className="no-print">
                     <SchoolPageHeader
                         title={cfg.title}
-                        eyebrow={s && <>ตัวอย่างรายงานที่จะส่งให้เจ้าหน้าที่</>}
+                        eyebrow={s && <>ตัวอย่างรายงานที่จะส่งให้ผู้ดูแล</>}
                         actions={
                             <>
                             <label className="flex h-11 items-center gap-2 rounded-xl border border-line bg-white px-3.5 text-[15px]">

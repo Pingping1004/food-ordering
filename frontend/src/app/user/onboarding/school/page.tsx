@@ -57,7 +57,7 @@ export default function CanteenPickerPage() {
                     </div>
                 )}
                 {isError && <ErrorState onRetry={() => refetch()} />}
-                {school?.canteens.length === 0 && <EmptyState title="โรงเรียนยังไม่มีโรงอาหาร" body="สอบถามเจ้าหน้าที่โรงเรียนให้เพิ่มโรงอาหารก่อน" />}
+                {school?.canteens.length === 0 && <EmptyState title="โรงเรียนยังไม่มีโรงอาหาร" body="สอบถามผู้ดูแลโรงเรียนให้เพิ่มโรงอาหารก่อน" />}
                 <div role="radiogroup" aria-label="โรงอาหาร" className="flex flex-col gap-2.5">
                     {school?.canteens.map((c) => {
                         const on = c.canteenId === canteenId;

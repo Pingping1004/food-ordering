@@ -115,7 +115,7 @@ export const ENTITY_STATUS: Record<Status, { label: string; tone: Tone }> = {
 };
 
 export const RESTAURANT_ROLE_LABEL: Record<RestaurantRole, string> = { OWNER: "เจ้าของร้าน", ADMIN: "ผู้ช่วยจัดการ", STAFF: "พนักงาน" };
-export const SCHOOL_ROLE_LABEL: Record<SchoolRole, string> = { ADMIN: "ผู้ดูแล", STAFF: "เจ้าหน้าที่" };
+export const SCHOOL_ROLE_LABEL: Record<SchoolRole, string> = { ADMIN: "ผู้ดูแล" };
 
 export const CATEGORY_LABEL: Record<RestaurantCategory, string> = {
     Steak: "สเต็ก",

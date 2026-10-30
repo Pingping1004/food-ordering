@@ -10,19 +10,22 @@
  *                                                      still pays after acceptance). Default manual shop: tamsang.
  *   npm run demo:live -- --yes --manual none           automate every shop
  *
+ * Orders the demo student login places by hand follow the same steps (paid without a real slip), except at the manual
+ * shop, where the cook's phone accepts them first.
+ *
  * Writes straight to the database (like the seed). Orders that are never accepted are expired by the backend's own
  * 3-minute cron, exactly as in real use.
  */
 import { randomUUID } from 'crypto';
 import { OrderStatus, Prisma } from '@prisma/client';
-import { COMMENTS, SHOPS } from './catalog';
+import { COMMENTS, DEMO_LOGINS, SHOPS } from './catalog';
 import { connect, flag, makeRng, option, requireYes, round5, bkkMinute, sec } from './common';
 
 const EVERY_S = Math.max(3, Number(option('every', '20')));
 const MANUAL_KEY = option('manual', 'tamsang');
 
 type Shop = { key: string; restaurantId: string; name: string; popularity: number; autoAccept: boolean; cook: number; members: string[]; menus: { menuId: string; name: string; price: number; weight: number }[] };
-type Live = { orderId: string; shop: Shop; userId: string; acceptAt: number; payAt: number; readyAt: number; doneAt: number; stage: 'new' | 'accepted' | 'paid' | 'ready' };
+type Live = { orderId: string; shop: Shop; userId: string; acceptAt: number; payAt: number; readyAt: number; doneAt: number; stage: 'new' | 'accepted' | 'paid' | 'ready'; presenter?: boolean };
 
 async function main() {
   const { prisma, pool, host } = connect();
@@ -62,7 +65,9 @@ async function main() {
   console.log(manual ? `Manual shop: ${manual.name} – accept and finish its orders on the cook's phone.` : 'All shops automated.');
   console.log('Ctrl+C to stop.\n');
 
+  const presenter = await prisma.user.findUnique({ where: { email: DEMO_LOGINS.student.email }, select: { userId: true } });
   const live: Live[] = [];
+  const adopted = new Set<string>(); // the presenter's own orders already being moved along
   const manualWaiting = new Map<string, number>(); // orderId → when the simulated student pays (after a person accepts)
   let placed = 0;
   let stopping = false;
@@ -111,8 +116,28 @@ async function main() {
     live.push({ orderId, shop, userId, acceptAt: accept, payAt: pay, readyAt: ready, doneAt: ready + sec(rng.between(40, 120)), stage: 'new' });
   }
 
+  /** Picks up orders the presenter just placed as the demo student, so the student screens move on stage. */
+  async function adoptPresenterOrders(now: number) {
+    if (!presenter) return;
+    const auto = shops.filter((s) => s !== manual);
+    const orders = await prisma.order.findMany({
+      where: { userId: presenter.userId, restaurantId: { in: auto.map((s) => s.restaurantId) }, status: 'receive', paymentStatus: 'UNPAID', orderAt: { gt: new Date(now - 3600_000) } },
+      select: { orderId: true, restaurantId: true },
+    });
+    for (const { orderId, restaurantId } of orders) {
+      if (adopted.has(orderId)) continue;
+      adopted.add(orderId);
+      const shop = auto.find((s) => s.restaurantId === restaurantId)!;
+      const payAt = now + sec(20);
+      const readyAt = payAt + sec(45);
+      live.push({ orderId, shop, userId: presenter.userId, acceptAt: now, payAt, readyAt, doneAt: readyAt + sec(180), stage: 'new', presenter: true });
+      console.log(`${new Date().toLocaleTimeString('th-TH')}  presenter order · ${shop.name} · ${orderId.slice(0, 8)}`);
+    }
+  }
+
   async function advance() {
     const now = Date.now();
+    await adoptPresenterOrders(now);
     for (const o of [...live]) {
       if (o.stage === 'new' && now >= o.acceptAt) {
         await prisma.order.updateMany({ where: { orderId: o.orderId, status: 'receive', acceptAt: null }, data: { acceptAt: new Date() } });
@@ -126,7 +151,7 @@ async function main() {
         o.stage = 'ready';
       } else if (o.stage === 'ready' && now >= o.doneAt) {
         await prisma.order.updateMany({ where: { orderId: o.orderId, status: 'ready' }, data: { status: 'done' } });
-        if (rng.chance(0.4)) {
+        if (!o.presenter && rng.chance(0.4)) {
           const rating = rng.weighted([5, 4, 3], (r) => (r === 5 ? 6 : r === 4 ? 3 : 1));
           const comment = rng.chance(0.3) ? rng.pick(rating >= 4 ? COMMENTS.good : COMMENTS.ok) : undefined;
           await event('feedback_submitted', o.userId, o.shop.restaurantId, { orderId: o.orderId, rating, waitedLonger: false, ...(comment ? { comment } : {}) });

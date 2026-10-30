@@ -87,7 +87,6 @@ enum Role {
 
 enum SchoolRole {
   ADMIN
-  STAFF
 }
 
 enum RestaurantRole {

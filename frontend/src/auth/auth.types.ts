@@ -21,7 +21,7 @@ export interface RoleRequest {
 /** schema.prisma `SchoolMembership` as returned inside the profile payload. */
 export interface SchoolMembershipLite {
     id?: string;
-    role: "ADMIN" | "STAFF";
+    role: "ADMIN";
     /** Missing on old payloads → treated as APPROVED. */
     status?: "PENDING" | "APPROVED" | "REJECTED";
     schoolId: string;

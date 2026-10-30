@@ -6,7 +6,7 @@ import { OrderShortcut } from "@/components/RoleLinks";
 import { Icon, type IconName } from "@/components/ui/kit";
 import { useAuth } from "@/auth/auth.hooks";
 import { AccountBadge } from "@/components/shell/AccountBadge";
-import { isSchoolAdmin, isSystemAdmin, userHomePath } from "@/auth/access";
+import { isSystemAdmin, userHomePath } from "@/auth/access";
 import { useSchoolInfo } from "@/hook/useSchool";
 import { SchoolAccessBanner } from "@/components/school/SchoolAccessBanner";
 import { DataModeBar } from "@/components/shell/DataModeBar";
@@ -20,7 +20,7 @@ const NAV: { key: SchoolTab; label: string; icon: IconName; path: string }[] = [
     { key: "approvals", label: "รออนุมัติ", icon: "clipboard", path: "/approvals" },
     { key: "refunds", label: "คำขอคืนเงิน", icon: "refund", path: "/refunds" },
     { key: "feedback", label: "ความเห็นนักเรียน", icon: "chat", path: "/feedback" },
-    { key: "staff", label: "เจ้าหน้าที่", icon: "users", path: "/staff" },
+    { key: "staff", label: "ผู้ดูแลโรงเรียน", icon: "users", path: "/staff" },
     { key: "settings", label: "ตั้งค่าโรงเรียน", icon: "settings", path: "/settings" },
     { key: "audit", label: "บันทึกการเข้าถึง", icon: "lock", path: "/audit" },
 ];
@@ -44,7 +44,7 @@ export function SchoolShell({ schoolId, active, children }: Readonly<{ schoolId:
             navLabel="เมนูโรงเรียน"
             items={items}
             mobileActions={<OrderShortcut />}
-            footerTop={<AccountBadge role={isSystemAdmin(user) ? "ผู้ดูแลระบบ" : isSchoolAdmin(user, schoolId) ? "ผู้ดูแลโรงเรียน" : "เจ้าหน้าที่โรงเรียน"} />}
+            footerTop={<AccountBadge role={isSystemAdmin(user) ? "ผู้ดูแลระบบ" : "ผู้ดูแลโรงเรียน"} />}
             brandBelow={
                 <div className="flex flex-col gap-1 rounded-[14px] bg-primary-main p-3.5">
                     <span className="text-base text-white font-bold leading-snug">{school?.name ?? "…"}</span>

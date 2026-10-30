@@ -59,7 +59,7 @@ export default function ForgotPasswordPage() {
 
             <div className="mt-auto flex flex-col gap-1 rounded-2xl bg-ground p-4">
                 <span className="text-[15px] font-bold">ร้านค้าที่ไม่ได้ใช้อีเมล</span>
-                <span className="text-sm leading-relaxed text-slate">ติดต่อเจ้าหน้าที่โรงเรียน หรือเจ้าของร้าน ให้ส่งคำเชิญใหม่</span>
+                <span className="text-sm leading-relaxed text-slate">ติดต่อผู้ดูแลโรงเรียน หรือเจ้าของร้าน ให้ส่งคำเชิญใหม่</span>
             </div>
 
             <ButtonLink href="/login" variant="outline" size="md" className="self-center">กลับไปเข้าสู่ระบบ</ButtonLink>

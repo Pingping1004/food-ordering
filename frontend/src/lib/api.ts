@@ -117,7 +117,7 @@ api.interceptors.response.use(
         if (error.response?.status === 401 && hadToken && !signingOut && typeof window !== "undefined") {
             signingOut = true;
             try {
-                await getSupabase().auth.signOut();
+                await getSupabase().auth.signOut({ scope: "local" });
             } finally {
                 signingOut = false;
                 if (!PUBLIC_PATHS.includes(window.location.pathname)) window.location.href = "/login";

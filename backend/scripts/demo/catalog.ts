@@ -156,10 +156,11 @@ export const SHOPS: ShopSeed[] = [
   },
 ];
 
-export const SCHOOL_STAFF = [
-  { name: 'ครูวิชัย', role: 'STAFF' as const, status: 'APPROVED' as const },
-  { name: 'ผอ.ประเสริฐ', role: 'STAFF' as const, status: 'APPROVED' as const },
-  { name: 'ครูอรุณี', role: 'STAFF' as const, status: 'PENDING' as const },
+/** Other school admins (the last one waits on the approvals page). */
+export const SCHOOL_ADMINS = [
+  { name: 'ครูวิชัย', status: 'APPROVED' as const },
+  { name: 'ผอ.ประเสริฐ', status: 'APPROVED' as const },
+  { name: 'ครูอรุณี', status: 'PENDING' as const },
 ];
 
 export const NICKNAMES = [
