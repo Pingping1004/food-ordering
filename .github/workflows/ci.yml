@@ -124,6 +124,9 @@ jobs:
       PGPORT: '5432'
       PGUSER: postgres
       PGPASSWORD: postgres
+      # prisma.config.ts needs these to load, even for `prisma generate`. Always the local service container.
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/promptserve_e2e
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/promptserve_e2e
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
