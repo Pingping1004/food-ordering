@@ -51,7 +51,7 @@ export default function LoginPage() {
                 <div className="flex flex-col gap-2">
                     <h1 className="text-[30px] font-bold leading-tight">เข้าสู่ระบบ</h1>
                     <p className="text-base leading-relaxed text-brand-muted">
-                        ใช้บัญชีเดียวกันได้ทั้งนักเรียน ร้านค้า และเจ้าหน้าที่โรงเรียน
+                        ใช้บัญชีเดียวกันได้ทั้งนักเรียน ร้านค้า และผู้ดูแลโรงเรียน
                     </p>
                 </div>
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/auth/auth.hooks";
-import { READ_ONLY_REASON, STAFF_READ_ONLY_REASON, activeSupportGrant, canStartSupportGrant, canWriteSchool, isSysadminReadOnly } from "@/auth/access";
+import { READ_ONLY_REASON, activeSupportGrant, canStartSupportGrant, canWriteSchool, isSysadminReadOnly } from "@/auth/access";
 
 /**
  * Single source of truth for "may I change things in this school?" on every /school/[schoolId]/** page.
@@ -36,7 +36,7 @@ export function useSchoolAccess(schoolId: string) {
         }
     }, [expiredKey, refreshUser]);
 
-    const hint = canWrite ? undefined : sysadminReadOnly ? READ_ONLY_REASON : STAFF_READ_ONLY_REASON;
+    const hint = canWrite ? undefined : READ_ONLY_REASON;
 
     return {
         canWrite,

@@ -61,7 +61,7 @@ function ChangeSchoolDialog({ open, onClose }: Readonly<{ open: boolean; onClose
     return (
         <Dialog open={open} onClose={onClose} title="เปลี่ยนโรงเรียน">
             <p className="text-[15px] leading-relaxed text-brand-muted">ใส่รหัสนักเรียนของโรงเรียนใหม่ เปลี่ยนไม่ได้ถ้าคุณเป็นเจ้าของร้าน พนักงานร้าน หรือผู้ดูแลโรงเรียนอยู่</p>
-            <InviteCodeForm onSubmit={submit} busy={busy} error={error} label="เปลี่ยนโรงเรียน" fieldLabel="รหัสนักเรียนของโรงเรียนใหม่" hint="ขอรหัสนักเรียนจากเจ้าหน้าที่โรงเรียน เช่น ABCD-2345" />
+            <InviteCodeForm onSubmit={submit} busy={busy} error={error} label="เปลี่ยนโรงเรียน" fieldLabel="รหัสนักเรียนของโรงเรียนใหม่" hint="ขอรหัสนักเรียนจากผู้ดูแลโรงเรียน เช่น ABCD-2345" />
         </Dialog>
     );
 }
@@ -209,7 +209,7 @@ function Account() {
 
                 <Card className="px-4 py-1">
                     <SwitchRow label="แจ้งเตือนออเดอร์" sub={notify ? "เปิดอยู่ในเครื่องนี้" : "ปิดอยู่ในเครื่องนี้"} checked={notify} onChange={toggleNotify} disabled={notifyBusy} />
-                    {workspaces.length > 1 && <Row label="สลับบทบาท" value="สำหรับบัญชีที่เป็นร้านค้าหรือเจ้าหน้าที่ด้วย" href="/workspace" last />}
+                    {workspaces.length > 1 && <Row label="สลับบทบาท" value="สำหรับบัญชีที่เป็นร้านค้าหรือผู้ดูแลโรงเรียนด้วย" href="/workspace" last />}
                 </Card>
 
                 <MfaSettings systemAdmin={isSystemAdmin(user)} recommended={recommendMfa} />

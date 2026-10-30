@@ -58,7 +58,7 @@ export function CookerShell({ restaurantId, active, children }: Readonly<{ resta
                 <div role="status" className="flex items-start gap-3 border-b border-brand-orange-text/20 bg-brand-orange-light px-5 py-3.5 text-brand-orange-text">
                     <Icon name="clock" size={22} />
                     <p className="text-base leading-relaxed">
-                        <b>ร้านของคุณยังไม่ได้รับการยืนยัน</b> เจ้าหน้าที่โรงเรียนกำลังพิจารณาอนุมัติร้าน ระหว่างนี้ยังไม่เปิดรับออเดอร์ แต่เพิ่มเมนูและตั้งค่าร้านรอไว้ได้
+                        <b>ร้านของคุณยังไม่ได้รับการยืนยัน</b> ผู้ดูแลโรงเรียนกำลังพิจารณาอนุมัติร้าน ระหว่างนี้ยังไม่เปิดรับออเดอร์ แต่เพิ่มเมนูและตั้งค่าร้านรอไว้ได้
                     </p>
                 </div>
             )}

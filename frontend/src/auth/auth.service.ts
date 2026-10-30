@@ -49,8 +49,9 @@ export async function signUpApi(email: string, password: string, name?: string, 
     return { needsConfirmation: !data.session };
 }
 
+/** This device only. Supabase's default scope ("global") would also end the account's sessions on every other device. */
 export async function signOutApi() {
-    await getSupabase().auth.signOut();
+    await getSupabase().auth.signOut({ scope: "local" });
 }
 
 export async function sendPasswordResetApi(email: string) {

@@ -172,7 +172,7 @@ export function deriveWorkspaces(user: UserLike | null, selection: StudentSelect
     }
 
     (user.schoolMemberships ?? []).filter(isApproved).forEach((m) =>
-        list.push({ key: `s-${m.schoolId}`, kind: "school", name: m.schoolName ?? m.school?.name ?? (m.schoolId === user.school?.schoolId ? user.school.name : "โรงเรียน"), roleLabel: m.role === "ADMIN" ? "ผู้ดูแลโรงเรียน" : "เจ้าหน้าที่โรงเรียน", href: `/school/${m.schoolId}`, demo: !!m.schoolIsDemo }),
+        list.push({ key: `s-${m.schoolId}`, kind: "school", name: m.schoolName ?? m.school?.name ?? (m.schoolId === user.school?.schoolId ? user.school.name : "โรงเรียน"), roleLabel: "ผู้ดูแลโรงเรียน", href: `/school/${m.schoolId}`, demo: !!m.schoolIsDemo }),
     );
 
     if ((user.role as Role) === "ADMIN" || user.role === "admin") {

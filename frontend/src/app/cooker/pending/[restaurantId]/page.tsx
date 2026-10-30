@@ -38,7 +38,7 @@ export default function CookerPendingPage({ params }: Readonly<{ params: Promise
                     </span>
                     <h1 className="text-[28px] font-bold">{rejected ? "ใบสมัครไม่ได้รับการอนุมัติ" : "ส่งใบสมัครแล้ว"}</h1>
                     <p className="text-lg leading-relaxed text-slate">
-                        {rejected ? "ติดต่อเจ้าหน้าที่โรงเรียนเพื่อสอบถามเหตุผลและสมัครใหม่" : "เจ้าหน้าที่โรงเรียนกำลังตรวจสอบ ปกติไม่เกิน 1–2 วันทำการ"}
+                        {rejected ? "ติดต่อผู้ดูแลโรงเรียนเพื่อสอบถามเหตุผลและสมัครใหม่" : "ผู้ดูแลโรงเรียนกำลังตรวจสอบ ปกติไม่เกิน 1–2 วันทำการ"}
                     </p>
                 </section>
 

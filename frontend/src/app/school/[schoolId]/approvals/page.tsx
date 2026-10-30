@@ -65,7 +65,7 @@ export default function SchoolApprovalsPage({ params }: Readonly<{ params: Promi
                                 <li key={m.id} className="flex flex-wrap items-center gap-3 rounded-[14px] bg-ground p-3.5">
                                     <span className="flex min-w-0 flex-1 flex-col">
                                         <span className="truncate font-semibold">{m.name ?? "—"}</span>
-                                        <span className="truncate text-[13px] text-brand-muted">{m.email} · ขอเป็น{SCHOOL_ROLE_LABEL[m.role as "ADMIN" | "STAFF"] ?? m.role}</span>
+                                        <span className="truncate text-[13px] text-brand-muted">{m.email} · ขอเป็น{SCHOOL_ROLE_LABEL[m.role as "ADMIN"] ?? m.role}</span>
                                     </span>
                                     <span className="flex gap-2">
                                         <ActionButton variant="outline" size="md" disabled={rejectMember.isPending} {...writeProps} onClick={() => window.confirm(`ไม่อนุมัติ ${m.name ?? m.email}?`) && rejectMember.mutate(m.id)}>ไม่อนุมัติ</ActionButton>

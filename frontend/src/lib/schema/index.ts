@@ -17,7 +17,7 @@ export type ISODate = string;
 /* ───────────── enums ───────────── */
 
 export type Role = "ADMIN" | "COOKER" | "USER";
-export type SchoolRole = "ADMIN" | "STAFF";
+export type SchoolRole = "ADMIN";
 export type RestaurantRole = "OWNER" | "ADMIN" | "STAFF";
 export type Status = "PENDING" | "ACTIVE" | "INACTIVE" | "SUSPENDED" | "REMOVED";
 export type MembershipStatus = "PENDING" | "APPROVED" | "REJECTED";
