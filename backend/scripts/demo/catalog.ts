@@ -19,7 +19,7 @@ export const DEMO_LOGINS = {
   schoolAdmin: { email: 'demo.school@promptserve.online', name: 'ครูสมใจ (ผู้ดูแลสาธิต)' },
 };
 
-export type MenuSeed = { name: string; price: number; cook: number; maxDaily: number; weight: number };
+export type MenuSeed = { name: string; price: number; cook: number; maxDaily: number; weight: number; /** Keep `maxDaily` as the real daily stock (the seed otherwise lifts every menu to the demo quota). */ fixedStock?: boolean };
 
 export type ShopSeed = {
   key: string;
@@ -69,6 +69,8 @@ export const SHOPS: ShopSeed[] = [
       { name: 'ผัดซีอิ๊วหมู', price: 45, cook: 6, maxDaily: 30, weight: 3 },
       { name: 'ข้าวไข่ข้นปู', price: 50, cook: 6, maxDaily: 25, weight: 2 },
       { name: 'ข้าวหมูกระเทียม', price: 45, cook: 5, maxDaily: 30, weight: 3 },
+      // 5-baht item for trying a real payment on demo day; weight 0 keeps it out of the generated order history.
+      { name: 'ข้าวสวย', price: 5, cook: 1, maxDaily: 300, weight: 0, fixedStock: true },
     ],
   },
   {

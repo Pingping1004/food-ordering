@@ -270,6 +270,27 @@ function OrderPaymentPage() {
         }
     }
 
+    // Demo day: marks the order paid on the server without a bank slip (the API refuses it for non-demo shops).
+    const [mockPaying, setMockPaying] = useState(false);
+    const handleMockPay = async () => {
+        if (!orderId || mockPaying) return;
+        setMockPaying(true);
+        try {
+            await api.post("/payment/mock-pay", { orderId }, { headers: { "x-order-secret": localStorage.getItem(`orderSecret:${orderId}`) } });
+            toastSuccess("ชำระเงินสำเร็จ (จำลอง)");
+            clearCart();
+            localStorage.removeItem(`idempotencyKey:${orderId}`);
+            hasRedirectedRef.current = true;
+            queryClient.removeQueries({ queryKey: studentOrderKey(orderId) });
+            queryClient.removeQueries({ queryKey: studentOrderStateKey(orderId) });
+            router.push(`/user/order/wait/${orderId}`);
+        } catch (error) {
+            toastError("จำลองการชำระเงินไม่สำเร็จ", error);
+        } finally {
+            setMockPaying(false);
+        }
+    };
+
     const handleSlipUpload = (file: File) => {
         // 1. Validate size
         if (file.size > 2 * 1024 * 1024) {
@@ -505,6 +526,11 @@ function OrderPaymentPage() {
                 >
                     {isSubmitting ? "กำลังส่งสลิป..." : isFailed ? "ลองใหม่อีกครั้ง" : "ส่งสลิป"}
                 </Button>
+                {order.restaurant?.isDemo && (
+                    <button type="button" onClick={handleMockPay} disabled={mockPaying || expired} className="flex h-12 items-center justify-center gap-2 rounded-xl border-[1.5px] border-dashed border-brand-orange-text bg-brand-orange-light px-5 text-base font-semibold text-brand-orange-text disabled:opacity-50">
+                        {mockPaying ? "กำลังจำลองการชำระเงิน..." : "จำลองการชำระเงิน (เฉพาะโหมดสาธิต)"}
+                    </button>
+                )}
                 {!paymentSlipImg && <span className="text-center text-[13px] text-brand-muted">ปุ่มจะกดได้เมื่อเลือกรูปสลิปแล้ว</span>}
             </footer>
         </form>

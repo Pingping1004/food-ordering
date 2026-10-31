@@ -12,6 +12,12 @@ export class PaymentController {
     return this.paymentService.verifyPayment(body, req.user.userId);
   }
 
+  /** Demo-school shops only: marks the order paid without a bank slip (see `PaymentService.mockPay`). */
+  @Post('mock-pay')
+  mockPay(@Body() body: { orderId: string }, @Req() req: any) {
+    return this.paymentService.mockPay(body?.orderId, req.user.userId);
+  }
+
   @Get('qr-code/:orderId')
   generateQrCode(@Param('orderId') orderId: string, @Req() req: any) {
     return this.paymentService.generateQrCodeForOrder(orderId, req.user.userId);
