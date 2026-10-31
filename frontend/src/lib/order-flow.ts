@@ -23,6 +23,8 @@ export type StudentOrder = Omit<Order, "status"> & {
         accountName?: string;
         accountNumber?: string;
         bankType?: string | null;
+        /** Demo-school shop: the pay screen offers "mock pay". */
+        isDemo?: boolean;
         contactTel?: string | null;
         /** pre-migration field */
         adminTel?: string | null;

@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   HttpException,
   HttpStatus,
   Injectable,
@@ -279,6 +280,59 @@ export class PaymentService {
       );
       throw new HttpException({ message: err.message }, HttpStatus.BAD_REQUEST);
     }
+  }
+
+  /**
+   * Demo day: pretend the transfer happened. Same preconditions and same outcome as a verified slip (order PAID,
+   * cooking starts, payout row, push to the shop) but no bank check. Only for orders of a demo school's shops,
+   * so production data can never be paid this way.
+   */
+  async mockPay(orderId: string, userId: string) {
+    const order = await this.orderService.findOneOrderForUser(orderId, userId);
+    if (!order.restaurant?.isDemo)
+      throw new ForbiddenException('จำลองการชำระเงินได้เฉพาะร้านสาธิต');
+    if (order.paymentStatus === PaymentStatus.PAID) return { success: true };
+    if (order.status === OrderStatus.rejected)
+      throw new ConflictException('ออเดอร์นี้ถูกยกเลิกแล้ว');
+    if (!order.acceptAt)
+      throw new BadRequestException('ร้านยังไม่ได้รับออเดอร์ กรุณารอร้านรับก่อนจึงจะชำระเงินได้');
+
+    const idempotencyKey = `mock:${orderId}`;
+    const transactionId = `MOCK-${orderId}`;
+    const paidAt = new Date();
+    const calculated = calculatePayout(new Prisma.Decimal(order.totalAmount));
+
+    const payout = await this.payoutService
+      .createPayout({
+        idempotencyKey,
+        requestHash: sha256(`mock:${orderId}`),
+        orderId,
+        payoutStatus: PayoutStatus.initiated,
+        restaurantId: order.restaurantId,
+        restaurantName: order.restaurant.name ?? '',
+        grossAmount: order.totalAmount,
+        restaurantRevenue: calculated.restaurantEarning,
+        platformFee: calculated.platformNetEarning,
+        transactionFee: calculated.transactionFee,
+        vat: calculated.vatRate,
+        startDate: paidAt,
+        endDate: paidAt,
+      })
+      .catch(async (err) => {
+        const existing = await this.payoutService.findPayoutByIdempotencyKey(idempotencyKey, orderId);
+        if (!existing) throw err;
+        return existing;
+      });
+
+    await this.prisma.$transaction(async (tx) => {
+      await this.orderService.updateOrderPaymentTx(tx, orderId, PaymentStatus.PAID, undefined, 'mock', transactionId, paidAt);
+      await this.payoutService.updatePayoutTx(tx, payout.payoutId, orderId, idempotencyKey, transactionId, 'success', paidAt);
+    });
+
+    await this.notificationService.sendPaymentVerified(orderId).catch((e: unknown) => {
+      this.logger.warn(`Mock payment done but push notification failed: ${(e as Error).message}`);
+    });
+    return { success: true };
   }
 
   async createPayment(

@@ -721,6 +721,7 @@ export class OrderService {
                 bankType: true,
                 accountNumber: true,
                 accountName: true,
+                canteen: { select: { school: { select: { isDemo: true } } } },
               },
             },
           },
@@ -729,7 +730,12 @@ export class OrderService {
 
       if (!order) throw new NotFoundException('ไม่พบออเดอร์ที่ค้นหา');
 
-      return order;
+      // Flatten the demo flag (the pay screen shows "mock pay" for demo shops only) and keep the school nesting private.
+      const { canteen, ...restaurant } = order.restaurant;
+      return {
+        ...order,
+        restaurant: { ...restaurant, isDemo: !!canteen?.school?.isDemo },
+      };
     } catch (error) {
       if (error.code === 'P2025') {
         throw new NotFoundException(`ไม่พบออเดอร์ที่มีID: ${orderId}`);
