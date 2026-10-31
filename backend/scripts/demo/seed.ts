@@ -10,7 +10,7 @@
  *   npm run demo:seed -- --yes --cook you@x.com    …a cook (staff) of that shop
  *   npm run demo:seed -- --yes --with-logins       create/refresh Supabase demo logins (needs DEMO_PASSWORD,
  *                                                  SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
- *   npm run demo:seed -- --yes --account 1234567890  full number of the real receiving account (slip checks compare it);
+ *   npm run demo:seed -- --yes --account 1234567890  override the receiving account (default 0788542380, KBank);
  *                                                  every demo shop shows frontend/public/demo/payment-qr.jpg
  *   npm run demo:seed -- --yes --remove            delete the demo school and its generated users
  *
@@ -31,10 +31,10 @@ const ADMIN_EMAILS = emails('admin');
 const SHOP_MEMBERS = [...emails('owner').map((email) => ({ email, role: 'OWNER' as const })), ...emails('cook').map((email) => ({ email, role: 'STAFF' as const }))];
 const MEMBER_SHOP_KEY = 'tamsang';
 /** Top of the range the shop settings accept (1–50). */
-/** The demo shops all take payment into one real PromptPay account: this QR (served by the frontend) and `--account=<full number>` for slip checks. */
+/** The demo shops all take payment into one real PromptPay account: this QR (served by the frontend) and the account below (override with `--account <number>`); slip checks compare the number. */
 const DEMO_QR_IMAGE = '/demo/payment-qr.jpg';
 const DEMO_ACCOUNT_NAME = 'ปิยธนา กอจรัญจิตต์';
-const DEMO_ACCOUNT_NUMBER = option('account');
+const DEMO_ACCOUNT_NUMBER = option('account') ?? '0788542380'; // KBank 078-8-54238-0, matches the QR above
 
 const DEMO_MAX_ACTIVE_ORDERS = 50;
 /** So no demo menu can sell out during the pitch (same value the order code assumes when a menu has no limit). */
@@ -203,7 +203,7 @@ async function main() {
           // phone waits for a person (every other shop would expire the order after 3 minutes).
           maxActiveOrders: DEMO_MAX_ACTIVE_ORDERS, avgCookingTimeMins: s.avgCookingTimeMins, status: s.status ?? 'ACTIVE',
           isAutoAcceptedOrder: s.key !== MEMBER_SHOP_KEY, contactName: s.owner, contactSurname: '-', contactTel: `08${rng.int(10000000, 99999999)}`,
-          contactEmail: `${s.key}@${GEN_DOMAIN}`, bankType: 'KASIKORN_BANK', accountNumber: DEMO_ACCOUNT_NUMBER ?? `${rng.int(100, 999)}-${rng.int(1, 9)}-${rng.int(10000, 99999)}-${rng.int(0, 9)}`,
+          contactEmail: `${s.key}@${GEN_DOMAIN}`, bankType: 'KASIKORN_BANK', accountNumber: DEMO_ACCOUNT_NUMBER,
           accountName: DEMO_ACCOUNT_NAME, paymentQr: DEMO_QR_IMAGE, canteenId: canteenIds[s.canteen],
         },
       });
