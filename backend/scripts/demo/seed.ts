@@ -29,6 +29,16 @@ const ADMIN_EMAILS = emails('admin');
 const SHOP_MEMBERS = [...emails('owner').map((email) => ({ email, role: 'OWNER' as const })), ...emails('cook').map((email) => ({ email, role: 'STAFF' as const }))];
 const MEMBER_SHOP_KEY = 'tamsang';
 /** Top of the range the shop settings accept (1–50). */
+/** A real, loadable image for the pay screen (a bare 'demo-qr' string 404s as an <img> src, so QR display and save both failed). */
+const DEMO_QR_IMAGE = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"><rect width="400" height="400" fill="#fff"/>' +
+  '<g fill="#111"><rect x="30" y="30" width="110" height="110"/><rect x="260" y="30" width="110" height="110"/><rect x="30" y="260" width="110" height="110"/>' +
+  '<rect x="170" y="170" width="30" height="30"/><rect x="230" y="200" width="40" height="40"/><rect x="170" y="260" width="60" height="30"/><rect x="290" y="270" width="80" height="30"/><rect x="200" y="320" width="40" height="50"/></g>' +
+  '<g fill="#fff"><rect x="50" y="50" width="70" height="70"/><rect x="280" y="50" width="70" height="70"/><rect x="50" y="280" width="70" height="70"/></g>' +
+  '<g fill="#111"><rect x="68" y="68" width="34" height="34"/><rect x="298" y="68" width="34" height="34"/><rect x="68" y="298" width="34" height="34"/></g>' +
+  '<text x="200" y="392" font-size="16" text-anchor="middle" fill="#666" font-family="sans-serif">DEMO QR</text></svg>',
+);
+
 const DEMO_MAX_ACTIVE_ORDERS = 50;
 /** So no demo menu can sell out during the pitch (same value the order code assumes when a menu has no limit). */
 const DEMO_DAILY_QUOTA = 999;
@@ -197,7 +207,7 @@ async function main() {
           maxActiveOrders: DEMO_MAX_ACTIVE_ORDERS, avgCookingTimeMins: s.avgCookingTimeMins, status: s.status ?? 'ACTIVE',
           isAutoAcceptedOrder: s.key !== MEMBER_SHOP_KEY, contactName: s.owner, contactSurname: '-', contactTel: `08${rng.int(10000000, 99999999)}`,
           contactEmail: `${s.key}@${GEN_DOMAIN}`, bankType: 'KASIKORN_BANK', accountNumber: `${rng.int(100, 999)}-${rng.int(1, 9)}-${rng.int(10000, 99999)}-${rng.int(0, 9)}`,
-          accountName: `ร้าน${s.owner}`, paymentQr: 'demo-qr', canteenId: canteenIds[s.canteen],
+          accountName: `ร้าน${s.owner}`, paymentQr: DEMO_QR_IMAGE, canteenId: canteenIds[s.canteen],
         },
       });
       await prisma.restaurantOperatingHour.createMany({ data: ALWAYS_OPEN.map((h) => ({ restaurantId: r.restaurantId, ...h })) });
