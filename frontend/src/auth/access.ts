@@ -140,11 +140,23 @@ export function roleHomes(user: User | null | undefined): string[] {
     return [...new Set(homes)];
 }
 
-/** Where "my home" is when the user holds a role besides student: its page, or the picker for several. `null` = plain student. */
+/**
+ * Where "my home" is when the user holds a role besides student: the page of their highest role, so sign-in never
+ * asks "which role?" (switching lives on the account page). `null` = plain student.
+ * Order: platform admin → school admin → shop. Real data wins over demo data. The picker only appears when the
+ * top role itself is ambiguous (e.g. admin of two real schools, or owner of two shops).
+ */
 export function roleHomePath(user: User | null | undefined): string | null {
     const homes = roleHomes(user);
     if (!homes.length) return null;
-    return homes.length === 1 ? homes[0] : "/workspace";
+    if (isSystemAdmin(user)) return "/admin/schools";
+
+    const demoHrefs = new Set(dataHomes(user).filter((h) => h.demo).map((h) => h.href));
+    const real = homes.filter((h) => !demoHrefs.has(h));
+    const pool = real.length ? real : homes;
+
+    const top = [pool.filter((h) => h.startsWith("/school/")), pool.filter((h) => h.startsWith("/cooker/")), pool].find((g) => g.length) ?? pool;
+    return top.length === 1 ? top[0] : "/workspace";
 }
 
 /** Where to land after sign-in. The role decides – ordering ("/user/restaurant") is only the default for students. */
