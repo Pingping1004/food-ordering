@@ -7,6 +7,7 @@ import { Stepper, StepHeader } from '@/components/users/Stepper';
 import { toastError, toastDanger, toastSuccess } from '@/components/ui/Toast';
 import { useCart } from '@/context/CartContext';
 import { api } from '@/lib/api';
+import { BANKS, type AccountType } from '@/common/bank-type.enum';
 import { OrderPaymentSchema, orderPaymentSchema } from '@/schemas/orderPaymentSchema';
 import { getParamId } from '@/util/param';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -50,6 +51,8 @@ function OrderPaymentPage() {
     const [isFailed, setIsFailed] = useState(false);
     const [expired, setExpired] = useState(false);
     const [qrFailed, setQrFailed] = useState(false);
+    const [qrAttempt, setQrAttempt] = useState(0);
+    const [copiedAcc, setCopiedAcc] = useState(false);
     const failedCountRef = useRef(0);
     const hasRedirectedRef = useRef(false);
     const hasExpiredRef = useRef(false);
@@ -318,17 +321,78 @@ function OrderPaymentPage() {
         } catch { /* clipboard unavailable */ }
     };
 
+    const bank = order.restaurant?.bankType ? BANKS[order.restaurant.bankType as AccountType] : undefined;
+    const accountNumber = order.restaurant?.accountNumber;
+    // "0000000000" is the placeholder the backend stores when no account could be read from the QR.
+    const hasBankInfo = !!accountNumber && !/^0+$/.test(accountNumber);
+    const showBankFallback = (qrFailed || !paymentImgUrl) && hasBankInfo;
+
+    // Retry loads a fresh copy (cache-buster on remote URLs) and re-asks the server when the QR is generated per order.
+    const retryQr = () => {
+        setQrFailed(false);
+        setQrAttempt((n) => n + 1);
+        if (process.env.NEXT_PUBLIC_DYNAMIC_QR === 'true') dynamicQr.refetch();
+    };
+    const qrSrc = qrAttempt > 0 && !/^(data|blob):/.test(paymentImgUrl)
+        ? `${paymentImgUrl}${paymentImgUrl.includes('?') ? '&' : '?'}_r=${qrAttempt}`
+        : paymentImgUrl;
+
+    const copyAccount = async () => {
+        try {
+            await navigator.clipboard.writeText((accountNumber ?? '').replace(/\D/g, ''));
+            setCopiedAcc(true);
+            setTimeout(() => setCopiedAcc(false), 2000);
+        } catch { /* clipboard unavailable */ }
+    };
+
+    /** Re-encode whatever the QR is (jpeg/webp/svg/data URL) as a real PNG on a white background. */
+    const qrAsPng = async (): Promise<Blob> => {
+        const src = await (await fetch(paymentImgUrl)).blob();
+        const url = URL.createObjectURL(src);
+        try {
+            const img = new window.Image();
+            img.src = url;
+            await img.decode();
+            const side = Math.max(img.naturalWidth || 0, img.naturalHeight || 0, 400);
+            const pad = Math.round(side * 0.06);
+            const canvas = document.createElement("canvas");
+            canvas.width = canvas.height = side + pad * 2;
+            const ctx = canvas.getContext("2d")!;
+            ctx.fillStyle = "#fff";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.imageSmoothingEnabled = false; // keep QR modules crisp
+            ctx.drawImage(img, pad, pad, side, side);
+            return await new Promise<Blob>((res, rej) => canvas.toBlob((b) => (b ? res(b) : rej(new Error("png"))), "image/png"));
+        } finally {
+            URL.revokeObjectURL(url);
+        }
+    };
+
     const saveQr = async () => {
         if (!paymentImgUrl) return;
+        const filename = `qr-${orderCode(order.orderId)}.png`;
         try {
-            const blob = await (await fetch(paymentImgUrl)).blob();
+            const png = await qrAsPng();
+            const file = new File([png], filename, { type: "image/png" });
+            // Phones: the share sheet offers "Save Image" / "Save to Photos", so it lands in the gallery like a chat-app image.
+            if (navigator.canShare?.({ files: [file] })) {
+                try {
+                    await navigator.share({ files: [file] });
+                    return;
+                } catch (e) {
+                    if ((e as Error).name === "AbortError") return; // user closed the sheet
+                }
+            }
             const a = document.createElement("a");
-            a.href = URL.createObjectURL(blob);
-            a.download = `qr-${orderCode(order.orderId)}.png`;
+            a.href = URL.createObjectURL(png);
+            a.download = filename;
+            document.body.appendChild(a);
             a.click();
-            URL.revokeObjectURL(a.href);
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+            toastSuccess("บันทึกรูป QR แล้ว");
         } catch {
-            window.open(paymentImgUrl, "_blank", "noopener,noreferrer"); // cross-origin image: let the browser save it
+            window.open(paymentImgUrl, "_blank", "noopener,noreferrer"); // cross-origin image: press & hold to save
         }
     };
 
@@ -353,7 +417,8 @@ function OrderPaymentPage() {
                         // not an allow-listed host or is malformed, which would stop the student paying at all.
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
-                            src={paymentImgUrl}
+                            key={qrAttempt}
+                            src={qrSrc}
                             alt={`QR พร้อมเพย์สำหรับชำระเงิน`}
                             width={220}
                             height={220}
@@ -361,7 +426,24 @@ function OrderPaymentPage() {
                             className="aspect-square rounded-2xl border-2 border-brand-dark object-cover"
                         />
                     )}
-                    {qrFailed && <span className="text-center text-sm text-danger-main">โหลด QR ไม่สำเร็จ กรุณาโทรหาร้านหรือสแกนจากหน้าร้าน</span>}
+                    {qrFailed && <span className="text-center text-sm text-danger-main">โหลด QR ไม่สำเร็จ {hasBankInfo ? 'กดลองใหม่ หรือโอนผ่านเลขบัญชีด้านล่าง' : 'กรุณากดลองใหม่ หรือโทรหาร้าน'}</span>}
+                    {(qrFailed || (!paymentImgUrl && process.env.NEXT_PUBLIC_DYNAMIC_QR === 'true')) && (
+                        <button type="button" onClick={retryQr} className="flex h-12 items-center gap-2 rounded-xl border-[1.5px] border-danger-main bg-white px-5 text-base font-semibold text-danger-main hover:bg-danger-light">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5" /></svg>
+                            โหลด QR ใหม่
+                        </button>
+                    )}
+                    {showBankFallback && (
+                        <div role="group" aria-label="โอนผ่านเลขบัญชี" className="flex w-full flex-col items-center gap-1 rounded-2xl bg-ground-blue px-4 py-3.5 text-center">
+                            <span className="text-sm text-brand-muted">โอนเข้าบัญชีนี้แทน</span>
+                            {bank && <span className="text-base font-bold">{bank.label}</span>}
+                            <span className="text-[26px] font-bold leading-tight tracking-wide">{accountNumber}</span>
+                            {order.restaurant?.accountName && <span className="text-base">{order.restaurant.accountName}</span>}
+                            <button type="button" onClick={copyAccount} className="mt-1.5 flex h-10 items-center gap-2 rounded-xl border-[1.5px] border-primary-main bg-white px-4 text-[15px] font-semibold text-primary-dark hover:bg-white/70">
+                                {copiedAcc ? 'คัดลอกแล้ว ✓' : 'คัดลอกเลขบัญชี'}
+                            </button>
+                        </div>
+                    )}
                     <button type="button" onClick={copyAmount} className="flex h-12 items-center gap-2 rounded-xl bg-primary-main px-5 text-base font-semibold text-white hover:bg-primary-dark">
                         {copied ? 'คัดลอกแล้ว ✓' : `คัดลอกยอด ${formatBaht(order.totalAmount)} บาท`}
                     </button>
@@ -369,7 +451,7 @@ function OrderPaymentPage() {
                         {order.restaurant?.name && <span className="text-base font-bold">{order.restaurant.name}</span>}
                         {order.restaurant?.accountName && <span className="text-sm text-brand-muted">ชื่อบัญชี: {order.restaurant.accountName}</span>}
                     </span>
-                    {paymentImgUrl && (
+                    {paymentImgUrl && !qrFailed && (
                         <button type="button" onClick={saveQr} className="flex h-12 items-center gap-2 rounded-xl border-[1.5px] border-primary-main bg-white px-5 text-base font-semibold text-primary-dark hover:bg-ground-blue">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
                             บันทึกรูป QR

@@ -717,6 +717,10 @@ export class OrderService {
               select: {
                 name: true,
                 paymentQr: true,
+                // Bank fallback shown on the pay screen when the QR image fails to load (owner-only endpoint).
+                bankType: true,
+                accountNumber: true,
+                accountName: true,
               },
             },
           },

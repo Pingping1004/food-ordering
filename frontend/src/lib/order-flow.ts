@@ -21,6 +21,8 @@ export type StudentOrder = Omit<Order, "status"> & {
         location?: string | null;
         paymentQr?: string;
         accountName?: string;
+        accountNumber?: string;
+        bankType?: string | null;
         contactTel?: string | null;
         /** pre-migration field */
         adminTel?: string | null;
