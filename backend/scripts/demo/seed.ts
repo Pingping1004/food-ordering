@@ -214,9 +214,9 @@ async function main() {
           ...people.staff.map((u) => ({ userId: u.userId!, restaurantId: r.restaurantId, role: 'STAFF' as const, status: 'APPROVED' as const })),
         ],
       });
-      const menuRows = s.menus.map((m) => ({ menuId: randomUUID(), name: m.name, price: m.price, cook: m.cook, weight: m.weight, maxDaily: m.maxDaily }));
+      const menuRows = s.menus.map((m) => ({ menuId: randomUUID(), name: m.name, price: m.price, cook: m.cook, weight: m.weight, maxDaily: m.fixedStock ? m.maxDaily : DEMO_DAILY_QUOTA }));
       await prisma.menu.createMany({
-        data: menuRows.map((m) => ({ menuId: m.menuId, name: m.name, price: m.price, cookingTimeMins: m.cook, maxDaily: DEMO_DAILY_QUOTA, restaurantId: r.restaurantId, createdAt: setupDay })),
+        data: menuRows.map((m) => ({ menuId: m.menuId, name: m.name, price: m.price, cookingTimeMins: m.cook, maxDaily: m.maxDaily, restaurantId: r.restaurantId, createdAt: setupDay })),
       });
       shops.push({ ...s, restaurantId: r.restaurantId, canteenId: canteenIds[s.canteen], menuRows });
     }
