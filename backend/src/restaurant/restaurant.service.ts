@@ -36,6 +36,8 @@ import { AccountType } from '../common/interface/accountType';
 import { minutesToHHmm, summarizeHours } from '../utils/hours.util';
 import { invalidateRestaurantVisibility } from '../access/restaurant-visibility.cache';
 
+const ALL_DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+
 @Injectable()
 export class RestaurantService {
   constructor(
@@ -237,9 +239,36 @@ export class RestaurantService {
             accountName: true,
             paymentQr: true,
             canteenId: true,
+            operatingHours: {
+              select: { dayOfWeek: true, openMinute: true, closeMinute: true },
+            },
           },
         }),
       );
+
+      // Today's real opening hours of each shop (Bangkok). Shops without any hours keep the 08:00–20:00 default.
+      const DAY_BY_INDEX: DayOfWeek[] = [
+        DayOfWeek.SUNDAY,
+        DayOfWeek.MONDAY,
+        DayOfWeek.TUESDAY,
+        DayOfWeek.WEDNESDAY,
+        DayOfWeek.THURSDAY,
+        DayOfWeek.FRIDAY,
+        DayOfWeek.SATURDAY,
+      ];
+      const todayDay = DAY_BY_INDEX[moment().tz('Asia/Bangkok').day()];
+      const hoursToday = (r: (typeof restaurants)[number]) => {
+        if (!r.operatingHours?.length) {
+          return { openDate: ALL_DAYS, openTime: '08:00', closeTime: '20:00' };
+        }
+        const h = r.operatingHours.find((x) => x.dayOfWeek === todayDay);
+        if (!h) return { openDate: [] as string[], openTime: '08:00', closeTime: '20:00' };
+        return {
+          openDate: ALL_DAYS,
+          openTime: minutesToHHmm(h.openMinute),
+          closeTime: minutesToHHmm(h.closeMinute),
+        };
+      };
 
       const mapped: RestaurantCache[] = (restaurants || []).map((r) => ({
         restaurantId: r.restaurantId,
@@ -248,9 +277,7 @@ export class RestaurantService {
         name: r.name,
         location: r.location,
         categories: r.categories,
-        openDate: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
-        openTime: '08:00',
-        closeTime: '20:00',
+        ...hoursToday(r),
         avgCookingTime: r.avgCookingTimeMins ?? 10,
         avgCookingTimeMins: r.avgCookingTimeMins,
         isTemporarilyClosed: false,
