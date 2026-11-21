@@ -31,6 +31,14 @@ describe('Order creation (real HTTP + real Postgres)', () => {
     await post(other.student.userId, orderBody(w.restaurant.restaurantId, w.menu.menuId)).expect(404);
   });
 
+  it('should allow 5 dishes and reject 6 with ORDER_TOO_MANY_DISHES, creating nothing', async () => {
+    const w = await makeWorld(t.prisma);
+    await post(w.student.userId, orderBody(w.restaurant.restaurantId, w.menu.menuId, 5)).expect(201);
+    const res = await post(w.student.userId, orderBody(w.restaurant.restaurantId, w.menu.menuId, 6)).expect(400);
+    expect(res.body.code).toBe('ORDER_TOO_MANY_DISHES');
+    expect(await t.prisma.order.count({ where: { userId: w.student.userId } })).toBe(1);
+  });
+
   it('should reject a menu item that belongs to another shop', async () => {
     const a = await makeWorld(t.prisma);
     const b = await makeWorld(t.prisma);

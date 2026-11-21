@@ -46,7 +46,7 @@ export default function MenuProfile({
     isPriority,
     ...props
 }: MenuProfileProps) {
-    const { getQuantity, addToCart, removeFromCart } = useCart();
+    const { getQuantity, addToCart, removeFromCart, canAddMore } = useCart();
 
     const qtyNum = getQuantity(menuId);
 
@@ -91,16 +91,17 @@ export default function MenuProfile({
                     <button type="button" aria-label={`ลดจำนวน ${name}`} onClick={() => removeFromCart(menuId)}
                         className="h-11 w-11 text-[22px] font-bold text-primary-dark">−</button>
                     <span className="min-w-5 text-center text-[17px] font-bold text-primary-dark">{qtyNum}</span>
-                    <button type="button" aria-label={`เพิ่มจำนวน ${name}`}
+                    <button type="button" aria-label={`เพิ่มจำนวน ${name}`} aria-disabled={!canAddMore}
                         onClick={() => addToCart(menuId, name, sellPriceDisplay, menuImg ?? '', isAvailable, restaurantId)}
-                        className="h-11 w-11 text-[22px] font-bold text-primary-dark">+</button>
+                        className={clsx("h-11 w-11 text-[22px] font-bold text-primary-dark", !canAddMore && "opacity-35")}>+</button>
                 </div>
             ) : (
                 <button
                     type="button"
                     aria-label={`เพิ่ม ${name} ลงตะกร้า`}
+                    aria-disabled={!canAddMore}
                     onClick={() => addToCart(menuId, name, sellPriceDisplay, menuImg ?? '', isAvailable, restaurantId)}
-                    className="flex h-12 w-12 items-center justify-center rounded-[14px] bg-primary-main text-white hover:bg-primary-dark"
+                    className={clsx("flex h-12 w-12 items-center justify-center rounded-[14px] bg-primary-main text-white hover:bg-primary-dark", !canAddMore && "opacity-35")}
                 >
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
                 </button>
