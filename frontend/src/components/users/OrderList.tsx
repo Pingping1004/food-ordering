@@ -1,4 +1,6 @@
 import React from 'react'
+import clsx from 'clsx';
+import { TOO_MANY_DISHES_MESSAGE } from '@/lib/order-limits';
 import { CartItem, useCart } from '@/context/CartContext';
 import type { OrderStatus } from '../cookers/OrderNavbar';
 
@@ -26,7 +28,7 @@ interface CartListProps {
 }
 
 export default function OrderList({ items }: Readonly<CartListProps>) {
-    const { addToCart, removeFromCart } = useCart();
+    const { addToCart, removeFromCart, canAddMore } = useCart();
 
     return (
         <div className="flex flex-col gap-3.5">
@@ -40,13 +42,14 @@ export default function OrderList({ items }: Readonly<CartListProps>) {
                         <button type="button" aria-label={`ลดจำนวน ${menu.menuName}`} onClick={() => removeFromCart(menu.menuId)}
                             className="h-11 w-11 text-xl">−</button>
                         <span className="min-w-[22px] text-center text-base font-bold">{menu.quantity}</span>
-                        <button type="button" aria-label={`เพิ่มจำนวน ${menu.menuName}`}
+                        <button type="button" aria-label={`เพิ่มจำนวน ${menu.menuName}`} aria-disabled={!canAddMore}
                             onClick={() => addToCart(menu.menuId, menu.menuName, menu.unitPrice, menu.menuImg, menu.isAvailable, menu.restaurantId)}
-                            className="h-11 w-11 text-xl">+</button>
+                            className={clsx("h-11 w-11 text-xl", !canAddMore && "opacity-35")}>+</button>
                     </div>
                     <span className="w-16 text-right text-base font-bold">{menu.unitPrice * menu.quantity}</span>
                 </div>
             ))}
+            <p className={clsx("text-sm", canAddMore ? "text-brand-muted" : "font-semibold text-brand-orange-text")}>{TOO_MANY_DISHES_MESSAGE}</p>
         </div>
     )
 }

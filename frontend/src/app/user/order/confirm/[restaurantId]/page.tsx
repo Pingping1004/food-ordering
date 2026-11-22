@@ -8,6 +8,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCart } from "@/context/CartContext";
+import { MAX_DISHES_PER_ORDER, TOO_MANY_DISHES_MESSAGE, totalDishes } from "@/lib/order-limits";
 import { Button } from "@/components/Button";
 import { Stepper, StepHeader } from "@/components/users/Stepper";
 import { PickupSlots } from "@/components/users/PickupSlots";
@@ -130,6 +131,8 @@ function OrderConfirmContext() {
 
     const submitOrder = async (data: CreateOrderSchemaType) => {
         if (cart.length === 0) return void toastDanger("ตะกร้าสินค้าว่างเปล่า", "กรุณาเลือกเมนูอาหารอย่างน้อย 1 รายการก่อนสั่ง");
+        // A cart saved before the limit existed can hold more; the API would refuse it too.
+        if (totalDishes(cart) > MAX_DISHES_PER_ORDER) return void toastDanger(TOO_MANY_DISHES_MESSAGE, "ลดจำนวนในตะกร้าก่อนยืนยัน");
 
         const payload: OrderPayload = {
             restaurantId: cooker.restaurantId,

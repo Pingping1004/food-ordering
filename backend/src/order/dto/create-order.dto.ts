@@ -3,6 +3,7 @@ import {
   IsArray,
   IsBoolean,
   IsDate,
+  IsInt,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -21,7 +22,7 @@ export class CreateOrderMenusDto {
   menuId: string;
 
   @IsNotEmpty()
-  @IsNumber()
+  @IsInt()
   @Min(1)
   @Type(() => Number)
   quantity: number;

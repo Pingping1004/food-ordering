@@ -1,6 +1,8 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { toastDanger } from "@/components/ui/Toast";
+import { TOO_MANY_DISHES_MESSAGE, canAddDish, totalDishes } from "@/lib/order-limits";
 
 export interface CartItem {
     menuId: string;
@@ -12,9 +14,15 @@ export interface CartItem {
     restaurantId: string;
 };
 
+type AddResult = { success: true } | { success: false; reason: string };
+
 type CartContextType = {
     cart: CartItem[];
-    addToCart: (menuId: string, menuName: string, unitPrice: number, menuImg: string, isAvailable: boolean, restaurantId: string) => void;
+    addToCart: (menuId: string, menuName: string, unitPrice: number, menuImg: string, isAvailable: boolean, restaurantId: string) => AddResult;
+    /** Dishes in the cart, counted by quantity. */
+    dishCount: number;
+    /** False once the cart holds MAX_DISHES_PER_ORDER dishes. */
+    canAddMore: boolean;
     removeFromCart: (menuId: string) => void;
     getQuantity: (menuId: string) => number;
     clearCart: () => void;
@@ -44,7 +52,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
     useEffect(() => { cartRef.current = cart }, [cart]);
 
-    const addToCart = useCallback((menuId: string, menuName: string, unitPrice: number, menuImg: string, isAvailable: boolean, restaurantId: string) => {
+    const addToCart = useCallback((menuId: string, menuName: string, unitPrice: number, menuImg: string, isAvailable: boolean, restaurantId: string): AddResult => {
         const current = cartRef.current;
         if (current.length > 0 && current[0].restaurantId !== restaurantId) {
             return { success: false, reason: "คนละร้านอาหาร" };
@@ -52,7 +60,14 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
         if (!isAvailable) return { success: false, reason: "เมนูนี้ไม่พร้อมให้บริการ" }
 
+        if (!canAddDish(current)) {
+            toastDanger(TOO_MANY_DISHES_MESSAGE, "ลดจำนวนเมนูอื่นก่อน หรือแยกเป็นอีกออเดอร์");
+            return { success: false, reason: TOO_MANY_DISHES_MESSAGE };
+        }
+
         setCart((prev) => {
+            // Taps faster than a render: re-check against the latest state.
+            if (!canAddDish(prev)) return prev;
             const existingCartItem = prev.find((item) => item.menuId === menuId);
 
             if (existingCartItem) {
@@ -97,9 +112,12 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         return item ? item.quantity : 0;
     }, [cart]);
 
+    const dishCount = totalDishes(cart);
+    const canAddMore = canAddDish(cart);
+
     const contextValue = useMemo(() => ({
-        cart, addToCart, removeFromCart, getQuantity, clearCart, hydrated
-    }), [cart, addToCart, removeFromCart, getQuantity, clearCart, hydrated]);
+        cart, addToCart, removeFromCart, getQuantity, clearCart, hydrated, dishCount, canAddMore
+    }), [cart, addToCart, removeFromCart, getQuantity, clearCart, hydrated, dishCount, canAddMore]);
 
     return (
         <CartContext.Provider

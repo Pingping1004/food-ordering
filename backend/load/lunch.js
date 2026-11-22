@@ -73,7 +73,8 @@ export function student() {
   const body = JSON.stringify({
     restaurantId: shop.restaurantId,
     pickupAt: new Date(Date.now() + 90 * 60 * 1000).toISOString(),
-    orderMenus: Array.from({ length: items }, () => ({ menuId: pick(shop.menuIds), menuName: 'x', quantity: 1 + Math.floor(Math.random() * 2), unitPrice: 1 })),
+    // At most 5 dishes per order (MAX_DISHES_PER_ORDER): 3 different dishes are ordered once each.
+    orderMenus: Array.from({ length: items }, () => ({ menuId: pick(shop.menuIds), menuName: 'x', quantity: items < 3 ? 1 + Math.floor(Math.random() * 2) : 1, unitPrice: 1 })),
   });
   const res = track(
     http.post(`${BASE}/api/order/create`, body, { ...authHeaders(userId, { 'Idempotency-Key': uuidv4() }), tags: { endpoint: 'order_create' } }),

@@ -17,6 +17,7 @@ import {
   Prisma,
   DayOfWeek,
 } from '@prisma/client';
+import { assertDishLimit } from './order-limits';
 import { isDebugAlwaysOpen } from '../utils/debug';
 import { Cron } from '@nestjs/schedule';
 
@@ -251,6 +252,8 @@ export class OrderService {
       );
       if (replay) return replay;
     }
+    // Before any DB work: one student may not tie up a kitchen with a huge order.
+    assertDishLimit(createOrderDto.orderMenus);
     const pickupAt =
       createOrderDto.pickupAt ??
       createOrderDto.deliverAt ??
